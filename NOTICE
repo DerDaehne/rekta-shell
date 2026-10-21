@@ -1,0 +1,17 @@
+rekta-shell — provenance notice
+
+1. Rekta Design
+   rekta-shell implements Rekta Design. Its design tokens and icons are
+   generated at build time from a pinned commit of the Rekta Design
+   repository; no Rekta Design files are copied into this repository.
+
+   Rekta Design: https://github.com/DerDaehne/rekta-design
+   Licence: MIT (code, tokens) and CC BY 4.0 (documentation)
+
+2. Typeface
+   rekta-shell uses Atkinson Hyperlegible Next by the Braille Institute of
+   America, licensed under the SIL Open Font License 1.1. The font is not
+   included in this repository; the Nix package takes it from nixpkgs.
+
+   Atkinson Hyperlegible Next: https://www.brailleinstitute.org/freefont/
+   Licence: SIL Open Font License 1.1 (https://openfontlicense.org)
