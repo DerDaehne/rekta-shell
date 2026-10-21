@@ -21,6 +21,14 @@ in
         touch $out
       '';
 
+  generator-tests =
+    pkgs.runCommand "rekta-shell-generator-tests" { nativeBuildInputs = [ pkgs.nodejs ]; }
+      ''
+        export HOME="$TMPDIR"
+        REKTA_DESIGN_DIST=${dist} node --test ${../scripts}/generate-tokens.test.mjs
+        touch $out
+      '';
+
   qml-tests =
     pkgs.runCommand "rekta-shell-qml-tests"
       {

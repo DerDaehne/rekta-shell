@@ -22,9 +22,15 @@ TestCase {
         compare(Tokens.fluid(Tokens.fontSizeM, 3000), Tokens.fontSizeM);
     }
 
-    function test_every_token_font_size_is_fixed_or_fluid() {
-        for (const name of ["fontSizeL", "fontSizeTitle", "fontSizeNavActive", "fontSizePivotActive"]) {
+    function test_every_font_size_is_fixed_or_clamps_between_its_ends() {
+        const names = Object.keys(Tokens).filter(name => name.startsWith("fontSize") && typeof Tokens[name] !== "function");
+        verify(names.length > 0);
+        for (const name of names) {
             const size = Tokens[name];
+            if (typeof size === "number") {
+                compare(Tokens.fluid(size, 1e6), size, name);
+                continue;
+            }
             verify(size.min < size.max, name);
             compare(Tokens.fluid(size, 0), size.min, name);
             compare(Tokens.fluid(size, 1e6), size.max, name);
