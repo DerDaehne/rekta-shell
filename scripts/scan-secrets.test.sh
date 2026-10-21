@@ -412,7 +412,19 @@ commit_as Neutral neutral@users.noreply.github.com "feat: add pr"
 git -C "$work" switch -q -
 git -C "$work" -c user.name=Opener -c user.email=opener@example.invalid \
 	merge -q --no-ff -m "Merge probe-pull-request" probe-pull-request
-check "identity: a merge commit is skipped, the commits it brings in are checked" 0
+check "identity: a merge commit itself is skipped" 0
+git -C "$work" branch -q -D probe-pull-request
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+git -C "$work" switch -q -c probe-pull-request
+echo x >"$work/pr.txt"
+git -C "$work" add pr.txt
+commit_as_author Neutral neutral@users.noreply.github.com Neutral neutral@example.invalid "feat: add pr"
+git -C "$work" switch -q -
+git -C "$work" -c user.name=Neutral -c user.email=neutral@users.noreply.github.com \
+	merge -q --no-ff -m "Merge probe-pull-request" probe-pull-request
+check "identity: the commits a merge brings in are checked" 1 "Non-noreply author or committer"
 git -C "$work" branch -q -D probe-pull-request
 
 reset_work
