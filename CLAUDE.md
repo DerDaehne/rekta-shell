@@ -94,6 +94,23 @@ People should understand intent and behaviour by reading the code.
   mutation probes with `git stash` or a throwaway clone.
 - A decision changes? New ADR + `supersedes` link; never rewrite the old ADR.
 
+## Stack and commands
+
+- Quickshell 0.3 (QML) on KWin, KDE Plasma 6, Wayland; a Nix flake. Quickshell
+  comes from nixpkgs, so it is built against the same Qt as Plasma; the package
+  refuses any Quickshell other than 0.3.x.
+- Rekta Design is a flake input pinned to one commit (source only).
+
+```sh
+nix flake check   # builds the package, runs qmllint (warnings fail) and nixfmt --check
+nix develop       # qs, qmllint, qmlformat, node, gitleaks, nixfmt
+nix build         # result/bin/rekta-shell, a wrapper around quickshell --path
+nix fmt           # formats the Nix files
+```
+
+- The overlay (`overlays.default`) builds `rekta-shell` against the importing
+  configuration's nixpkgs.
+
 ## Git
 
 - One branch per ticket: `ticket/<id>-<short-slug>`, branched from the current

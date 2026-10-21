@@ -1,0 +1,45 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1792502884,
+        "narHash": "sha256-IoNisKcGbUjdd45qCqywGMCYmZ5EnkxezvLII0FWwNA=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "02c087f3fe673c9e317f206a627cb6b910336dbe",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "rekta-design": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792439777,
+        "narHash": "sha256-gahi3dW/5LhytU4dpnvvyxFA8GmZGFB4AuIAtEShUig=",
+        "owner": "DerDaehne",
+        "repo": "rekta-design",
+        "rev": "09e0cf292140727fa81b938650e3df53efb58907",
+        "type": "github"
+      },
+      "original": {
+        "owner": "DerDaehne",
+        "repo": "rekta-design",
+        "rev": "09e0cf292140727fa81b938650e3df53efb58907",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "rekta-design": "rekta-design"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

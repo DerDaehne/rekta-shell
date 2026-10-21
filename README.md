@@ -13,9 +13,10 @@ notifications and a lock screen in Rekta's language.
 
 ## Installation
 
-Planned: a Nix flake with a NixOS module and a home-manager module. Every
-option is off by default, so importing the flake changes nothing until a
-configuration enables it.
+The flake provides `packages.<system>.rekta-shell` and `overlays.default`,
+which builds the shell against your own nixpkgs. A NixOS module and a
+home-manager module follow; every option will be off by default, so importing
+the flake changes nothing until a configuration enables it.
 
 ## Contributing
 
