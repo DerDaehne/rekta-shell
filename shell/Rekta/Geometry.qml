@@ -49,4 +49,25 @@ QtObject {
     // Under reduced motion `left: calc(50% - 22px + n × 10px)` (rekta.css:1214)
     readonly property real dotRestOffset: 22
     readonly property real dotRestSpacing: 10
+    // `.rk-input { padding: 0 12px; border: 1px solid … }`, in error `padding-inline: 11px; border: 2px solid …` (rekta.css:266, :275)
+    readonly property real inputPadding: 12
+    readonly property real inputBorder: 1
+    readonly property real inputErrorBorder: 2
+    // `.rk-toggle-track { width: 46px; height: 22px; padding: 2px; border: 2px }`, the thumb `width: 12px` moving
+    // `translateX(34px)`, the fill `calc(100% - 14px)` of the content box (rekta.css:335–345; border-box, :38)
+    readonly property real toggleWidth: 46
+    readonly property real toggleHeight: 22
+    readonly property real togglePadding: 2
+    readonly property real toggleBorder: 2
+    readonly property real toggleThumb: 12
+    // `.rk-toggle-word { min-width: 2.2em }` (rekta.css:351), in em of the word's size
+    readonly property real toggleWordWidth: 2.2
+    // `.rk-range` track `height: 6px`, thumb `width: 10px; height: 24px` (rekta.css:368, :372); `.rk-range + output
+    // { min-width: 3.5em }` (:378), in em of the value's size
+    readonly property real sliderTrack: 6
+    readonly property real sliderThumbWidth: 10
+    readonly property real sliderThumbHeight: 24
+    readonly property real sliderOutputWidth: 3.5
+    // `.rk-segments > label { border: 2px solid … }`, joined by `margin-left: -2px` (rekta.css:390, :392)
+    readonly property real segmentBorder: 2
 }

@@ -20,3 +20,8 @@ Progress 1.0 Progress.qml
 BusyLine 1.0 BusyLine.qml
 Dots 1.0 Dots.qml
 internal BusySegment BusySegment.qml
+Hint 1.0 Hint.qml
+Field 1.0 Field.qml
+Toggle 1.0 Toggle.qml
+Slider 1.0 Slider.qml
+Segments 1.0 Segments.qml
