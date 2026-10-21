@@ -22,6 +22,9 @@ Row {
         }
     }
 
+    // An inline mark and its word: a place change turns them as one part (motion.md, "Place change").
+    readonly property bool turnsWhole: true
+
     spacing: Geometry.tagGap
     // A row has no baseline of its own; the word's lines the tag up with running text.
     baselineOffset: wordText.y + wordText.baselineOffset

@@ -20,6 +20,10 @@ TestCase {
         return turns.find(turn => turn.part === wanted);
     }
 
+    function init() {
+        failOnWarning(/TypeError|ReferenceError|Binding loop/);
+    }
+
     function cleanup() {
         Tokens.reducedMotion = false;
     }
@@ -91,6 +95,37 @@ TestCase {
             if (parts === heavy)
                 fuzzyCompare(end, longest, 1e-9);
         }
+    }
+
+    function test_a_part_in_a_clipping_box_turns_around_its_edge_and_counts_its_reach_and_top_from_it() {
+        const clip = {
+            x: 100,
+            y: 200
+        };
+        const flush = Object.assign(part(140, 201, tile, tile), {
+            clip: clip
+        });
+        const lower = Object.assign(part(300, 400, tile, tile), {
+            clip: clip
+        });
+        const turns = Turnstile.plan([flush, lower], Tokens.durationShort, 0);
+        compare(turnOf(turns, flush).originX, clip.x - flush.x);
+        compare(turnOf(turns, flush).originY, 0);
+        compare(turnOf(turns, lower).originY, tile / 2);
+        fuzzyCompare(turnOf(turns, lower).perspective, Tokens.turnstilePerspective + Geometry.turnPerspectivePerReach * (lower.x + tile - clip.x), 1e-9);
+    }
+
+    function test_the_pressed_tile_turns_last_in_a_row_of_its_own_once_the_others_started_and_it_has_sunk() {
+        const pressed = part(0, 100, tile, tile);
+        const neighbour = part(tile + Tokens.spaceS, 100, tile, tile);
+        const line = part(0, 0, 400, 20);
+        const others = Turnstile.plan([line, neighbour], Tokens.durationShort, 0);
+        const lastStart = Math.max(...others.map(turn => turn.at));
+        const turn = Turnstile.pressedTurn(pressed, Tokens.durationShort, others, 0);
+        compare(turn.at, lastStart);
+        fuzzyCompare(turn.duration, Geometry.heftAtTile * Tokens.durationShort, 1e-9);
+        fuzzyCompare(turn.perspective, Tokens.turnstilePerspective + Geometry.turnPerspectivePerReach * tile, 1e-9);
+        compare(Turnstile.pressedTurn(pressed, Tokens.durationShort, others, lastStart + 40).at, lastStart + 40);
     }
 
     function test_under_reduced_motion_every_part_turns_at_once_and_in_no_time() {

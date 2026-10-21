@@ -25,12 +25,14 @@ Item {
     property bool held: false
     // On a status fill only the primary text colour clears AA; Status.secondaryInk() reads this (rekta.css:63–65).
     readonly property bool statusFill: status !== ""
-    readonly property bool pressed: press.held
+    // A place turn keeps the tile that opened the next place pressed until it turns away (rekta.js turn.leave()).
+    property bool kept: false
+    readonly property bool pressed: press.held || kept
     // Where it was pressed, -1 to 1 from the centre; 0 0 for the keyboard.
     readonly property real pressX: press.x
     readonly property real pressY: press.y
     // How far it has sunk, 0 to 1, eased like a CSS transition: in over duration-press, back over duration-short.
-    property real sink: press.held ? 1 : 0
+    property real sink: (press.held || kept) ? 1 : 0
     // The tilt the sink has reached, in degrees; none under reduced motion, where a press only shrinks (rekta.css:1211).
     readonly property real tiltX: Tokens.reducedMotion ? 0 : -pressY * sink * Tokens.tileTilt
     readonly property real tiltY: Tokens.reducedMotion ? 0 : pressX * sink * Tokens.tileTilt
@@ -46,7 +48,19 @@ Item {
         return count;
     }
 
+    // A place change turns a tile as one part (motion.md, "Place change").
+    readonly property bool turnsWhole: true
+
     signal activated
+
+    // Keeps the press until the place turn takes the tile away; one activated without a press sinks now, in its
+    // centre (rekta.js turn.leave()). Returns how long it still sinks, in ms.
+    function keepPressed(): real {
+        if (!press.held)
+            press.start(0, 0);
+        kept = true;
+        return Math.max(0, Tokens.durationPress - (Date.now() - press.since));
+    }
 
     // A tile combines at most two or three patterns; past that it has become a page that needs its own screen.
     function warnIfCrowded() {

@@ -25,7 +25,7 @@ KWin.SceneEffect {
         visible = false;
     }
 
-    delegate: PlaceTurn {
+    delegate: ScreenTurn {
         turn: effect.turn
         leaving: effect.leaving
         arriving: effect.arriving
