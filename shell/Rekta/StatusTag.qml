@@ -23,6 +23,8 @@ Row {
     }
 
     spacing: Geometry.tagGap
+    // A row has no baseline of its own; the word's lines the tag up with running text.
+    baselineOffset: wordText.y + wordText.baselineOffset
     Accessible.role: Accessible.StaticText
     Accessible.name: word
 
@@ -34,6 +36,9 @@ Row {
     }
 
     Text {
+        id: wordText
+
+        objectName: "word"
         text: tag.word
         font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeXs

@@ -28,8 +28,25 @@ Item {
     readonly property real tiltY: Tokens.reducedMotion ? 0 : pressX * sink * Tokens.tileTilt
     readonly property real pressScale: 1 - sink * (1 - Tokens.tilePressScale)
     default property alias content: column.data
+    // The content patterns it shows, the status word among them (tiles.md, "Tile content patterns").
+    readonly property int patterns: {
+        let count = word !== "" ? 1 : 0;
+        for (const item of column.children) {
+            if (item.visible && ((item as Stat) || (item as Progress) || (item as TileMessage)))
+                count++;
+        }
+        return count;
+    }
 
     signal activated
+
+    // A tile combines at most two or three patterns; past that it has become a page that needs its own screen.
+    function warnIfCrowded() {
+        if (patterns > 3)
+            console.warn(`Tile: ${patterns} content patterns; a tile combines at most two or three, more needs a place of its own (tiles.md)`);
+    }
+
+    onPatternsChanged: warnIfCrowded()
 
     implicitWidth: columns * Tokens.tileUnit + (columns - 1) * Tokens.spaceS
     implicitHeight: rows * Tokens.tileUnit + (rows - 1) * Tokens.spaceS

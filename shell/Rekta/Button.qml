@@ -21,6 +21,8 @@ Row {
     // A running action refuses clicks but keeps its colours (rekta.css:223–225).
     readonly property bool refuses: pending || disabledReason !== ""
     readonly property bool disabled: disabledReason !== "" && !pending
+    // In an actions row the row says why, after its controls (rekta.css:290).
+    readonly property bool inActions: (parent?.parent as Actions) !== null
     readonly property bool hovered: hover.hovered
     readonly property bool pressed: tap.pressed
     readonly property color ink: {
@@ -202,7 +204,7 @@ Row {
     Hint {
         objectName: "why"
         anchors.baseline: box.baseline
-        visible: button.disabledReason !== ""
+        visible: button.disabledReason !== "" && !button.inActions
         text: button.disabledReason
     }
 }

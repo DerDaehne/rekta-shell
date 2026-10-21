@@ -91,4 +91,11 @@ QtObject {
     // The pivot's size and step change use the CSS keyword `ease-in-out` (rekta.css:165, :187), which CSS defines as
     // cubic-bezier(0.42, 0, 0.58, 1)
     readonly property var easeInOut: [0.42, 0, 0.58, 1, 1, 1]
+    // `.rk-stat b { line-height: 1 }` (rekta.css:95)
+    readonly property real statLineHeight: 1
+    // `.rk-tile-msg { line-clamp: 4 }`, `.rk-w2 > .rk-tile-msg { line-clamp: 6 }` (rekta.css:104, :107)
+    readonly property int tileMessageLines: 4
+    readonly property int tileMessageLinesWide: 6
+    // `.rk-actions > .rk-why { flex: 1 1 12rem }` (rekta.css:290); the web build writes 16px as 1rem
+    readonly property real whyBasis: 192
 }

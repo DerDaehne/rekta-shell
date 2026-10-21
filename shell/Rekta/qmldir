@@ -30,3 +30,8 @@ IconButton 1.0 IconButton.qml
 Tile 1.0 Tile.qml
 Pivot 1.0 Pivot.qml
 Facets 1.0 Facets.qml
+Stat 1.0 Stat.qml
+Figures 1.0 Figures.qml
+TileMessage 1.0 TileMessage.qml
+Actions 1.0 Actions.qml
+StatusRegion 1.0 StatusRegion.qml
