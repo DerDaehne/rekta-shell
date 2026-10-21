@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import "IconData.js" as IconData
 
-// One of Rekta's icons, drawn on its 20 grid in the given colour; the stroke scales with the size.
+// One of Rekta's icons, drawn on its 20 grid in the given colour; the stroke scales with the size. No name draws nothing.
 Item {
     id: icon
 
@@ -16,7 +16,7 @@ Item {
     implicitHeight: size
 
     function warnIfUnknown() {
-        if (!paths)
+        if (!paths && name !== "")
             console.warn(`Icon: no icon named "${name}"`);
     }
 

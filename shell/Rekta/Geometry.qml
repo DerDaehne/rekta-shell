@@ -70,4 +70,11 @@ QtObject {
     readonly property real sliderOutputWidth: 3.5
     // `.rk-segments > label { border: 2px solid … }`, joined by `margin-left: -2px` (rekta.css:390, :393)
     readonly property real segmentBorder: 2
+    // `.rk-btn { border: 2px solid currentColor }` (rekta.css:213)
+    readonly property real buttonBorder: 2
+    // `.rk-btn[data-rk-pending]::after { inset: auto 0 -6px }` (rekta.css:682): the line runs under the button and ends
+    // 6px below its padding box
+    readonly property real pendingLineBelow: 6
+    // `.rk-btn--icon > svg { width: 20px; height: 20px }` (rekta.css:230)
+    readonly property real buttonGlyph: 20
 }

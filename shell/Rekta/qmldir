@@ -25,3 +25,5 @@ Field 1.0 Field.qml
 Toggle 1.0 Toggle.qml
 Slider 1.0 Slider.qml
 Segments 1.0 Segments.qml
+Button 1.0 Button.qml
+IconButton 1.0 IconButton.qml

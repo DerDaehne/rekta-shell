@@ -106,6 +106,12 @@ TestCase {
         compare(icon.children[0].visible, false);
     }
 
+    function test_no_name_draws_nothing_without_a_warning() {
+        failOnWarning(/no icon named/);
+        const icon = createTemporaryObject(iconComponent, testCase, { name: "" });
+        compare(icon.children[0].visible, false);
+    }
+
     function test_every_icon_draws_at_both_sizes_in_both_themes() {
         const sheet = createTemporaryObject(sheetComponent, testCase);
         waitForRendering(sheet);
