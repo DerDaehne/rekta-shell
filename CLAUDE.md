@@ -137,7 +137,18 @@ nix run .#vm                                     # throwaway NixOS VM with Plasm
   temporary directory that is deleted when the VM exits (window closed, Ctrl+C,
   monitor `quit` or SIGTERM to the app); the VM is never built by `nix flake
   check`. There is no GL: Plasma renders in software. Arguments after `--` go to
-  QEMU; host variables such as `QEMU_OPTS` or `SHARED_DIR` are ignored.
+  QEMU; host variables such as `QEMU_OPTS` or `SHARED_DIR` are ignored. The test
+  user may `sudo` with its password.
+- The VM's SDDM offers "Plasma (Wayland)" and a prototype "rekta" session
+  (`nix/test-vm-rekta-session.nix`, VM only): Plasma's services without
+  plasmashell, a Quickshell test surface in its place. Autologin starts Plasma.
+  To switch, log out (`busctl --user call org.kde.Shutdown /Shutdown
+  org.kde.Shutdown logout`) and pick the session in the greeter: Tab runs
+  Sleep, Restart, Shut Down, Other…, Virtual Keyboard, Desktop Session, user,
+  password; Space opens the session list, Down and Return choose. The greeter
+  hides its controls after a few seconds without input, and a key pressed then
+  may only bring them back: wake it with `sendkey shift` and check the focus
+  with a `screendump`.
 - Driving the VM from a script: the guest's serial console (a login shell) and
   the QEMU monitor (screenshots, keys) as FIFOs. `sendkey` is the reliable way to
   press Meta: the GTK window only grabs the keyboard after Ctrl+Alt+G, before
