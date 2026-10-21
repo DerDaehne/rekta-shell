@@ -131,7 +131,13 @@ nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM
   the tests render, e.g. `icon-sheet.png`); `generator-tests` makes sure the
   generator stops on tokens it cannot map instead of dropping them.
 - `rekta-qmllint -I shell <files>` in the dev shell lints exactly like the flake check
-  (Qt and Quickshell on the import path, warnings fail).
+  (Qt, Quickshell and plasma-workspace on the import path, warnings fail).
+- `session/` holds the rekta session's files: its desktop entry, the start script
+  (`XDG_SESSION_DESKTOP=rekta`, `PLASMA_DEFAULT_SHELL`, then `startplasma-wayland`),
+  `rekta-shell.service` and the drop-ins that skip plasmashell and pull the shell into
+  `plasma-workspace.target`. The package installs them with their store paths filled
+  in (`share/wayland-sessions`, `libexec`, `lib/systemd/user`); a NixOS system
+  registers it through `services.displayManager.sessionPackages` and `systemd.packages`.
 - The nested session is isolated: it starts from an empty environment (allow-list)
   with its own HOME, runtime and config directories and a session
   bus without service activation. Never pass the desktop's environment, runtime
@@ -148,9 +154,10 @@ nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM
   go to QEMU, after an optional leading `--window`; host variables such as
   `QEMU_OPTS` or `SHARED_DIR` are ignored. The test user may `sudo` with its
   password.
-- The VM's SDDM offers "Plasma (Wayland)" and a prototype "rekta" session
-  (`nix/test-vm-rekta-session.nix`, VM only): Plasma's services without
-  plasmashell, a Quickshell test surface in its place. Autologin starts Plasma.
+- The VM's SDDM offers "Plasma (Wayland)" and "rekta", the session from the
+  package: Plasma's services without plasmashell, `rekta-shell.service` in its
+  place, with the shell as the VM was built (not the mounted working tree).
+  Autologin starts Plasma.
   To switch, log out (`busctl --user call org.kde.Shutdown /Shutdown
   org.kde.Shutdown logout`) and pick the session in the greeter: Tab runs
   Sleep, Restart, Shut Down, Other…, Virtual Keyboard, Desktop Session, user,
