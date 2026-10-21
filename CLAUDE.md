@@ -117,9 +117,11 @@ nix run .#nested-shot -- <file.png>              # screenshot of the whole neste
   generator stops on tokens it cannot map instead of dropping them.
 - `rekta-qmllint -I shell <files>` in the dev shell lints exactly like the flake check
   (Qt and Quickshell on the import path, warnings fail).
-- The nested session is fully isolated: its own HOME, runtime directory and session
-  bus without service activation. Never share the real runtime directory or bus with
-  it: portals or wallets started there break the real session's services.
+- The nested session is isolated: it starts from an empty environment (allow-list)
+  with its own HOME, runtime and config directories and a session
+  bus without service activation. Never pass the desktop's environment, runtime
+  directory or bus into it: its plugins and config leak in, and portals or wallets
+  started there break the real session's services.
 - The overlay (`overlays.default`) builds `rekta-shell` against the importing
   configuration's nixpkgs.
 
