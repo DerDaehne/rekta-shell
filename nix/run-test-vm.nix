@@ -15,6 +15,10 @@ writeShellApplication {
     fi
 
     host_display="''${WAYLAND_DISPLAY:-wayland-0}"
+    if [[ "$host_display" != /* && -z "''${XDG_RUNTIME_DIR:-}" ]]; then
+      echo "rekta-shell-test-vm: WAYLAND_DISPLAY '$host_display' is relative and XDG_RUNTIME_DIR is unset, so the desktop's display cannot be found" >&2
+      exit 1
+    fi
     [[ "$host_display" == /* ]] || host_display="$XDG_RUNTIME_DIR/$host_display"
 
     # The disk image, QEMU's runtime files and whatever QEMU writes to HOME live only as long as the VM.
