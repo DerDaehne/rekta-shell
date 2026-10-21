@@ -14,3 +14,9 @@ PivotTitle 1.0 PivotTitle.qml
 GroupHeading 1.0 GroupHeading.qml
 Hairline 1.0 Hairline.qml
 FocusRing 1.0 FocusRing.qml
+StatusTag 1.0 StatusTag.qml
+Meter 1.0 Meter.qml
+Progress 1.0 Progress.qml
+BusyLine 1.0 BusyLine.qml
+Dots 1.0 Dots.qml
+internal BusySegment BusySegment.qml

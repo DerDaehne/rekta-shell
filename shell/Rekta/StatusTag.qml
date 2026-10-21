@@ -1,0 +1,44 @@
+import QtQuick
+
+// A status as its square and its one fixed word (colour.md, "Status vocabulary"); without a status it is idle.
+Row {
+    id: tag
+
+    property string status: "" // info | success | warning | error, or "" for none
+    property string word: ({ "": "idle", info: "active", success: "done", warning: "waiting", error: "failed" })[status] ?? ""
+    readonly property color mark: {
+        switch (status) {
+        case "info":
+            return Tokens.color.statusInfoFull;
+        case "success":
+            return Tokens.color.statusSuccessFull;
+        case "warning":
+            return Tokens.color.statusWarningFull;
+        case "error":
+            return Tokens.color.statusErrorFull;
+        default:
+            return Tokens.color.textContrastMedium;
+        }
+    }
+
+    spacing: Geometry.tagGap
+    Accessible.role: Accessible.StaticText
+    Accessible.name: word
+
+    Rectangle {
+        anchors.verticalCenter: parent.verticalCenter
+        width: Geometry.tagMark
+        height: Geometry.tagMark
+        color: tag.mark
+    }
+
+    Text {
+        text: tag.word
+        font.family: Tokens.fontSans
+        font.pixelSize: Tokens.fontSizeXs
+        font.weight: Tokens.fontWeightSemibold
+        lineHeightMode: Text.ProportionalHeight
+        lineHeight: Tokens.lineHeightCompact
+        color: Tokens.color.textPrimary
+    }
+}
