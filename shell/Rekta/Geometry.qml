@@ -29,6 +29,8 @@ QtObject {
     // `.rk-meter { height: 6px }` (rekta.css:552)
     readonly property real meterHeight: 6
     // `.rk-tag { gap: 6px }`, `.rk-tag::before { width: 8px; height: 8px }` (rekta.css:609–610)
+    // The same square starts a field's error: `.rk-field[data-status='error'] .rk-hint::before { width: 8px; height: 8px;
+    // margin-right: 6px }` (rekta.css:277)
     readonly property real tagGap: 6
     readonly property real tagMark: 8
     // `.rk-dots > i { width: 4px; height: 4px; animation-delay: calc(n × duration-dots × 0.07) }` (rekta.css:569–573)

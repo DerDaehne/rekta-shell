@@ -186,7 +186,7 @@ TestCase {
         const slider = createTemporaryObject(sliderComponent, testCase, { to: 1, stepSize: 0.1, value: 0 });
         for (let i = 0; i < 3; i++)
             slider.setValue(slider.value + slider.stepSize);
-        compare(slider.value, 0.3);
+        verify(slider.value === 0.3, `exactly 0.3, not ${slider.value}`);
     }
 
     function test_a_slider_fills_to_its_value_and_shows_it_in_tabular_figures() {
