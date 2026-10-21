@@ -147,10 +147,19 @@ nix run .#vm                                     # throwaway NixOS VM with Plasm
   d=$(mktemp -d); mkfifo "$d"/{ser,mon}.{in,out}
   cat "$d/ser.out" > "$d/ser.log" & cat "$d/mon.out" > "$d/mon.log" &
   nix run .#vm -- -serial pipe:"$d/ser" -monitor pipe:"$d/mon" &
-  printf 'rekta\r' > "$d/ser.in"; printf 'rekta\r' > "$d/ser.in"   # log in on ttyS0
+  wait_for() { timeout 300 sh -c 'until grep -aq "$1" "$2"; do sleep 1; done' _ "$1" "$d/ser.log"; }
+  wait_for 'login:' && printf 'rekta\r' > "$d/ser.in"
+  wait_for 'Password:' && printf 'rekta\r' > "$d/ser.in"
+  wait_for 'rekta@nixos'                                          # a shell on ttyS0
+  printf 'export PAGER=cat SYSTEMD_PAGER=cat\r' > "$d/ser.in"     # a pager would swallow the next commands
+  printf 'systemctl --user show-environment\r' > "$d/ser.in"     # output lands in ser.log
   printf 'screendump %s -f png\n' "$d/shot.png" > "$d/mon.in"     # screenshot from the host
   printf 'sendkey meta_l\n' > "$d/mon.in"                         # Meta into the guest
+  printf 'quit\n' > "$d/mon.in"; wait; rm -rf "$d"                # stop the VM, remove the FIFOs
   ```
+
+  Plasma is up about half a minute after the login prompt; screenshots and keys
+  sent earlier hit the boot screen.
 
   In the guest the session's Wayland socket is `wayland-1`, not `wayland-0`:
   take the session's variables from `systemctl --user show-environment`, or
