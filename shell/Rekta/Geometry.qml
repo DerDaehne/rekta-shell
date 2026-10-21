@@ -87,4 +87,7 @@ QtObject {
     // A press gives up once the pointer moves this far: `> (start.touch ? 8 : 4)` (rekta.js:301)
     readonly property real pressSlopMouse: 4
     readonly property real pressSlopTouch: 8
+    // The pivot's size and step change use the CSS keyword `ease-in-out` (rekta.css:165, :187), which CSS defines as
+    // cubic-bezier(0.42, 0, 0.58, 1)
+    readonly property var easeInOut: [0.42, 0, 0.58, 1, 1, 1]
 }
