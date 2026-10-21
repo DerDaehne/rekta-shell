@@ -1,0 +1,10 @@
+# Template for .privacy-patterns (gitignored, never commit it).
+# One POSIX ERE regex per line (like `grep -E`); blank lines and lines starting with "#" are ignored.
+# scripts/scan-secrets.sh checks the working tree, every unpushed commit on its own and
+# their commit message, author and committer against these patterns, relative to origin/main.
+# Below are generic placeholders only — fill in your own private patterns (real name,
+# private mail address, host and device names, private paths, internal knowledge-base slugs, ...).
+Firstname Lastname
+[a-z.]+@example\.com
+/ho[m]e/example-user
+\[\[[a-z0-9-]+\]\]

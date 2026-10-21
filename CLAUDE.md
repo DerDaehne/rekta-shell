@@ -44,10 +44,14 @@ numbers appear only in commit subjects as `(#<id>)`. Device and user values are
 module options, never defaults in code. Personal and internal information
 belongs in `CLAUDE.local.md`.
 
-- Before every commit run
-  `nix shell nixpkgs#gitleaks -c gitleaks git --redact -v --no-banner .` and
-  check the diff.
-- **Never read, copy or symlink `.privacy-patterns`.**
+- Before every commit run `scripts/scan-secrets.sh` (gitleaks; built-in checks
+  for board references, German comments, local home paths and non-noreply
+  identities; privacy scan against the local `.privacy-patterns`) and check the
+  diff. CI runs the same checks without the private patterns.
+- **Never read, copy or symlink `.privacy-patterns`** — not even to get the scan
+  to run fully in a worktree: it finds the main checkout's copy on its own, and a
+  hit is always reported as file/line/commit plus a pattern number, never the
+  pattern text itself.
 - Push to the public remote only `main`, only after "Review ok" and a clean scan.
 
 ## Code style (binding)

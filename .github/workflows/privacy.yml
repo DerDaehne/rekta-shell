@@ -1,0 +1,50 @@
+name: privacy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    env:
+      # The gitleaks version and checksum are maintained by hand — Dependabot updates only action
+      # dependencies, not a release binary in an env variable.
+      GITLEAKS_VERSION: '8.30.1'
+      # SHA256 from gitleaks_${GITLEAKS_VERSION}_checksums.txt (https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1)
+      GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # gitleaks scans the full history, no shallow clone
+          persist-credentials: false
+
+      # The binary instead of gitleaks/gitleaks-action: the official action checks a licence
+      # server on every run. The pinned release binary with SHA256 check needs no external call
+      # and is the same command as locally (scripts/scan-secrets.sh).
+      - name: Install gitleaks (SHA256-checked)
+        run: |
+          curl -fsSLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | sha256sum -c -
+          tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+
+      - id: scan
+        run: gitleaks git --redact -v --no-banner .
+      - if: failure() && steps.scan.outcome == 'failure'
+        run: echo "::error::Rotate the secret now and clean the history before pushing; false positive → add its fingerprint to .gitleaksignore."
+
+      # Regression tests for scripts/scan-secrets.sh itself, in a throwaway repository; gitleaks
+      # is installed in this job, so the secret scenarios cover the real call.
+      - run: bash scripts/scan-secrets.test.sh
+
+      # gitleaks already ran above; this runs the built-in checks (board references, language,
+      # home paths, identities). The private patterns exist only on the maintainer's machine.
+      - name: Built-in checks
+        run: bash scripts/scan-secrets.sh
+        env:
+          SCAN_SECRETS_SKIP_GITLEAKS: '1'
