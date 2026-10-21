@@ -7,7 +7,8 @@
 # 2) Built-in, public checks over all non-ignored files and the unpushed commits: board
 #    references (note slugs, ADR and comment ids, ticket ids in code comments, test names and docs),
 #    German comments or test names in code, local home paths, and author/committer addresses
-#    other than GitHub's noreply ones.
+#    other than GitHub's noreply ones. Merge commits are skipped here: GitHub's test merge of a pull
+#    request carries the opener's address, and the ruleset on main allows no merges anyway.
 #    ponytail: only the current files and messages, not every intermediate commit's content —
 #    the private patterns of part 3 cover that if a reference must never reach the history.
 # 3) Privacy scan: patterns from the gitignored .privacy-patterns (case-insensitive) against
@@ -27,7 +28,6 @@
 #    never land there.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-
 
 GITLEAKS_HINT="Rotate the secret now and clean the history before pushing; false positive → add its fingerprint to .gitleaksignore."
 CONTENT_HINT="Remove it; if already committed → git commit --amend or git rebase -i origin/main, before pushing."
@@ -75,7 +75,7 @@ board_references_in_files() {
 # "(#<id>)"; bot commits may quote upstream issue numbers (Dependabot release notes).
 board_references_in_messages() {
 	local sha message
-	for sha in $(git rev-list origin/main..HEAD); do
+	for sha in $(git rev-list --no-merges origin/main..HEAD); do
 		message="$(git log -1 --format='%s%n%b' "$sha" | sed -E '1s/ \(#[0-9]+\)$//')"
 		if printf '%s\n' "$message" | grep -qiE -e "$NOTE_SLUG" -e "$ADR_ID" -e "$COMMENT_ID"; then
 			echo "${sha:0:7}"
@@ -104,7 +104,7 @@ german_in_code() {
 # Bot commits may carry upstream release notes and are skipped.
 german_in_messages() {
 	local sha
-	for sha in $(git rev-list origin/main..HEAD); do
+	for sha in $(git rev-list --no-merges origin/main..HEAD); do
 		git log -1 --format='%ae' "$sha" | grep -q '\[bot\]@' && continue
 		if git log -1 --format='%s%n%b' "$sha" | strip_quotes | grep -qE "$GERMAN"; then
 			echo "${sha:0:7}"
@@ -120,7 +120,7 @@ home_paths_in_files() {
 # Prints the short sha of every unpushed commit whose message contains a local home path.
 home_paths_in_messages() {
 	local sha
-	for sha in $(git rev-list origin/main..HEAD); do
+	for sha in $(git rev-list --no-merges origin/main..HEAD); do
 		if git log -1 --format='%B' "$sha" | grep -qE "$HOME_PATH"; then
 			echo "${sha:0:7}"
 		fi
@@ -130,12 +130,13 @@ home_paths_in_messages() {
 # Prints the short sha of every unpushed commit whose author or committer address is not a noreply one.
 foreign_identities() {
 	local sha
-	for sha in $(git rev-list origin/main..HEAD); do
+	for sha in $(git rev-list --no-merges origin/main..HEAD); do
 		if git log -1 --format='%ae%n%ce' "$sha" | grep -qvE "$NOREPLY"; then
 			echo "${sha:0:7}"
 		fi
 	done
 }
+
 report() {
 	local what="$1" hint="$2" hits="$3"
 	[ -z "$hits" ] && return 0
@@ -188,7 +189,7 @@ if git rev-parse --verify -q origin/main >/dev/null; then
 	report "Board reference in the message of commit" "$BOARD_HINT" "$(board_references_in_messages)" || conventions=1
 	report "German in the message of commit" "$MESSAGE_LANGUAGE_HINT" "$(german_in_messages)" || conventions=1
 	report "Local home path in the message of commit" "$HOME_PATH_HINT" "$(home_paths_in_messages)" || conventions=1
-	report "Author or committer without a noreply address in commit" "$IDENTITY_HINT" "$(foreign_identities)" || conventions=1
+	report "Non-noreply author or committer" "$IDENTITY_HINT" "$(foreign_identities)" || conventions=1
 else
 	echo "origin/main unknown (git fetch needed) — commit messages and identities not checked."
 fi
@@ -197,7 +198,6 @@ if [ "$conventions" -eq 0 ]; then
 else
 	status=1
 fi
-
 
 echo
 echo "== Privacy scan (working tree + every unpushed commit on its own, against origin/main) =="

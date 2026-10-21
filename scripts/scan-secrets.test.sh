@@ -368,6 +368,11 @@ check "home path: a local home path in a file" 1 "Local home path in docs/setup.
 board_case docs/config.md 'Settings live in ~/.config/rekta-shell and $HOME/.local/state.'
 check "home path: ~ and \$HOME are fine" 0
 
+users_path='/Use''rs/probe/Projects/x'
+
+board_case docs/mac.md "Clone it to $users_path first."
+check "home path: a local /Users path in a file" 1 "Local home path in docs/mac.md:1"
+
 reset_work
 printf 'ProbeNoop\n' >"$work/.privacy-patterns"
 echo x >"$work/f.txt"
@@ -381,14 +386,34 @@ printf 'ProbeNoop\n' >"$work/.privacy-patterns"
 echo x >"$work/i.txt"
 git -C "$work" add i.txt
 commit_as Neutral neutral@example.invalid "feat: add i"
-check "identity: a committer and author without a noreply address" 1 "Author or committer without a noreply address"
+check "identity: a committer and author without a noreply address" 1 "Non-noreply author or committer"
 
 reset_work
 printf 'ProbeNoop\n' >"$work/.privacy-patterns"
 echo x >"$work/i.txt"
 git -C "$work" add i.txt
 commit_as_author Neutral neutral@example.invalid Neutral neutral@users.noreply.github.com "feat: add i"
-check "identity: only the author without a noreply address" 1 "Author or committer without a noreply address"
+check "identity: only the author without a noreply address" 1 "Non-noreply author or committer"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+echo x >"$work/i.txt"
+git -C "$work" add i.txt
+commit_as_author Neutral neutral@users.noreply.github.com Neutral neutral@example.invalid "feat: add i"
+check "identity: only the committer without a noreply address" 1 "Non-noreply author or committer"
+
+# GitHub checks a pull request out as a test merge whose author is the opener, often with a public address.
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+git -C "$work" switch -q -c probe-pull-request
+echo x >"$work/pr.txt"
+git -C "$work" add pr.txt
+commit_as Neutral neutral@users.noreply.github.com "feat: add pr"
+git -C "$work" switch -q -
+git -C "$work" -c user.name=Opener -c user.email=opener@example.invalid \
+	merge -q --no-ff -m "Merge probe-pull-request" probe-pull-request
+check "identity: a merge commit is skipped, the commits it brings in are checked" 0
+git -C "$work" branch -q -D probe-pull-request
 
 reset_work
 printf 'ProbeNoop\n' >"$work/.privacy-patterns"
