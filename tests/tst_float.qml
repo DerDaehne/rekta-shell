@@ -99,6 +99,10 @@ TestCase {
         }
     }
 
+    function init() {
+        failOnWarning(/TypeError|ReferenceError|Binding loop/);
+    }
+
     function cleanup() {
         Prefs.motion = "system";
         Prefs.theme = "system";

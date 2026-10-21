@@ -44,6 +44,7 @@ TestCase {
 
                 MenuItem { objectName: "open"; text: "open"; keyHint: "Enter" }
                 MenuItem { objectName: "rename"; text: "rename"; keyHint: "F2" }
+                MenuItem { objectName: "archive"; text: "archive"; visible: false }
                 MenuItem { objectName: "print"; text: "print"; disabledReason: "needs a printer" }
                 MenuSeparator { objectName: "separator" }
                 MenuLabel { objectName: "groupLabel"; text: "sort by" }
@@ -88,6 +89,7 @@ TestCase {
     property SignalSpy chosen
 
     function init() {
+        failOnWarning(/TypeError|ReferenceError|Binding loop/);
         scene = createTemporaryObject(sceneComponent, testCase);
         menu = findChild(scene, "menu");
         chosen = createTemporaryObject(spy, testCase, { target: menu });
@@ -188,7 +190,7 @@ TestCase {
     function test_opened_from_the_keyboard_the_first_row_shows_the_focus() {
         openFromKeys(0);
         verify(row("open").activeFocus);
-        verify(findChild(row("open"), "focusFill").visible);
+        verify(findChild(row("open"), "tint").visible);
     }
 
     function test_opened_by_a_click_no_row_shows_focus_until_a_key_moves_to_one() {
@@ -196,11 +198,11 @@ TestCase {
         verify(menu.open);
         verify(menu.activeFocus, "the menu holds the keys");
         compare(menu.focusedIndex(), -1);
-        verify(!findChild(row("open"), "focusFill").visible);
+        verify(!findChild(row("open"), "tint").visible);
         keyClick(Qt.Key_Up);
         verify(row("hidden").activeFocus, "up from no row goes to the last");
         keyClick(Qt.Key_Home);
-        verify(findChild(row("open"), "focusFill").visible);
+        verify(findChild(row("open"), "tint").visible);
     }
 
     function test_a_click_on_an_item_chooses_it_without_moving_the_focus() {
@@ -308,12 +310,15 @@ TestCase {
         compare(groupLabel.font.weight, Tokens.fontWeightSemibold);
         compare(groupLabel.color, Tokens.color.textContrastHigh);
         compare([groupLabel.topPadding, groupLabel.rightPadding, groupLabel.bottomPadding, groupLabel.leftPadding], [Tokens.spaceS, Tokens.spaceM, Tokens.spaceXs, Tokens.spaceM]);
+        compare(groupLabel.lineHeightMode, Text.FixedHeight, "a line box of line-height-compact, as the web draws it");
+        compare(groupLabel.lineHeight, Tokens.lineHeightCompact * Tokens.fontSizeXs);
+        compare(groupLabel.height, Tokens.spaceS + Tokens.lineHeightCompact * Tokens.fontSizeXs + Tokens.spaceXs);
     }
 
     function test_the_focused_row_shows_the_ring_inside_and_the_hover_colour() {
         openFromKeys(1);
         const rename = row("rename");
-        compare(findChild(rename, "focusFill").color, Tokens.color.hover);
+        compare(findChild(rename, "tint").color, Tokens.color.hover);
         const ring = rename.children.find(child => child instanceof FocusRing);
         verify(ring.visible);
         compare(ring.offset, -2);
@@ -322,7 +327,7 @@ TestCase {
         compare(ring.width, rename.width);
         keyClick(Qt.Key_Down);
         verify(!ring.visible);
-        verify(!findChild(rename, "focusFill").visible);
+        verify(!findChild(rename, "tint").visible);
     }
 
     function test_a_long_menu_scrolls_the_focused_row_into_view() {
@@ -337,6 +342,54 @@ TestCase {
         verify(top >= 0 && top + last.height <= scroller.height, `the last row is in view at ${top}`);
         keyClick(Qt.Key_Home);
         compare(findChild(longMenu, "run 0").mapToItem(scroller, 0, 0).y, 0, "and back up, as focus scrolls on the web");
+    }
+
+    function test_an_enabled_row_takes_the_hover_colour_under_the_pointer() {
+        menu.openAt(0);
+        // The rows' column lays out at polish.
+        waitForRendering(menu);
+        const tint = name => findChild(row(name), "tint");
+        mouseMove(row("rename"));
+        verify(tint("rename").visible);
+        compare(tint("rename").color, Tokens.color.hover);
+        mouseMove(row("print"));
+        verify(!tint("print").visible, "never on a disabled row");
+        verify(!tint("rename").visible, "only the row under the pointer");
+        mouseMove(row("control"));
+        verify(!tint("print").visible && !tint("rename").visible);
+    }
+
+    // A test cannot send an auto-repeated key, so it hands the menu one shaped like it.
+    function test_a_held_key_chooses_once() {
+        openFromKeys(-1);
+        const hidden = row("hidden");
+        const space = repeat => ({ key: Qt.Key_Space, text: " ", modifiers: Qt.NoModifier, isAutoRepeat: repeat });
+        verify(menu.handleKey(space(true)), "the menu still takes the repeat");
+        verify(!hidden.checked);
+        compare(chosen.count, 0);
+        menu.handleKey(space(false));
+        verify(hidden.checked);
+        compare(chosen.count, 1);
+    }
+
+    function test_hidden_rows_are_passed_over() {
+        openFromKeys(1);
+        verify(row("rename").activeFocus);
+        keyClick(Qt.Key_Down);
+        verify(row("print").activeFocus, "the arrows skip a hidden row");
+        keyClick(Qt.Key_A);
+        verify(row("print").activeFocus, "and so does a letter");
+        verify(!menu.items().includes(row("archive")));
+    }
+
+    function test_a_key_hint_keeps_space_s_and_space_l_from_the_label() {
+        menu.openAt(0);
+        const open = row("open");
+        const label = findChild(open, "label");
+        const key = findChild(open, "key");
+        compare(open.implicitWidth, 2 * Tokens.spaceM + label.implicitWidth + Tokens.spaceS + Tokens.spaceL + key.implicitWidth);
+        const name = row("name");
+        compare(name.implicitWidth, 2 * Tokens.spaceM + 10 + Tokens.spaceS + findChild(name, "label").implicitWidth, "no hint, no gap");
     }
 
     function test_while_a_menu_is_open_escape_is_not_free() {

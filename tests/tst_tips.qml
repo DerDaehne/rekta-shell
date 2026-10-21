@@ -57,10 +57,38 @@ TestCase {
         }
     }
 
+    Component {
+        id: otherWindowComponent
+
+        // A second window with its own control and its own tooltip, as each monitor's bar has.
+        Window {
+            property alias button: far
+            property alias tooltip: farTip
+
+            width: 300
+            height: 200
+            visible: true
+
+            IconButton {
+                id: far
+
+                x: 100
+                y: 100
+                icon: "search"
+                label: "search"
+            }
+
+            Tooltip {
+                id: farTip
+            }
+        }
+    }
+
     property Item scene
     property Tooltip tooltip
 
     function init() {
+        failOnWarning(/TypeError|ReferenceError|Binding loop/);
         scene = createTemporaryObject(sceneComponent, testCase);
         tooltip = findChild(scene, "tooltip");
         mouseMove(scene, 5, 5);
@@ -160,6 +188,19 @@ TestCase {
         compare(Tips.target, box("close"));
         findChild(scene, "save").forceActiveFocus();
         compare(Tips.target, null);
+    }
+
+    function test_each_window_s_tooltip_draws_only_a_tip_from_its_own_window() {
+        const other = createTemporaryObject(otherWindowComponent, testCase);
+        const far = findChild(other.button, "box");
+        Tips.show(far, "search");
+        verify(other.tooltip.visible);
+        compare(other.tooltip.target, far);
+        verify(!tooltip.visible, "the other window's tooltip stays out of it");
+        compare(tooltip.target, null);
+        Tips.show(box("close"), "close");
+        verify(tooltip.visible);
+        verify(!other.tooltip.visible);
     }
 
     function test_a_tip_is_an_ink_strip_in_the_ground_colour() {

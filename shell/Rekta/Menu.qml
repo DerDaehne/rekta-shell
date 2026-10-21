@@ -72,7 +72,8 @@ FloatSurface {
         reveal(item);
     }
 
-    function handleKey(event: KeyEvent): bool {
+    // Takes a KeyEvent, or anything with its key, text, modifiers and isAutoRepeat.
+    function handleKey(event): bool {
         const index = focusedIndex();
         switch (event.key) {
         case Qt.Key_Down:
@@ -106,7 +107,7 @@ FloatSurface {
     }
 
     // A letter jumps to the next item that starts with it, after the focused one and around.
-    function jump(event: KeyEvent, from: int): bool {
+    function jump(event, from: int): bool {
         const letter = event.text.toLowerCase();
         const modified = event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier);
         if (letter.length !== 1 || !/\S/.test(letter) || modified)

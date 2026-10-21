@@ -3,7 +3,8 @@ import QtQuick
 // One row of a menu (states.md, "Floating surfaces"; rekta.css:789–797): a lowercase verb or option at the density's
 // row height; a checkbox or radio option starts with a 10px square, filled when chosen; a key hint sits at the end.
 // A disabled item stays in the list, greyed, and says why in its label ("print (needs a printer)"). The menu moves
-// the focus between rows; the focused row shows the ring inside and the hover colour.
+// the focus between rows; the focused row shows the ring inside and the hover colour, and an enabled row under the
+// pointer takes the hover colour too (rekta.css:793, :1027).
 Item {
     id: item
 
@@ -31,9 +32,9 @@ Item {
     Accessible.checked: checked
 
     Rectangle {
-        objectName: "focusFill"
+        objectName: "tint"
         anchors.fill: parent
-        visible: item.activeFocus
+        visible: item.activeFocus || (pointer.hovered && !item.disabled)
         color: Tokens.color.hover
     }
 
@@ -80,6 +81,8 @@ Item {
     }
 
     HoverHandler {
+        id: pointer
+
         cursorShape: item.disabled ? Qt.ForbiddenCursor : Qt.PointingHandCursor
     }
 }

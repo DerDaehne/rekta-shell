@@ -63,6 +63,7 @@ TestCase {
     property var passed: []
 
     function init() {
+        failOnWarning(/TypeError|ReferenceError|Binding loop/);
         scene = createTemporaryObject(sceneComponent, testCase);
         calls = [];
         passed = [];
