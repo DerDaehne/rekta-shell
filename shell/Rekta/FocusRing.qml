@@ -11,7 +11,7 @@ Rectangle {
     property bool shown: parent ? parent.activeFocus : false
 
     // Like CSS outline-offset: where the ring starts, outward from the edge (negative: inside).
-    readonly property real offset: onFill ? -Geometry.focusRingInsetOnFill : Geometry.focusRingOffset
+    property real offset: onFill ? -Geometry.focusRingInsetOnFill : Geometry.focusRingOffset
 
     anchors.fill: parent
     anchors.margins: -(offset + border.width)

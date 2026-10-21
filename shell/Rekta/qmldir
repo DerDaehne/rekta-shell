@@ -35,3 +35,12 @@ Figures 1.0 Figures.qml
 TileMessage 1.0 TileMessage.qml
 Actions 1.0 Actions.qml
 StatusRegion 1.0 StatusRegion.qml
+singleton KeyLayers 1.0 KeyLayers.qml
+singleton Tips 1.0 Tips.qml
+Placement 1.0 Placement.js
+FloatSurface 1.0 FloatSurface.qml
+Menu 1.0 Menu.qml
+MenuItem 1.0 MenuItem.qml
+MenuSeparator 1.0 MenuSeparator.qml
+MenuLabel 1.0 MenuLabel.qml
+Tooltip 1.0 Tooltip.qml

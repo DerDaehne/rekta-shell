@@ -16,6 +16,8 @@ Row {
     property bool pending: false
     property string pendingText: `${text}…`
     property string disabledReason
+    // The words of its tooltip (navigation.md, "Tooltips"): a name the glyph stands for, or a shortcut.
+    property string tip
     // In a list row or a table an icon button takes the row's height.
     property bool inRow: false
     // A running action refuses clicks but keeps its colours (rekta.css:223–225).
@@ -54,6 +56,16 @@ Row {
     Accessible.name: pending ? pendingText : text
     Accessible.description: disabledReason
     Accessible.onPressAction: click()
+
+    // Focus comes only from the keyboard, so its tip shows at once.
+    onActiveFocusChanged: {
+        if (tip === "")
+            return;
+        if (activeFocus)
+            Tips.show(box, tip);
+        else
+            Tips.leave(box);
+    }
 
     Keys.onPressed: event => {
         if (![Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
@@ -192,12 +204,26 @@ Row {
             longPressThreshold: 0
 
             onTapped: button.click()
+            onPressedChanged: {
+                if (pressed)
+                    Tips.hide();
+            }
         }
 
         HoverHandler {
             id: hover
 
             cursorShape: button.pending ? Qt.BusyCursor : button.disabled ? Qt.ForbiddenCursor : Qt.PointingHandCursor
+
+            // Only a mouse or pen hovers, so touch never brings the tip.
+            onHoveredChanged: {
+                if (button.tip === "")
+                    return;
+                if (hovered)
+                    Tips.rest(box, button.tip);
+                else
+                    Tips.leave(box);
+            }
         }
     }
 

@@ -98,4 +98,26 @@ QtObject {
     readonly property int tileMessageLinesWide: 6
     // `.rk-actions > .rk-why { flex: 1 1 12rem }` (rekta.css:290); the web build writes 16px as 1rem
     readonly property real whyBasis: 192
+    // `.rk-float { min-width: 12rem; max-width: min(24rem, …); max-height: min(24rem, 60dvh); border: 1px solid … }`
+    // (rekta.css:781–782); a rem is 16 logical px, as the web build writes lengths (scripts/build.mjs:74)
+    readonly property real floatMinWidth: 192
+    readonly property real floatMaxSize: 384
+    readonly property real floatMaxHeightShare: 0.6
+    readonly property real floatBorder: 1
+    // `@keyframes rk-float-in { from { opacity: 0; transform: translateY(var(--_rk-from, -4px)) } }`, 4px from below
+    // when above its control (rekta.css:785–787; the tip :421–422)
+    readonly property real floatShift: 4
+    // place(): `gap = 4` between a control and its floating surface (rekta.js:1655)
+    readonly property real floatGap: 4
+    // `.rk-menu-item:focus-visible { outline-offset: -2px }` (rekta.css:793)
+    readonly property real focusRingInsetInRow: 2
+    // `.rk-menu-item[role='menuitemcheckbox']::before { width: 10px; height: 10px; border: 1px solid currentColor }`
+    // (rekta.css:795)
+    readonly property real menuCheck: 10
+    readonly property real menuCheckBorder: 1
+    // `.rk-tip { max-width: min(20rem, …); padding: 4px var(--rk-space-s) }` (rekta.css:417–418)
+    readonly property real tipMaxWidth: 320
+    readonly property real tipPaddingY: 4
+    // placeTip(): `gap = 6` between a control and its tip (rekta.js:2549)
+    readonly property real tipGap: 6
 }
