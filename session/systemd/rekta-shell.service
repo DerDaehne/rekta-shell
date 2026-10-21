@@ -3,6 +3,9 @@ Description=rekta-shell, the desktop shell of the rekta session
 After=plasma-ksmserver.service
 PartOf=graphical-session.target
 ConditionEnvironment=XDG_SESSION_DESKTOP=rekta
+# As plasmashell: the default 5 starts in 10 s never stops a shell that crashes a few seconds after each start.
+StartLimitIntervalSec=60s
+StartLimitBurst=3
 
 [Service]
 ExecStart=@out@/bin/rekta-shell
