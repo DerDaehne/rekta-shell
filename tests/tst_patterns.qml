@@ -209,8 +209,8 @@ TestCase {
                             status: modelData
 
                             Stat {
-                                value: "412"
-                                label: "tests run"
+                                value: "1"
+                                label: "tokens, for every platform"
                             }
                         }
                     }
@@ -320,6 +320,7 @@ TestCase {
     function test_a_stat_pair_is_a_large_tabular_number_over_its_words() {
         const tile = createTemporaryObject(statTile, testCase);
         const stat = findChild(tile, "stat");
+        waitForItemPolished(stat);
         const number = findChild(stat, "number");
         const words = findChild(stat, "words");
         compare(number.font.pixelSize, Tokens.fluid(Tokens.fontSizeXxl, stat.placeWidth));
@@ -330,6 +331,16 @@ TestCase {
         compare(words.y, number.height, "in a tile the words sit right under the number");
         stat.placeWidth = 4000;
         compare(number.font.pixelSize, Tokens.fontSizeXxl.max, "the number is fluid with the place");
+    }
+
+    function test_in_a_tile_a_stat_takes_the_content_width_and_its_words_wrap_inside_it() {
+        const tile = createTemporaryObject(statTile, testCase);
+        const stat = findChild(tile, "stat");
+        const words = findChild(stat, "words");
+        stat.label = "tokens, for every platform";
+        compare(stat.width, tile.width - 2 * Geometry.tilePadding);
+        verify(words.lineCount > 1, "the words wrap");
+        verify(words.mapToItem(tile, words.contentWidth, 0).x <= tile.width - Geometry.tilePadding, "within the content width");
     }
 
     function test_in_a_tile_the_words_take_the_tiles_text_colour_in_every_status() {
@@ -473,7 +484,7 @@ TestCase {
         compare(findChild(ground, "beneath").presses, 1, "a press on the figures is not the region's");
         verify(!region.activeFocus);
         compare(region.Accessible.role, Accessible.Grouping);
-        compare(region.Accessible.name, "nightly build");
+        compare(region.Accessible.name, "nightly build · running", "the whole kicker line names it");
     }
 
     function test_its_status_is_a_tag_in_the_kicker() {
@@ -518,6 +529,15 @@ TestCase {
         compare(why.x + why.width, actions.width);
         verify(actions.width - why.x >= Geometry.whyBasis);
         archive.disabledReason = "";
+        verify(!why.visible);
+    }
+
+    function test_a_hidden_button_gives_the_row_no_reason() {
+        const actions = findChild(findChild(createTemporaryObject(regionComponent, testCase), "region"), "actions");
+        const why = findChild(actions, "why");
+        verify(why.visible);
+        findChild(actions, "archive").visible = false;
+        compare(actions.why, "");
         verify(!why.visible);
     }
 

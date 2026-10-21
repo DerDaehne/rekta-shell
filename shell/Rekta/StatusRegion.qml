@@ -16,7 +16,8 @@ Column {
     default property alias controls: actionsRow.controls
 
     Accessible.role: Accessible.Grouping
-    Accessible.name: kicker
+    // The whole kicker line names it, the tag's word included (aria-labelledby in tiles.md).
+    Accessible.name: `${kicker} · ${tag.word}`
 
     // `<p class="rk-kicker">nightly build · <span class="rk-tag">running</span></p>` (tiles.md)
     Item {
