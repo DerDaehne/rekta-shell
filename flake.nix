@@ -29,6 +29,10 @@
         rekta-shell = final.callPackage ./nix/package.nix { };
       };
 
+      # Opt-in: importing either module changes nothing until programs.rekta-shell.enable is set.
+      nixosModules.default = ./nix/nixos-module.nix;
+      homeManagerModules.default = ./nix/home-module.nix;
+
       packages = eachSystem (pkgs: {
         rekta-shell = pkgs.callPackage ./nix/package.nix { };
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;

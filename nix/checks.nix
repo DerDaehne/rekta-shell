@@ -5,6 +5,7 @@ let
   rekta-qmllint = pkgs.callPackage ./qmllint.nix { inherit (rekta-shell) quickshell; };
   dist = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-design-dist;
   qt = pkgs.kdePackages;
+  inherit (pkgs) lib;
 in
 {
   package = rekta-shell;
@@ -47,6 +48,73 @@ in
         mkdir $out
         cp *.png $out/ 2>/dev/null || true
       '';
+
+  nixos-module =
+    let
+      system =
+        modules:
+        (self.inputs.nixpkgs.lib.nixosSystem {
+          modules = [
+            {
+              nixpkgs.hostPlatform = pkgs.stdenv.hostPlatform.system;
+              boot.isContainer = true;
+              system.stateVersion = "26.11";
+            }
+          ]
+          ++ modules;
+        }).config;
+      toplevel = modules: (system modules).system.build.toplevel.drvPath;
+      enabled = system [
+        self.nixosModules.default
+        {
+          services.desktopManager.plasma6.enable = true;
+          services.displayManager.sddm.enable = true;
+          programs.rekta-shell.enable = true;
+        }
+      ];
+      withoutPlasma = system [
+        self.nixosModules.default
+        { programs.rekta-shell.enable = true; }
+      ];
+    in
+    assert lib.assertMsg (
+      toplevel [ ] == toplevel [ self.nixosModules.default ]
+    ) "importing the NixOS module with its defaults changed the system";
+    assert lib.assertMsg (lib.elem "rekta" enabled.services.displayManager.sessionData.sessionNames)
+      "the enabled NixOS module does not register the rekta session";
+    assert lib.assertMsg (lib.elem enabled.programs.rekta-shell.package enabled.systemd.packages)
+      "the enabled NixOS module does not hand its package to systemd";
+    assert lib.assertMsg (lib.any (
+      a: !a.assertion && lib.hasInfix "plasma6" a.message
+    ) withoutPlasma.assertions) "the NixOS module accepts a system without Plasma 6";
+    pkgs.runCommand "rekta-shell-nixos-module" { } "touch $out";
+
+  home-module =
+    let
+      # A stand-in for home-manager's home.packages, so the check needs no home-manager input.
+      packages =
+        modules:
+        (lib.evalModules {
+          modules = [
+            {
+              options.home.packages = lib.mkOption {
+                type = lib.types.listOf lib.types.package;
+                default = [ ];
+              };
+            }
+            { _module.args.pkgs = pkgs; }
+            self.homeManagerModules.default
+          ]
+          ++ modules;
+        }).config.home.packages;
+    in
+    assert lib.assertMsg (
+      packages [ ] == [ ]
+    ) "the home-manager module adds packages with its defaults";
+    assert lib.assertMsg (lib.elem rekta-shell (packages [
+      { programs.rekta-shell.enable = true; }
+    ])) "the enabled home-manager module leaves rekta-shell out of home.packages";
+    pkgs.runCommand "rekta-shell-home-module" { } "touch $out";
 
   formatting = pkgs.runCommand "rekta-shell-nixfmt" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
     find ${self} -name '*.nix' -print0 | xargs -0 nixfmt --check
