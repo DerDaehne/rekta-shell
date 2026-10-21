@@ -111,9 +111,11 @@ nix run .#nested-shot -- <file.png>              # screenshot of the whole neste
 ```
 
 - `shell/Rekta/` is the QML library (module `Rekta`). `Tokens.qml` is generated from the
-  pinned Rekta Design and checked in: regenerate it with `nix run .#tokens`, never edit
-  it; the `tokens-drift` check fails when it differs. QML tests live in `tests/`
-  (`nix build .#checks.x86_64-linux.qml-tests -L`); `generator-tests` makes sure the
+  pinned Rekta Design and checked in, like `IconData.js` (the icons, drawn by `Icon.qml`):
+  regenerate both with `nix run .#tokens`, never edit them; the `tokens-drift` check
+  fails when one differs. QML tests live in `tests/`
+  (`nix build .#checks.x86_64-linux.qml-tests -L`; its result holds the contact sheets
+  the tests render, e.g. `icon-sheet.png`); `generator-tests` makes sure the
   generator stops on tokens it cannot map instead of dropping them.
 - `rekta-qmllint -I shell <files>` in the dev shell lints exactly like the flake check
   (Qt and Quickshell on the import path, warnings fail).

@@ -1,2 +1,4 @@
 module Rekta
 singleton Tokens 1.0 Tokens.qml
+Icon 1.0 Icon.qml
+IconData 1.0 IconData.js

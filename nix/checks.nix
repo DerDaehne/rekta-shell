@@ -34,6 +34,7 @@ in
       {
         nativeBuildInputs = [ qt.qtdeclarative ];
         QT_QPA_PLATFORM = "offscreen";
+        QT_QUICK_BACKEND = "software";
         QT_PLUGIN_PATH = "${qt.qtbase}/lib/qt-6/plugins";
         QML_IMPORT_PATH = "${qt.qtdeclarative}/lib/qt-6/qml";
         LANG = "C.UTF-8";
@@ -41,7 +42,9 @@ in
       ''
         export HOME="$TMPDIR"
         qmltestrunner -import ${../shell} -input ${../tests}
-        touch $out
+        # Tests save contact sheets into the working directory; they end up in the check's result for review.
+        mkdir $out
+        cp *.png $out/ 2>/dev/null || true
       '';
 
   formatting = pkgs.runCommand "rekta-shell-nixfmt" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
