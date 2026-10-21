@@ -109,3 +109,13 @@ test('solid shapes go into the fill path, outlines into the stroke path', () => 
 	const { icons } = generate(() => {});
 	assert.match(icons, /"theme": \{ stroke: "M4 10a6[^"]*z", fill: "M10 4a6 6 0 0 1 0 12z" \}/);
 });
+
+test('an icon attribute without a mapping stops the generator', () => {
+	assertRefused((_, icons) => (icons.icons.close[0].attrs.transform = 'rotate(45)'), /close: no mapping for <path> attribute\(s\) transform/);
+	assertRefused((_, icons) => (icons.icons.check[0].attrs['stroke-width'] = '2'), /check: no mapping for <path> attribute\(s\) stroke-width/);
+});
+
+test('a line cap or join the icon cannot draw stops the generator', () => {
+	assertRefused((_, icons) => (icons.lineCap = 'triangle'), /no mapping for line cap triangle/);
+	assertRefused((_, icons) => (icons.lineJoin = 'arcs'), /no mapping for line join arcs/);
+});

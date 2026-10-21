@@ -205,9 +205,30 @@ function shapePath({ tag, attrs }) {
 
 const isSolid = ({ attrs }) => attrs.fill !== undefined && attrs.fill !== 'none';
 
+// The attributes each shape may carry; anything else (a transform, its own stroke width) would vanish silently.
+const SHAPE_ATTRIBUTES = { path: ['d', 'fill', 'stroke'], circle: ['cx', 'cy', 'r', 'fill', 'stroke'] };
+// The caps and joins Icon.qml knows how to draw.
+const LINE_CAPS = ['butt', 'square', 'round'];
+const LINE_JOINS = ['miter', 'bevel', 'round'];
+
+function expectKnownShapes(icon, shapes) {
+	for (const { tag, attrs } of shapes) {
+		if (!SHAPE_ATTRIBUTES[tag]) throw new Error(`no mapping for icon shape <${tag}>`);
+		const unknown = Object.keys(attrs).filter((name) => !SHAPE_ATTRIBUTES[tag].includes(name));
+		if (unknown.length) throw new Error(`${icon}: no mapping for <${tag}> attribute(s) ${unknown.join(', ')}`);
+	}
+}
+
+function expectKnownLines(set) {
+	if (!LINE_CAPS.includes(set.lineCap)) throw new Error(`no mapping for line cap ${set.lineCap}`);
+	if (!LINE_JOINS.includes(set.lineJoin)) throw new Error(`no mapping for line join ${set.lineJoin}`);
+}
+
 // Every icon as two path strings: its outlines (stroked) and its solid shapes (filled).
 function renderIcons(set) {
+	expectKnownLines(set);
 	const entries = Object.entries(set.icons).map(([name, shapes]) => {
+		expectKnownShapes(name, shapes);
 		const stroke = shapes.filter((s) => !isSolid(s)).map(shapePath).join(' ');
 		const fill = shapes.filter(isSolid).map(shapePath).join(' ');
 		return `    ${JSON.stringify(name)}: { stroke: ${JSON.stringify(stroke)}, fill: ${JSON.stringify(fill)} }`;
@@ -226,7 +247,6 @@ function renderIcons(set) {
 		'',
 	].join('\n');
 }
-
 
 // Every generated file with its content, rendered from the dist; throws on anything it cannot map.
 function renderAll(distDir) {
