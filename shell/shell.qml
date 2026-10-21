@@ -1,3 +1,6 @@
 import Quickshell
+import "services"
 
-ShellRoot {}
+ShellRoot {
+    SystemMotion {}
+}

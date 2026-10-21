@@ -23,7 +23,8 @@ stdenvNoCC.mkDerivation {
     mkdir -p $out/share/rekta-shell
     cp -r . $out/share/rekta-shell
     makeWrapper ${lib.getExe quickshell} $out/bin/rekta-shell \
-      --add-flags "--path $out/share/rekta-shell"
+      --add-flags "--path $out/share/rekta-shell" \
+      --prefix QML_IMPORT_PATH : "$out/share/rekta-shell"
     runHook postInstall
   '';
 

@@ -35,6 +35,7 @@ in
         nativeBuildInputs = [ qt.qtdeclarative ];
         QT_QPA_PLATFORM = "offscreen";
         QT_QUICK_BACKEND = "software";
+        FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ pkgs.atkinson-hyperlegible-next ]; };
         QT_PLUGIN_PATH = "${qt.qtbase}/lib/qt-6/plugins";
         QML_IMPORT_PATH = "${qt.qtdeclarative}/lib/qt-6/qml";
         LANG = "C.UTF-8";

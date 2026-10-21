@@ -1,4 +1,16 @@
 module Rekta
 singleton Tokens 1.0 Tokens.qml
+singleton Geometry 1.0 Geometry.qml
+singleton Prefs 1.0 Prefs.qml
 Icon 1.0 Icon.qml
 IconData 1.0 IconData.js
+Kicker 1.0 Kicker.qml
+Facts 1.0 Facts.qml
+Body 1.0 Body.qml
+Meta 1.0 Meta.qml
+Title 1.0 Title.qml
+NavTitle 1.0 NavTitle.qml
+PivotTitle 1.0 PivotTitle.qml
+GroupHeading 1.0 GroupHeading.qml
+Hairline 1.0 Hairline.qml
+FocusRing 1.0 FocusRing.qml

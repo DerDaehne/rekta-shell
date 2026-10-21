@@ -14,6 +14,9 @@ working information (board, knowledge base, local environment). It is gitignored
 - Every visible surface and every motion traces back to a place in Rekta Design
   (its docs and tokens at the pinned commit). Colours, sizes, durations, curves
   and angles come from the generated token module, never as constants in code.
+  The one exception is the fixed geometry Rekta itself keeps as literals
+  (hairlines, focus ring): it lives only in `shell/Rekta/Geometry.qml`, each value
+  naming its rule in Rekta's stylesheet.
 - Where Rekta says nothing or contradicts itself, do not invent: report it to
   Rekta Design and wait. Phrase such reports for every platform — Rekta Design
   stays independent of languages, frameworks and tools; this shell is only one
