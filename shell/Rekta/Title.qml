@@ -13,6 +13,6 @@ Text {
     lineHeight: Tokens.lineHeightTitle
     color: Tokens.color.textPrimary
     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-    maximumLineCount: 3
+    maximumLineCount: Geometry.titleMaxLines
     elide: Text.ElideRight
 }

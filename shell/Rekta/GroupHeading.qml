@@ -10,4 +10,5 @@ Text {
     lineHeightMode: Text.ProportionalHeight
     lineHeight: Tokens.lineHeightTight
     color: Tokens.color.textPrimary
+    wrapMode: Text.Wrap
 }

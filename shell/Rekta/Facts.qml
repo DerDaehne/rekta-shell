@@ -5,6 +5,8 @@ Text {
     font.family: Tokens.fontSans
     font.pixelSize: Tokens.fontSizeXs
     font.weight: Tokens.fontWeightRegular
+    lineHeightMode: Text.ProportionalHeight
+    lineHeight: Tokens.lineHeightBody
     color: Tokens.color.textContrastHigh
     wrapMode: Text.Wrap
 }

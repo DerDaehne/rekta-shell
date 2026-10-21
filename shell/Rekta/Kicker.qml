@@ -6,5 +6,8 @@ Text {
     font.pixelSize: Tokens.fontSizeXs
     font.weight: Tokens.fontWeightSemibold
     font.letterSpacing: Geometry.kickerLetterSpacing * Tokens.fontSizeXs
+    lineHeightMode: Text.ProportionalHeight
+    lineHeight: Tokens.lineHeightBody
     color: Tokens.color.textContrastHigh
+    wrapMode: Text.Wrap
 }

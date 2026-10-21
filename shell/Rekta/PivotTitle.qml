@@ -10,5 +10,5 @@ Text {
     font.weight: Tokens.fontWeightLight
     lineHeightMode: Text.ProportionalHeight
     lineHeight: Tokens.lineHeightNav
-    color: active ? Tokens.color.textPrimary : Tokens.color.textContrastHigh
+    color: active ? Tokens.color.textPrimary : Tokens.color.textContrastMedium
 }

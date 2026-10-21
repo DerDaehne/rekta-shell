@@ -72,9 +72,9 @@ TestCase {
                         Body { width: parent.width; text: "It has run every night this month without a retry, and the cache stays below its limit."; color: Tokens[themeBox.modelData].textPrimary }
                         GroupHeading { placeWidth: 560; text: "recent runs"; color: Tokens[themeBox.modelData].textPrimary }
                         NavTitle { placeWidth: 560; text: "builds"; color: Tokens[themeBox.modelData].textPrimary }
-                        NavTitle { placeWidth: 560; active: false; text: "runners"; color: Tokens[themeBox.modelData].textContrastHigh }
+                        NavTitle { placeWidth: 560; active: false; text: "runners"; color: Tokens[themeBox.modelData].textContrastMedium }
                         PivotTitle { placeWidth: 560; text: "today"; color: Tokens[themeBox.modelData].textPrimary }
-                        PivotTitle { placeWidth: 560; active: false; text: "this week"; color: Tokens[themeBox.modelData].textContrastHigh }
+                        PivotTitle { placeWidth: 560; active: false; text: "this week"; color: Tokens[themeBox.modelData].textContrastMedium }
                         Meta { text: "12:04 · 1,234 · 1,111 · 9,876"; color: Tokens[themeBox.modelData].textContrastHigh }
                     }
                 }
@@ -111,19 +111,30 @@ TestCase {
 
     function test_line_heights_follow_the_tokens() {
         const r = createTemporaryObject(roles, testCase);
-        compare(r.body.lineHeight, Tokens.lineHeightBody);
-        compare(r.title.lineHeight, Tokens.lineHeightTitle);
-        compare(r.group.lineHeight, Tokens.lineHeightTight);
-        compare(r.nav.lineHeight, Tokens.lineHeightNav);
+        const expected = [
+            [r.kicker, Tokens.lineHeightBody],
+            [r.facts, Tokens.lineHeightBody],
+            [r.body, Tokens.lineHeightBody],
+            [r.meta, Tokens.lineHeightBody],
+            [r.title, Tokens.lineHeightTitle],
+            [r.group, Tokens.lineHeightTight],
+            [r.nav, Tokens.lineHeightNav],
+            [r.pivot, Tokens.lineHeightNav]
+        ];
+        for (const [text, lineHeight] of expected) {
+            compare(text.lineHeightMode, Text.ProportionalHeight);
+            compare(text.lineHeight, lineHeight);
+        }
     }
 
     function test_navigation_titles_shrink_and_recede_when_inactive() {
         const r = createTemporaryObject(roles, testCase);
         r.nav.active = false;
         compare(r.nav.font.pixelSize, Math.round(Tokens.fluid(Tokens.fontSizeNavInactive, 1000)));
-        compare(r.nav.color, Tokens.color.textContrastHigh);
+        compare(r.nav.color, Tokens.color.textContrastMedium);
         r.pivot.active = false;
         compare(r.pivot.font.pixelSize, Math.round(Tokens.fluid(Tokens.fontSizePivotInactive, 1000)));
+        compare(r.pivot.color, Tokens.color.textContrastMedium);
     }
 
     function test_a_long_title_wraps_to_three_lines_then_ends_in_an_ellipsis() {
@@ -131,7 +142,7 @@ TestCase {
         r.title.width = 400;
         r.title.text = testCase.longTitle;
         waitForRendering(r.title);
-        compare(r.title.lineCount, 3);
+        compare(r.title.lineCount, Geometry.titleMaxLines);
         verify(r.title.truncated);
         compare(r.title.elide, Text.ElideRight);
     }

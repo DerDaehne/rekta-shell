@@ -7,15 +7,16 @@ import Rekta
 Scope {
     id: systemMotion
 
-    // The value of [KDE] AnimationDurationFactor in a kdeglobals text; KDE's default is 1.
+    // The value of [KDE] AnimationDurationFactor in a kdeglobals text, also with KConfig flags such as [$i]; KDE's
+    // default is 1.
     function animationFactor(ini: string): real {
         let inKdeGroup = false;
         for (const rawLine of ini.split("\n")) {
             const line = rawLine.trim();
             if (line.startsWith("["))
                 inKdeGroup = line === "[KDE]";
-            else if (inKdeGroup && line.startsWith("AnimationDurationFactor="))
-                return Number(line.slice("AnimationDurationFactor=".length));
+            else if (inKdeGroup && /^AnimationDurationFactor(\[[^\]]*\])*=/.test(line))
+                return Number(line.slice(line.indexOf("=") + 1));
         }
         return 1;
     }
