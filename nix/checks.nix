@@ -64,21 +64,31 @@ in
           ++ modules;
         }).config;
       toplevel = modules: (system modules).system.build.toplevel.drvPath;
+      # The kind of system the module is imported into, so the comparison sees what it could change there:
+      # the display manager's sessions, user units and Plasma's own packages.
+      plasma = {
+        services.desktopManager.plasma6.enable = true;
+        services.displayManager.sddm.enable = true;
+      };
+      module = self.nixosModules.default;
+      enable = {
+        programs.rekta-shell.enable = true;
+      };
       enabled = system [
-        self.nixosModules.default
-        {
-          services.desktopManager.plasma6.enable = true;
-          services.displayManager.sddm.enable = true;
-          programs.rekta-shell.enable = true;
-        }
+        plasma
+        module
+        enable
       ];
       withoutPlasma = system [
-        self.nixosModules.default
-        { programs.rekta-shell.enable = true; }
+        module
+        enable
       ];
     in
     assert lib.assertMsg (
-      toplevel [ ] == toplevel [ self.nixosModules.default ]
+      toplevel [ plasma ] == toplevel [
+        plasma
+        module
+      ]
     ) "importing the NixOS module with its defaults changed the system";
     assert lib.assertMsg (lib.elem "rekta" enabled.services.displayManager.sessionData.sessionNames)
       "the enabled NixOS module does not register the rekta session";
