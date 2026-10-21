@@ -1,4 +1,5 @@
 import QtQuick
+import "Status.js" as Status
 
 // A quantity against its whole (data.md, "Meters"): the label and the value above a 6px track that fills in ink, or
 // in a status's full colour when the value means that status, with the status tag at the label.
@@ -36,7 +37,7 @@ Column {
                 text: meter.label
                 font.family: Tokens.fontSans
                 font.pixelSize: Tokens.fontSizeXs
-                color: Tokens.color.textContrastHigh
+                color: Status.secondaryInk(meter, Tokens.color)
             }
 
             StatusTag {

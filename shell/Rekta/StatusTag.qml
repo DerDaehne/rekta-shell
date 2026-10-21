@@ -1,11 +1,12 @@
 import QtQuick
+import "Status.js" as Status
 
 // A status as its square and its one fixed word (colour.md, "Status vocabulary"); without a status it is idle.
 Row {
     id: tag
 
     property string status: "" // info | success | warning | error, or "" for none
-    property string word: ({ "": "idle", info: "active", success: "done", warning: "waiting", error: "failed" })[status] ?? ""
+    property string word: Status.word(status)
     readonly property color mark: {
         switch (status) {
         case "info":

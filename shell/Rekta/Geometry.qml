@@ -79,4 +79,12 @@ QtObject {
     readonly property real pendingLineBelow: 6
     // `.rk-btn--icon > svg { width: 20px; height: 20px }` (rekta.css:229)
     readonly property real buttonGlyph: 20
+    // `.rk-tile { padding: 12px }` (rekta.css:83)
+    readonly property real tilePadding: 12
+    // `.rk-tile-word { top: 10px; right: 12px }` (rekta.css:94)
+    readonly property real tileWordTop: 10
+    readonly property real tileWordRight: 12
+    // A press gives up once the pointer moves this far: `> (start.touch ? 8 : 4)` (rekta.js:301)
+    readonly property real pressSlopMouse: 4
+    readonly property real pressSlopTouch: 8
 }

@@ -1,4 +1,5 @@
 import QtQuick
+import "Status.js" as Status
 
 // Progress (data.md, "Progress"): with a value the label and the percentage stand above a bar that fills to it;
 // without one (value < 0) a segment runs along the bar. It draws in the current text colour over a faint track of
@@ -28,7 +29,7 @@ Column {
             text: progress.label
             font.family: Tokens.fontSans
             font.pixelSize: Tokens.fontSizeXs
-            color: Tokens.color.textContrastHigh
+            color: Status.secondaryInk(progress, Tokens.color)
         }
 
         Text {
