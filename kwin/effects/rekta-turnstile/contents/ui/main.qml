@@ -26,11 +26,11 @@ KWin.SceneEffect {
         onLanded: effect.land()
     }
 
-    // KWin hands its animation speed to QML only through Kirigami's units; "instant" there means no motion.
+    // KWin hands its animation speed to QML only through Kirigami's units, which turn "instant" into 1 ms.
     Binding {
         target: Tokens
         property: "reducedMotion"
-        value: Kirigami.Units.longDuration === 0
+        value: Kirigami.Units.longDuration <= 1
     }
 
     Connections {

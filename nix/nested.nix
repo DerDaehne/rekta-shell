@@ -94,6 +94,8 @@ writeShellApplication {
       XDG_CONFIG_DIRS="$home/xdg"
       XDG_DATA_DIRS="${kdePackages.kwin}/share"
       LANG="''${LANG:-C.UTF-8}"
+      # Its programs log to its own stderr, not to the desktop's journal.
+      QT_FORCE_STDERR_LOGGING=1
     )
     [ -n "''${LOCALE_ARCHIVE:-}" ] && session+=(LOCALE_ARCHIVE="$LOCALE_ARCHIVE")
 
@@ -113,8 +115,8 @@ writeShellApplication {
     printf '%s\n' "''${session[@]}" "WAYLAND_DISPLAY=$socket" >"$home/session.env"
 
     echo "rekta-nested: shell from $shell_dir, HOME $home"
-    # The effects take their values from the shell's Rekta module.
-    env -i "''${session[@]}" "''${host_display[@]}" QML_IMPORT_PATH="$shell_dir" kwin_wayland "''${backend[@]}" --socket "$socket" \
+    # The effects take their values from the shell's Rekta module, and KWin's animation speed through KDE's Kirigami units.
+    env -i "''${session[@]}" "''${host_display[@]}" QML_IMPORT_PATH="$shell_dir" QT_QUICK_CONTROLS_STYLE=org.kde.desktop kwin_wayland "''${backend[@]}" --socket "$socket" \
       --width "''${size%x*}" --height "''${size#*x}" --output-count "$outputs" \
       --no-lockscreen --no-global-shortcuts --no-kactivities \
       -- "$launcher" &
