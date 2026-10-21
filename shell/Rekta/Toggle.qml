@@ -30,6 +30,8 @@ Item {
     Accessible.checked: checked
     Accessible.name: label
     Accessible.description: disabledReason
+    Accessible.onToggleAction: activate()
+    Accessible.onPressAction: activate()
     Keys.onSpacePressed: activate()
 
     TapHandler {
@@ -43,8 +45,11 @@ Item {
         spacing: Tokens.spaceS
 
         Text {
+            objectName: "label"
             anchors.verticalCenter: parent.verticalCenter
             visible: toggle.label !== ""
+            // `.rk-toggle-label { margin-right: space-s }` on top of the row's gap (rekta.css:333, :350)
+            rightPadding: Tokens.spaceS
             text: toggle.label
             font.family: Tokens.fontSans
             font.pixelSize: Tokens.fontSizeS
@@ -111,7 +116,8 @@ Item {
             font.family: Tokens.fontSans
             font.pixelSize: Tokens.fontSizeS
             font.weight: Tokens.fontWeightRegular
-            color: toggle.disabled ? Tokens.color.disabled : Tokens.color.textContrastHigh
+            // The word keeps its colour when disabled (rekta.css:351 outranks :349).
+            color: Tokens.color.textContrastHigh
         }
 
         Hint {

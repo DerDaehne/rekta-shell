@@ -21,13 +21,27 @@ Column {
 
     spacing: Tokens.spaceXs
 
-    Text {
-        objectName: "label"
-        text: field.optional ? `${field.label} ${field.optionalWord}` : field.label
-        font.family: Tokens.fontSans
-        font.pixelSize: Tokens.fontSizeXs
-        font.weight: Tokens.fontWeightSemibold
-        color: Tokens.color.textContrastHigh
+    // The label in xs semibold (rekta.css:264); "(optional)" after it in regular (:279).
+    Row {
+        Text {
+            objectName: "label"
+            text: field.label
+            font.family: Tokens.fontSans
+            font.pixelSize: Tokens.fontSizeXs
+            font.weight: Tokens.fontWeightSemibold
+            color: Tokens.color.textContrastHigh
+        }
+
+        Text {
+            objectName: "optional"
+            visible: field.optional
+            // The space belongs to the label's text, as in `<label>name <span class="rk-optional">`.
+            text: ` ${field.optionalWord}`
+            font.family: Tokens.fontSans
+            font.pixelSize: Tokens.fontSizeXs
+            font.weight: Tokens.fontWeightRegular
+            color: Tokens.color.textContrastHigh
+        }
     }
 
     Rectangle {
@@ -94,13 +108,29 @@ Column {
         }
     }
 
-    Hint {
-        id: hintLine
-
-        objectName: "hint"
+    Row {
         width: field.width
-        visible: text !== ""
-        text: field.hasError ? field.error : field.disabled ? field.disabledReason : field.hint
-        color: field.hasError ? Tokens.color.textPrimary : Tokens.color.textContrastHigh
+        visible: hintLine.text !== ""
+        spacing: Geometry.tagGap
+
+        // An error starts with the error square, the tag's 8px mark 6px before the words (rekta.css:277).
+        Rectangle {
+            objectName: "errorMark"
+            // An inline-block sits on the baseline of the first line.
+            y: hintLine.baselineOffset - height
+            visible: field.hasError
+            width: Geometry.tagMark
+            height: Geometry.tagMark
+            color: Tokens.color.statusErrorFull
+        }
+
+        Hint {
+            id: hintLine
+
+            objectName: "hint"
+            width: parent.width - (field.hasError ? Geometry.tagMark + parent.spacing : 0)
+            text: field.hasError ? field.error : field.disabled ? field.disabledReason : field.hint
+            color: field.hasError ? Tokens.color.textPrimary : Tokens.color.textContrastHigh
+        }
     }
 }

@@ -1,7 +1,8 @@
 import QtQuick
 
 // A value on a scale (forms.md, "Inputs"): a 6px track the accent fills up to the value, an ink bar as the thumb, and
-// the value shown beside it in tabular figures.
+// the value shown beside it in tabular figures. Disabled, only the thumb greys (rekta.css:377) and the reason stands
+// below (forms.md, "Disabled controls say why").
 Item {
     id: slider
 
@@ -17,24 +18,25 @@ Item {
 
     signal moved
 
-    // Every change goes through here: clamped to the range and snapped to the step.
+    // Every change goes through here: clamped to the range and snapped to the step, without float noise.
     function setValue(newValue: real) {
         if (disabled)
             return;
         const stepped = from + Math.round((newValue - from) / stepSize) * stepSize;
-        const clamped = Math.min(to, Math.max(from, stepped));
+        const clamped = parseFloat(Math.min(to, Math.max(from, stepped)).toPrecision(12));
         if (clamped === value)
             return;
         value = clamped;
         moved();
     }
 
-    implicitWidth: 240
-    implicitHeight: Tokens.controlHeight
+    implicitHeight: Tokens.controlHeight + (why.visible ? Tokens.spaceXs + why.height : 0)
     activeFocusOnTab: true
     Accessible.role: Accessible.Slider
     Accessible.name: label
     Accessible.description: disabled ? disabledReason : valueText
+    Accessible.onIncreaseAction: setValue(value + stepSize)
+    Accessible.onDecreaseAction: setValue(value - stepSize)
 
     Keys.onPressed: event => {
         const page = 10 * stepSize;
@@ -55,7 +57,8 @@ Item {
     }
 
     Row {
-        anchors.fill: parent
+        width: parent.width
+        height: Tokens.controlHeight
         spacing: Tokens.spaceM
 
         Item {
@@ -77,11 +80,13 @@ Item {
                     objectName: "fill"
                     width: track.width * slider.position
                     height: track.height
-                    color: slider.disabled ? Tokens.color.disabled : Tokens.color.accent
+                    color: Tokens.color.accent
                 }
             }
 
             Rectangle {
+                id: thumb
+
                 objectName: "thumb"
                 anchors.verticalCenter: parent.verticalCenter
                 x: slider.position * (rail.width - width)
@@ -98,14 +103,14 @@ Item {
                 anchors.fill: parent
                 enabled: !slider.disabled
 
+                // The thumb's centre follows the pointer, so it stays under it at both ends.
                 function follow(x: real) {
-                    slider.setValue(slider.from + (x / rail.width) * (slider.to - slider.from));
+                    const share = (x - thumb.width / 2) / (rail.width - thumb.width);
+                    slider.setValue(slider.from + share * (slider.to - slider.from));
                 }
 
-                onPressed: mouse => {
-                    slider.forceActiveFocus();
-                    follow(mouse.x);
-                }
+                // A pointer gives no focus, so the ring shows only for the keyboard, like :focus-visible.
+                onPressed: mouse => follow(mouse.x)
                 onPositionChanged: mouse => follow(mouse.x)
             }
         }
@@ -122,7 +127,17 @@ Item {
             font.pixelSize: Tokens.fontSizeS
             font.weight: Tokens.fontWeightMedium
             font.features: ({ "tnum": 1 })
-            color: slider.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
+            color: Tokens.color.textPrimary
         }
+    }
+
+    Hint {
+        id: why
+
+        objectName: "why"
+        y: Tokens.controlHeight + Tokens.spaceXs
+        width: slider.width
+        visible: slider.disabled
+        text: slider.disabledReason
     }
 }

@@ -2,16 +2,18 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// Two to five options seen at a glance (forms.md, "Inputs"): joined buttons, the chosen one in the accent. On a new
-// choice the accent block slides over from the old one; the chosen label turns light halfway (motion.md, segments).
-Item {
+// Two to five options seen at a glance (forms.md, "Inputs"; rekta.css:382–399): joined buttons, the chosen one in the
+// accent. On a choice made here the accent block slides over from the old one and the chosen label turns light
+// halfway (motion.md, segments). Disabled, the frames and words grey but the chosen one keeps its accent (rekta.css:397,
+// :399), and the reason stands beside it.
+Row {
     id: segments
 
     property list<string> options
     property int currentIndex: 0
     property string disabledReason
     readonly property bool disabled: disabledReason !== ""
-    // Only a choice made here slides; the first drawing and a choice set from outside stand still.
+    // True while a choice made here slides; the first drawing and a choice set from outside stand still.
     property bool sliding: false
 
     signal activated(int index)
@@ -20,16 +22,18 @@ Item {
         if (disabled || index < 0 || index >= options.length || index === currentIndex)
             return;
         sliding = true;
+        slideEnd.restart();
         currentIndex = index;
         activated(index);
     }
 
-    implicitWidth: row.implicitWidth
-    implicitHeight: Tokens.controlHeight
+    spacing: Tokens.spaceS
     activeFocusOnTab: true
     Accessible.role: Accessible.RadioButton
     Accessible.name: options[currentIndex] ?? ""
     Accessible.description: disabledReason
+    Accessible.checkable: true
+    Accessible.checked: true
 
     onOptionsChanged: {
         if (options.length > 5)
@@ -51,114 +55,132 @@ Item {
         event.accepted = true;
     }
 
-    Rectangle {
-        id: slide
+    Timer {
+        id: slideEnd
 
-        readonly property Rectangle chosen: repeater.count > 0 ? repeater.itemAt(segments.currentIndex) as Rectangle : null
-
-        objectName: "slide"
-        visible: chosen !== null && !segments.disabled
-        x: chosen ? chosen.x : 0
-        width: chosen ? chosen.width : 0
-        height: segments.height
-        topLeftRadius: chosen ? chosen.topLeftRadius : 0
-        bottomLeftRadius: chosen ? chosen.bottomLeftRadius : 0
-        topRightRadius: chosen ? chosen.topRightRadius : 0
-        bottomRightRadius: chosen ? chosen.bottomRightRadius : 0
-        color: Tokens.color.accent
-
-        Behavior on x {
-            enabled: segments.sliding
-
-            NumberAnimation {
-                duration: Tokens.durationShort
-                easing.type: Easing.Bezier
-                easing.bezierCurve: Tokens.easeBase
-            }
-        }
-        Behavior on width {
-            enabled: segments.sliding
-
-            NumberAnimation {
-                duration: Tokens.durationShort
-                easing.type: Easing.Bezier
-                easing.bezierCurve: Tokens.easeBase
-            }
-        }
+        interval: Tokens.durationShort
+        onTriggered: segments.sliding = false
     }
 
-    Row {
-        id: row
+    Item {
+        implicitWidth: row.implicitWidth
+        implicitHeight: Tokens.controlHeight
 
-        spacing: -Geometry.segmentBorder
+        Rectangle {
+            id: slide
 
-        Repeater {
-            id: repeater
+            readonly property Rectangle chosen: repeater.count > 0 ? repeater.itemAt(segments.currentIndex) as Rectangle : null
 
-            model: segments.options
+            objectName: "slide"
+            visible: chosen !== null
+            x: chosen ? chosen.x : 0
+            width: chosen ? chosen.width : 0
+            height: parent.height
+            topLeftRadius: chosen ? chosen.topLeftRadius : 0
+            bottomLeftRadius: chosen ? chosen.bottomLeftRadius : 0
+            topRightRadius: chosen ? chosen.topRightRadius : 0
+            bottomRightRadius: chosen ? chosen.bottomRightRadius : 0
+            color: Tokens.color.accent
 
-            delegate: Rectangle {
-                id: option
+            Behavior on x {
+                enabled: segments.sliding
 
-                required property string modelData
-                required property int index
-                readonly property bool chosen: index === segments.currentIndex
-                readonly property bool first: index === 0
-                readonly property bool last: index === segments.options.length - 1
-                // The chosen label waits for the sliding block and turns light halfway; the one left turns dark at once.
-                property bool lit: false
-
-                onChosenChanged: {
-                    if (chosen && segments.sliding && Tokens.durationShort > 0)
-                        lightUp.restart();
-                    else
-                        lit = chosen;
+                NumberAnimation {
+                    duration: Tokens.durationShort
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: Tokens.easeBase
                 }
-                Component.onCompleted: lit = chosen
+            }
+            Behavior on width {
+                enabled: segments.sliding
 
-                implicitWidth: word.implicitWidth + 2 * Tokens.controlPadding
-                height: segments.height
-                color: "transparent"
-                border.width: Geometry.segmentBorder
-                border.color: segments.disabled ? Tokens.color.disabled : chosen ? Tokens.color.accent : Tokens.color.textPrimary
-                topLeftRadius: first ? Tokens.radiusS : 0
-                bottomLeftRadius: first ? Tokens.radiusS : 0
-                topRightRadius: last ? Tokens.radiusS : 0
-                bottomRightRadius: last ? Tokens.radiusS : 0
-                z: chosen ? 1 : 0
-                Accessible.role: Accessible.RadioButton
-                Accessible.name: modelData
-                Accessible.checked: chosen
-
-                Text {
-                    id: word
-
-                    anchors.centerIn: parent
-                    text: option.modelData
-                    font.family: Tokens.fontSans
-                    font.pixelSize: Tokens.fontSizeS
-                    font.weight: Tokens.fontWeightSemibold
-                    color: segments.disabled ? Tokens.color.disabled : option.lit ? Tokens.color.textOnAccent : Tokens.color.textPrimary
+                NumberAnimation {
+                    duration: Tokens.durationShort
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: Tokens.easeBase
                 }
+            }
+        }
 
-                Timer {
-                    id: lightUp
+        Row {
+            id: row
 
-                    interval: Tokens.durationShort / 2
-                    onTriggered: option.lit = option.chosen
-                }
+            objectName: "options"
+            spacing: -Geometry.segmentBorder
 
-                TapHandler {
-                    onTapped: {
-                        segments.forceActiveFocus();
-                        segments.choose(option.index);
+            Repeater {
+                id: repeater
+
+                model: segments.options
+
+                delegate: Rectangle {
+                    id: option
+
+                    required property string modelData
+                    required property int index
+                    readonly property bool chosen: index === segments.currentIndex
+                    readonly property bool first: index === 0
+                    readonly property bool last: index === segments.options.length - 1
+                    // The chosen label waits for the sliding block and turns light halfway; the one left turns dark at once.
+                    property bool lit: false
+
+                    onChosenChanged: {
+                        if (chosen && segments.sliding && Tokens.durationShort > 0)
+                            lightUp.restart();
+                        else
+                            lit = chosen;
+                    }
+                    Component.onCompleted: lit = chosen
+
+                    implicitWidth: word.implicitWidth + 2 * (Tokens.controlPadding + Geometry.segmentBorder)
+                    height: Tokens.controlHeight
+                    color: "transparent"
+                    border.width: Geometry.segmentBorder
+                    border.color: segments.disabled ? Tokens.color.disabled : chosen ? Tokens.color.accent : Tokens.color.textPrimary
+                    topLeftRadius: first ? Tokens.radiusS : 0
+                    bottomLeftRadius: first ? Tokens.radiusS : 0
+                    topRightRadius: last ? Tokens.radiusS : 0
+                    bottomRightRadius: last ? Tokens.radiusS : 0
+                    z: chosen ? 1 : 0
+                    Accessible.role: Accessible.RadioButton
+                    Accessible.name: modelData
+                    Accessible.checked: chosen
+
+                    Text {
+                        id: word
+
+                        anchors.centerIn: parent
+                        text: option.modelData
+                        font.family: Tokens.fontSans
+                        font.pixelSize: Tokens.fontSizeS
+                        font.weight: Tokens.fontWeightSemibold
+                        color: segments.disabled ? Tokens.color.disabled : option.lit ? Tokens.color.textOnAccent : Tokens.color.textPrimary
+                    }
+
+                    Timer {
+                        id: lightUp
+
+                        interval: Tokens.durationShort / 2
+                        onTriggered: option.lit = option.chosen
+                    }
+
+                    // A pointer gives no focus, so the ring shows only for the keyboard, like :focus-visible.
+                    TapHandler {
+                        onTapped: segments.choose(option.index)
                     }
                 }
             }
         }
+
+        FocusRing {
+            shown: segments.activeFocus
+        }
     }
 
-    FocusRing {
-        shown: segments.activeFocus
+    Hint {
+        objectName: "why"
+        anchors.verticalCenter: parent.verticalCenter
+        visible: segments.disabled
+        text: segments.disabledReason
     }
 }

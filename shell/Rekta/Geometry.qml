@@ -68,6 +68,6 @@ QtObject {
     readonly property real sliderThumbWidth: 10
     readonly property real sliderThumbHeight: 24
     readonly property real sliderOutputWidth: 3.5
-    // `.rk-segments > label { border: 2px solid … }`, joined by `margin-left: -2px` (rekta.css:390, :392)
+    // `.rk-segments > label { border: 2px solid … }`, joined by `margin-left: -2px` (rekta.css:390, :393)
     readonly property real segmentBorder: 2
 }
