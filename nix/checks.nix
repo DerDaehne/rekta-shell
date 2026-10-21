@@ -2,6 +2,7 @@
 
 let
   rekta-shell = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
+  rekta-kwin = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-kwin;
   rekta-qmllint = pkgs.callPackage ./qmllint.nix { inherit (rekta-shell) quickshell; };
   dist = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-design-dist;
   qt = pkgs.kdePackages;
@@ -9,6 +10,28 @@ let
 in
 {
   package = rekta-shell;
+
+  # A system or home profile links share/ and etc/xdg of its packages into every session's XDG dirs, Plasma's too: the
+  # rekta packages may bring no KWin effects or config defaults there.
+  profile-leaves-plasma-alone =
+    let
+      profile = pkgs.buildEnv {
+        name = "rekta-shell-profile";
+        paths = [
+          rekta-shell
+          rekta-kwin
+        ];
+      };
+    in
+    pkgs.runCommand "rekta-shell-profile-leaves-plasma-alone" { } ''
+      for path in share/kwin etc/xdg; do
+        if [ -e ${profile}/$path ]; then
+          echo "a profile with the rekta packages puts $path into every session" >&2
+          exit 1
+        fi
+      done
+      touch $out
+    '';
 
   qmllint = pkgs.runCommand "rekta-shell-qmllint" { LANG = "C.UTF-8"; } ''
     find ${../shell} ${../tests} -name '*.qml' -print0 | xargs -0 ${pkgs.lib.getExe rekta-qmllint} -I ${../shell}

@@ -38,12 +38,10 @@ writeShellApplication {
     # The working tree's shell and KWin effects when run from the repository (Quickshell reloads the shell on every
     # change), else the packages'.
     shell_dir=${rekta-shell}/share/rekta-shell
-    effects_dir=${rekta-kwin}/share/kwin/effects
-    kwin_defaults=${rekta-kwin}/etc/xdg/kwinrc
+    kwin_dir=${rekta-kwin}/share/rekta-kwin/kwin
     if [ -f shell/shell.qml ] && [ -f flake.nix ]; then
       shell_dir="$PWD/shell"
-      effects_dir="$PWD/kwin/effects"
-      kwin_defaults="$PWD/kwin/kwinrc"
+      kwin_dir="$PWD/kwin"
     fi
 
     # Headless by default: KWin renders into a virtual framebuffer and never learns the desktop's display.
@@ -72,11 +70,11 @@ writeShellApplication {
     trap cleanup EXIT
     trap 'exit 130' INT TERM
 
-    mkdir -p "$home/.config" "$home/.local/share/applications" "$home/.local/share/kwin" "$home/.local/state" "$home/.cache" "$home/xdg"
+    mkdir -p "$home/.config" "$home/.local/share/applications" "$home/.local/state" "$home/.cache" "$home/rekta-kwin"
     mkdir -m 700 "$home/runtime"
-    # The rekta session's KWin: its effects, and its defaults beneath the user's kwinrc.
-    ln -s "$effects_dir" "$home/.local/share/kwin/effects"
-    cp "$kwin_defaults" "$home/xdg/kwinrc"
+    # The rekta session's KWin parts, laid out as in the package and added as their own XDG dirs: effects under
+    # rekta-kwin/kwin/effects, the kwinrc defaults (beneath the user's own) in rekta-kwin/kwin.
+    ln -s "$kwin_dir" "$home/rekta-kwin/kwin"
     session=(
       PATH="${
         lib.makeBinPath [
@@ -91,8 +89,8 @@ writeShellApplication {
       XDG_STATE_HOME="$home/.local/state"
       XDG_CACHE_HOME="$home/.cache"
       XDG_RUNTIME_DIR="$home/runtime"
-      XDG_CONFIG_DIRS="$home/xdg"
-      XDG_DATA_DIRS="${kdePackages.kwin}/share"
+      XDG_CONFIG_DIRS="$home/rekta-kwin/kwin"
+      XDG_DATA_DIRS="$home/rekta-kwin:${kdePackages.kwin}/share"
       LANG="''${LANG:-C.UTF-8}"
       # Its programs log to its own stderr, not to the desktop's journal.
       QT_FORCE_STDERR_LOGGING=1

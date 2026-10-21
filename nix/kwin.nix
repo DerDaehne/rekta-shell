@@ -1,9 +1,10 @@
 { runCommand }:
 
-# KWin's share of the rekta session: its effects and the defaults that enable them. Only the rekta session puts this
-# on XDG_DATA_DIRS and XDG_CONFIG_DIRS, so a Plasma session on the same system neither lists nor loads them.
+# KWin's share of the rekta session: its effects and the kwinrc defaults that enable them. Profiles link share/kwin and
+# etc/xdg into every session's XDG dirs, so both live under share/rekta-kwin instead, where only the rekta session looks:
+# share/rekta-kwin goes on its XDG_DATA_DIRS (KWin finds kwin/effects there) and share/rekta-kwin/kwin on its
+# XDG_CONFIG_DIRS (kwinrc).
 runCommand "rekta-kwin" { } ''
-  mkdir -p $out/share/kwin $out/etc/xdg
-  cp -r ${../kwin/effects} $out/share/kwin/effects
-  cp ${../kwin/kwinrc} $out/etc/xdg/kwinrc
+  mkdir -p $out/share/rekta-kwin
+  cp -r ${../kwin} $out/share/rekta-kwin/kwin
 ''
