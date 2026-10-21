@@ -1,10 +1,10 @@
-{ pkgs, modulesPath, ... }:
+{ modulesPath, pkgs, ... }:
 
-let
-  rekta-shell = pkgs.callPackage ./package.nix { };
-in
 {
-  imports = [ "${modulesPath}/virtualisation/qemu-vm.nix" ];
+  imports = [
+    "${modulesPath}/virtualisation/qemu-vm.nix"
+    ./nixos-module.nix
+  ];
 
   nixpkgs.hostPlatform = "x86_64-linux";
   system.stateVersion = "26.11";
@@ -26,10 +26,8 @@ in
   };
 
   services.desktopManager.plasma6.enable = true;
-  # The rekta session from the package, beside Plasma.
-  systemd.packages = [ rekta-shell ];
+  programs.rekta-shell.enable = true;
   services.displayManager = {
-    sessionPackages = [ rekta-shell ];
     sddm.enable = true;
     sddm.wayland.enable = true;
     autoLogin = {
