@@ -14,9 +14,10 @@
     memorySize = 4096;
     qemu.forceAccel = true;
     # Without GL: with virtio-vga-gl and gtk,gl=on the VM often hung in the BIOS, and screendump cannot read GL scanouts.
+    # Headless; the runner's --window adds a GTK window, and QEMU takes the last -display.
     qemu.options = [
       "-device virtio-vga"
-      "-display gtk"
+      "-display none"
     ];
     sharedDirectories.rekta-shell = {
       source = ''"$REKTA_SHELL_DIR"'';

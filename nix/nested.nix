@@ -7,22 +7,25 @@
   rekta-shell,
 }:
 
-# A KWin nested in the running desktop. It starts from an empty environment with its own HOME, runtime directory,
-# config directories and a session bus without service activation, so neither the desktop's plugins, config and
-# services reach it nor does anything it starts (portals, wallets, FUSE mounts) reach the desktop.
+# A KWin of its own, headless in a virtual framebuffer or, with --window, as a window in the running desktop. It starts
+# from an empty environment with its own HOME, runtime directory, config directories and a session bus without service
+# activation, so neither the desktop's plugins, config and services reach it nor does anything it starts (portals,
+# wallets, FUSE mounts) reach the desktop.
 writeShellApplication {
   name = "rekta-nested";
   runtimeInputs = [ coreutils ];
   text = ''
     usage() {
-      echo "usage: rekta-nested [--outputs N] [--size WIDTHxHEIGHT]" >&2
+      echo "usage: rekta-nested [--window] [--outputs N] [--size WIDTHxHEIGHT]" >&2
       exit 2
     }
 
+    window=false
     outputs=1
     size=1600x900
     while [ $# -gt 0 ]; do
       case "$1" in
+        --window) window=true; shift ;;
         --outputs) outputs="''${2:?}"; shift 2 ;;
         --size) size="''${2:?}"; shift 2 ;;
         *) usage ;;
@@ -37,9 +40,16 @@ writeShellApplication {
       shell_dir="$PWD/shell"
     fi
 
-    # The host display by absolute path: the only thing the session takes from the desktop.
-    host_display="''${WAYLAND_DISPLAY:-wayland-0}"
-    [[ "$host_display" == /* ]] || host_display="$XDG_RUNTIME_DIR/$host_display"
+    # Headless by default: KWin renders into a virtual framebuffer and never learns the desktop's display.
+    backend=(--virtual)
+    host_display=()
+    if [ "$window" = true ]; then
+      # The host display by absolute path: the only thing a windowed session takes from the desktop.
+      display="''${WAYLAND_DISPLAY:-wayland-0}"
+      [[ "$display" == /* ]] || display="$XDG_RUNTIME_DIR/$display"
+      backend=()
+      host_display=(WAYLAND_DISPLAY="$display")
+    fi
 
     home="$(mktemp -d -t rekta-nested.XXXXXX)"
     # Each step may find its process gone already; none of them may keep the next from running.
@@ -94,7 +104,7 @@ writeShellApplication {
     printf '%s\n' "''${session[@]}" "WAYLAND_DISPLAY=$socket" >"$home/session.env"
 
     echo "rekta-nested: shell from $shell_dir, HOME $home"
-    env -i "''${session[@]}" WAYLAND_DISPLAY="$host_display" kwin_wayland --socket "$socket" \
+    env -i "''${session[@]}" "''${host_display[@]}" kwin_wayland "''${backend[@]}" --socket "$socket" \
       --width "''${size%x*}" --height "''${size#*x}" --output-count "$outputs" \
       --no-lockscreen --no-global-shortcuts --no-kactivities \
       -- "$launcher" &
