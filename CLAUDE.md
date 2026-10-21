@@ -133,8 +133,27 @@ nix run .#vm                                     # throwaway NixOS VM with Plasm
   test user `rekta` (public test password `rekta`) and mounts the checkout's
   `shell/` read-only at `/mnt/rekta-shell/shell`, so `qs --path
   /mnt/rekta-shell/shell` runs the working tree. The disk image lives in a
-  temporary directory that is deleted when the VM exits; the VM is never built
-  by `nix flake check`.
+  temporary directory that is deleted when the VM exits (window closed, Ctrl+C,
+  monitor `quit` or SIGTERM to the app); the VM is never built by `nix flake
+  check`. There is no GL: Plasma renders in software. Arguments after `--` go to
+  QEMU; host variables such as `QEMU_OPTS` or `SHARED_DIR` are ignored.
+- Driving the VM from a script: the guest's serial console (a login shell) and
+  the QEMU monitor (screenshots, keys) as FIFOs. `sendkey` is the reliable way to
+  press Meta: the GTK window only grabs the keyboard after Ctrl+Alt+G, before
+  that the desktop's KWin takes Meta.
+
+  ```sh
+  d=$(mktemp -d); mkfifo "$d"/{ser,mon}.{in,out}
+  cat "$d/ser.out" > "$d/ser.log" & cat "$d/mon.out" > "$d/mon.log" &
+  nix run .#vm -- -serial pipe:"$d/ser" -monitor pipe:"$d/mon" &
+  printf 'rekta\r' > "$d/ser.in"; printf 'rekta\r' > "$d/ser.in"   # log in on ttyS0
+  printf 'screendump %s -f png\n' "$d/shot.png" > "$d/mon.in"     # screenshot from the host
+  printf 'sendkey meta_l\n' > "$d/mon.in"                         # Meta into the guest
+  ```
+
+  In the guest the session's Wayland socket is `wayland-1`, not `wayland-0`:
+  take the session's variables from `systemctl --user show-environment`, or
+  start programs in it with `systemd-run --user`.
 - The overlay (`overlays.default`) builds `rekta-shell` against the importing
   configuration's nixpkgs.
 
