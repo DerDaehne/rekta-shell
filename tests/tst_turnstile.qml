@@ -77,6 +77,22 @@ TestCase {
         compare(Turnstile.nextPlaceAt([]), 0);
     }
 
+    function test_no_place_change_outlasts_its_longest_and_the_heaviest_one_reaches_it() {
+        const mixed = [part(0, 0, tile, tile), part(200, 0, 1200, 800), part(0, 300, 100, 20), part(400, 300, 2 * tile, tile)];
+        const heavy = [];
+        for (let i = 0; i < 8; i++)
+            heavy.push(part(i * 10, 0, 1200, 800));
+        const longest = Turnstile.longestPlaceChange(Tokens.durationShort, Tokens.durationModerate);
+        for (const parts of [mixed, heavy]) {
+            const leaving = Turnstile.plan(parts, Tokens.durationShort, 0);
+            const arriving = Turnstile.plan(parts, Tokens.durationModerate, Turnstile.nextPlaceAt(leaving));
+            const end = Math.max(...arriving.map(turn => turn.at + turn.duration));
+            verify(end <= longest + 1e-9, `${end} ms outlasts ${longest} ms`);
+            if (parts === heavy)
+                fuzzyCompare(end, longest, 1e-9);
+        }
+    }
+
     function test_under_reduced_motion_every_part_turns_at_once_and_in_no_time() {
         Tokens.reducedMotion = true;
         const turns = Turnstile.plan([part(0, 0, tile, tile), part(0, 400, 1200, 800)], Tokens.durationModerate, 0);

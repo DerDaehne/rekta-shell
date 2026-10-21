@@ -51,4 +51,17 @@ QtObject {
     function nextPlaceAt(turns: var): real {
         return Math.max(0, ...turns.map(turn => turn.at + Geometry.turnOverlap * turn.duration));
     }
+
+    // The latest a part can start after its turn begins: as heavy as a part gets, behind the most parts of its heft.
+    function latestStart(): real {
+        const byHeft = (Geometry.heftMax - Geometry.heftMin) * Geometry.heftStaggerSteps * Tokens.durationStagger;
+        return byHeft + Geometry.sameHeftSteps * Geometry.sameHeftStagger * Tokens.durationStagger;
+    }
+
+    // The longest a whole place change can take, whatever its parts: one place leaving in `leaving`, the next one
+    // arriving in `arriving` (the tokens' times for a part of heft 1).
+    function longestPlaceChange(leaving: real, arriving: real): real {
+        const nextPlace = latestStart() + Geometry.turnOverlap * Geometry.heftMax * leaving;
+        return nextPlace + latestStart() + Geometry.heftMax * arriving;
+    }
 }

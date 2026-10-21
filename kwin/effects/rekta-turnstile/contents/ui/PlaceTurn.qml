@@ -7,18 +7,37 @@ import Rekta
 Item {
     id: view
 
+    // Which switch this view shows. A new one during a turn ends the running turn where it stands, its arriving windows
+    // at rest, and starts the next from there.
+    required property int turn
     required property KWin.VirtualDesktop leaving
     required property KWin.VirtualDesktop arriving
     required property bool back
 
     readonly property KWin.Output screen: KWin.SceneView.screen
-    // The windows as the turn begins: KWin's window list notifies no changes, so it is read once.
+    property int begunTurn: -1
     property var windows: []
-    readonly property var leavingTurns: Turnstile.plan(partsOn(leaving), Tokens.durationShort, 0)
-    readonly property var arrivingTurns: Turnstile.plan(partsOn(arriving), Tokens.durationModerate, Turnstile.nextPlaceAt(leavingTurns))
-    property int partsTurning: leavingTurns.length + arrivingTurns.length
+    property var leavingTurns: []
+    property var arrivingTurns: []
+    property int partsTurning: 0
 
     signal landed
+
+    function begin() {
+        if (begunTurn === turn)
+            return;
+        begunTurn = turn;
+        // KWin's window list notifies no changes, so it is read as each turn begins.
+        windows = KWin.Workspace.stackingOrder;
+        const out = Turnstile.plan(partsOn(leaving), Tokens.durationShort, 0);
+        const into = Turnstile.plan(partsOn(arriving), Tokens.durationModerate, Turnstile.nextPlaceAt(out));
+        // Counted before the parts exist, so a part that lands at once already finds its count.
+        partsTurning = out.length + into.length;
+        leavingTurns = out;
+        arrivingTurns = into;
+        if (partsTurning === 0)
+            landed();
+    }
 
     function isPart(window: KWin.Window): bool {
         return (window.normalWindow || window.dialog) && !window.onAllDesktops && !window.minimized && window.output === screen;
@@ -41,11 +60,8 @@ Item {
             landed();
     }
 
-    Component.onCompleted: {
-        windows = KWin.Workspace.stackingOrder;
-        if (partsTurning === 0)
-            landed();
-    }
+    onTurnChanged: begin()
+    Component.onCompleted: begin()
 
     Repeater {
         model: view.windows.filter(window => window.output === view.screen && window.onAllDesktops && !window.minimized)

@@ -8,6 +8,7 @@ import Rekta
 KWin.SceneEffect {
     id: effect
 
+    property int turn: 0
     property KWin.VirtualDesktop leaving: null
     property KWin.VirtualDesktop arriving: null
     property bool back: false
@@ -16,10 +17,16 @@ KWin.SceneEffect {
     function land() {
         landedViews += 1;
         if (landedViews >= KWin.Workspace.screens.length)
-            visible = false;
+            finish();
+    }
+
+    function finish() {
+        overrun.stop();
+        visible = false;
     }
 
     delegate: PlaceTurn {
+        turn: effect.turn
         leaving: effect.leaving
         arriving: effect.arriving
         back: effect.back
@@ -31,6 +38,14 @@ KWin.SceneEffect {
         target: Tokens
         property: "reducedMotion"
         value: Kirigami.Units.longDuration <= 1
+    }
+
+    // While the effect runs it holds the screen and its input, so no turn may outlast the longest a place change takes.
+    Timer {
+        id: overrun
+
+        interval: Turnstile.longestPlaceChange(Tokens.durationShort, Tokens.durationModerate)
+        onTriggered: effect.finish()
     }
 
     Connections {
@@ -45,7 +60,9 @@ KWin.SceneEffect {
             // An earlier desktop in the order is the way back, which turns the other way round.
             effect.back = current.x11DesktopNumber < previous.x11DesktopNumber;
             effect.landedViews = 0;
+            effect.turn += 1;
             effect.visible = true;
+            overrun.restart();
         }
     }
 }
