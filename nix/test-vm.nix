@@ -1,7 +1,10 @@
 { pkgs, modulesPath, ... }:
 
 {
-  imports = [ "${modulesPath}/virtualisation/qemu-vm.nix" ];
+  imports = [
+    "${modulesPath}/virtualisation/qemu-vm.nix"
+    ./test-vm-rekta-session.nix
+  ];
 
   nixpkgs.hostPlatform = "x86_64-linux";
   system.stateVersion = "26.11";
@@ -31,10 +34,12 @@
     };
   };
 
-  # Public test credentials: the VM has no forwarded ports, so nothing outside can log in.
+  # Public test credentials: the VM has no forwarded ports, so nothing outside can log in. sudo asks for the same
+  # password; spikes need root to read what session processes see.
   users.users.rekta = {
     isNormalUser = true;
     password = "rekta";
+    extraGroups = [ "wheel" ];
   };
 
   environment.systemPackages = [
