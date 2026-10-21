@@ -92,6 +92,34 @@ TestCase {
         }
     }
 
+    function init() {
+        failOnWarning(/TypeError|ReferenceError|Binding loop/);
+    }
+
+    function sameCurve(actual, expected) {
+        const a = Array.from(actual);
+        return a.length === expected.length && a.every((v, k) => Math.abs(v - expected[k]) < 1e-9);
+    }
+
+    // Where pivotGlide() puts the strip for the title at index i, from the titles' own widths.
+    function expectedGlide(pivot, i) {
+        const n = pivot.titles.length;
+        let x = 0, left = 0, span = 0, previous = 0;
+        for (let k = 0; k < n; k++) {
+            const title = titleOf(pivot, k);
+            const w = k === i ? title.restingWidth : title.restingWidth * title.ratio;
+            if (k === i - 1)
+                previous = x;
+            if (k === i) {
+                left = x;
+                span = w;
+            }
+            x += w + Tokens.spaceL;
+        }
+        const most = Math.max(0, x - Tokens.spaceL - pivot.width);
+        return Math.min(most, Math.max(0, left + span - pivot.width, Math.min(most * i / (n - 1), i > 0 ? previous : left)));
+    }
+
     function cleanup() {
         Prefs.motion = "system";
         Prefs.theme = "system";
@@ -146,15 +174,38 @@ TestCase {
         }
     }
 
-    function test_the_strip_moves_in_proportion_and_never_hides_the_title_before() {
+    function test_the_strip_moves_in_proportion_to_the_place_in_the_order() {
         Prefs.motion = "off";
         const pivot = createTemporaryObject(pivotComponent, testCase);
         const strip = findChild(pivot, "strip");
-        pivot.select(2);
-        verify(strip.contentX <= titleOf(pivot, 1).x + 0.5, "the title before stays in reach");
-        const atTwo = strip.contentX;
-        pivot.select(4);
-        verify(strip.contentX >= atTwo, "further along the order, further along the strip");
+        for (let i = 0; i < 7; i++) {
+            pivot.select(i);
+            fuzzyCompare(strip.contentX, expectedGlide(pivot, i), 0.01, `title ${i}`);
+        }
+        verify(expectedGlide(pivot, 3) > expectedGlide(pivot, 2), "further along the order, further along the strip");
+    }
+
+    function test_the_title_before_the_active_one_stays_in_reach() {
+        Prefs.motion = "off";
+        const pivot = createTemporaryObject(pivotComponent, testCase);
+        pivot.select(1);
+        compare(findChild(pivot, "strip").contentX, 0, "the first title stays whole while the second is active");
+    }
+
+    function test_a_long_active_title_is_whole_in_sight() {
+        Prefs.motion = "off";
+        const pivot = createTemporaryObject(pivotComponent, testCase, { titles: ["overview", "an unusually long title", "b", "c", "d", "e"] });
+        const strip = findChild(pivot, "strip");
+        const title = titleOf(pivot, 1);
+        const first = titleOf(pivot, 0);
+        // Room for the long title, but not for it behind the first one.
+        pivot.width = first.restingWidth * first.ratio + Tokens.spaceL + title.restingWidth - 8;
+        pivot.select(1);
+        waitForRendering(pivot);
+        verify(title.restingWidth < pivot.width, "the title can fit");
+        verify(first.restingWidth * first.ratio + Tokens.spaceL + title.restingWidth > pivot.width, "but not behind the first one");
+        verify(title.x - strip.contentX >= -0.5, "it starts in sight");
+        verify(title.x + title.width - strip.contentX <= strip.width + 0.5, "it ends in sight");
     }
 
     function test_a_strip_that_fits_holds_still() {
@@ -170,6 +221,9 @@ TestCase {
     function test_the_glide_and_the_size_change_take_their_own_times() {
         const pivot = createTemporaryObject(pivotComponent, testCase);
         const strip = findChild(pivot, "strip");
+        const glide = findChild(pivot, "glide");
+        compare(glide.duration, Tokens.durationPivotGlide);
+        verify(sameCurve(glide.easing.bezierCurve, Tokens.easePivotGlide), "the glide eases with pivot-glide");
         pivot.select(6);
         wait(Tokens.durationPivotSize + 60);
         compare(findChild(titleOf(pivot, 6), "word").shrink, 1, "the size change is over after pivot-size");
@@ -212,6 +266,9 @@ TestCase {
         compare(pivot.currentIndex, 6, "before the start comes the end");
         keyClick(Qt.Key_Home);
         compare(pivot.currentIndex, 0);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Up);
+        compare(pivot.currentIndex, 0, "Up and Down do nothing along the top");
         compare(picks, [1, 6, 0, 6, 0]);
         const ring = Array.from(titleOf(pivot, 0).children).find(child => child.onFill !== undefined);
         verify(ring.visible, "the ring is on the active title");
@@ -228,6 +285,14 @@ TestCase {
         compare(pivot.currentIndex, 0, "Right does nothing down the side");
     }
 
+    function test_a_title_under_the_pointer_darkens() {
+        const pivot = createTemporaryObject(pivotComponent, testCase);
+        const word = findChild(titleOf(pivot, 2), "word");
+        compare(word.color, Tokens.color.textContrastMedium);
+        mouseMove(titleOf(pivot, 2));
+        tryCompare(word, "color", Tokens.color.textPrimary, Tokens.durationShort * 3);
+    }
+
     function test_a_click_picks_its_title() {
         const pivot = createTemporaryObject(pivotComponent, testCase);
         mouseClick(titleOf(pivot, 1));
@@ -239,20 +304,32 @@ TestCase {
         const facets = createTemporaryObject(facetsComponent, testCase);
         const shift = findChild(facets, "shift");
         const holder = findChild(facets, "holder");
+        const enter = findChild(facets, "enter");
+        compare(enter.duration, 0.75 * Tokens.durationModerate);
+        for (const step of enter.animations)
+            verify(sameCurve(step.easing.bezierCurve, Tokens.easeOut), "it eases out");
         verify(findChild(facets, "first").visible);
         verify(!findChild(facets, "second").visible);
         facets.currentIndex = 2;
         verify(!findChild(facets, "first").visible, "the one left goes at once");
         verify(findChild(facets, "third").visible);
-        verify(shift.x > 0 && shift.x <= Tokens.slideDistance, "forward: from the trailing edge");
+        compare(shift.x, Tokens.slideDistance, "forward: from slide-distance at the trailing edge");
         verify(holder.opacity < 1);
         wait(0.75 * Tokens.durationModerate / 2);
         verify(shift.x > 0, "still moving halfway");
         tryCompare(shift, "x", 0, Tokens.durationModerate * 2);
         compare(holder.opacity, 1);
         facets.currentIndex = 1;
-        verify(shift.x < 0, "back: from the leading edge");
+        compare(shift.x, -Tokens.slideDistance, "back: from slide-distance at the leading edge");
         tryCompare(shift, "x", 0, Tokens.durationModerate * 2);
+    }
+
+    function test_the_first_display_of_facets_stands_still() {
+        const facets = createTemporaryObject(facetsComponent, testCase, { currentIndex: 2 });
+        verify(findChild(facets, "third").visible);
+        verify(!findChild(facets, "first").visible);
+        compare(findChild(facets, "shift").x, 0);
+        compare(findChild(facets, "holder").opacity, 1);
     }
 
     function test_under_reduced_motion_everything_lands_at_once() {

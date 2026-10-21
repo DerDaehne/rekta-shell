@@ -8,6 +8,8 @@ Item {
 
     property int currentIndex: 0
     property int previousIndex: 0
+    // The first display stands still; only a change of facet slides (motion.md, "Next item, same place").
+    property bool shown: false
     default property alias content: holder.data
 
     function showChosen() {
@@ -17,6 +19,8 @@ Item {
 
     onCurrentIndexChanged: {
         showChosen();
+        if (!shown)
+            return;
         shift.x = (currentIndex > previousIndex ? 1 : -1) * Tokens.slideDistance;
         holder.opacity = 0;
         enter.restart();
@@ -25,6 +29,7 @@ Item {
     Component.onCompleted: {
         previousIndex = currentIndex;
         showChosen();
+        shown = true;
     }
 
     Item {
@@ -45,11 +50,14 @@ Item {
     ParallelAnimation {
         id: enter
 
+        objectName: "enter"
+        readonly property real duration: 0.75 * Tokens.durationModerate
+
         NumberAnimation {
             target: shift
             property: "x"
             to: 0
-            duration: 0.75 * Tokens.durationModerate
+            duration: enter.duration
             easing.type: Easing.Bezier
             easing.bezierCurve: Tokens.easeOut
         }
@@ -57,7 +65,7 @@ Item {
             target: holder
             property: "opacity"
             to: 1
-            duration: 0.75 * Tokens.durationModerate
+            duration: enter.duration
             easing.type: Easing.Bezier
             easing.bezierCurve: Tokens.easeOut
         }

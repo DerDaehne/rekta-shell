@@ -2,8 +2,9 @@ pragma Singleton
 import QtQuick
 
 // Fixed values Rekta Design keeps as literals rather than tokens: its fixed geometry, the same in every theme and
-// density (rekta.css, header), and the motion of the loading line and the dots, which has no tokens yet. Each value
-// names the rule it comes from in rekta.css at the pinned commit.
+// density (rekta.css, header), the motion of the loading line and the dots, which has no tokens yet, and the CSS
+// timing keywords Rekta uses where it has no curve token (ease-in-out). Each value names the rule it comes from in
+// rekta.css at the pinned commit.
 QtObject {
     // `.rk-rows > li { border-top: 1px solid var(--rk-text-contrast-low) }` (rekta.css:69)
     readonly property real hairline: 1

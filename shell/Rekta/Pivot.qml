@@ -38,6 +38,9 @@ Item {
         let x = 0, left = 0, span = 0, previous = 0;
         for (let k = 0; k < count; k++) {
             const title = repeater.itemAt(k) as PivotTitleBox;
+            // While the repeater is still creating its titles, the strip waits at its start.
+            if (!title)
+                return 0;
             const w = k === currentIndex ? title.restingWidth : title.restingWidth * title.ratio;
             if (k === currentIndex - 1)
                 previous = x;
@@ -108,6 +111,7 @@ Item {
         NumberAnimation {
             id: glideAnimation
 
+            objectName: "glide"
             target: strip
             property: "contentX"
             duration: Tokens.durationPivotGlide
@@ -146,6 +150,8 @@ Item {
         // The width the title takes at the active size; an inactive one takes this times the ratio.
         readonly property real restingWidth: word.implicitWidth
         readonly property real ratio: pivot.down ? 1 : pivot.inactiveSize / pivot.activeSize
+        // A title under the pointer darkens like the active one (rekta.css:1020).
+        readonly property bool lit: active || hover.hovered
 
         objectName: `title-${index}`
         width: pivot.down ? word.implicitWidth + Tokens.spaceM : word.implicitWidth * word.shrink
@@ -174,7 +180,7 @@ Item {
             font.weight: Tokens.fontWeightLight
             lineHeightMode: Text.ProportionalHeight
             lineHeight: Tokens.lineHeightNav
-            color: title.active ? Tokens.color.textPrimary : Tokens.color.textContrastMedium
+            color: title.lit ? Tokens.color.textPrimary : Tokens.color.textContrastMedium
 
             Behavior on x {
                 NumberAnimation {
@@ -198,6 +204,10 @@ Item {
                     easing.bezierCurve: pivot.down ? Geometry.easeInOut : Tokens.easeBase
                 }
             }
+        }
+
+        HoverHandler {
+            id: hover
         }
 
         // Each title's hit area is at least touch-target tall (rekta.css:167–169).
