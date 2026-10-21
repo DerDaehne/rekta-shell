@@ -120,4 +120,34 @@ QtObject {
     readonly property real tipPaddingY: 4
     // placeTip(): `gap = 6` between a control and its tip (rekta.js:2549)
     readonly property real tipGap: 6
+
+    // The place change (motion.md:11), whose angles, curves and shares have no tokens yet.
+    // `:root { --_rk-turn-out: 60deg; --_rk-turn-in: 70deg; --_rk-ease-turn-out: cubic-bezier(0.35, 0, 0.65, 0.6);
+    // --_rk-ease-turn-in: cubic-bezier(0.22, 0.9, 0.6, 0.98) }` (rekta.css:975)
+    readonly property real turnOutAngle: 60
+    readonly property real turnInAngle: 70
+    readonly property var easeTurnOut: [0.35, 0, 0.65, 0.6, 1, 1]
+    readonly property var easeTurnIn: [0.22, 0.9, 0.6, 0.98, 1, 1]
+    // `@keyframes rk-turn-out { 40% { opacity: 1 } }`, `@keyframes rk-turn-in { 35% { opacity: 1 } }` (rekta.css:988–1011)
+    readonly property real turnOutWhole: 0.4
+    readonly property real turnInWhole: 0.35
+    // `heft(r) = min(1.4, max(0.5, 0.8 × (area / 22500)^0.35))`, 22500 being a tile-unit square (rekta.js:375)
+    readonly property real heftAtTile: 0.8
+    readonly property real heftExponent: 0.35
+    readonly property real heftMin: 0.5
+    readonly property real heftMax: 1.4
+    // A part starts `(h - 0.5) × 6 × stagger + min(n, 6) × stagger / 2` after the turn, the n-th of its heft, which
+    // rounds to 1/20 (rekta.js:378–386)
+    readonly property real heftStaggerSteps: 6
+    readonly property int sameHeftSteps: 6
+    readonly property real sameHeftStagger: 0.5
+    readonly property real sameHeftWithin: 0.05
+    // A row is the parts whose tops round alike to 8px; one flush with the clipping top (within 2px) turns from its top
+    // (rekta.js:399, 432, 438)
+    readonly property real turnRowStep: 8
+    readonly property real turnFlushTop: 2
+    // `perspective = turnstile-perspective + 1.2 × the row's reach from the edge` (rekta.js:443)
+    readonly property real turnPerspectivePerReach: 1.2
+    // The next place starts when the last part of the one leaving is 75% through (rekta.js:489)
+    readonly property real turnOverlap: 0.75
 }

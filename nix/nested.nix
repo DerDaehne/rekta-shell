@@ -5,6 +5,7 @@
   kdePackages,
   dbus,
   rekta-shell,
+  rekta-kwin,
 }:
 
 # A KWin of its own, headless in a virtual framebuffer or, with --window, as a window in the running desktop. It starts
@@ -34,10 +35,15 @@ writeShellApplication {
     [[ "$outputs" =~ ^[1-9]$ ]] || usage
     [[ "$size" =~ ^[0-9]+x[0-9]+$ ]] || usage
 
-    # The working tree's shell when run from the repository (Quickshell reloads it on every change), else the package's.
+    # The working tree's shell and KWin effects when run from the repository (Quickshell reloads the shell on every
+    # change), else the packages'.
     shell_dir=${rekta-shell}/share/rekta-shell
+    effects_dir=${rekta-kwin}/share/kwin/effects
+    kwin_defaults=${rekta-kwin}/etc/xdg/kwinrc
     if [ -f shell/shell.qml ] && [ -f flake.nix ]; then
       shell_dir="$PWD/shell"
+      effects_dir="$PWD/kwin/effects"
+      kwin_defaults="$PWD/kwin/kwinrc"
     fi
 
     # Headless by default: KWin renders into a virtual framebuffer and never learns the desktop's display.
@@ -66,8 +72,11 @@ writeShellApplication {
     trap cleanup EXIT
     trap 'exit 130' INT TERM
 
-    mkdir -p "$home/.config" "$home/.local/share/applications" "$home/.local/state" "$home/.cache" "$home/xdg"
+    mkdir -p "$home/.config" "$home/.local/share/applications" "$home/.local/share/kwin" "$home/.local/state" "$home/.cache" "$home/xdg"
     mkdir -m 700 "$home/runtime"
+    # The rekta session's KWin: its effects, and its defaults beneath the user's kwinrc.
+    ln -s "$effects_dir" "$home/.local/share/kwin/effects"
+    cp "$kwin_defaults" "$home/xdg/kwinrc"
     session=(
       PATH="${
         lib.makeBinPath [
@@ -104,7 +113,8 @@ writeShellApplication {
     printf '%s\n' "''${session[@]}" "WAYLAND_DISPLAY=$socket" >"$home/session.env"
 
     echo "rekta-nested: shell from $shell_dir, HOME $home"
-    env -i "''${session[@]}" "''${host_display[@]}" kwin_wayland "''${backend[@]}" --socket "$socket" \
+    # The effects take their values from the shell's Rekta module.
+    env -i "''${session[@]}" "''${host_display[@]}" QML_IMPORT_PATH="$shell_dir" kwin_wayland "''${backend[@]}" --socket "$socket" \
       --width "''${size%x*}" --height "''${size#*x}" --output-count "$outputs" \
       --no-lockscreen --no-global-shortcuts --no-kactivities \
       -- "$launcher" &

@@ -1,0 +1,14 @@
+{
+    "KPackageStructure": "KWin/Effect",
+    "KPlugin": {
+        "Category": "Virtual Desktop Switching Animation",
+        "Description": "Turns the windows of a virtual desktop out and those of the next one in, as Rekta Design's place change",
+        "EnabledByDefault": false,
+        "Id": "rekta-turnstile",
+        "License": "MIT",
+        "Name": "Rekta turnstile"
+    },
+    "X-KDE-Ordering": 50,
+    "X-KWin-Exclusive-Category": "desktop-animations",
+    "X-Plasma-API": "declarativescript"
+}
