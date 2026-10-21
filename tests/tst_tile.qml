@@ -224,6 +224,19 @@ TestCase {
         tryVerify(() => !tile.pressed);
     }
 
+    function test_enter_that_opens_a_place_taking_the_focus_still_shows_the_whole_sink() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
+        const place = createTemporaryObject(tileComponent, testCase, { opens: true, x: 500 });
+        tile.activated.connect(() => place.forceActiveFocus());
+        let deepest = 0;
+        tile.sinkChanged.connect(() => deepest = Math.max(deepest, tile.sink));
+        tile.forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        verify(place.activeFocus, "the place took the focus");
+        tryVerify(() => !tile.pressed, Tokens.durationPress * 3);
+        verify(deepest > 0.5, `it sank (to ${deepest})`);
+    }
+
     function test_pressed_in_the_middle_it_sinks_straight_back() {
         const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
         mousePress(tile, tile.width / 2, tile.height / 2);

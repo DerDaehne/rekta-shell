@@ -1,7 +1,7 @@
 import QtQuick
 import "Status.js" as Status
 
-// A tile (tiles.md; rekta.css:82–94, :116–126): its whole area is one fill, and the fill is its status. It opens
+// A tile (tiles.md; rekta.css:81–94, :115–125): its whole area is one fill, and the fill is its status. It opens
 // something or it only informs; it never changes data. A tile that opens nudges back where it is pressed, by up to
 // tile-tilt, and shrinks to tile-press-scale (motion.md, "Press"; rekta.js press()). Its content sits at the bottom.
 Item {
@@ -15,7 +15,7 @@ Item {
     property bool opens: false
     property int columns: 1
     property int rows: 1
-    // On a status fill only the primary text colour clears AA; Status.secondaryInk() reads this (rekta.css:64–66).
+    // On a status fill only the primary text colour clears AA; Status.secondaryInk() reads this (rekta.css:63–65).
     readonly property bool statusFill: status !== ""
     readonly property bool pressed: press.held
     // Where it was pressed, -1 to 1 from the centre; 0 0 for the keyboard.
@@ -50,7 +50,7 @@ Item {
     }
 
     // perspective(turnstile-perspective) rotateX(-py · tilt) rotateY(px · tilt) scale(press-scale) around the centre
-    // (rekta.css:116–117), flattened to the item's plane as Qt's own Rotation does.
+    // (rekta.css:115–116), flattened to the item's plane as Qt's own Rotation does.
     transform: Matrix4x4 {
         matrix: {
             const rad = Math.PI / 180;
@@ -164,8 +164,12 @@ Item {
         press.release(false);
     }
 
-    onActiveFocusChanged: if (!activeFocus)
-        press.release(true)
+    // Enter may open something that takes the focus; the press still plays out, as rekta.js lets go on any keyup
+    // and no sooner than duration-press.
+    onActiveFocusChanged: {
+        if (!activeFocus)
+            press.release(false);
+    }
 
     // The press, after rekta.js press() (:255–330): a mouse presses at once, a finger after tap-delay; moving past the
     // slop gives up; a quick tap still shows the whole sink, since the press lets go no sooner than duration-press.
@@ -212,7 +216,7 @@ Item {
     }
 
     // While pressed, the hit area reaches space-m past the tile, so a release on an edge that sank away still lands
-    // (rekta.css:121–124). A press there before the tile is pressed belongs to whatever lies beneath.
+    // (rekta.css:119–123). A press there before the tile is pressed belongs to whatever lies beneath.
     MouseArea {
         id: area
 
