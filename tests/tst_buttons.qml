@@ -91,7 +91,18 @@ TestCase {
         }
     }
 
+    // The default accent is ink, the text colour, and on-accent is the ground; colour tests give both their own colour.
+    property color inkLight
+    property color onInkLight
+
+    function initTestCase() {
+        inkLight = Tokens.light.accent;
+        onInkLight = Tokens.light.textOnAccent;
+    }
+
     function cleanup() {
+        Tokens.light.accent = inkLight;
+        Tokens.light.textOnAccent = onInkLight;
         Prefs.motion = "system";
         Prefs.theme = "system";
         Prefs.density = "auto";
@@ -99,6 +110,9 @@ TestCase {
     }
 
     function test_each_kind_takes_its_colours_from_the_tokens() {
+        Prefs.theme = "light";
+        Tokens.light.accent = "#1f5fd1";
+        Tokens.light.textOnAccent = "#fffbe0";
         const expected = [
             ["", "transparent", Tokens.color.textPrimary, Tokens.color.textPrimary],
             ["primary", Tokens.color.accent, Tokens.color.accent, Tokens.color.textOnAccent],
@@ -172,7 +186,8 @@ TestCase {
         verify(box.width > width, "a longer one may grow, as min-width does");
     }
 
-    function test_the_pending_line_waits_for_busy_delay_and_stays_for_busy_min() {
+    // rekta.js pending() shows the line after busy-delay and takes it away with the label, without busy-min.
+    function test_the_pending_line_waits_for_busy_delay_and_goes_with_the_label() {
         const button = createTemporaryObject(buttonComponent, testCase);
         const line = findChild(button, "pendingLine");
         const box = findChild(button, "box");
@@ -180,13 +195,60 @@ TestCase {
         compare(line.width, box.width - 4);
         button.pending = true;
         wait(Tokens.durationBusyDelay / 2);
-        verify(!line.shown, "not before busy-delay");
-        tryCompare(line, "shown", true, Tokens.durationBusyDelay * 2);
+        verify(!line.visible, "not before busy-delay");
+        tryCompare(line, "visible", true, Tokens.durationBusyDelay * 2);
         button.pending = false;
         compare(findChild(button, "label").text, "save schedule");
-        wait(Tokens.durationBusyMin / 2);
-        verify(line.shown, "stays for busy-min");
-        tryCompare(line, "shown", false, Tokens.durationBusyMin * 2);
+        verify(!line.visible, "the line goes with the label");
+    }
+
+    function test_a_second_run_waits_busy_delay_again() {
+        const button = createTemporaryObject(buttonComponent, testCase, { pending: true });
+        const line = findChild(button, "pendingLine");
+        tryCompare(line, "visible", true, Tokens.durationBusyDelay * 2);
+        button.pending = false;
+        wait(50);
+        button.pending = true;
+        verify(!line.visible, "no flash: busy-delay holds again");
+        tryCompare(line, "visible", true, Tokens.durationBusyDelay * 2);
+    }
+
+    function test_a_slow_click_is_still_a_click() {
+        const button = createTemporaryObject(buttonComponent, testCase);
+        const clicks = createTemporaryObject(spy, testCase, { target: button });
+        const box = findChild(button, "box");
+        mousePress(box);
+        wait(1500);
+        mouseRelease(box);
+        compare(clicks.count, 1);
+    }
+
+    function test_pending_replaces_the_glyph_with_the_words() {
+        const button = createTemporaryObject(buttonComponent, testCase, { icon: "plus", text: "add", pendingText: "add…" });
+        const glyph = findChild(button, "glyph");
+        const box = findChild(button, "box");
+        const label = findChild(button, "label");
+        const width = box.width;
+        verify(glyph.visible);
+        button.pending = true;
+        verify(!glyph.visible);
+        compare(label.text, "add…");
+        compare(box.width, width, "a shorter pending label keeps the resting width");
+        button.pendingText = "adding the whole schedule…";
+        compare(box.width, label.implicitWidth + 2 * (Tokens.controlPadding + 2), "the glyph leaves no room behind");
+        const icon = createTemporaryObject(iconComponent, testCase, { pending: true });
+        verify(!findChild(icon, "glyph").visible);
+        compare(findChild(icon, "label").text, "…");
+        compare(findChild(icon, "box").width, Tokens.controlHeight, "the icon button stays square");
+    }
+
+    function test_the_reason_sits_on_the_line_of_the_words() {
+        const button = createTemporaryObject(buttonComponent, testCase, { disabledReason: "no changes" });
+        const box = findChild(button, "box");
+        const why = findChild(button, "why");
+        compare(why.y + why.baselineOffset, box.y + box.baselineOffset);
+        const label = findChild(button, "label");
+        compare(box.baselineOffset, box.mapFromItem(label, 0, label.baselineOffset).y);
     }
 
     function test_under_reduced_motion_the_pending_line_stands_still() {

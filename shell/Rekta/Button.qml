@@ -1,6 +1,6 @@
 import QtQuick
 
-// A button (forms.md, "One size of control"; rekta.css:211–232). One height per density; the kind ranks it, not its
+// A button (forms.md, "One size of control"; rekta.css:211–231). One height per density; the kind ranks it, not its
 // size: the primary takes the accent, a quiet one has no frame, a destructive one is framed in the error colour and
 // never filled. A running action says what it does at the same width and runs the line under it (states.md, "Pending
 // actions"); a button that cannot act stays focusable and says why beside it (forms.md, "Disabled controls say why").
@@ -18,7 +18,7 @@ Row {
     property string disabledReason
     // In a list row or a table an icon button takes the row's height.
     property bool inRow: false
-    // A running action refuses clicks but keeps its colours (rekta.css:221–222).
+    // A running action refuses clicks but keeps its colours (rekta.css:223–225).
     readonly property bool refuses: pending || disabledReason !== ""
     readonly property bool disabled: disabledReason !== "" && !pending
     readonly property bool hovered: hover.hovered
@@ -56,8 +56,10 @@ Row {
     Keys.onPressed: event => {
         if (![Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
             return;
-        click();
         event.accepted = true;
+        // A held key acts once.
+        if (!event.isAutoRepeat)
+            click();
     }
 
     Item {
@@ -69,8 +71,10 @@ Row {
 
         objectName: "box"
         anchors.verticalCenter: parent.verticalCenter
+        // The words' baseline, so the reason beside it sits on the same line.
+        baselineOffset: content.y + label.y + label.baselineOffset
         // Pending keeps at least the width the resting label gave it, like rekta.js pending() sets min-width.
-        width: square ? side : glyph + Math.max(label.implicitWidth, resting.implicitWidth) + 2 * (Tokens.controlPadding + Geometry.buttonBorder)
+        width: square ? side : Math.max(glyph + resting.implicitWidth, (button.pending ? 0 : glyph) + label.implicitWidth) + 2 * (Tokens.controlPadding + Geometry.buttonBorder)
         height: square ? side : Tokens.controlHeight
 
         Rectangle {
@@ -129,8 +133,10 @@ Row {
             spacing: Tokens.spaceS
 
             Icon {
+                objectName: "glyph"
                 anchors.verticalCenter: parent.verticalCenter
-                visible: button.icon !== ""
+                // rekta.js pending() replaces the whole content, glyph included, with the words.
+                visible: button.icon !== "" && !button.pending
                 name: button.icon
                 size: Geometry.buttonGlyph
                 color: button.ink
@@ -158,13 +164,19 @@ Row {
             font: label.font
         }
 
-        // `inset: auto 0 -6px` on the padding box (rekta.css:682): under the button, as wide as inside its frame.
+        // `inset: auto 0 -6px` on the padding box (rekta.css:681): under the button, as wide as inside its frame.
         BusyLine {
             objectName: "pendingLine"
             x: Geometry.buttonBorder
             y: box.height - Geometry.buttonBorder + Geometry.pendingLineBelow - height
             width: box.width - 2 * Geometry.buttonBorder
             busy: button.pending
+            // pending() takes the line away with the label (rekta.js:1631–1649): no busy-min under a button, and a
+            // new run waits busy-delay again.
+            onBusyChanged: {
+                if (!busy)
+                    shown = false;
+            }
         }
 
         FocusRing {
@@ -173,6 +185,9 @@ Row {
 
         TapHandler {
             id: tap
+
+            // A slow click is still a click: no long press on a button.
+            longPressThreshold: 0
 
             onTapped: button.click()
         }
@@ -186,7 +201,7 @@ Row {
 
     Hint {
         objectName: "why"
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.baseline: box.baseline
         visible: button.disabledReason !== ""
         text: button.disabledReason
     }

@@ -74,9 +74,9 @@ QtObject {
     readonly property real segmentBorder: 2
     // `.rk-btn { border: 2px solid currentColor }` (rekta.css:213)
     readonly property real buttonBorder: 2
-    // `.rk-btn[data-rk-pending]::after { inset: auto 0 -6px }` (rekta.css:682): the line runs under the button and ends
+    // `.rk-btn[data-rk-pending]::after { inset: auto 0 -6px }` (rekta.css:681): the line runs under the button and ends
     // 6px below its padding box
     readonly property real pendingLineBelow: 6
-    // `.rk-btn--icon > svg { width: 20px; height: 20px }` (rekta.css:230)
+    // `.rk-btn--icon > svg { width: 20px; height: 20px }` (rekta.css:229)
     readonly property real buttonGlyph: 20
 }

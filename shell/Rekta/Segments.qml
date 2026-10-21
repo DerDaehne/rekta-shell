@@ -63,6 +63,10 @@ Row {
     }
 
     Item {
+        id: group
+
+        // The words' baseline, so the reason beside it sits on the same line.
+        baselineOffset: repeater.count > 0 ? (repeater.itemAt(0) as Item).baselineOffset : 0
         implicitWidth: row.implicitWidth
         implicitHeight: Tokens.controlHeight
 
@@ -116,6 +120,7 @@ Row {
                 delegate: Rectangle {
                     id: option
 
+                    baselineOffset: word.y + word.baselineOffset
                     required property string modelData
                     required property int index
                     readonly property bool chosen: index === segments.currentIndex
@@ -179,7 +184,7 @@ Row {
 
     Hint {
         objectName: "why"
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.baseline: group.baseline
         visible: segments.disabled
         text: segments.disabledReason
     }

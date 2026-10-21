@@ -165,6 +165,9 @@ TestCase {
         verify(!toggle.checked);
         compare(findChild(toggle, "track").border.color, Tokens.color.disabled);
         compare(findChild(toggle, "word").color, Tokens.color.textContrastHigh, "the word keeps its colour");
+        const why = findChild(toggle, "why");
+        const word = findChild(toggle, "word");
+        compare(why.y + why.baselineOffset, word.y + word.baselineOffset, "the reason sits on the line of the word");
         compare(toggle.Accessible.description, "set by the administrator");
     }
 
@@ -313,6 +316,8 @@ TestCase {
         const why = findChild(segments, "why");
         verify(why.visible);
         compare(why.text, "one output only");
+        const first = Array.from(optionsOf(segments)[0].children).find(child => child.text === "light");
+        compare(segments.mapFromItem(why, 0, why.baselineOffset).y, segments.mapFromItem(first, 0, first.baselineOffset).y, "the reason sits on the line of the words");
         segments.forceActiveFocus();
         keyClick(Qt.Key_Right);
         compare(segments.currentIndex, 0);

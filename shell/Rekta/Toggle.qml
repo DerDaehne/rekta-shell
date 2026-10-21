@@ -109,6 +109,8 @@ Item {
         }
 
         Text {
+            id: word
+
             objectName: "word"
             anchors.verticalCenter: parent.verticalCenter
             width: Math.max(implicitWidth, Geometry.toggleWordWidth * font.pixelSize)
@@ -121,7 +123,8 @@ Item {
         }
 
         Hint {
-            anchors.verticalCenter: parent.verticalCenter
+            objectName: "why"
+            anchors.baseline: word.baseline
             visible: toggle.disabled
             text: toggle.disabledReason
         }
