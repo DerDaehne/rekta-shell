@@ -4,6 +4,7 @@ import "Status.js" as Status
 // A tile (tiles.md; rekta.css:81–94, :115–125): its whole area is one fill, and the fill is its status. It opens
 // something or it only informs; it never changes data. A tile that opens nudges back where it is pressed, by up to
 // tile-tilt, and shrinks to tile-press-scale (motion.md, "Press"; rekta.js press()). Its content sits at the bottom.
+// It builds in when its place arrives (motion.md, "Tiles building in"), and news() shows what is new (TileNews).
 Item {
     id: tile
 
@@ -15,6 +16,13 @@ Item {
     property bool opens: false
     property int columns: 1
     property int rows: 1
+    // How its place arrives (behaviour.md, `data-rk-arriving`), set by the place: "arriving" builds the tile in,
+    // "turned" does not (the turn was the arrival; sparklines still draw in), "" once the arrival is over.
+    property string arrival: ""
+    // Its place in the build-in order; past ten tiles they rise together.
+    property int buildIndex: 0
+    // True while its live region holds still: news waits (live.md, "Holding still").
+    property bool held: false
     // On a status fill only the primary text colour clears AA; Status.secondaryInk() reads this (rekta.css:63–65).
     readonly property bool statusFill: status !== ""
     readonly property bool pressed: press.held
@@ -32,7 +40,7 @@ Item {
     readonly property int patterns: {
         let count = word !== "" ? 1 : 0;
         for (const item of column.children) {
-            if (item.visible && ((item as Stat) || (item as Progress) || (item as TileMessage)))
+            if (item.visible && ((item as Stat) || (item as Sparkline) || (item as Progress) || (item as TileMessage)))
                 count++;
         }
         return count;
@@ -46,10 +54,32 @@ Item {
             console.warn(`Tile: ${patterns} content patterns; a tile combines at most two or three, more needs a place of its own (tiles.md)`);
     }
 
+    // Live tile news: kind "peek" for a new number, "flip" for a new status, "" for a continuous reading; change()
+    // makes the change at the moment the motion needs it.
+    function news(kind: string, change: var) {
+        liveNews.tell(kind, change);
+    }
+
+    // Only an arriving place builds in: never after a turn, never for new live data. Each tile rises duration-stagger
+    // after the one before it, from ten on all together (rekta.css:91).
+    function followArrival() {
+        if (arrival !== "arriving") {
+            buildInRun.complete();
+            return;
+        }
+        buildIn.progress = 0;
+        buildInRun.restart();
+    }
+
     onPatternsChanged: warnIfCrowded()
+    onArrivalChanged: followArrival()
+    Component.onCompleted: followArrival()
 
     implicitWidth: columns * Tokens.tileUnit + (columns - 1) * Tokens.spaceS
     implicitHeight: rows * Tokens.tileUnit + (rows - 1) * Tokens.spaceS
+    opacity: buildIn.progress
+    // A peek's old number leaves through the tile's edge.
+    clip: liveNews.peeking
     activeFocusOnTab: opens
     Accessible.role: opens ? Accessible.Button : Accessible.Grouping
     Accessible.description: word
@@ -66,18 +96,19 @@ Item {
         }
     }
 
-    // perspective(turnstile-perspective) rotateX(-py · tilt) rotateY(px · tilt) scale(press-scale) around the centre
-    // (rekta.css:115–116), flattened to the item's plane as Qt's own Rotation does.
+    // translateY(build-in rise) perspective(turnstile-perspective) rotateX(-py · tilt + flip) rotateY(px · tilt)
+    // scale(press-scale) around the centre (rekta.css:110, :115–116), flattened to the item's plane as Qt's own
+    // Rotation does.
     transform: Matrix4x4 {
         matrix: {
             const rad = Math.PI / 180;
-            const ax = tile.tiltX * rad;
+            const ax = (tile.tiltX + liveNews.flipAngle) * rad;
             const ay = tile.tiltY * rad;
             const s = tile.pressScale;
             const cx = tile.width / 2;
             const cy = tile.height / 2;
             const toCentre = Qt.matrix4x4(1, 0, 0, -cx, 0, 1, 0, -cy, 0, 0, 1, 0, 0, 0, 0, 1);
-            const back = Qt.matrix4x4(1, 0, 0, cx, 0, 1, 0, cy, 0, 0, 1, 0, 0, 0, 0, 1);
+            const back = Qt.matrix4x4(1, 0, 0, cx, 0, 1, 0, cy + (1 - buildIn.progress) * Geometry.buildInRise, 0, 0, 1, 0, 0, 0, 0, 1);
             const perspective = Qt.matrix4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, -1 / Tokens.turnstilePerspective, 1);
             const rotateX = Qt.matrix4x4(1, 0, 0, 0, 0, Math.cos(ax), -Math.sin(ax), 0, 0, Math.sin(ax), Math.cos(ax), 0, 0, 0, 0, 1);
             const rotateY = Qt.matrix4x4(Math.cos(ay), 0, Math.sin(ay), 0, 0, 1, 0, 0, -Math.sin(ay), 0, Math.cos(ay), 0, 0, 0, 0, 1);
@@ -131,6 +162,15 @@ Item {
         anchors.bottom: parent.bottom
         anchors.margins: Geometry.tilePadding
         spacing: Tokens.spaceS
+    }
+
+    TileNews {
+        id: liveNews
+
+        objectName: "news"
+        anchors.fill: parent
+        content: column
+        held: tile.held
     }
 
     Text {
@@ -216,6 +256,34 @@ Item {
             }
             letGo.interval = wait;
             letGo.restart();
+        }
+    }
+
+    // Building in: 0 to 1 over duration-moderate, eased in; it fades up and rises by buildInRise. Before its turn
+    // comes it waits unseen, as the CSS animation fills backwards.
+    QtObject {
+        id: buildIn
+
+        objectName: "buildIn"
+        property real progress: 1
+    }
+
+    SequentialAnimation {
+        id: buildInRun
+
+        objectName: "buildInRun"
+
+        PauseAnimation {
+            duration: Math.min(tile.buildIndex, Geometry.buildInStaggerCap) * Tokens.durationStagger
+        }
+        NumberAnimation {
+            target: buildIn
+            property: "progress"
+            from: 0
+            to: 1
+            duration: Tokens.durationModerate
+            easing.type: Easing.Bezier
+            easing.bezierCurve: Tokens.easeIn
         }
     }
 

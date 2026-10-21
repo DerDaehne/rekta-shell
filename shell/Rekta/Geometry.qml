@@ -2,9 +2,9 @@ pragma Singleton
 import QtQuick
 
 // Fixed values Rekta Design keeps as literals rather than tokens: its fixed geometry, the same in every theme and
-// density (rekta.css, header), the motion of the loading line, the dots and the place change, which has no tokens
-// yet, and the CSS timing keywords Rekta uses where it has no curve token (ease-in-out). Each value names the rule
-// it comes from in rekta.css (or rekta.js) at the pinned commit.
+// density (rekta.css, header), the motion of the loading line, the dots, the place change and live tile news, which
+// has no tokens yet, and the CSS timing keywords Rekta uses where it has no curve token (ease-in-out). Each value names
+// the rule it comes from in rekta.css (or rekta.js) at the pinned commit.
 QtObject {
     // `.rk-rows > li { border-top: 1px solid var(--rk-text-contrast-low) }` (rekta.css:69)
     readonly property real hairline: 1
@@ -150,4 +150,19 @@ QtObject {
     readonly property real turnPerspectivePerReach: 1.2
     // The next place starts when the last part of the one leaving is 75% through (rekta.js:489)
     readonly property real turnOverlap: 0.75
+
+    // `@keyframes rk-build-in { from { opacity: 0; transform: translateY(6px) } }`, delayed by
+    // `min(var(--rk-i, 0), 10) * var(--rk-duration-stagger)` (rekta.css:110, :91)
+    readonly property real buildInRise: 6
+    readonly property int buildInStaggerCap: 10
+    // A peek moves the stat by `translateY(40%)` of its own height (rekta.js:3473–3474); a flip turns the tile to
+    // `rotateX(-90deg)` and back from `rotateX(90deg)` (rekta.js:3456, :3460)
+    readonly property real peekShift: 0.4
+    readonly property real flipAngle: 90
+    // `.rk-spark polyline { stroke-width: 2; stroke-linejoin: round }` in the sparkline's 200 × 28 box (rekta.css:140,
+    // :143); `[data-rk-live='stale'] .rk-spark { opacity: 0.35 }` (rekta.css:501)
+    readonly property real sparkBoxWidth: 200
+    readonly property real sparkBoxHeight: 28
+    readonly property real sparkStroke: 2
+    readonly property real sparkStaleOpacity: 0.35
 }
