@@ -42,9 +42,15 @@ writeShellApplication {
     [[ "$host_display" == /* ]] || host_display="$XDG_RUNTIME_DIR/$host_display"
 
     home="$(mktemp -d -t rekta-nested.XXXXXX)"
+    # Each step may find its process gone already; none of them may keep the next from running.
     cleanup() {
-      [ -n "''${kwin:-}" ] && kill "$kwin" 2>/dev/null && wait "$kwin" 2>/dev/null
-      [ -n "''${bus_pid:-}" ] && kill "$bus_pid" 2>/dev/null
+      if [ -n "''${kwin:-}" ]; then
+        kill "$kwin" 2>/dev/null || true
+        wait "$kwin" 2>/dev/null || true
+      fi
+      if [ -n "''${bus_pid:-}" ]; then
+        kill "$bus_pid" 2>/dev/null || true
+      fi
       rm -rf "$home"
     }
     trap cleanup EXIT
