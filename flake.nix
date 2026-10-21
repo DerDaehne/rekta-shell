@@ -53,6 +53,13 @@
           nested = app (pkgs.callPackage ./nix/nested.nix { inherit rekta-shell; });
           nested-shot = app (pkgs.callPackage ./nix/nested-shot.nix { });
         }
+        // pkgs.lib.optionalAttrs (pkgs.stdenv.hostPlatform.system == "x86_64-linux") {
+          vm = app (
+            pkgs.callPackage ./nix/run-test-vm.nix {
+              vm = self.nixosConfigurations.test-vm.config.system.build.vm;
+            }
+          );
+        }
       );
 
       devShells = eachSystem (pkgs: {
@@ -69,6 +76,8 @@
       });
 
       checks = eachSystem (pkgs: import ./nix/checks.nix { inherit pkgs self; });
+
+      nixosConfigurations.test-vm = nixpkgs.lib.nixosSystem { modules = [ ./nix/test-vm.nix ]; };
 
       formatter = eachSystem (pkgs: pkgs.nixfmt-tree);
     };

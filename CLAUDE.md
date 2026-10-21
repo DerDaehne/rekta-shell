@@ -111,6 +111,7 @@ nix build         # result/bin/rekta-shell, a wrapper around quickshell --path
 nix fmt           # formats the Nix files
 nix run .#nested -- [--outputs N] [--size WxH]   # KWin nested in the desktop, shell from the working tree, hot reload
 nix run .#nested-shot -- <file.png>              # screenshot of the whole nested desktop (all outputs)
+nix run .#vm                                     # throwaway NixOS VM with Plasma 6, started from the checkout root
 ```
 
 - `shell/Rekta/` is the QML library (module `Rekta`). `Tokens.qml` is generated from the
@@ -127,6 +128,13 @@ nix run .#nested-shot -- <file.png>              # screenshot of the whole neste
   bus without service activation. Never pass the desktop's environment, runtime
   directory or bus into it: its plugins and config leak in, and portals or wallets
   started there break the real session's services.
+- `nix run .#vm` is for what a nested session cannot show: session start,
+  systemd, the lock screen and global shortcuts. It logs in automatically as the
+  test user `rekta` (public test password `rekta`) and mounts the checkout's
+  `shell/` read-only at `/mnt/rekta-shell/shell`, so `qs --path
+  /mnt/rekta-shell/shell` runs the working tree. The disk image lives in a
+  temporary directory that is deleted when the VM exits; the VM is never built
+  by `nix flake check`.
 - The overlay (`overlays.default`) builds `rekta-shell` against the importing
   configuration's nixpkgs.
 
