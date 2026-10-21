@@ -109,7 +109,7 @@ People should understand intent and behaviour by reading the code.
 - Rekta Design is a flake input pinned to one commit (source only).
 
 ```sh
-nix flake check   # package, qmllint (warnings fail), token drift, QML tests, nixfmt --check
+nix flake check   # package, qmllint (warnings fail), token drift, QML tests, modules, nixfmt --check
 nix develop       # qs, qmllint, qmlformat, node, gitleaks, nixfmt, rekta-qmllint
 nix build         # result/bin/rekta-shell, a wrapper around quickshell --path
 nix fmt           # formats the Nix files
@@ -136,8 +136,13 @@ nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM
   (`XDG_SESSION_DESKTOP=rekta`, `PLASMA_DEFAULT_SHELL`, then `startplasma-wayland`),
   `rekta-shell.service` and the drop-ins that skip plasmashell and pull the shell into
   `plasma-workspace.target`. The package installs them with their store paths filled
-  in (`share/wayland-sessions`, `libexec`, `lib/systemd/user`); a NixOS system
-  registers it through `services.displayManager.sessionPackages` and `systemd.packages`.
+  in (`share/wayland-sessions`, `libexec`, `lib/systemd/user`).
+- `nixosModules.default` (`nix/nixos-module.nix`) registers that package as session
+  and systemd package once `programs.rekta-shell.enable` is set;
+  `homeManagerModules.default` (`nix/home-module.nix`) is the per-user counterpart.
+  Both build the package with the importing configuration's pkgs. The `nixos-module`
+  and `home-module` checks evaluate them: with defaults a system's `toplevel` stays
+  the same, enabled the session is registered. New options default to off.
 - The nested session is isolated: it starts from an empty environment (allow-list)
   with its own HOME, runtime and config directories and a session
   bus without service activation. Never pass the desktop's environment, runtime
@@ -155,7 +160,8 @@ nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM
   `QEMU_OPTS` or `SHARED_DIR` are ignored. The test user may `sudo` with its
   password.
 - The VM's SDDM offers "Plasma (Wayland)" and "rekta", the session from the
-  package: Plasma's services without plasmashell, `rekta-shell.service` in its
+  NixOS module (`programs.rekta-shell.enable`): Plasma's services without
+  plasmashell, `rekta-shell.service` in its
   place, with the shell as the VM was built (not the mounted working tree).
   Autologin starts Plasma.
   To switch, log out (`busctl --user call org.kde.Shutdown /Shutdown

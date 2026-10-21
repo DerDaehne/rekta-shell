@@ -9,17 +9,55 @@ Plasma services and KDE apps stay; plasmashell is replaced by an app bar, a
 full-screen start with live tiles, a command palette, a side panel,
 notifications and a lock screen in Rekta's language.
 
-**Status:** early development — nothing to install yet.
+**Status:** early development. The rekta session starts, but the shell shows
+no surface yet.
 
 ## Installation
 
-The flake provides `packages.<system>.rekta-shell` and `overlays.default`.
-Use the overlay, or set `inputs.rekta-shell.inputs.nixpkgs.follows = "nixpkgs"`,
-so the shell is built against your own nixpkgs and Quickshell shares Qt with
-your Plasma; `packages.<system>` alone uses this flake's own nixpkgs pin.
-A NixOS module and a home-manager module follow; every option will be off by
-default, so importing the flake changes nothing until a configuration enables
-it.
+On NixOS with Plasma 6, import the NixOS module and enable it. The display
+manager then offers the session "rekta" beside "Plasma"; Plasma itself stays
+as it is.
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    rekta-shell = {
+      url = "github:DerDaehne/rekta-shell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs =
+    { nixpkgs, rekta-shell, ... }:
+    {
+      nixosConfigurations.example = nixpkgs.lib.nixosSystem {
+        modules = [
+          ./configuration.nix
+          rekta-shell.nixosModules.default
+          {
+            services.desktopManager.plasma6.enable = true;
+            programs.rekta-shell.enable = true;
+          }
+        ];
+      };
+    };
+}
+```
+
+The module builds the shell with your system's nixpkgs, so Quickshell shares
+Qt with your Plasma. `homeManagerModules.default` offers the same
+`programs.rekta-shell.enable` per user; it puts the `rekta-shell` command into
+the user's profile and will carry per-user settings. Every option of both
+modules is off by default: importing them changes nothing until a
+configuration enables them.
+
+Without the modules, the flake provides `packages.<system>.rekta-shell` and
+`overlays.default`. The package carries the session as well: register it with
+`services.displayManager.sessionPackages` and `systemd.packages`. Use the
+overlay, or set `inputs.rekta-shell.inputs.nixpkgs.follows = "nixpkgs"`, so the
+shell is built against your own nixpkgs; `packages.<system>` alone uses this
+flake's own nixpkgs pin.
 
 ## Contributing
 
