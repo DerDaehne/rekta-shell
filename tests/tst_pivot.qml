@@ -291,6 +291,8 @@ TestCase {
         compare(word.color, Tokens.color.textContrastMedium);
         mouseMove(titleOf(pivot, 2));
         tryCompare(word, "color", Tokens.color.textPrimary, Tokens.durationShort * 3);
+        const hover = Array.from(titleOf(pivot, 2).data).find(child => child.cursorShape !== undefined);
+        compare(hover.cursorShape, Qt.PointingHandCursor, "the pointer becomes a hand");
     }
 
     function test_a_click_picks_its_title() {
@@ -306,8 +308,10 @@ TestCase {
         const holder = findChild(facets, "holder");
         const enter = findChild(facets, "enter");
         compare(enter.duration, 0.75 * Tokens.durationModerate);
-        for (const step of enter.animations)
+        for (const step of enter.animations) {
+            compare(step.duration, 0.75 * Tokens.durationModerate);
             verify(sameCurve(step.easing.bezierCurve, Tokens.easeOut), "it eases out");
+        }
         verify(findChild(facets, "first").visible);
         verify(!findChild(facets, "second").visible);
         facets.currentIndex = 2;

@@ -208,6 +208,8 @@ Item {
 
         HoverHandler {
             id: hover
+
+            cursorShape: Qt.PointingHandCursor
         }
 
         // Each title's hit area is at least touch-target tall (rekta.css:167–169).
