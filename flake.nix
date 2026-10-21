@@ -32,6 +32,18 @@
       packages = eachSystem (pkgs: {
         rekta-shell = pkgs.callPackage ./nix/package.nix { };
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
+        rekta-design-dist = pkgs.callPackage ./nix/rekta-design-dist.nix { src = rekta-design; };
+      });
+
+      apps = eachSystem (pkgs: {
+        tokens = {
+          type = "app";
+          program = pkgs.lib.getExe (
+            pkgs.callPackage ./nix/tokens-app.nix {
+              dist = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-design-dist;
+            }
+          );
+        };
       });
 
       devShells = eachSystem (pkgs: {

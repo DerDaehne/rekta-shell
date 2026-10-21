@@ -102,13 +102,17 @@ People should understand intent and behaviour by reading the code.
 - Rekta Design is a flake input pinned to one commit (source only).
 
 ```sh
-nix flake check   # builds the package, runs qmllint (warnings fail) and nixfmt --check
+nix flake check   # package, qmllint (warnings fail), token drift, QML tests, nixfmt --check
 nix develop       # qs, qmllint, qmlformat, node, gitleaks, nixfmt, rekta-qmllint
 nix build         # result/bin/rekta-shell, a wrapper around quickshell --path
 nix fmt           # formats the Nix files
 ```
 
-- `rekta-qmllint <files>` in the dev shell lints exactly like the flake check
+- `shell/Rekta/` is the QML library (module `Rekta`). `Tokens.qml` is generated from the
+  pinned Rekta Design and checked in: regenerate it with `nix run .#tokens`, never edit
+  it; the `tokens-drift` check fails when it differs. QML tests live in `tests/`
+  (`nix build .#checks.x86_64-linux.qml-tests -L`).
+- `rekta-qmllint -I shell <files>` in the dev shell lints exactly like the flake check
   (Qt and Quickshell on the import path, warnings fail).
 - The overlay (`overlays.default`) builds `rekta-shell` against the importing
   configuration's nixpkgs.
