@@ -8,11 +8,11 @@ KWin.WindowThumbnail {
     id: part
 
     required property var modelData
-    required property KWin.Output screen
     required property bool leaving
     required property bool back
 
-    readonly property KWin.Window window: modelData.window
+    readonly property var rect: modelData.part
+    readonly property KWin.Window window: rect.window
     readonly property real duration: modelData.duration
     // Forward, a leaving part swings its far side toward the viewer; the way back mirrors both turns.
     readonly property real direction: back ? 1 : -1
@@ -23,10 +23,10 @@ KWin.WindowThumbnail {
     signal landed
 
     client: window
-    x: window.x - screen.geometry.x
-    y: window.y - screen.geometry.y
-    width: window.width
-    height: window.height
+    x: rect.x
+    y: rect.y
+    width: rect.width
+    height: rect.height
     z: window.stackingOrder
     opacity: leaving ? 1 : 0
 
@@ -38,7 +38,7 @@ KWin.WindowThumbnail {
             y: 1
             z: 0
         }
-        origin.x: part.screen.geometry.x - part.window.x
+        origin.x: -part.rect.x
         origin.y: part.modelData.originY
         distanceToPlane: part.modelData.perspective
         angle: part.leaving ? part.restAngle : part.comingAngle
