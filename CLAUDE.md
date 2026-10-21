@@ -35,6 +35,9 @@ into the maintainer's NixOS configuration later, by the maintainer.
 - Build and check with `nix build` and `nix flake check`. Run the shell only in a
   nested KWin session with an isolated `HOME`, or in a VM built from the flake.
 - Stop every process you started (nested KWin, quickshell, VMs) before finishing.
+- Agents never open a window on the maintainer's desktop: the nested session
+  and the VM run headless by default. `--window` only when the maintainer asks
+  to watch.
 - NixOS and home-manager modules are opt-in: every option defaults to off, so
   importing the flake changes nothing until a configuration enables it.
 
@@ -110,11 +113,16 @@ nix flake check   # package, qmllint (warnings fail), token drift, QML tests, ni
 nix develop       # qs, qmllint, qmlformat, node, gitleaks, nixfmt, rekta-qmllint
 nix build         # result/bin/rekta-shell, a wrapper around quickshell --path
 nix fmt           # formats the Nix files
-nix run .#nested -- [--outputs N] [--size WxH]   # KWin nested in the desktop, shell from the working tree, hot reload
-nix run .#nested-shot -- <file.png>              # screenshot of the whole nested desktop (all outputs)
-nix run .#vm                                     # throwaway NixOS VM with Plasma 6, started from the checkout root
+nix run .#nested -- [--window] [--outputs N] [--size WxH]   # own KWin, shell from the working tree, hot reload
+nix run .#nested-shot -- <file.png>                         # screenshot of the whole nested desktop (all outputs)
+nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM with Plasma 6, started from the checkout root
 ```
 
+- Both run headless by default: the nested KWin renders into a virtual
+  framebuffer (`kwin_wayland --virtual`) and never gets the desktop's display,
+  the VM runs with `-display none`. Look at them with `nested-shot` or the
+  monitor's `screendump`. `--window` restores the window in the desktop (a
+  nested KWin window, QEMU's GTK window), which takes focus.
 - `shell/Rekta/` is the QML library (module `Rekta`). `Tokens.qml` is generated from the
   pinned Rekta Design and checked in, like `IconData.js` (the icons, drawn by `Icon.qml`):
   regenerate both with `nix run .#tokens`, never edit them; the `tokens-drift` check
@@ -134,11 +142,12 @@ nix run .#vm                                     # throwaway NixOS VM with Plasm
   test user `rekta` (public test password `rekta`) and mounts the checkout's
   `shell/` read-only at `/mnt/rekta-shell/shell`, so `qs --path
   /mnt/rekta-shell/shell` runs the working tree. The disk image lives in a
-  temporary directory that is deleted when the VM exits (window closed, Ctrl+C,
-  monitor `quit` or SIGTERM to the app); the VM is never built by `nix flake
-  check`. There is no GL: Plasma renders in software. Arguments after `--` go to
-  QEMU; host variables such as `QEMU_OPTS` or `SHARED_DIR` are ignored. The test
-  user may `sudo` with its password.
+  temporary directory that is deleted when the VM exits (monitor `quit`, Ctrl+C,
+  SIGTERM to the app, or the closed `--window`); the VM is never built by `nix
+  flake check`. There is no GL: Plasma renders in software. Arguments after `--`
+  go to QEMU, after an optional leading `--window`; host variables such as
+  `QEMU_OPTS` or `SHARED_DIR` are ignored. The test user may `sudo` with its
+  password.
 - The VM's SDDM offers "Plasma (Wayland)" and a prototype "rekta" session
   (`nix/test-vm-rekta-session.nix`, VM only): Plasma's services without
   plasmashell, a Quickshell test surface in its place. Autologin starts Plasma.
@@ -150,9 +159,10 @@ nix run .#vm                                     # throwaway NixOS VM with Plasm
   may only bring them back: wake it with `sendkey shift` and check the focus
   with a `screendump`.
 - Driving the VM from a script: the guest's serial console (a login shell) and
-  the QEMU monitor (screenshots, keys) as FIFOs. `sendkey` is the reliable way to
-  press Meta: the GTK window only grabs the keyboard after Ctrl+Alt+G, before
-  that the desktop's KWin takes Meta.
+  the QEMU monitor (screenshots, keys) as FIFOs; this works headless.
+  `sendkey` is also the reliable way to press Meta in a `--window` VM: the GTK
+  window only grabs the keyboard after Ctrl+Alt+G, before that the desktop's
+  KWin takes Meta.
 
   ```sh
   d=$(mktemp -d); mkfifo "$d"/{ser,mon}.{in,out}
