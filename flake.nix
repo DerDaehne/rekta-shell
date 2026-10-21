@@ -35,16 +35,25 @@
         rekta-design-dist = pkgs.callPackage ./nix/rekta-design-dist.nix { src = rekta-design; };
       });
 
-      apps = eachSystem (pkgs: {
-        tokens = {
-          type = "app";
-          program = pkgs.lib.getExe (
+      apps = eachSystem (
+        pkgs:
+        let
+          rekta-shell = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
+          app = drv: {
+            type = "app";
+            program = pkgs.lib.getExe drv;
+          };
+        in
+        {
+          tokens = app (
             pkgs.callPackage ./nix/tokens-app.nix {
               dist = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-design-dist;
             }
           );
-        };
-      });
+          nested = app (pkgs.callPackage ./nix/nested.nix { inherit rekta-shell; });
+          nested-shot = app (pkgs.callPackage ./nix/nested-shot.nix { });
+        }
+      );
 
       devShells = eachSystem (pkgs: {
         default = pkgs.mkShell {

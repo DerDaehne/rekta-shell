@@ -106,6 +106,8 @@ nix flake check   # package, qmllint (warnings fail), token drift, QML tests, ni
 nix develop       # qs, qmllint, qmlformat, node, gitleaks, nixfmt, rekta-qmllint
 nix build         # result/bin/rekta-shell, a wrapper around quickshell --path
 nix fmt           # formats the Nix files
+nix run .#nested -- [--outputs N] [--size WxH]   # KWin nested in the desktop, shell from the working tree, hot reload
+nix run .#nested-shot -- <file.png>              # screenshot of the whole nested desktop (all outputs)
 ```
 
 - `shell/Rekta/` is the QML library (module `Rekta`). `Tokens.qml` is generated from the
@@ -115,6 +117,9 @@ nix fmt           # formats the Nix files
   generator stops on tokens it cannot map instead of dropping them.
 - `rekta-qmllint -I shell <files>` in the dev shell lints exactly like the flake check
   (Qt and Quickshell on the import path, warnings fail).
+- The nested session is fully isolated: its own HOME, runtime directory and session
+  bus without service activation. Never share the real runtime directory or bus with
+  it: portals or wallets started there break the real session's services.
 - The overlay (`overlays.default`) builds `rekta-shell` against the importing
   configuration's nixpkgs.
 
