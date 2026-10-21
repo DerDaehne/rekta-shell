@@ -5,7 +5,7 @@
   quickshell,
 }:
 
-# One lint command for the dev shell and the flake check, with Qt's and Quickshell's modules on the import path.
+# One lint command for the dev shell and the flake check, with the modules the shell imports on the import path.
 writeShellApplication {
   name = "rekta-qmllint";
   runtimeInputs = [
@@ -22,6 +22,7 @@ writeShellApplication {
     exec qmllint --max-warnings 0 --uncreatable-type disable \
       -I ${kdePackages.qtdeclarative}/lib/qt-6/qml \
       -I ${quickshell}/lib/qt-6/qml \
+      -I ${kdePackages.plasma-workspace}/lib/qt-6/qml \
       "''${args[@]}"
   '';
 }

@@ -3,4 +3,5 @@ import "services"
 
 ShellRoot {
     SystemMotion {}
+    SplashEnd {}
 }

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=rekta
+Comment=Plasma's services with rekta-shell in place of plasmashell
+Exec=@out@/libexec/rekta-session
+TryExec=@out@/libexec/rekta-session
+DesktopNames=KDE
