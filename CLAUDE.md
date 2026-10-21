@@ -103,11 +103,13 @@ People should understand intent and behaviour by reading the code.
 
 ```sh
 nix flake check   # builds the package, runs qmllint (warnings fail) and nixfmt --check
-nix develop       # qs, qmllint, qmlformat, node, gitleaks, nixfmt
+nix develop       # qs, qmllint, qmlformat, node, gitleaks, nixfmt, rekta-qmllint
 nix build         # result/bin/rekta-shell, a wrapper around quickshell --path
 nix fmt           # formats the Nix files
 ```
 
+- `rekta-qmllint <files>` in the dev shell lints exactly like the flake check
+  (Qt and Quickshell on the import path, warnings fail).
 - The overlay (`overlays.default`) builds `rekta-shell` against the importing
   configuration's nixpkgs.
 

@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    # Source only: tokens and icons are generated from this pinned commit.
+    # Only its source is used, not its flake outputs.
     rekta-design = {
       url = "github:DerDaehne/rekta-design/09e0cf292140727fa81b938650e3df53efb58907";
       flake = false;
@@ -39,6 +39,7 @@
           packages = [
             pkgs.quickshell
             pkgs.kdePackages.qtdeclarative
+            (pkgs.callPackage ./nix/qmllint.nix { })
             pkgs.nodejs
             pkgs.gitleaks
             pkgs.nixfmt

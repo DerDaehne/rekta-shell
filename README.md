@@ -13,10 +13,13 @@ notifications and a lock screen in Rekta's language.
 
 ## Installation
 
-The flake provides `packages.<system>.rekta-shell` and `overlays.default`,
-which builds the shell against your own nixpkgs. A NixOS module and a
-home-manager module follow; every option will be off by default, so importing
-the flake changes nothing until a configuration enables it.
+The flake provides `packages.<system>.rekta-shell` and `overlays.default`.
+Use the overlay, or set `inputs.rekta-shell.inputs.nixpkgs.follows = "nixpkgs"`,
+so the shell is built against your own nixpkgs and Quickshell shares Qt with
+your Plasma; `packages.<system>` alone uses this flake's own nixpkgs pin.
+A NixOS module and a home-manager module follow; every option will be off by
+default, so importing the flake changes nothing until a configuration enables
+it.
 
 ## Contributing
 
