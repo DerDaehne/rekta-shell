@@ -28,6 +28,12 @@ TestCase {
             property alias group: group
             property alias nav: nav
             property alias pivot: pivot
+            property alias hint: hint
+            property alias tag: tag
+            property alias stat: stat
+            property alias message: message
+
+            width: 400
 
             Kicker { id: kicker }
             Facts { id: facts }
@@ -37,7 +43,17 @@ TestCase {
             GroupHeading { id: group; placeWidth: 1000 }
             NavTitle { id: nav; placeWidth: 1000 }
             PivotTitle { id: pivot; placeWidth: 1000 }
+            Hint { id: hint }
+            StatusTag { id: tag }
+            Stat { id: stat; placeWidth: 1000 }
+            TileMessage { id: message }
         }
+    }
+
+    Component {
+        id: metricsComponent
+
+        FontMetrics {}
     }
 
     Component {
@@ -82,6 +98,10 @@ TestCase {
         }
     }
 
+    function init() {
+        failOnWarning(/TypeError|ReferenceError|Binding loop/);
+    }
+
     function test_every_role_takes_its_values_from_the_tokens() {
         const r = createTemporaryObject(roles, testCase);
         const expected = [
@@ -109,21 +129,43 @@ TestCase {
         compare(r.meta.font.features["tnum"], 1);
     }
 
-    function test_line_heights_follow_the_tokens() {
-        const r = createTemporaryObject(roles, testCase);
-        const expected = [
-            [r.kicker, Tokens.lineHeightBody],
-            [r.facts, Tokens.lineHeightBody],
-            [r.body, Tokens.lineHeightBody],
-            [r.meta, Tokens.lineHeightBody],
-            [r.title, Tokens.lineHeightTitle],
-            [r.group, Tokens.lineHeightTight],
-            [r.nav, Tokens.lineHeightNav],
-            [r.pivot, Tokens.lineHeightNav]
+    // Every text role with the line-height token rekta.css gives it (:35, :51, :53, :86, :95, :105, :159, :609).
+    function linesOf(r) {
+        return [
+            ["kicker", r.kicker, Tokens.lineHeightBody],
+            ["facts", r.facts, Tokens.lineHeightBody],
+            ["body", r.body, Tokens.lineHeightBody],
+            ["meta", r.meta, Tokens.lineHeightBody],
+            ["title", r.title, Tokens.lineHeightTitle],
+            ["group heading", r.group, Tokens.lineHeightTight],
+            ["navigation title", r.nav, Tokens.lineHeightNav],
+            ["pivot title", r.pivot, Tokens.lineHeightNav],
+            ["hint", r.hint, Tokens.lineHeightBody],
+            ["status tag", findChild(r.tag, "word"), Tokens.lineHeightCompact],
+            ["stat number", findChild(r.stat, "number"), Geometry.statLineHeight],
+            ["stat words", findChild(r.stat, "words"), Tokens.lineHeightCompact],
+            ["message", findChild(r.message, "sentence"), Tokens.lineHeightCompact],
+            ["message kicker", findChild(r.message, "kicker"), Tokens.lineHeightCompact],
+            ["message facts", findChild(r.message, "facts"), Tokens.lineHeightCompact]
         ];
-        for (const [text, lineHeight] of expected) {
-            compare(text.lineHeightMode, Text.ProportionalHeight);
-            compare(text.lineHeight, lineHeight);
+    }
+
+    function test_every_role_draws_lines_as_tall_as_its_size_times_its_line_height_token() {
+        const r = createTemporaryObject(roles, testCase);
+        for (const [role, text, lineHeight] of linesOf(r)) {
+            text.text = "one\ntwo\nthree";
+            compare(text.lineCount, 3, role);
+            fuzzyCompare(text.height, 3 * text.font.pixelSize * lineHeight, 1e-9, role);
+        }
+    }
+
+    function test_the_first_baseline_sits_half_the_leading_below_the_top_as_in_css() {
+        const r = createTemporaryObject(roles, testCase);
+        for (const [role, text, lineHeight] of linesOf(r)) {
+            text.text = "one\ntwo";
+            const font = createTemporaryObject(metricsComponent, testCase, { font: text.font });
+            const halfLeading = (text.font.pixelSize * lineHeight - font.ascent - font.descent) / 2;
+            fuzzyCompare(text.baselineOffset, halfLeading + font.ascent, 1e-9, role);
         }
     }
 
@@ -162,6 +204,8 @@ TestCase {
         compare(r.title.font.pixelSize, Math.round(Tokens.fluid(Tokens.fontSizeTitle, 400)));
         r.title.placeWidth = 4000;
         compare(r.title.font.pixelSize, Math.round(Tokens.fontSizeTitle.max));
+        r.title.text = "one\ntwo";
+        fuzzyCompare(r.title.height, 2 * Tokens.fontSizeTitle.max * Tokens.lineHeightTitle, 1e-9, "the line box grows with the size");
     }
 
     function test_contact_sheet_of_all_roles_in_both_themes() {

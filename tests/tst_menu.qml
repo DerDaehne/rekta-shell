@@ -309,8 +309,7 @@ TestCase {
         compare(groupLabel.font.pixelSize, Tokens.fontSizeXs);
         compare(groupLabel.font.weight, Tokens.fontWeightSemibold);
         compare(groupLabel.color, Tokens.color.textContrastHigh);
-        compare([groupLabel.topPadding, groupLabel.rightPadding, groupLabel.bottomPadding, groupLabel.leftPadding], [Tokens.spaceS, Tokens.spaceM, Tokens.spaceXs, Tokens.spaceM]);
-        compare(groupLabel.lineHeightMode, Text.FixedHeight, "a line box of line-height-compact, as the web draws it");
+        compare([groupLabel.topPadding, groupLabel.rightPadding, groupLabel.bottomPadding, groupLabel.leftPadding], [Tokens.spaceS + groupLabel.lineBoxTop, Tokens.spaceM, Tokens.spaceXs + groupLabel.lineBoxBottom, Tokens.spaceM], "s m xs m around its line box");
         compare(groupLabel.lineHeight, Tokens.lineHeightCompact * Tokens.fontSizeXs);
         compare(groupLabel.height, Tokens.spaceS + Tokens.lineHeightCompact * Tokens.fontSizeXs + Tokens.spaceXs);
     }

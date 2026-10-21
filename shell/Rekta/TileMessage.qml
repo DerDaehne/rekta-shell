@@ -20,17 +20,15 @@ Column {
         width: message.width
         visible: text !== ""
         text: message.kicker
-        lineHeight: Tokens.lineHeightCompact
+        lineHeightFactor: Tokens.lineHeightCompact
     }
 
-    Text {
+    TextRole {
         objectName: "sentence"
         width: message.width
         text: message.text
-        font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeS
-        lineHeightMode: Text.ProportionalHeight
-        lineHeight: Tokens.lineHeightCompact
+        lineHeightFactor: Tokens.lineHeightCompact
         color: Tokens.color.textPrimary
         wrapMode: Text.Wrap
         maximumLineCount: message.wide ? Geometry.tileMessageLinesWide : Geometry.tileMessageLines
@@ -44,6 +42,6 @@ Column {
         width: message.width
         visible: text !== ""
         text: message.facts
-        lineHeight: Tokens.lineHeightCompact
+        lineHeightFactor: Tokens.lineHeightCompact
     }
 }

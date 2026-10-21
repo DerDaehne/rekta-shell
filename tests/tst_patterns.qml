@@ -311,6 +311,10 @@ TestCase {
         }
     }
 
+    function init() {
+        failOnWarning(/TypeError|ReferenceError|Binding loop/);
+    }
+
     function cleanup() {
         Prefs.motion = "system";
         Prefs.theme = "system";
@@ -326,7 +330,7 @@ TestCase {
         compare(number.font.pixelSize, Tokens.fluid(Tokens.fontSizeXxl, stat.placeWidth));
         compare(number.font.weight, Tokens.fontWeightMedium);
         compare(number.font.features, { "tnum": 1 });
-        compare(number.lineHeight, Geometry.statLineHeight);
+        compare(number.lineHeight, number.font.pixelSize * Geometry.statLineHeight);
         compare(words.font.pixelSize, Tokens.fontSizeXs);
         compare(words.y, number.height, "in a tile the words sit right under the number");
         stat.placeWidth = 4000;
@@ -348,7 +352,7 @@ TestCase {
             const tile = createTemporaryObject(statTile, testCase, { status: status });
             const words = findChild(findChild(tile, "stat"), "words");
             compare(words.color, Tokens.color.textPrimary, status || "neutral");
-            compare(words.lineHeight, Tokens.lineHeightCompact);
+            compare(words.lineHeight, Tokens.fontSizeXs * Tokens.lineHeightCompact);
         }
     }
 
@@ -358,7 +362,7 @@ TestCase {
         const words = findChild(stat, "words");
         verify(stat.inFigures);
         compare(words.color, Tokens.color.textContrastHigh, "on the ground");
-        compare(words.lineHeight, Tokens.lineHeightBody);
+        compare(words.lineHeight, Tokens.fontSizeXs * Tokens.lineHeightBody);
         compare(words.y, findChild(stat, "number").height + Tokens.spaceXs);
         const tile = createTemporaryObject(statTile, testCase, { status: "error" });
         figures.parent = tile;
@@ -427,6 +431,18 @@ TestCase {
         compare(findChild(findChild(tile, "message"), "sentence").lineCount, Geometry.tileMessageLines);
     }
 
+    function test_six_lines_of_a_message_fit_a_wide_tile() {
+        const tile = createTemporaryObject(messageTile, testCase, { columns: 2 });
+        const message = findChild(tile, "message");
+        message.kicker = "";
+        message.facts = "";
+        message.text = `${longSentence} ${longSentence}`;
+        waitForItemPolished(message);
+        compare(findChild(message, "sentence").lineCount, Geometry.tileMessageLinesWide);
+        fuzzyCompare(message.height, Geometry.tileMessageLinesWide * Tokens.fontSizeS * Tokens.lineHeightCompact, 1e-9);
+        verify(message.height <= tile.height - 2 * Geometry.tilePadding, `${message.height} px within the tile's padding`);
+    }
+
     function test_a_message_is_a_sentence_in_s_with_its_kicker_above_and_its_facts_below() {
         const tile = createTemporaryObject(messageTile, testCase, { status: "success" });
         const message = findChild(tile, "message");
@@ -434,12 +450,12 @@ TestCase {
         waitForItemPolished(message);
         const [kicker, sentence, facts] = ["kicker", "sentence", "facts"].map(name => findChild(message, name));
         compare(sentence.font.pixelSize, Tokens.fontSizeS);
-        compare(sentence.lineHeight, Tokens.lineHeightCompact);
+        compare(sentence.lineHeight, Tokens.fontSizeS * Tokens.lineHeightCompact);
         compare(sentence.color, Tokens.color.textPrimary);
         compare(sentence.y, kicker.y + kicker.height + Tokens.spaceS, "the kicker names it above");
         compare(facts.y, sentence.y + sentence.height + Tokens.spaceS, "the facts follow below");
-        compare(kicker.lineHeight, Tokens.lineHeightCompact);
-        compare(facts.lineHeight, Tokens.lineHeightCompact);
+        compare(kicker.lineHeight, Tokens.fontSizeXs * Tokens.lineHeightCompact);
+        compare(facts.lineHeight, Tokens.fontSizeXs * Tokens.lineHeightCompact);
         compare(facts.color, Tokens.color.textPrimary, "secondary text on a status fill");
         message.kicker = "";
         message.facts = "";

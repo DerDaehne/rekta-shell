@@ -160,7 +160,7 @@ Item {
         Accessible.name: modelData
         Accessible.selected: active
 
-        Text {
+        TextRole {
             id: word
 
             objectName: "word"
@@ -175,11 +175,9 @@ Item {
                 yScale: word.shrink
             }
             text: title.modelData
-            font.family: Tokens.fontSans
             font.pixelSize: pivot.down ? Tokens.fluid(Tokens.fontSizePivotActive, pivot.placeWidth) : pivot.activeSize
             font.weight: Tokens.fontWeightLight
-            lineHeightMode: Text.ProportionalHeight
-            lineHeight: Tokens.lineHeightNav
+            lineHeightFactor: Tokens.lineHeightNav
             color: title.lit ? Tokens.color.textPrimary : Tokens.color.textContrastMedium
 
             Behavior on x {

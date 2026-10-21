@@ -22,29 +22,25 @@ Column {
     Accessible.role: Accessible.StaticText
     Accessible.name: `${value} ${label}`
 
-    Text {
+    TextRole {
         objectName: "number"
         width: stat.inFigures ? implicitWidth : stat.width
         text: stat.value
-        font.family: Tokens.fontSans
         font.pixelSize: Tokens.fluid(Tokens.fontSizeXxl, stat.placeWidth)
         font.weight: Tokens.fontWeightMedium
         font.features: ({ "tnum": 1 })
-        lineHeightMode: Text.ProportionalHeight
-        lineHeight: Geometry.statLineHeight
+        lineHeightFactor: Geometry.statLineHeight
         color: Tokens.color.textPrimary
         wrapMode: Text.Wrap
     }
 
     // A tile sets its text in xs at line-height-compact (rekta.css:86); figures take the ground's line-height-body.
-    Text {
+    TextRole {
         objectName: "words"
         width: stat.inFigures ? implicitWidth : stat.width
         text: stat.label
-        font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeXs
-        lineHeightMode: Text.ProportionalHeight
-        lineHeight: stat.inFigures ? Tokens.lineHeightBody : Tokens.lineHeightCompact
+        lineHeightFactor: stat.inFigures ? Tokens.lineHeightBody : Tokens.lineHeightCompact
         color: stat.inFigures ? Status.secondaryInk(stat, Tokens.color) : Tokens.color.textPrimary
         wrapMode: Text.Wrap
     }

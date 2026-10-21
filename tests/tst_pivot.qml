@@ -157,6 +157,12 @@ TestCase {
         fuzzyCompare(baseline(0), baseline(3), 0.5, "every title scales around its own baseline");
     }
 
+    function test_every_title_stands_in_a_line_box_of_the_active_size_times_line_height_nav() {
+        const pivot = createTemporaryObject(pivotComponent, testCase);
+        for (let k = 0; k < pivot.titles.length; k++)
+            fuzzyCompare(titleOf(pivot, k).height, Math.round(pivot.activeSize) * Tokens.lineHeightNav, 1e-9, `title ${k}`);
+    }
+
     function test_the_strip_glides_by_the_active_titles_place_in_the_order() {
         Prefs.motion = "off";
         const pivot = createTemporaryObject(pivotComponent, testCase);

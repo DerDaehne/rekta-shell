@@ -53,7 +53,7 @@ Rectangle {
         easing.bezierCurve: Tokens.easeIn
     }
 
-    Text {
+    TextRole {
         id: words
 
         objectName: "words"
@@ -62,12 +62,9 @@ Rectangle {
         width: tooltip.width - 2 * Tokens.spaceS
         text: tooltip.text
         wrapMode: Text.Wrap
-        font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeXs
         font.weight: Tokens.fontWeightSemibold
-        // CSS line-height is a share of the font size; Qt's proportional mode would scale the font's own line height.
-        lineHeightMode: Text.FixedHeight
-        lineHeight: Tokens.lineHeightCompact * font.pixelSize
+        lineHeightFactor: Tokens.lineHeightCompact
         color: Tokens.color.bg
     }
 }

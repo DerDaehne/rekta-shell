@@ -35,16 +35,14 @@ Row {
         color: tag.mark
     }
 
-    Text {
+    TextRole {
         id: wordText
 
         objectName: "word"
         text: tag.word
-        font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeXs
         font.weight: Tokens.fontWeightSemibold
-        lineHeightMode: Text.ProportionalHeight
-        lineHeight: Tokens.lineHeightCompact
+        lineHeightFactor: Tokens.lineHeightCompact
         color: Tokens.color.textPrimary
     }
 }
