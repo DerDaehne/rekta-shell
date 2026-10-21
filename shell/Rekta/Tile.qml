@@ -164,6 +164,9 @@ Item {
         press.release(false);
     }
 
+    onActiveFocusChanged: if (!activeFocus)
+        press.release(true)
+
     // The press, after rekta.js press() (:255–330): a mouse presses at once, a finger after tap-delay; moving past the
     // slop gives up; a quick tap still shows the whole sink, since the press lets go no sooner than duration-press.
     QtObject {

@@ -191,6 +191,39 @@ TestCase {
         tryCompare(tile, "sink", 0, Tokens.durationShort * 3);
     }
 
+    function test_it_sinks_in_over_duration_press_and_comes_back_over_duration_short() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
+        mousePress(tile, tile.width / 2, tile.height / 2);
+        wait(Tokens.durationPress * 1.5);
+        verify(tile.sink > 0.98, "in within duration-press");
+        mouseRelease(tile, tile.width / 2, tile.height / 2);
+        wait(Tokens.durationPress);
+        verify(tile.sink > 0.3, "still well sunk after duration-press");
+        wait(Tokens.durationShort * 1.3 - Tokens.durationPress);
+        verify(tile.sink < 0.01, "back after duration-short");
+    }
+
+    function test_pressed_on_the_right_edge_the_right_side_goes_back() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
+        const rightBefore = tile.mapToItem(testCase, tile.width, tile.height / 2);
+        const leftBefore = tile.mapToItem(testCase, 0, tile.height / 2);
+        mousePress(tile, tile.width - 1, tile.height / 2);
+        tryCompare(tile, "sink", 1, Tokens.durationPress * 3);
+        const right = tile.mapToItem(testCase, tile.width, tile.height / 2);
+        const left = tile.mapToItem(testCase, 0, tile.height / 2);
+        verify(rightBefore.x - right.x > left.x - leftBefore.x, "the right edge moves in further than the left");
+    }
+
+    function test_it_lets_go_when_focus_moves_away_with_space_held() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
+        const other = createTemporaryObject(tileComponent, testCase, { opens: true, x: 500 });
+        tile.forceActiveFocus();
+        keyPress(Qt.Key_Space);
+        verify(tile.pressed);
+        other.forceActiveFocus();
+        tryVerify(() => !tile.pressed);
+    }
+
     function test_pressed_in_the_middle_it_sinks_straight_back() {
         const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
         mousePress(tile, tile.width / 2, tile.height / 2);
