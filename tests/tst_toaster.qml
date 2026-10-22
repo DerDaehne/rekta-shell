@@ -534,7 +534,7 @@ TestCase {
         tryCompare(picture, "status", Image.Ready);
         onWholePixels(toast);
         compare(Tokens.radiusTile, 2);
-                waitForRendering(picture);
+        waitForRendering(picture);
         const shot = grabImage(scene);
         const origin = picture.mapToItem(scene, 0, 0);
         for (const [x, y] of [[0, 0], [19, 0], [0, 19], [19, 19]])
