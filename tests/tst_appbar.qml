@@ -45,7 +45,7 @@ TestCase {
                 AppBarButton { objectName: "pause"; icon: "pause"; text: "pause"; priority: 2 }
                 AppBarButton { objectName: "in the background"; icon: "window"; text: "in the background"; priority: 0 }
                 AppBarButton { objectName: "messages"; icon: "bell"; text: "messages"; priority: 1; disabledReason: "comes with the panel" }
-                AppBarButton { objectName: "theme"; icon: "theme"; text: "theme"; priority: 1 }
+                AppBarButton { objectName: "theme"; icon: "theme"; text: "theme and colours"; priority: 1 }
                 AppBarButton { objectName: "controls"; icon: "tune"; text: "controls"; priority: 0 }
             }
         }
@@ -77,6 +77,8 @@ TestCase {
     }
 
     function cleanup() {
+        Tips.hide();
+        Tips.hiddenAt = -Infinity;
         Prefs.theme = "system";
         Prefs.density = "auto";
         Prefs.motion = "system";
@@ -158,15 +160,10 @@ TestCase {
         compare(clicked.count, 3);
     }
 
-    function test_a_disabled_control_stays_focusable_says_why_beside_it_and_does_not_act() {
+    function test_a_disabled_control_stays_focusable_is_read_with_its_reason_and_does_not_act() {
         const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 40, disabledReason: "comes with the palette" });
         const clicked = createTemporaryObject(spy, testCase, { target: control });
-        const why = findChild(control, "why");
-        verify(why.visible);
-        compare(why.text, "comes with the palette");
-        compare(why.x, findChild(control, "box").width + Tokens.spaceXs);
-        compare(why.lineCount, 1);
-        compare(control.implicitWidth, why.x + Math.ceil(why.implicitWidth));
+        compare(control.implicitWidth, findChild(control, "box").width, "no reason beside it");
         compare(control.Accessible.description, "comes with the palette");
         compare(findChild(control, "label").color, Tokens.color.disabled);
         mousePress(control, 10, 10);
@@ -177,6 +174,74 @@ TestCase {
         verify(control.activeFocus);
         keyClick(Qt.Key_Space);
         compare(clicked.count, 0);
+    }
+
+    function test_a_disabled_control_s_reason_is_its_tooltip() {
+        const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 200, disabledReason: "comes with the palette" });
+        const box = findChild(control, "box");
+        mouseMove(testCase, 5, 5);
+        mouseMove(box);
+        compare(Tips.target, null, "not before tip-delay");
+        tryCompare(Tips, "target", box, Tokens.durationTipDelay * 2);
+        compare(Tips.text, "comes with the palette");
+        mousePress(box);
+        compare(Tips.target, null, "a press hides it");
+        mouseRelease(box);
+        mouseMove(testCase, 5, 5);
+        control.forceActiveFocus();
+        compare(Tips.target, box, "keyboard focus shows it at once");
+        control.focus = false;
+        compare(Tips.target, null, "and the focus leaving hides it");
+        control.disabledReason = "";
+        control.forceActiveFocus();
+        compare(Tips.target, null, "a control that can act has no tip");
+    }
+
+    function test_a_control_s_tooltip_rises_above_it_and_stays_inside_the_window() {
+        makeScene({});
+        const messages = findChild(named("messages"), "box");
+        const at = messages.mapToItem(bar, 0, 0);
+        const place = bar.tipPlace(messages, Qt.size(120, 24));
+        compare(place.side, "above");
+        compare(place.y, at.y - Geometry.tipGap - 24, "tip-gap above the control, past the bar's top edge");
+        compare(place.x, Math.round(at.x + messages.width / 2 - 60), "centred over it");
+        const last = findChild(named("controls"), "box");
+        compare(bar.tipPlace(last, Qt.size(300, 24)).x, bar.width - 300 - Tokens.spaceS, "space-s from the window's side");
+    }
+
+    function test_away_the_bar_slides_down_out_of_sight_with_ease_out() {
+        Prefs.motion = "on";
+        makeScene({});
+        const slide = findChild(bar, "slide");
+        bar.away = true;
+        verify(bar.sliding);
+        compare(slide.duration, Tokens.durationShort);
+        compare(slide.easing.type, Easing.Bezier);
+        compare(slide.easing.bezierCurve, Tokens.easeOut);
+        tryCompare(bar, "sliding", false, Tokens.durationShort * 4);
+        compare(bar.transform[0].y, bar.height);
+    }
+
+    function test_back_from_away_the_bar_arrives_with_ease_in() {
+        Prefs.motion = "on";
+        makeScene({});
+        bar.away = true;
+        tryCompare(bar, "sliding", false, Tokens.durationShort * 4);
+        bar.away = false;
+        verify(bar.sliding);
+        compare(findChild(bar, "slide").easing.bezierCurve, Tokens.easeIn);
+        tryCompare(bar, "sliding", false, Tokens.durationShort * 4);
+        compare(bar.transform[0].y, 0);
+    }
+
+    function test_under_reduced_motion_the_bar_goes_and_comes_back_at_once() {
+        Prefs.motion = "off";
+        makeScene({});
+        bar.away = true;
+        compare(bar.transform[0].y, bar.height);
+        verify(!bar.sliding);
+        bar.away = false;
+        compare(bar.transform[0].y, 0);
     }
 
     function test_the_bar_is_glass_under_a_hairline_at_the_app_bar_height() {
@@ -346,6 +411,21 @@ TestCase {
         }
     }
 
+    function test_the_trailing_side_keeps_a_gap_from_the_centre_item_up_to_the_last_pixel_of_its_room() {
+        makeScene({ withCentre: true });
+        const centre = named("centre");
+        const trailing = controls().slice(1);
+        // The trailing side runs from a gap after the centre to the padding; this width gives it exactly its controls.
+        const exact = 2 * (rowWidth(trailing) + centre.width / 2 + bar.gap + bar.padding);
+        scene.barWidth = exact;
+        verify(!bar.more.visible);
+        compare(trailing[0].x, endOf(centre) + bar.gap, "at exactly its room it stands a gap from the centre");
+        scene.barWidth = exact - 2;
+        verify(bar.more.visible, "a pixel less and a control moves into more");
+        for (const item of trailing.concat(bar.more).filter(item => item.visible))
+            verify(item.x >= endOf(centre) + bar.gap, `${item.objectName} keeps the gap`);
+    }
+
     function test_a_pinned_middle_never_runs_under_the_centre_item() {
         makeScene({ barWidth: 1200, withCentre: true });
         const middle = named("middle");
@@ -392,13 +472,16 @@ TestCase {
             Prefs.theme = theme;
             const sheet = createTemporaryObject(sheetComponent, testCase);
             mouseClick(findChild(sheet, "narrow").more, 10, 10);
+            const goTo = findChild(findChild(sheet, "wide"), "go to");
+            Tips.show(findChild(goTo, "box"), goTo.disabledReason);
             waitForRendering(sheet);
             wait(Tokens.durationFloat + 50);
             grabImage(sheet).save(`appbar-sheet-${theme}.png`);
         }
     }
 
-    // A wide bar with the centre item and a disabled control, a bar full at 760px with more open, a pinned middle.
+    // A wide bar with the centre item and a disabled control showing its reason, a bar full at 760px with more open, a
+    // pinned middle.
     Component {
         id: sheetComponent
 
@@ -423,20 +506,28 @@ TestCase {
                 area: Qt.size(width, 600)
                 centre: slot
 
-                AppBarButton { icon: "search"; text: "go to"; priority: 3; disabledReason: "comes with the palette" }
+                AppBarButton { objectName: "go to"; icon: "search"; text: "go to"; priority: 3; disabledReason: "comes with the palette" }
                 AppBarMiddle { id: line; parts: ["konsole", "~/projects: build the shell"] }
                 Text { id: slot; text: "14:32"; font.pixelSize: Tokens.fontSizeXs; font.weight: Tokens.fontWeightSemibold; color: Tokens.color.textPrimary }
                 AppBarButton { icon: "window"; text: "in the background"; priority: 0 }
-                AppBarButton { icon: "bell"; text: "messages"; priority: 1 }
-                AppBarButton { icon: "tune"; text: "controls"; priority: 2 }
+                AppBarButton { icon: "bell"; text: "messages"; priority: 2 }
+                AppBarButton { icon: "tune"; text: "controls"; priority: 1 }
             }
 
             Ground { y: 24 }
             Ground { y: 344 }
             Ground { y: 464 }
-            Bar { y: 40 }
+            Bar { id: wide; objectName: "wide"; y: 40 }
             Bar { objectName: "narrow"; y: 360; width: 760 }
             Bar { y: 480; width: 1000; Component.onCompleted: middle.pinned = true }
+
+            Tooltip {
+                readonly property var place: target ? wide.tipPlace(target, Qt.size(width, height)) : { x: 0, y: 0, side: "above" }
+
+                x: wide.x + place.x
+                y: wide.y + place.y
+                side: place.side
+            }
         }
     }
 }

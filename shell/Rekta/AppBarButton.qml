@@ -2,8 +2,9 @@ import QtQuick
 
 // A control of the app bar (navigation.md, "App bar"; rekta.css:621–629, :1025): a glyph and a word, never a glyph
 // alone, at least 48px square in every density, no frame; hover and press lay `hover` under it. A click gives no focus,
-// so the ring shows only for the keyboard. A control that cannot act stays focusable and says why beside it, and the
-// reason moves into "more" with it (forms.md, "Disabled controls say why").
+// so the ring shows only for the keyboard. A control that cannot act stays focusable and is read with its reason; the
+// reason shows as its tooltip and moves into "more" with it. A deliberate deviation: Rekta puts a hint beside it and no
+// tooltip (forms.md, "Disabled controls say why"), which here takes the room of the bar's middle.
 Item {
     id: control
 
@@ -27,8 +28,7 @@ Item {
             clicked();
     }
 
-    // The reason counts while the control is moved too (visible is the effective visibility), so it moves back whole.
-    implicitWidth: box.width + (disabled ? Tokens.spaceXs + Math.ceil(why.implicitWidth) : 0)
+    implicitWidth: box.width
     implicitHeight: box.height
     visible: !overflowed
     activeFocusOnTab: true
@@ -36,6 +36,16 @@ Item {
     Accessible.name: text
     Accessible.description: disabledReason
     Accessible.onPressAction: click()
+
+    // Focus comes only from the keyboard, so the reason shows at once.
+    onActiveFocusChanged: {
+        if (!disabled)
+            return;
+        if (activeFocus)
+            Tips.show(box, disabledReason);
+        else
+            Tips.leave(box);
+    }
 
     Keys.onPressed: event => {
         if (![Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
@@ -52,8 +62,6 @@ Item {
         readonly property real glyph: control.icon !== "" ? Geometry.appBarGlyph + Geometry.appBarControlGap : 0
 
         objectName: "box"
-        // The words' baseline, so the reason beside it sits on the same line.
-        baselineOffset: label.y + label.baselineOffset
         // Whole pixels, so the bar sets its controls on whole pixels.
         width: Math.ceil(Math.max(Geometry.appBarControl, glyph + label.implicitWidth + 2 * Geometry.appBarControlPadding))
         height: Geometry.appBarControl
@@ -108,24 +116,26 @@ Item {
             longPressThreshold: 0
 
             onTapped: control.click()
+            onPressedChanged: {
+                if (pressed)
+                    Tips.hide();
+            }
         }
 
         HoverHandler {
             id: hover
 
             cursorShape: control.disabled ? Qt.ForbiddenCursor : Qt.PointingHandCursor
+
+            // Only a mouse or pen hovers, so touch never brings the reason.
+            onHoveredChanged: {
+                if (!control.disabled)
+                    return;
+                if (hovered)
+                    Tips.rest(box, control.disabledReason);
+                else
+                    Tips.leave(box);
+            }
         }
-    }
-
-    Hint {
-        id: why
-
-        objectName: "why"
-        x: box.width + Tokens.spaceXs
-        anchors.baseline: box.baseline
-        visible: control.disabled
-        text: control.disabledReason
-        // One line in the bar; the bar moves the whole control into "more" before it would wrap.
-        wrapMode: Text.NoWrap
     }
 }

@@ -8,6 +8,9 @@ import QtQuick
 // "more", the least important first, and its menu repeats their words. Pinned, the middle keeps its words up to half
 // the bar and the controls make room. The glass is the bar's; the blur behind it is the host's.
 //
+// Away (under a full-screen window) it slides down out of sight, and comes back the same way: it leaves with ease-out
+// and arrives with ease-in, as everything that leaves and arrives does (motion.md).
+//
 // A `centre` item stands in the middle of the bar; what comes before it holds the leading side, what comes after it the
 // trailing side, and nothing runs under it. Without one the bar is a single row, as on the web. Other items are left
 // where they are.
@@ -22,6 +25,10 @@ Rectangle {
     property real viewportHeight: Window.height
     // The window "more" has to fit in; the bar runs along its bottom.
     property size area: Qt.size(Window.width, Window.height)
+    // Out of sight below the window's bottom edge.
+    property bool away: false
+    // While it slides away or back; a host keeps its window until it is out of sight.
+    readonly property bool sliding: slide.running
     readonly property real padding: Prefs.sizeClass(width, viewportHeight) === "sideways" ? Tokens.spaceXl : Tokens.spaceM
     readonly property real gap: Tokens.spaceXs
     readonly property var plan: layoutPlan()
@@ -32,6 +39,14 @@ Rectangle {
         const top = area.height - height;
         const control = Qt.rect(moreButton.x, top + moreButton.y, moreButton.width, moreButton.height);
         const place = Placement.float(control, Qt.size(moreMenu.width, moreMenu.height), area);
+        return { x: place.x, y: place.y - top, side: place.side };
+    }
+
+    // Where the tooltip of one of the bar's controls goes, in the bar's coordinates (Placement.tip in `area`).
+    function tipPlace(control: Item, size: size): var {
+        const top = area.height - height;
+        const at = control.mapToItem(bar, 0, 0);
+        const place = Placement.tip(Qt.rect(at.x, top + at.y, control.width, control.height), size, area);
         return { x: place.x, y: place.y - top, side: place.side };
     }
 
@@ -150,6 +165,23 @@ Rectangle {
     implicitHeight: Tokens.appbarHeight
     z: Tokens.layerAppbar
     color: Tokens.color.glass
+    transform: Translate {
+        y: bar.away ? bar.height : 0
+
+        Behavior on y {
+            id: slideTo
+
+            NumberAnimation {
+                id: slide
+
+                objectName: "slide"
+                duration: Tokens.durationShort
+                easing.type: Easing.Bezier
+                // The Behavior sets its target before the slide takes its curve; a binding on `away` may update later.
+                easing.bezierCurve: slideTo.targetValue > 0 ? Tokens.easeOut : Tokens.easeIn
+            }
+        }
+    }
     Accessible.role: Accessible.ToolBar
     Accessible.name: "app bar"
 

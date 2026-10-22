@@ -5,7 +5,8 @@ import Quickshell
 import org.kde.taskmanager as TaskManager
 
 // The running windows, one model for every surface that shows them: libtaskmanager's TasksModel over KWin's window
-// management, every window on its own row, the most recently used first.
+// management, every window on its own row, sorted by when the shell saw each activated: after the shell starts only the
+// active window has that time.
 Scope {
     id: windows
 
