@@ -349,6 +349,22 @@ TestCase {
         verify(!sheet.visible);
     }
 
+    function test_a_request_while_it_leaves_ends_the_leave_and_it_opens_again_on_the_form() {
+        Prefs.motion = "on";
+        sheet.dirty = true;
+        openFully(sheet);
+        sheet.request("cancel");
+        mouseClick(findChild(sheet, "discard"));
+        verify(sheet.visible, "it leaves");
+        verify(!sheet.asking, "showing its form, not the question");
+        mouseClick(sheet, 100, 500);
+        compare(closedSpy.count, 1, "the tap on the shading ended the leave at once");
+        compare(closedSpy.signalArguments[0][0], "cancel");
+        sheet.dirty = false;
+        sheet.show();
+        verify(!sheet.asking, "opened again, it shows the form");
+    }
+
     function test_under_reduced_motion_a_sheet_opens_and_closes_at_once() {
         Prefs.motion = "off";
         sheet.show();

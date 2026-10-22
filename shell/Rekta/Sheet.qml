@@ -55,7 +55,10 @@ Item {
     function request(answer: string) {
         if (!open)
             return;
-        if (asking)
+        // While it leaves, a request only ends the leave at once, keeping the answer it leaves with (rekta.js:1536).
+        if (going.running)
+            leave(memo.answer);
+        else if (asking)
             keepEditing();
         else if (dirty)
             askFirst(answer);
@@ -97,8 +100,9 @@ Item {
 
     function gone() {
         open = false;
+        asking = false;
         KeyLayers.closed(sheet);
-        // The focus goes back only to something that still shows (rekta.js:2416).
+        // The focus goes back only to something that still shows (rekta.js:2424).
         if (memo.focused?.visible)
             memo.focused.forceActiveFocus();
         closed(memo.answer);
