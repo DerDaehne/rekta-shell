@@ -28,9 +28,12 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
     mkdir -p $out/share/rekta-shell
     cp -r . $out/share/rekta-shell
+    # Only this wrapper lets the shell start apps for real; run from a checkout it only logs them.
     makeWrapper ${lib.getExe quickshell} $out/bin/rekta-shell \
       --add-flags "--path $out/share/rekta-shell" \
-      --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${plasma-workspace}/lib/qt-6/qml"
+      --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" \
+      --prefix PATH : ${kdePackages.libkscreen}/bin \
+      --set-default REKTA_SHELL_LAUNCH systemd
 
     install -Dm644 ${../session/rekta.desktop} $out/share/wayland-sessions/rekta.desktop
     install -Dm755 ${../session/rekta-session} $out/libexec/rekta-session

@@ -23,6 +23,7 @@ writeShellApplication {
       -I ${kdePackages.qtdeclarative}/lib/qt-6/qml \
       -I ${quickshell}/lib/qt-6/qml \
       -I ${kdePackages.plasma-workspace}/lib/qt-6/qml \
+      -I ${kdePackages.kpipewire}/lib/qt-6/qml \
       "''${args[@]}"
   '';
 }
