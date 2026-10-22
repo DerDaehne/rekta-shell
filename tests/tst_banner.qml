@@ -105,17 +105,38 @@ TestCase {
         compare(coming.duration, Tokens.durationShort);
         verify(coming.running);
         compare(banner.entry, 0);
-        const content = findChild(banner, "live").parent;
-        compare(content.opacity, 0);
-        compare(content.transform[0].y, -Geometry.bannerShift);
+        compare(banner.opacity, 0);
+        compare(banner.transform[0].y, -Geometry.bannerShift);
         tryCompare(banner, "entry", 1, 1000);
-        compare(content.transform[0].y, 0);
+        compare(banner.transform[0].y, 0);
         banner.update("paused", "Runs wait until you resume them: 3 so far.");
         compare(findChild(banner, "sentence").text, "Runs wait until you resume them: 3 so far.");
         verify(!coming.running, "it does not move again");
         banner.set("paused", true, { text: "Runs wait until you resume them: 4 so far." });
         compare(findChild(banner, "sentence").text, "Runs wait until you resume them: 4 so far.");
         verify(!coming.running);
+    }
+
+    // What the item shows of itself: its own opacity times every ancestor's.
+    function shownOpacity(item) {
+        let opacity = 1;
+        for (let p = item; p; p = p.parent)
+            opacity *= p.opacity;
+        return opacity;
+    }
+
+    function test_the_whole_banner_fades_in_and_moves_8px_its_fill_and_hairline_too() {
+        Prefs.motion = "on";
+        banner.set("offline", true, {});
+        wait(Tokens.durationShort / 2);
+        const entry = banner.entry;
+        verify(entry > 0 && entry < 1, `on its way: ${entry}`);
+        const fill = findChild(banner, "fill");
+        const hairline = fill.children[0];
+        fuzzyCompare(shownOpacity(fill), entry, 1e-9);
+        fuzzyCompare(shownOpacity(hairline), entry, 1e-9);
+        fuzzyCompare(fill.mapToItem(scene, 0, 0).y, -(1 - entry) * Geometry.bannerShift, 1e-6, "the fill moves with the words");
+        fuzzyCompare(shownOpacity(findChild(banner, "word")), entry, 1e-9);
     }
 
     function test_its_height_grows_with_its_entry_so_the_place_below_moves_with_it() {

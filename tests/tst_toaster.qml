@@ -299,6 +299,30 @@ TestCase {
         compare(toaster.open, toast);
     }
 
+    function test_a_toast_on_its_way_out_takes_no_click() {
+        Prefs.motion = "on";
+        let runs = 0;
+        const toast = toaster.show("could not load the jobs", { act: { label: "reload", run: () => { runs++; } }, onEnd: ending("toast") });
+        tryCompare(toast, "y", toaster.rest, 1000);
+        toaster.dismiss();
+        verify(findChild(toast, "slidingOut").running);
+        mouseClick(findChild(toast, "action"));
+        compare(runs, 0);
+        compare(testCase.ends, ["toast dismissed"]);
+    }
+
+    function test_a_replaced_toast_that_keeps_focus_takes_no_key() {
+        Prefs.motion = "on";
+        let runs = 0;
+        const toast = toaster.show("could not load the jobs", { act: { label: "reload", run: () => { runs++; } } });
+        tryCompare(toast, "y", toaster.rest, 1000);
+        findChild(toast, "action").forceActiveFocus();
+        toaster.show("message archived", {});
+        verify(findChild(toast, "action").activeFocus, "no `from` to return focus to");
+        keyClick(Qt.Key_Return);
+        compare(runs, 0);
+    }
+
     function test_a_plain_action_runs_without_a_countdown_and_ends_the_toast_as_acted() {
         let reloaded = false;
         const toast = toaster.show("could not load the jobs", { status: "error", act: { label: "reload", run: () => { reloaded = true; } }, onEnd: ending("toast") });

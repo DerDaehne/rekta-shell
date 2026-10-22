@@ -154,7 +154,10 @@ FocusScope {
         destroy();
     }
 
+    // A toast on its way out takes no press (rekta.css:901).
     function press() {
+        if (done)
+            return;
         if (undoAction) {
             undo();
             return;

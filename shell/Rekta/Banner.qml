@@ -221,6 +221,11 @@ Item {
     implicitHeight: heightFrom + (contentHeight - heightFrom) * entry
     visible: shown !== "" || leaving
     clip: true
+    // The whole banner fades and moves, its fill too (rekta.css:940, :955); the place below follows only its height.
+    opacity: entry
+    transform: Translate {
+        y: -(1 - banner.entry) * Geometry.bannerShift
+    }
     z: Tokens.layerBanner
 
     NumberAnimation {
@@ -262,10 +267,6 @@ Item {
 
         width: banner.width
         height: banner.contentHeight
-        opacity: banner.entry
-        transform: Translate {
-            y: -(1 - banner.entry) * Geometry.bannerShift
-        }
 
         Item {
             id: live
