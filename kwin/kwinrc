@@ -1,3 +1,12 @@
 [Plugins]
 rekta-turnstileEnabled=true
 slideEnabled=false
+# scale opens every layer surface of a namespace KWin does not know, the shell's too; Rekta gives it no meaning.
+scaleEnabled=false
+
+# KWin has one blur for every surface and no radius: strength 5 comes closest to Rekta's 12px. Rekta adds no noise
+# and no saturation.
+[Effect-blur]
+BlurStrength=5
+NoiseStrength=0
+Saturation=100

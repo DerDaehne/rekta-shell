@@ -1,0 +1,10 @@
+#!/bin/sh
+# Runs Plasma's KWin command. Only in the rekta session does KWin get rekta's effects and kwinrc defaults, the Rekta
+# module they take their values from, and the controls style whose Kirigami units follow KDE's animation speed.
+if [ "${XDG_SESSION_DESKTOP:-}" = rekta ]; then
+  export XDG_DATA_DIRS="@rektaKwin@/share/rekta-kwin:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+  export XDG_CONFIG_DIRS="@rektaKwin@/share/rekta-kwin/kwin:${XDG_CONFIG_DIRS:-/etc/xdg}"
+  export QML_IMPORT_PATH="@out@/share/rekta-shell${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
+  export QT_QUICK_CONTROLS_STYLE=org.kde.desktop
+fi
+exec "$@"

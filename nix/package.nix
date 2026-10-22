@@ -2,6 +2,7 @@
   lib,
   stdenvNoCC,
   makeWrapper,
+  callPackage,
   quickshell,
   kdePackages,
 }:
@@ -13,6 +14,7 @@ assert lib.assertMsg (
 
 let
   plasma-workspace = kdePackages.plasma-workspace;
+  rekta-kwin = callPackage ./kwin.nix { };
 in
 stdenvNoCC.mkDerivation {
   pname = "rekta-shell";
@@ -32,11 +34,13 @@ stdenvNoCC.mkDerivation {
 
     install -Dm644 ${../session/rekta.desktop} $out/share/wayland-sessions/rekta.desktop
     install -Dm755 ${../session/rekta-session} $out/libexec/rekta-session
+    install -Dm755 ${../session/rekta-kwin} $out/libexec/rekta-kwin
     mkdir -p $out/lib/systemd
     cp -r --no-preserve=mode ${../session/systemd} $out/lib/systemd/user
-    substituteInPlace $out/share/wayland-sessions/rekta.desktop $out/libexec/rekta-session \
-      $out/lib/systemd/user/rekta-shell.service \
-      --subst-var out --subst-var-by plasmaWorkspace ${plasma-workspace}
+    substituteInPlace $out/share/wayland-sessions/rekta.desktop $out/libexec/rekta-session $out/libexec/rekta-kwin \
+      $out/lib/systemd/user/rekta-shell.service $out/lib/systemd/user/plasma-kwin_wayland.service.d/rekta-session.conf \
+      --subst-var out --subst-var-by plasmaWorkspace ${plasma-workspace} \
+      --subst-var-by kwin ${kdePackages.kwin} --subst-var-by rektaKwin ${rekta-kwin}
     runHook postInstall
   '';
 

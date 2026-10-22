@@ -135,8 +135,13 @@ nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM
 - `session/` holds the rekta session's files: its desktop entry, the start script
   (`XDG_SESSION_DESKTOP=rekta`, `PLASMA_DEFAULT_SHELL`, then `startplasma-wayland`),
   `rekta-shell.service` and the drop-ins that skip plasmashell and pull the shell into
-  `plasma-workspace.target`. The package installs them with their store paths filled
-  in (`share/wayland-sessions`, `libexec`, `lib/systemd/user`).
+  `plasma-workspace.target`. A drop-in on `plasma-kwin_wayland.service` runs Plasma's
+  KWin command through `libexec/rekta-kwin`, which only in the rekta session puts the
+  `rekta-kwin` package (`kwin/`: effects, kwinrc defaults), the Rekta module and the
+  `org.kde.desktop` controls style into KWin's environment; the
+  `kwin-drop-in-follows-plasma` check fails once Plasma's command changes. The package
+  installs them with their store paths filled in (`share/wayland-sessions`, `libexec`,
+  `lib/systemd/user`).
 - `nixosModules.default` (`nix/nixos-module.nix`) registers that package as session
   and systemd package once `programs.rekta-shell.enable` is set;
   `homeManagerModules.default` (`nix/home-module.nix`) is the per-user counterpart.

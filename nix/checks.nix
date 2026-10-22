@@ -33,6 +33,18 @@ in
       touch $out
     '';
 
+  # The rekta drop-in replaces KWin's command in both sessions, so a Plasma update that changes the command must fail here.
+  kwin-drop-in-follows-plasma = pkgs.runCommand "rekta-shell-kwin-drop-in-follows-plasma" { } ''
+    plasma=$(sed -n 's/^ExecStart=//p' ${qt.kwin}/share/systemd/user/plasma-kwin_wayland.service)
+    rekta=$(sed -n 's|^ExecStart=${rekta-shell}/libexec/rekta-kwin ||p' \
+      ${rekta-shell}/share/systemd/user/plasma-kwin_wayland.service.d/rekta-session.conf)
+    if [ "$rekta" != "$plasma" ]; then
+      echo "the rekta drop-in runs '$rekta' through rekta-kwin, plasma-kwin_wayland.service runs '$plasma'" >&2
+      exit 1
+    fi
+    touch $out
+  '';
+
   qmllint = pkgs.runCommand "rekta-shell-qmllint" { LANG = "C.UTF-8"; } ''
     find ${../shell} ${../tests} -name '*.qml' -print0 | xargs -0 ${pkgs.lib.getExe rekta-qmllint} -I ${../shell}
     touch $out
