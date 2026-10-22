@@ -178,4 +178,10 @@ QtObject {
     readonly property real toastLine: 2
     // `@keyframes rk-banner-in { from { opacity: 0; transform: translateY(-8px) } }` (rekta.css:955)
     readonly property real bannerShift: 8
+
+    // `.rk-sheet { width: min(32rem, 100%) }` (rekta.css:826), a rem being 16 logical px
+    readonly property real sheetMaxWidth: 512
+    // `@keyframes rk-from-top { from { opacity: 0; transform: translateY(-16px) } }` (rekta.css:846); a sheet leaves
+    // back up the same way (rekta.js:1539)
+    readonly property real sheetShift: 16
 }

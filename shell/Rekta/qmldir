@@ -51,3 +51,5 @@ internal TileNews TileNews.qml
 Toaster 1.0 Toaster.qml
 Toast 1.0 Toast.qml
 Banner 1.0 Banner.qml
+Sheet 1.0 Sheet.qml
+Confirm 1.0 Confirm.qml
