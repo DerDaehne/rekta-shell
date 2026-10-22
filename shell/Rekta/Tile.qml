@@ -32,6 +32,7 @@ Item {
     readonly property real pressX: press.x
     readonly property real pressY: press.y
     // How far it has sunk, 0 to 1, eased like a CSS transition: in over duration-press, back over duration-short.
+    // Not bound to `pressed`, or sink moves before the Behavior's duration does and lets go in duration-press.
     property real sink: (press.held || kept) ? 1 : 0
     // The tilt the sink has reached, in degrees; none under reduced motion, where a press only shrinks (rekta.css:1211).
     readonly property real tiltX: Tokens.reducedMotion ? 0 : -pressY * sink * Tokens.tileTilt

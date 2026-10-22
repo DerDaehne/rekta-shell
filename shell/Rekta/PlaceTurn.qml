@@ -148,6 +148,9 @@ QtObject {
     // runs it the other way round; `options.pressed` is the tile that opened the next place.
     function go(from: Item, to: Item, options: var) {
         finish();
+        // A place still building in leaves from its end state: the turn wins over the arrival.
+        if (from)
+            markArrival(from, "");
         leavingPlace = from;
         arrivingPlace = to;
         back = options?.back === true;
@@ -221,6 +224,10 @@ QtObject {
         handedOver = true;
         if (!arrivingPlace)
             return;
+        // Its parts turning in is its build-in; a place gone back to comes back as it was left.
+        // ponytail: "turned" holds until the place leaves; the arrival window that ends it (rekta.js arrive()) comes
+        // with a place's first arrival.
+        markArrival(arrivingPlace, back ? "" : "turned");
         arrivingPlace.visible = true;
         if (!clock.running)
             return;
@@ -251,6 +258,16 @@ QtObject {
         leavingPlace = null;
         arrivingPlace = null;
         landed();
+    }
+
+    // Sets how the tiles in a place arrive (Tile.arrival), as rekta.js sets data-rk-arriving on the place.
+    function markArrival(box: Item, arrival: string) {
+        for (const child of box.children) {
+            const tile = child as Tile;
+            if (tile)
+                tile.arrival = arrival;
+            markArrival(child, arrival);
+        }
     }
 
     // The parts in view: the units a place shows, its layout boxes opened up (rekta.js turnUnits()).

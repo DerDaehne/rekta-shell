@@ -47,6 +47,10 @@ Column {
     }
 
     Item {
+        // The bar is one element, track and fill: a place change turns it as one part (motion.md, "Place change").
+        readonly property bool turnsWhole: true
+
+        objectName: "bar"
         width: progress.width
         height: Geometry.progressHeight
 

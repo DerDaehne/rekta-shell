@@ -34,6 +34,12 @@ TestCase {
         compare(Turnstile.heft(4000, 3000), Geometry.heftMax);
     }
 
+    function test_between_the_bounds_a_part_weighs_eight_tenths_of_its_area_in_tiles_to_the_power_of_0_35() {
+        // 0.8 × (310 × 150 / 150²)^0.35 and 0.8 × (400 × 24 / 150²)^0.35
+        fuzzyCompare(Turnstile.heft(310, 150), 1.0314, 1e-4);
+        fuzzyCompare(Turnstile.heft(400, 24), 0.5938, 1e-4);
+    }
+
     function test_light_parts_start_first_and_take_less_time() {
         const line = part(0, 400, 100, 20);
         const window = part(0, 0, 1200, 800);

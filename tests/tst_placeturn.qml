@@ -122,6 +122,7 @@ TestCase {
                     }
                     Tile {
                         objectName: "summary"
+                        opens: true
                         columns: 2
                         status: "success"
 
@@ -142,6 +143,65 @@ TestCase {
                     x: Tokens.spaceL
                     y: Tokens.spaceL
                     text: "logs"
+                }
+                Progress {
+                    objectName: "upload"
+                    x: Tokens.spaceL
+                    y: 120
+                    width: 400
+                    label: "uploading"
+                    value: 0.4
+                }
+            }
+        }
+    }
+
+    Component {
+        id: clippedComponent
+
+        // A place away from the window's corner: two tiles laid out in a box inside a box that clips them, its edge at
+        // 100, 80 on the screen, and a tile beside it, under the place's own edge at 40, 30.
+        Rectangle {
+            width: 672
+            height: 480
+            color: Tokens.color.bg
+
+            PlaceTurn {
+                objectName: "turner"
+            }
+
+            Item {
+                objectName: "place"
+                x: 40
+                y: 30
+                width: 632
+                height: 450
+
+                Item {
+                    x: 60
+                    y: 50
+                    width: 400
+                    height: 250
+                    clip: true
+
+                    Item {
+                        x: 20
+                        width: 380
+                        height: 250
+
+                        Tile {
+                            objectName: "flush"
+                        }
+                        Tile {
+                            objectName: "lower"
+                            x: 180
+                            y: 40
+                        }
+                    }
+                }
+                Tile {
+                    objectName: "beside"
+                    x: 480
                 }
             }
         }
@@ -241,6 +301,33 @@ TestCase {
         verify(!parts.includes(named("hidden")));
     }
 
+    function test_a_progress_bar_turns_as_one_part_its_track_and_fill_together() {
+        first.visible = false;
+        third.visible = true;
+        turner.go(third, null);
+        turner.paused = true;
+        const progress = named("upload");
+        const parts = turner.leavingTurns.map(turn => turn.part.item);
+        verify(parts.includes(findChild(progress, "bar")));
+        verify(!parts.includes(findChild(progress, "fill")));
+    }
+
+    function test_a_part_turns_about_the_leading_edge_of_the_box_that_clips_it_wherever_its_place_lies() {
+        const clipped = createTemporaryObject(clippedComponent, testCase);
+        const clippedTurner = findChild(clipped, "turner");
+        clippedTurner.go(findChild(clipped, "place"), null);
+        clippedTurner.paused = true;
+        // The edge's x and the part's top against the edge's y, from the part's top left, and the reach of its row.
+        const expected = [["flush", -20, 0, 170], ["lower", -200, Tokens.tileUnit / 2, 350], ["beside", -480, 0, 630]];
+        for (const [name, x, y, reach] of expected) {
+            const rotation = rotationOf(findChild(clipped, name));
+            compare(rotation.origin.x, x, name);
+            compare(rotation.origin.y, y, name);
+            fuzzyCompare(rotation.distanceToPlane, Tokens.turnstilePerspective + Geometry.turnPerspectivePerReach * reach, 1e-9);
+        }
+        clippedTurner.finish();
+    }
+
     function test_each_part_starts_and_lasts_by_its_heft_leaving_and_arriving() {
         turnToSecond();
         const title = named("title");
@@ -291,6 +378,9 @@ TestCase {
         fuzzyCompare(rotation.angle, -0.35 * Geometry.turnOutAngle, 0.05);
         verify(tile.opacity > 0 && tile.opacity < 1);
         verify(tile.layer.enabled, "fading as one");
+        // The fade runs the same curve over the rest of the time: halfway through it, it has come 0.35 of its way.
+        turner.elapsed = turn.at + (Geometry.turnOutWhole + (1 - Geometry.turnOutWhole) / 2) * turn.duration;
+        fuzzyCompare(tile.opacity, 1 - 0.35, 0.02);
         turner.elapsed = turn.at + turn.duration;
         verify(turner.elapsed < turner.handOverAt);
         compare(rotation.angle, -Geometry.turnOutAngle);
@@ -309,6 +399,9 @@ TestCase {
         turner.elapsed = turn.at + 0.2 * turn.duration;
         verify(tile.opacity > 0 && tile.opacity < 1);
         verify(tile.layer.enabled, "fading as one");
+        // The fade runs the same curve over its share of the time: 0.83 of its way at 0.4325 of it.
+        turner.elapsed = turn.at + 0.4325 * Geometry.turnInWhole * turn.duration;
+        fuzzyCompare(tile.opacity, 0.83, 0.03);
         // The animation clock counts whole milliseconds.
         turner.elapsed = turn.at + Geometry.turnInWhole * turn.duration - 2;
         verify(tile.opacity < 1);
@@ -339,6 +432,31 @@ TestCase {
         for (const turn of turner.arrivingTurns)
             verify(turn.at >= handOver);
         compare(named("summary").opacity, 0, "the next place's parts wait in their first pose");
+    }
+
+    function test_the_tiles_of_a_place_turned_in_arrive_turned_and_do_not_build_in_again() {
+        turnToSecond();
+        const summary = named("summary");
+        turner.elapsed = turner.handOverAt;
+        compare(summary.arrival, "turned");
+        turner.elapsed = 5000;
+        compare(summary.opacity, 1);
+        summary.arrival = "arriving";
+        compare(summary.opacity, 0, "let go, its opacity is its build-in's again");
+    }
+
+    function test_a_place_left_or_gone_back_to_stands_as_it_is_without_building_in() {
+        const tile = named("tile0");
+        tile.arrival = "arriving";
+        turnToSecond();
+        compare(tile.arrival, "", "the turn wins over the build-in");
+        compare(findChild(tile, "buildIn").progress, 1, "it leaves from its end state");
+        turner.elapsed = 5000;
+        turner.go(second, first, {
+            back: true
+        });
+        turner.finish();
+        compare(tile.arrival, "", "the place comes back as it was left");
     }
 
     function test_the_pressed_tile_keeps_its_press_and_turns_last_from_its_pressed_pose() {
@@ -378,6 +496,26 @@ TestCase {
         const turn = turnOf(turner.leavingTurns, tile);
         fuzzyCompare(turn.at, Tokens.durationPress, 10);
         verify(turner.leavingTurns.every(other => other === turn || other.at < turn.at), "once it has sunk, after the others started");
+    }
+
+    function test_a_tile_pressed_a_moment_before_waits_only_for_the_rest_of_its_sink() {
+        first.visible = false;
+        second.visible = true;
+        const tile = named("summary");
+        mousePress(tile, tile.width / 2, tile.height / 2);
+        wait(Tokens.durationPress / 2);
+        const since = findChild(tile, "press").since;
+        const sunkBefore = Date.now() - since;
+        turner.go(second, third, {
+            pressed: tile
+        });
+        const sunkAfter = Date.now() - since;
+        turner.paused = true;
+        mouseRelease(tile, tile.width / 2, tile.height / 2);
+        const turn = turnOf(turner.leavingTurns, tile);
+        const lastOther = Math.max(...turner.leavingTurns.filter(other => other !== turn).map(other => other.at));
+        verify(turn.at >= Math.max(lastOther, Tokens.durationPress - sunkAfter), `${turn.at} ms`);
+        verify(turn.at <= Math.max(lastOther, Tokens.durationPress - sunkBefore), `${turn.at} ms`);
     }
 
     function test_back_runs_the_other_way_round_each_part_starting_whole_and_at_rest() {
