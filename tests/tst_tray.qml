@@ -174,7 +174,7 @@ TestCase {
         return createTemporaryObject(entryComponent, testCase, Object.assign({ text }, props ?? {}));
     }
 
-    function menuOf(entries: var): QtObject {
+    function menuOf(entries: var): var {
         return createTemporaryObject(menuComponent, testCase, { entries });
     }
 
@@ -260,7 +260,10 @@ TestCase {
         mouseClick(rowAt(menu, "KDE Connect"));
         compare(rowAt(menu, "Quit").disabled, true);
         compare(findChild(rowAt(menu, "Quit"), "label").text, "Quit", "an app's words stay as they are");
+        tryVerify(() => rowAt(menu, "Browse").activeFocus);
         keyClick(Qt.Key_Escape);
+        tryVerify(() => rowAt(menu, "KDE Connect")?.activeFocus === true, 5000, "the focus is on the row that was pressed");
+        keyClick(Qt.Key_Up);
         keyClick(Qt.Key_Right);
         const pause = rowAt(menu, "Pause");
         compare(pause.kind, "checkbox");
@@ -286,13 +289,13 @@ TestCase {
         compare(rowNames(menu), ["zurück · Nextcloud", "Ping", "Send file"], "a third level");
         keyClick(Qt.Key_Escape);
         compare(rowNames(menu), ["zurück · Nextcloud", "Pair", "Refresh"]);
-        verify(rowAt(menu, "Pair").activeFocus, "the focus is on the row that opened the level");
+        tryVerify(() => rowAt(menu, "Pair").activeFocus);
         keyClick(Qt.Key_Escape);
         compare(rowNames(menu), ["zurück · Nextcloud", "Open folder", "Pause", "Devices"]);
-        verify(rowAt(menu, "Devices").activeFocus);
+        tryVerify(() => rowAt(menu, "Devices").activeFocus);
         keyClick(Qt.Key_Escape);
         compare(rowNames(menu), ["Nextcloud", "KDE Connect", "Steam"]);
-        verify(rowAt(menu, "Nextcloud").activeFocus);
+        tryVerify(() => rowAt(menu, "Nextcloud").activeFocus);
         verify(menu.open, "the list stays");
         keyClick(Qt.Key_Escape);
         verify(!menu.open, "Escape on the list closes");
@@ -303,7 +306,7 @@ TestCase {
         keyClick(Qt.Key_Right);
         keyClick(Qt.Key_Left);
         compare(rowNames(menu), ["Nextcloud", "KDE Connect", "Steam"]);
-        verify(rowAt(menu, "Nextcloud").activeFocus);
+        tryVerify(() => rowAt(menu, "Nextcloud").activeFocus);
         keyClick(Qt.Key_Left);
         verify(menu.open, "Left on the list does nothing");
     }
@@ -359,6 +362,17 @@ TestCase {
         mouseClick(rowAt(menu, "Quit"));
         compare(calls, []);
         verify(menu.open);
+    }
+
+    function test_the_entries_of_a_menu_arriving_late_still_take_the_focus_at_the_first_row() {
+        const late = menuOf([]);
+        const menu = open([app("Slow", { menu: late })]);
+        keyClick(Qt.Key_Right);
+        verify(rowAt(menu, "Slow"), "while the entries load the rows stay as they were");
+        late.entries = [entry("Open"), entry("Quit")];
+        tryVerify(() => rowAt(menu, "Open").activeFocus);
+        keyClick(Qt.Key_Escape);
+        tryVerify(() => rowAt(menu, "Slow").activeFocus);
     }
 
     function test_an_apps_menu_changing_while_it_is_open_changes_its_rows() {

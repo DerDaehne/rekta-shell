@@ -48,6 +48,9 @@
     pkgs.kdePackages.konsole
     pkgs.kdePackages.dolphin
     pkgs.kdePackages.kate
+    pkgs.keepassxc
+    pkgs.kdePackages.kdeconnect-kde
+    (pkgs.python3.withPackages (python: [ python.dbus-next ]))
     pkgs.quickshell
   ];
 }
