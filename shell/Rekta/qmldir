@@ -48,3 +48,6 @@ Tooltip 1.0 Tooltip.qml
 singleton Turnstile 1.0 Turnstile.qml
 Sparkline 1.0 Sparkline.qml
 internal TileNews TileNews.qml
+Toaster 1.0 Toaster.qml
+Toast 1.0 Toast.qml
+Banner 1.0 Banner.qml

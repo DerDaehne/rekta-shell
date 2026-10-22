@@ -1,4 +1,5 @@
 import QtQuick
+import "Status.js" as Status
 
 // A button (forms.md, "One size of control"; rekta.css:211–231). One height per density; the kind ranks it, not its
 // size: the primary takes the accent, a quiet one has no frame, a destructive one is framed in the error colour and
@@ -50,6 +51,8 @@ Row {
             clicked();
     }
 
+    // A row has no baseline of its own; the words' lines the button up with text beside it.
+    baselineOffset: box.y + box.baselineOffset
     spacing: Tokens.spaceS
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
@@ -193,8 +196,11 @@ Row {
             }
         }
 
+        // On a status fill the ring takes the text colour, which clears AA there (rekta.css:954).
         FocusRing {
+            objectName: "ring"
             shown: button.activeFocus
+            border.color: Status.onStatusFill(button) ? button.ink : Tokens.color.focus
         }
 
         TapHandler {

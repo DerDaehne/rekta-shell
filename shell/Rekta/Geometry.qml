@@ -165,4 +165,17 @@ QtObject {
     readonly property real sparkBoxHeight: 28
     readonly property real sparkStroke: 2
     readonly property real sparkStaleOpacity: 0.35
+
+    // `.rk-icon { width: 20px; height: 20px }` (rekta.css:425)
+    readonly property real iconSize: 20
+    // `.rk-toast { max-width: 32rem }` sideways (rekta.css:1106)
+    readonly property real toastMaxWidth: 512
+    // The action's divider: `border-left: 1px solid color-mix(in srgb, currentColor 20%, transparent)` (rekta.css:914)
+    readonly property real toastDividerOpacity: 0.2
+    // `.rk-toast-act:focus-visible { outline: 2px solid currentColor; outline-offset: -10px }` (rekta.css:917)
+    readonly property real toastFocusInset: 10
+    // The undo window's line: `border-top: 2px solid` (rekta.css:924)
+    readonly property real toastLine: 2
+    // `@keyframes rk-banner-in { from { opacity: 0; transform: translateY(-8px) } }` (rekta.css:955)
+    readonly property real bannerShift: 8
 }
