@@ -40,7 +40,8 @@ FocusScope {
         phase = "opening";
         glassOut.stop();
         glassIn.restart();
-        forceActiveFocus();
+        pivot.focus = false;
+        forgetTileFocus();
         body.visible = false;
         // The parts wait until the windows are three quarters back, as the next place waits for the last part leaving.
         if (waitForWindows.interval > 0)
@@ -107,6 +108,7 @@ FocusScope {
     }
 
     function goToPlace(index: int) {
+        forgetTileFocus();
         turn(index === 0 ? apps : column, index === 0 ? column : apps, {
             back: index === 0
         });
@@ -124,9 +126,22 @@ FocusScope {
         close(tile);
     }
 
+    function allTiles(): var {
+        return [...runningGrid.children, ...pinnedGrid.children].filter(item => (item as Tile) !== null);
+    }
+
     // The tiles a key can reach, in reading order of their sections.
     function reachableTiles(): var {
-        return [...runningGrid.children, ...pinnedGrid.children].filter(item => (item as Tile)?.opens && item.visible);
+        return allTiles().filter(tile => tile.opens && tile.visible);
+    }
+
+    // A tile keeps its focus in the Start's scope while hidden or disabled and takes keys again once shown, so the Start
+    // opens, and goes to another place, with no tile in focus.
+    function forgetTileFocus() {
+        for (const tile of allTiles())
+            tile.focus = false;
+        if (!pivot.activeFocus)
+            forceActiveFocus();
     }
 
     // Arrows move the focus to the nearest tile that way; past the last one, right goes to "alle apps" and up to the

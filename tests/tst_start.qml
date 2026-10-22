@@ -18,16 +18,14 @@ TestCase {
     // What the fake windows and apps were asked to do, oldest first.
     property var calls: []
 
-    // A coloured square, as an app's own icon is coloured.
-    function iconOf(colour: string): string {
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><rect width="20" height="20" rx="3" fill="${colour}"/></svg>`;
-        return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-    }
+    // Coloured 20 × 20 squares as PNG (the check has no SVG image plugin), as an app's own icon is coloured.
+    readonly property string blueIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGOQnfmZbMQwqnlU86jmUc0DqxkAaSeYL8S+KvQAAAAASUVORK5CYII="
+    readonly property string pinkIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGN4aTWLbMQwqnlU86jmUc0DqxkAreu3b+7dCC4AAAAASUVORK5CYII="
 
     function fakeWindow(title: string, lastActivated: real): var {
         return {
             title: title,
-            icon: iconOf("#1d99f3"),
+            icon: testCase.blueIcon,
             lastActivated: lastActivated,
             stackingOrder: 0,
             activate: () => testCase.calls = [...testCase.calls, `activate ${title}`]
@@ -37,7 +35,7 @@ TestCase {
     function fakeApp(name: string, columns: int): var {
         return {
             name: name,
-            icon: iconOf("#e93a9a"),
+            icon: testCase.pinkIcon,
             columns: columns,
             rows: 1,
             launch: () => testCase.calls = [...testCase.calls, `launch ${name}`]
@@ -433,7 +431,31 @@ TestCase {
         verify(top >= 0 && top + last.height <= column.height, `whole in view at ${top}`);
     }
 
-        function test_enter_presses_the_tile_in_focus() {
+        function test_the_start_opens_again_with_no_tile_in_focus() {
+        openNow();
+        keyClick(Qt.Key_Down);
+        verify(tilesIn("running")[0].activeFocus);
+        Prefs.motion = "off";
+        keyClick(Qt.Key_Escape);
+        start.open();
+        verify(start.activeFocus);
+        verify(tilesIn("running").concat(tilesIn("pinned")).every(tile => !tile.focus));
+    }
+
+    function test_in_alle_apps_enter_presses_no_tile_of_the_start_place() {
+        Prefs.motion = "off";
+        start.open();
+        waitForRendering(start);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Right);
+        keyClick(Qt.Key_Right);
+        compare(named("pivot").currentIndex, 1);
+        keyClick(Qt.Key_Return);
+        compare(calls, []);
+        verify(start.wanted);
+    }
+
+    function test_enter_presses_the_tile_in_focus() {
         Prefs.motion = "off";
         start.open();
         keyClick(Qt.Key_Down);

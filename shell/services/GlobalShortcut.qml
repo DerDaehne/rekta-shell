@@ -51,5 +51,9 @@ Scope {
             if (action === shortcut.name)
                 shortcut.pressed();
         }
+
+        // kglobalaccel tells the release too; the shell acts on the press, and without a handler the watcher warns.
+        function dbusglobalShortcutReleased(component: string, action: string, timestamp: real) {
+        }
     }
 }
