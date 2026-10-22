@@ -67,6 +67,14 @@ PanelWindow {
         }
     }
 
+    // Meta opens and closes it; in Plasma's own session Meta stays with Kickoff, as there this shortcut is not present.
+    GlobalShortcut {
+        name: "start"
+        text: "Open the Start"
+        keys: [Qt.Key_Meta]
+        onPressed: place.toggle()
+    }
+
     // Without windows the Start stands: after login and once the last window closes.
     Connections {
         target: surface.windows
