@@ -198,6 +198,13 @@ nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM
   In the guest the session's Wayland socket is `wayland-1`, not `wayland-0`:
   take the session's variables from `systemctl --user show-environment`, or
   start programs in it with `systemd-run --user`.
+
+  The VM has no sound card unless QEMU gets one: `-audiodev none,id=snd0
+  -device intel-hda -device hda-duplex,audiodev=snd0` after `--` gives PipeWire
+  a sink and a source. `sendkey` knows the volume and media keys (`volumeup`,
+  `audiomute`, `audioplay`, …) but not mic mute or brightness; write those to a
+  uinput device in the guest as root (the guest mounts the host's `/nix/store`,
+  so a tool built on the host, such as python-evdev, runs there).
 - The overlay (`overlays.default`) builds `rekta-shell` against the importing
   configuration's nixpkgs.
 
