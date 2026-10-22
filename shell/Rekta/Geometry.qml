@@ -120,6 +120,14 @@ QtObject {
     readonly property real tipPaddingY: 4
     // placeTip(): `gap = 6` between a control and its tip (rekta.js:2549)
     readonly property real tipGap: 6
+    // `.rk-ab { gap: 6px; min-width: 48px; min-height: 48px; padding: 0 10px }`, `.rk-ab svg { width: 20px; height: 20px }`
+    // (rekta.css:622, :629)
+    readonly property real appBarControl: 48
+    readonly property real appBarControlPadding: 10
+    readonly property real appBarControlGap: 6
+    readonly property real appBarGlyph: 20
+    // `.rk-ab-mid[data-rk-priority='pinned'] { max-width: 50% }` of the bar (rekta.css:645)
+    readonly property real appBarPinnedShare: 0.5
 
     // The place change (motion.md:11), whose angles, curves and shares have no tokens yet.
     // `:root { --_rk-turn-out: 60deg; --_rk-turn-in: 70deg; --_rk-ease-turn-out: cubic-bezier(0.35, 0, 0.65, 0.6);
