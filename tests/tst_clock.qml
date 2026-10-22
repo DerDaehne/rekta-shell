@@ -125,28 +125,29 @@ TestCase {
         verify(tick.running && tick.repeat, "and keeps waking, each time at the next minute");
     }
 
-    function test_iso_weeks_count_from_the_week_of_the_first_thursday() {
-        compare(Calendar.isoWeek(new Date(2026, 9, 22)), 43);
-        compare(Calendar.isoWeek(new Date(2027, 0, 1)), 53, "a Friday 1 January belongs to the year before");
-        compare(Calendar.isoWeek(new Date(2026, 11, 28)), 53);
-        compare(Calendar.isoWeek(new Date(2021, 0, 4)), 1);
-        compare(Calendar.isoWeek(new Date(2024, 11, 30)), 1, "a Monday 30 December belongs to the year after");
-    }
-
-    function test_the_week_starts_on_the_locales_first_day_and_each_week_leads_with_its_number() {
+    function test_the_week_starts_on_monday_whatever_the_locale_and_has_no_week_numbers() {
         clock.openCalendar();
         clock.month.cursor = new Date(2026, 9, 22);
         compare(findChild(clock.month, "weekday 0").text, "mo");
         compare(findChild(clock.month, "weekday 6").text, "so");
         compare(cellOf(new Date(2026, 9, 1)).x, cell(3).x, "Thursday 1 October in the fourth column");
-        compare(findChild(clock.month, "week 0").text, "40");
-        compare(findChild(clock.month, "week 4").text, "44");
-        verify(!findChild(clock.month, "week 5").visible, "no number for a week without a day of the month");
+        compare(clock.month.width, 2 * clock.month.pad + 7 * Geometry.monthCell);
+        verify(!findChild(clock.month, "week 0"), "no column of week numbers");
         clock.locale = Qt.locale("en_US");
-        compare(findChild(clock.month, "weekday 0").text, "sun");
-        compare(cellOf(new Date(2026, 9, 1)).x, cell(4).x, "a Sunday first moves it one on");
-        compare(findChild(clock.month, "week 0").text, "40", "the row holds most of week 40");
+        compare(findChild(clock.month, "weekday 0").text, "mon");
+        compare(cellOf(new Date(2026, 9, 1)).x, cell(3).x, "a locale starting on Sunday does not move it");
         compare(findChild(clock.month, "title").text, "october 2026");
+    }
+
+    function test_days_of_the_neighbouring_months_are_not_shown() {
+        clock.openCalendar();
+        clock.month.cursor = new Date(2026, 9, 22);
+        verify(!cell(0).visible, "Monday 28 September is left empty");
+        verify(!cell(2).visible);
+        verify(cell(3).visible, "1 October");
+        verify(cell(33).visible, "31 October");
+        verify(!cell(34).visible, "1 November");
+        verify(!cell(41).visible);
     }
 
     function test_only_today_is_framed() {
@@ -166,6 +167,15 @@ TestCase {
         compare(findChild(today, "number").font.features.tnum, 1);
     }
 
+    function test_the_same_day_of_another_month_or_year_is_not_framed() {
+        clock.openCalendar();
+        for (const month of [new Date(2026, 10, 20), new Date(2026, 8, 20), new Date(2027, 9, 20)]) {
+            clock.month.cursor = month;
+            for (let i = 0; i < 42; i++)
+                verify(!findChild(cell(i), "today").visible, `${month.toDateString()} cell ${i}`);
+        }
+    }
+
     function test_a_click_opens_the_month_above_the_clock_and_another_closes_it() {
         mouseClick(clock, 20, 20);
         const calendar = clock.calendar;
@@ -180,7 +190,7 @@ TestCase {
         verify(!calendar.open);
     }
 
-    function test_keys_move_by_day_week_month_and_year_and_home_goes_back_to_today() {
+    function test_keys_move_by_day_week_month_and_year_and_home_and_end_go_to_the_months_edges() {
         clock.forceActiveFocus();
         keyClick(Qt.Key_Space);
         verify(clock.calendar.open);
@@ -206,7 +216,9 @@ TestCase {
         keyClick(Qt.Key_PageDown, Qt.ShiftModifier);
         verify(Calendar.sameDay(at(), new Date(2027, 8, 12)), "with Shift a year");
         keyClick(Qt.Key_Home);
-        verify(Calendar.sameDay(at(), clock.now), "home is today");
+        verify(Calendar.sameDay(at(), new Date(2027, 8, 1)), "home is the month's first day");
+        keyClick(Qt.Key_End);
+        verify(Calendar.sameDay(at(), new Date(2027, 8, 30)), "end is its last");
         const focused = cellOf(at());
         verify(focused.children.some(child => child instanceof FocusRing && child.visible), "the keys' day shows the ring");
     }

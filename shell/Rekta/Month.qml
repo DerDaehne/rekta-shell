@@ -3,8 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 
 // A month to look at, after rekta-core's (core/src/controls.c:887–990): the month and year over the weekdays, six
-// weeks of days below, today in a frame; the week starts on the locale's first day, and each week leads with its ISO
-// number. ← → go by day, ↑ ↓ by week, Page Up and Page Down by month (with Shift by year), Home back to today; Escape
+// weeks of days below, only the month's own days, today in a frame; the week starts on Monday. ← → go by day, ↑ ↓ by
+// week, Page Up and Page Down by month (with Shift by year), Home and End to the month's first and last day; Escape
 // asks the host to close it. A click on the arrows by the title turns the month.
 Item {
     id: month
@@ -18,7 +18,7 @@ Item {
     property string previousWord: "previous month"
     property string nextWord: "next month"
     readonly property real pad: Tokens.spaceS
-    readonly property date start: Calendar.gridStart(cursor, locale.firstDayOfWeek)
+    readonly property date start: Calendar.gridStart(cursor)
     readonly property real daysTop: pad + Tokens.controlHeight + Math.ceil(Tokens.lineHeightCompact * Tokens.fontSizeXs) + Tokens.spaceXs
 
     signal escaped
@@ -55,7 +55,10 @@ Item {
             move(Calendar.addMonths(cursor, yearly));
             return true;
         case Qt.Key_Home:
-            move(today);
+            move(Calendar.monthStart(cursor));
+            return true;
+        case Qt.Key_End:
+            move(Calendar.monthEnd(cursor));
             return true;
         case Qt.Key_Escape:
             escaped();
@@ -64,7 +67,7 @@ Item {
         return false;
     }
 
-    implicitWidth: 2 * pad + 8 * Geometry.monthCell
+    implicitWidth: 2 * pad + 7 * Geometry.monthCell
     implicitHeight: daysTop + 6 * Geometry.monthCell + pad
     activeFocusOnTab: true
     Accessible.role: Accessible.Dialog
@@ -115,35 +118,15 @@ Item {
             required property int index
 
             objectName: `weekday ${index}`
-            x: month.pad + (index + 1) * Geometry.monthCell
+            x: month.pad + index * Geometry.monthCell
             y: month.pad + Tokens.controlHeight
             width: Geometry.monthCell
             horizontalAlignment: Text.AlignHCenter
             lineHeightFactor: Tokens.lineHeightCompact
-            text: Calendar.word(month.locale.dayName((month.locale.firstDayOfWeek + index) % 7, Locale.ShortFormat))
+            text: Calendar.word(month.locale.dayName((index + 1) % 7, Locale.ShortFormat))
             font.pixelSize: Tokens.fontSizeXs
             font.weight: Tokens.fontWeightSemibold
             color: Tokens.color.textContrastHigh
-        }
-    }
-
-    Repeater {
-        model: 6
-
-        delegate: Meta {
-            required property int index
-            readonly property date first: month.dayAt(index * 7)
-            readonly property bool inMonth: first.getMonth() === month.cursor.getMonth() || month.dayAt(index * 7 + 6).getMonth() === month.cursor.getMonth()
-
-            objectName: `week ${index}`
-            x: month.pad
-            y: month.daysTop + index * Geometry.monthCell + (Geometry.monthCell - height) / 2
-            width: Geometry.monthCell
-            visible: inMonth
-            horizontalAlignment: Text.AlignHCenter
-            lineHeightFactor: Tokens.lineHeightCompact
-            wrapMode: Text.NoWrap
-            text: Calendar.rowWeek(first)
         }
     }
 
@@ -156,7 +139,7 @@ Item {
             readonly property bool isToday: Calendar.sameDay(day, month.today)
 
             objectName: `day ${index}`
-            x: month.pad + (index % 7 + 1) * Geometry.monthCell
+            x: month.pad + index % 7 * Geometry.monthCell
             y: month.daysTop + Math.floor(index / 7) * Geometry.monthCell
             width: Geometry.monthCell
             height: Geometry.monthCell

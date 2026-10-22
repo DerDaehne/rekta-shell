@@ -18,13 +18,10 @@ AppBarButton {
     readonly property string day: Calendar.dateWords(now, locale)
     readonly property alias calendar: surface
     readonly property alias month: monthView
-    // Opened from the keyboard: Escape gives the focus back.
-    property bool openedByKeys: false
 
     function openCalendar() {
-        openedByKeys = clock.activeFocus;
         monthView.cursor = now;
-        monthView.showsFocus = openedByKeys;
+        monthView.showsFocus = clock.activeFocus;
         surface.open = true;
         monthView.forceActiveFocus();
     }

@@ -3,8 +3,6 @@
 
 // Dates for the clock and the month, as pure functions of a Date and a QML Locale.
 
-const dayMs = 24 * 60 * 60 * 1000;
-
 // How long until the minute changes: the clock wakes once a minute, never more often.
 function untilNextMinute(date) {
     return 60000 - (date.getSeconds() * 1000 + date.getMilliseconds());
@@ -50,20 +48,16 @@ function sameDay(a, b) {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-// The first day of the six weeks that show the month, the week starting on the locale's first day (0 is Sunday).
-function gridStart(date, firstDayOfWeek) {
+// The Monday that starts the six weeks showing the month, as rekta-core's month always starts its weeks.
+function gridStart(date) {
     const first = new Date(date.getFullYear(), date.getMonth(), 1);
-    return addDays(first, -((first.getDay() - firstDayOfWeek + 7) % 7));
+    return addDays(first, -((first.getDay() + 6) % 7));
 }
 
-// The ISO 8601 week of a day: the week of its Thursday, counted in that Thursday's year.
-function isoWeek(date) {
-    const thursday = addDays(date, 3 - (date.getDay() + 6) % 7);
-    const january1 = new Date(thursday.getFullYear(), 0, 1);
-    return Math.floor(Math.round((thursday - january1) / dayMs) / 7) + 1;
+function monthStart(date) {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
-// A row that starts on another weekday than Monday holds most of the ISO week its Thursday is in.
-function rowWeek(rowStart) {
-    return isoWeek(addDays(rowStart, (4 - rowStart.getDay() + 7) % 7));
+function monthEnd(date) {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0);
 }
