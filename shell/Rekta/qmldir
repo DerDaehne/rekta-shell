@@ -29,6 +29,7 @@ Segments 1.0 Segments.qml
 Button 1.0 Button.qml
 IconButton 1.0 IconButton.qml
 Tile 1.0 Tile.qml
+TileGrid 1.0 TileGrid.qml
 Pivot 1.0 Pivot.qml
 Facets 1.0 Facets.qml
 Stat 1.0 Stat.qml
