@@ -32,9 +32,10 @@ Item {
 
     // Shows one toast and returns it. Options as rekta.js toaster.show(): key, undo (a function), from (the item focus
     // returns to), action ("undo", "redo" or another label), act ({ label, run }), status, windowMs, onEnd(reason); and
-    // icon, an image for the app the toast speaks for, at its front.
+    // icon, an image for the app the toast speaks for, at its front; title, open ({ run }, the text as a control) and
+    // stays (no window until it is dismissed).
     function show(text: string, options: var): Toast {
-        const o = Object.assign({ key: text, undo: null, from: null, action: "undo", act: null, status: "", windowMs: 0, onEnd: null, icon: "" }, options);
+        const o = Object.assign({ key: text, undo: null, from: null, action: "undo", act: null, status: "", windowMs: 0, onEnd: null, icon: "", title: "", open: null, stays: false }, options);
         if (open && open.key === o.key && open.undoAction && o.undo) {
             open.update(text, o.undo, o.windowMs, o.onEnd);
             return open;
@@ -47,6 +48,9 @@ Item {
             text: text,
             status: o.status,
             icon: o.icon,
+            title: o.title,
+            open: o.open,
+            stays: o.stays,
             action: o.action,
             undoAction: o.undo,
             act: o.act,

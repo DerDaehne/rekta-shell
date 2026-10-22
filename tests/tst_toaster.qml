@@ -11,7 +11,7 @@ TestCase {
     visible: true
     when: windowShown
     width: 800
-    height: 600
+    height: 760
 
     // A 40px app icon: a blue rounded square with a white dot.
     readonly property string appIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAHlBMVEX///86dvBEffF4ofW5zvrs8v7///9Be/GcuvdVifLlkWmGAAAAAXRSTlMAQObYZgAAAI1JREFUOMu11UkOgCAQRFGaocH7X9iFMaKW5DvV+sWANEUIS+wyoY8NA9lGzaCk0AxKCg3mOYwpFy85xTGszde0OoCT95ku4d7tZQ+rH1M1bCfYJIx+TlQwCZgUzAJmBYuARUFXefVFvEa8a/wf8cnws8bTw+eRTzi/M39c17dVcaekvu9HXs287NHzMQN/Vg0WT30WoAAAAABJRU5ErkJggg=="
@@ -113,7 +113,7 @@ TestCase {
         compare(toast.y, toaster.rest);
         compare(toaster.rest, 12);
         compare(toast.x, (toaster.width - toast.width) / 2);
-        compare(toast.height, Math.max(Tokens.controlHeight + Tokens.spaceXs, findChild(toast, "message").height));
+        compare(toast.height, Math.max(Tokens.controlHeight + Tokens.spaceXs, findChild(toast, "words").height));
         compare(toaster.implicitHeight, 12 + toast.height, "the host's window holds it");
         toast.text = "a very long sentence that says what happened in many words, and then some more words, so it wraps";
         compare(toast.width, Geometry.toastMaxWidth, "at most 32rem");
@@ -357,7 +357,168 @@ TestCase {
         compare(icon.width, 20);
         compare(icon.mapToItem(toast, 0, 0).x, Tokens.spaceM);
         fuzzyCompare(icon.mapToItem(toast, 0, 0).y, (toast.height - 20) / 2, 0.5, "centred on the strip");
-        compare(message.x + message.leftPadding, Tokens.spaceM + 20 + Tokens.spaceS);
+        compare(message.mapToItem(toast, 0, 0).x + message.leftPadding, Tokens.spaceM + 20 + Tokens.spaceS);
+    }
+
+    // A 40 × 20 picture: red, blue and green stripes of 10, 20 and 10px. A square crop from its middle is all blue.
+    readonly property string widePicture: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAUCAIAAABwJOjsAAAALUlEQVR4nGO4aW+PB1mVfSAb2W+IwoMYRi0etXjU4lGLRy0etXjU4lGLR47FADgIlz0RQ3NbAAAAAElFTkSuQmCC"
+
+    function test_a_toast_with_a_title_has_it_in_semibold_above_a_text_of_two_lines_that_ends_in_an_ellipsis() {
+        const long = "a long message body that says what happened in many words, and then some more words, so that it needs a third line to be said, and a fourth line besides, because a message may run on and on and on until nobody reads it to the end";
+        const toast = toaster.show(long, { title: "Mia", icon: testCase.appIcon });
+        const heading = findChild(toast, "title");
+        const message = findChild(toast, "message");
+        verify(heading.visible);
+        compare(heading.text, "Mia");
+        compare(heading.font.weight, Tokens.fontWeightSemibold);
+        compare(message.font.weight, Tokens.fontWeightRegular);
+        verify(message.mapToItem(toast, 0, 0).y >= heading.mapToItem(toast, 0, 0).y + heading.height, "the text is below the title");
+        compare(message.lineCount, 2);
+        verify(message.truncated, "the third line ends in an ellipsis");
+        compare(message.elide, Text.ElideRight);
+        compare(toast.height, findChild(toast, "words").height);
+    }
+
+    function test_the_whole_text_is_announced_and_named_even_where_it_is_cut() {
+        const long = "a long message body that says what happened in many words, and then some more words, so that it needs a third line to be said, and a fourth line besides, because a message may run on and on and on until nobody reads it to the end";
+        const toast = toaster.show(long, { title: "Mia" });
+        compare(toast.announcement, `Mia. ${long}`);
+        compare(toast.Accessible.name, `Mia. ${long}`);
+        compare(toast.spoken, toast.Accessible.name);
+        compare(findChild(toast, "message").text, long);
+    }
+
+    function test_without_a_title_the_text_has_no_limit_and_no_heading() {
+        const long = "a long message body that says what happened in many words, and then some more words, so that it needs a third line to be said, and a fourth line besides, because a message may run on and on and on until nobody reads it to the end";
+        const toast = toaster.show(long, {});
+        verify(!findChild(toast, "title").visible);
+        verify(findChild(toast, "message").lineCount > 2);
+        verify(!findChild(toast, "message").truncated);
+        compare(toast.Accessible.name, long);
+    }
+
+    function test_an_undo_toast_announces_its_window_after_the_whole_text() {
+        const toast = toaster.show("3 messages deleted", { title: "Mail", undo: undoing("delete") });
+        compare(toast.announcement, "Mail. 3 messages deleted, 5 seconds to undo");
+    }
+
+    function test_a_held_key_presses_the_text_once() {
+        let presses = 0;
+        const toast = toaster.show("see you soon", { open: { run: () => {} } });
+        for (const isAutoRepeat of [false, true, true])
+            toast.activateOnKey({ key: Qt.Key_Return, isAutoRepeat }, () => { presses++; });
+        compare(presses, 1);
+    }
+
+    function test_a_text_without_open_is_plain_text_and_cannot_take_focus() {
+        const toast = toaster.show("see you soon", { act: { label: "reply", run: () => {} } });
+        const text = findChild(toast, "open");
+        verify(!text.visible);
+        verify(!text.activeFocusOnTab);
+    }
+
+    function test_a_press_on_the_text_runs_open_once_and_ends_the_toast_as_acted() {
+        let runs = 0;
+        const toast = toaster.show("see you soon", { title: "Mia", open: { run: () => { runs++; } }, onEnd: ending("toast") });
+        mouseClick(findChild(toast, "open"));
+        compare(runs, 1);
+        compare(testCase.ends, ["toast acted"]);
+    }
+
+    function test_enter_and_space_on_the_text_run_open_once_each() {
+        for (const key of [Qt.Key_Return, Qt.Key_Space])
+            pressTextWith(key);
+    }
+
+    function pressTextWith(key) {
+        let runs = 0;
+        const toast = toaster.show("see you soon", { open: { run: () => { runs++; } }, onEnd: ending(`key ${key}`) });
+        findChild(toast, "open").forceActiveFocus();
+        verify(findChild(toast, "open").activeFocus);
+        keyClick(key);
+        compare(runs, 1);
+        keyClick(key);
+        compare(runs, 1, "the toast is going and takes no second press");
+        toaster.leaving = 0;
+    }
+
+    function test_a_text_that_is_going_takes_no_press() {
+        Prefs.motion = "on";
+        let runs = 0;
+        const toast = toaster.show("see you soon", { open: { run: () => { runs++; } }, onEnd: ending("toast") });
+        tryCompare(toast, "y", toaster.rest, 1000);
+        toaster.dismiss();
+        verify(findChild(toast, "slidingOut").running);
+        mouseClick(findChild(toast, "open"));
+        compare(runs, 0);
+        compare(testCase.ends, ["toast dismissed"]);
+    }
+
+    function test_the_text_control_tints_with_hover_and_carries_the_acts_focus_ring() {
+        const toast = toaster.show("see you soon", { open: { run: () => {} } });
+        const text = findChild(toast, "open");
+        const tint = findChild(text, "press");
+        compare(tint.opacity, 0);
+        compare(tint.color, Tokens.color.hover);
+        mouseMove(text, 20, 10);
+        tryCompare(tint, "opacity", 1);
+        text.forceActiveFocus(Qt.TabFocusReason);
+        const ring = Array.from(text.children).find(child => child instanceof FocusRing);
+        verify(ring.visible);
+        compare(ring.offset, -Geometry.toastFocusInset);
+        compare(ring.ink, findChild(toast, "message").color);
+    }
+
+    function test_the_text_comes_before_the_action_in_the_tab_order() {
+        const toast = toaster.show("see you soon", { open: { run: () => {} }, act: { label: "reply", run: () => {} } });
+        findChild(toast, "open").forceActiveFocus();
+        verify(findChild(toast, "open").nextItemInFocusChain(true) === findChild(toast, "action"));
+    }
+
+    function test_a_toast_that_stays_does_not_run_out_and_has_no_countdown_line() {
+        const toast = toaster.show("battery low", { stays: true, undo: undoing("x"), onEnd: ending("toast") });
+        verify(!findChild(toast, "tick").running);
+        verify(!findChild(toast, "line").visible);
+        at(Tokens.durationToast * 10, toast);
+        compare(toaster.open, toast);
+        compare(testCase.ends, []);
+    }
+
+    function test_a_toast_that_stays_ends_by_escape_as_dismissed() {
+        const toast = toaster.show("battery low", { stays: true, open: { run: () => {} }, onEnd: ending("toast") });
+        findChild(toast, "open").forceActiveFocus();
+        keyClick(Qt.Key_Escape);
+        compare(testCase.ends, ["toast dismissed"]);
+    }
+
+    function test_a_toast_that_stays_ends_by_dismiss_and_by_its_action() {
+        let toast = toaster.show("battery low", { stays: true, onEnd: ending("first") });
+        toaster.dismiss();
+        compare(testCase.ends, ["first dismissed"]);
+        toaster.leaving = 0;
+        toast = toaster.show("battery low", { stays: true, act: { label: "close", run: () => {} }, onEnd: ending("second") });
+        mouseClick(findChild(toast, "action"));
+        compare(testCase.ends, ["first dismissed", "second acted"]);
+    }
+
+    function test_a_new_toast_replaces_one_that_stays() {
+        const first = toaster.show("battery low", { stays: true, onEnd: ending("first") });
+        toaster.show("saved", {});
+        compare(testCase.ends, ["first replaced"]);
+    }
+
+    function test_a_picture_in_the_icon_field_is_cropped_to_a_square_not_squeezed() {
+        const toast = toaster.show("see you soon", { icon: testCase.widePicture });
+        const picture = findChild(toast, "appIcon");
+        tryCompare(picture, "status", Image.Ready);
+        compare(picture.fillMode, Image.PreserveAspectCrop);
+        compare(picture.width, 20);
+        compare(picture.height, 20);
+        waitForRendering(picture);
+        const shot = grabImage(scene);
+        const origin = picture.mapToItem(scene, 0, 0);
+        for (const [x, y] of [[1, 1], [10, 10], [18, 18]])
+            compare(shot.pixel(origin.x + x, origin.y + y), Qt.color("#3a76f0"), `pixel ${x},${y} is from the middle stripe`);
     }
 
     function test_a_toast_slides_in_whole_from_the_top_edge_without_a_fade_and_leaves_back_up() {
@@ -420,12 +581,16 @@ TestCase {
             findChild(sheet, "error").show("could not save the schedule: the server is offline", { status: "error", act: { label: "retry", run: () => {} } });
             findChild(sheet, "focused").show("message archived", { undo: () => {} });
             findChild(findChild(sheet, "focused").open, "action").forceActiveFocus();
+            const titled = findChild(sheet, "titled").show("Can we move the call to Thursday afternoon? I have the whole morning booked and the afternoon is free, so any time after lunch works.", { title: "Mia", icon: testCase.widePicture, open: { run: () => {} }, stays: true });
+            findChild(sheet, "pressable").show("Backup finished", { title: "Backups", icon: testCase.appIcon, open: { run: () => {} }, act: { label: "show", run: () => {} } });
+            findChild(findChild(sheet, "pressable").open, "open").forceActiveFocus(Qt.TabFocusReason);
             findChild(sheet, "neutral").set("offline", true, { since: false });
             const fiveAfterTwo = new Date();
             fiveAfterTwo.setHours(14, 5, 0, 0);
             findChild(sheet, "warning").set("paused", true, { since: fiveAfterTwo });
             findChild(sheet, "alert").set("halted", true, { since: false });
             tryCompare(findChild(plain, "appIcon"), "status", Image.Ready);
+            tryCompare(findChild(titled, "appIcon"), "status", Image.Ready);
             waitForRendering(sheet);
             grabImage(sheet).save(`toast-sheet-${theme}.png`);
             compare(plain.y, 12, theme);
@@ -438,7 +603,7 @@ TestCase {
 
         Rectangle {
             width: 800
-            height: 600
+            height: 760
             color: Tokens.color.bg
 
             Column {
@@ -465,6 +630,18 @@ TestCase {
 
                 Toaster {
                     objectName: "focused"
+                    width: parent.width
+                    clock: () => testCase.time
+                }
+
+                Toaster {
+                    objectName: "titled"
+                    width: parent.width
+                    clock: () => testCase.time
+                }
+
+                Toaster {
+                    objectName: "pressable"
                     width: parent.width
                     clock: () => testCase.time
                 }

@@ -398,4 +398,175 @@ TestCase {
         menu.close(false);
         verify(KeyLayers.escapeIsFree(row("control")));
     }
+    // A 40px picture for the rows' icons.
+    readonly property string picture: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAHlBMVEX///86dvBEffF4ofW5zvrs8v7///9Be/GcuvdVifLlkWmGAAAAAXRSTlMAQObYZgAAAI1JREFUOMu11UkOgCAQRFGaocH7X9iFMaKW5DvV+sWANEUIS+wyoY8NA9lGzaCk0AxKCg3mOYwpFy85xTGszde0OoCT95ku4d7tZQ+rH1M1bCfYJIx+TlQwCZgUzAJmBYuARUFXefVFvEa8a/wf8cnws8bTw+eRTzi/M39c17dVcaekvu9HXs287NHzMQN/Vg0WT30WoAAAAABJRU5ErkJggg=="
+
+    Component {
+        id: levelComponent
+
+        Item {
+            width: 1000
+            height: 600
+
+            Button {
+                id: levelButton
+
+                objectName: "control"
+                text: "mail"
+            }
+
+            Button {
+                objectName: "after"
+                x: 200
+                text: "after"
+            }
+
+            Menu {
+                objectName: "menu"
+                control: levelButton
+                y: 80
+
+                MenuItem { objectName: "plain"; text: "mark all read" }
+                MenuItem { objectName: "mia"; lead: "Mia"; text: "Can we move the call?"; keyHint: "14:20"; icon: testCase.picture }
+                MenuItem { objectName: "backups"; lead: "Backups"; text: "finished"; keyHint: "14:05" }
+            }
+        }
+    }
+
+    property var wentBack: 0
+
+    function levelMenu() {
+        const level = createTemporaryObject(levelComponent, testCase);
+        const levelled = findChild(level, "menu");
+        levelled.back = () => {
+            testCase.wentBack++;
+        };
+        levelled.backName = "mail";
+        wentBack = 0;
+        findChild(level, "control").forceActiveFocus();
+        levelled.openAt(1);
+        return levelled;
+    }
+
+    function test_an_icon_stands_first_in_its_row_and_every_text_in_the_menu_starts_at_one_edge() {
+        const level = openedLevel();
+        const mia = findChild(level, "mia");
+        const plain = findChild(level, "plain");
+        const edge = Tokens.spaceM + Geometry.iconSize + Tokens.spaceS;
+        compare(findChild(plain, "label").x, edge, "a row without an icon keeps the edge");
+        const icon = findChild(mia, "icon");
+        compare(icon.x, Tokens.spaceM);
+        compare(icon.width, 20);
+        compare(icon.height, 20);
+        compare(findChild(mia, "lead").x, edge);
+        compare(findChild(mia, "label").x, edge + findChild(mia, "lead").implicitWidth + Tokens.spaceS);
+    }
+
+    function openedLevel() {
+        const level = createTemporaryObject(levelComponent, testCase);
+        findChild(level, "menu").open = true;
+        return level;
+    }
+
+    function test_a_menu_without_icons_keeps_its_texts_at_the_usual_edge() {
+        menu.open = true;
+        compare(findChild(row("open"), "label").x, Tokens.spaceM);
+        compare(findChild(row("open"), "icon").visible, false);
+    }
+
+    function test_a_lead_word_is_semibold_and_sits_space_s_before_the_text() {
+        const level = openedLevel();
+        const backups = findChild(level, "backups");
+        const lead = findChild(backups, "lead");
+        const label = findChild(backups, "label");
+        compare(lead.font.weight, Tokens.fontWeightSemibold);
+        compare(label.font.weight, Font.Normal);
+        compare(label.x, lead.x + lead.implicitWidth + Tokens.spaceS);
+        compare(backups.Accessible.name, "Backups finished", "the lead is read with the text");
+    }
+
+    function test_icon_and_lead_widen_the_row() {
+        const level = openedLevel();
+        const mia = findChild(level, "mia");
+        const key = findChild(mia, "key");
+        compare(mia.implicitWidth, 2 * Tokens.spaceM + 20 + Tokens.spaceS + findChild(mia, "lead").implicitWidth + Tokens.spaceS + findChild(mia, "label").implicitWidth + Tokens.spaceS + Tokens.spaceL + key.implicitWidth);
+    }
+
+    function test_a_short_time_stands_where_the_key_hint_does() {
+        const level = openedLevel();
+        const mia = findChild(level, "mia");
+        const key = findChild(mia, "key");
+        compare(key.text, "14:20");
+        verify(key.visible);
+        compare(key.x + key.width, mia.width - Tokens.spaceM);
+    }
+
+    function test_while_a_deeper_level_stands_the_first_row_goes_back_and_says_whose_level_it_is() {
+        const levelled = levelMenu();
+        const back = findChild(levelled, "back");
+        verify(back.visible);
+        compare(back.glyph, "back");
+        compare(back.text, "back · mail");
+        verify(levelled.items()[0] === back);
+        mouseClick(back);
+        compare(testCase.wentBack, 1);
+        verify(levelled.open, "going back leaves the menu open");
+    }
+
+    function test_without_a_deeper_level_there_is_no_back_row_and_left_does_nothing() {
+        openFromKeys(0);
+        verify(!findChild(menu, "back").visible);
+        keyClick(Qt.Key_Left);
+        verify(menu.open);
+        verify(row("open").activeFocus);
+    }
+
+    function test_escape_and_left_go_back_instead_of_closing() {
+        const levelled = levelMenu();
+        keyClick(Qt.Key_Escape);
+        compare(testCase.wentBack, 1);
+        keyClick(Qt.Key_Left);
+        compare(testCase.wentBack, 2);
+        verify(levelled.open);
+    }
+
+    function test_enter_on_the_back_row_goes_back() {
+        const levelled = levelMenu();
+        levelled.focusAt(0);
+        keyClick(Qt.Key_Return);
+        compare(testCase.wentBack, 1);
+        verify(levelled.open);
+    }
+
+    function test_tab_closes_everything_even_in_a_deeper_level() {
+        const levelled = levelMenu();
+        keyClick(Qt.Key_Tab);
+        verify(!levelled.open);
+        compare(testCase.wentBack, 0);
+    }
+
+    function test_a_new_level_starts_on_its_first_row_after_the_back_row() {
+        const levelled = levelMenu();
+        levelled.focusLevelStart();
+        verify(findChild(levelled, "plain").activeFocus);
+        levelled.back = null;
+        levelled.focusLevelStart();
+        verify(findChild(levelled, "plain").activeFocus);
+    }
+
+    function test_after_going_back_the_focus_returns_to_the_row_the_level_was_entered_from() {
+        const levelled = levelMenu();
+        const origin = findChild(levelled, "backups");
+        levelled.focusRow(origin);
+        levelled.back = () => {
+            levelled.back = null;
+            levelled.focusRow(origin);
+        };
+        findChild(levelled, "plain").forceActiveFocus();
+        keyClick(Qt.Key_Escape);
+        verify(origin.activeFocus);
+        compare(findChild(levelled, "back").visible, false);
+        keyClick(Qt.Key_Escape);
+        verify(!levelled.open, "at the top level Escape closes");
+    }
 }

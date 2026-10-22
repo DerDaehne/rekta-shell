@@ -78,6 +78,23 @@ TestCase {
                 MenuItem { kind: "checkbox"; text: "show sizes" }
             }
 
+            // A deeper level of the menu: icons (an image and a Rekta icon), a lead word, a time as the hint, and the
+            // back row; its texts share one edge.
+            Menu {
+                objectName: "levelMenu"
+
+                control: more
+                x: 260
+                y: 80
+                open: parent.visible
+                back: () => {}
+                backName: "mail"
+
+                MenuItem { lead: "Mia"; text: "Can we move the call?"; keyHint: "14:20"; icon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAHlBMVEX///86dvBEffF4ofW5zvrs8v7///9Be/GcuvdVifLlkWmGAAAAAXRSTlMAQObYZgAAAI1JREFUOMu11UkOgCAQRFGaocH7X9iFMaKW5DvV+sWANEUIS+wyoY8NA9lGzaCk0AxKCg3mOYwpFy85xTGszde0OoCT95ku4d7tZQ+rH1M1bCfYJIx+TlQwCZgUzAJmBYuARUFXefVFvEa8a/wf8cnws8bTw+eRTzi/M39c17dVcaekvu9HXs287NHzMQN/Vg0WT30WoAAAAABJRU5ErkJggg==" }
+                MenuItem { lead: "Backups"; text: "finished"; keyHint: "14:05"; glyph: "more" }
+                MenuItem { text: "remove all"; disabledReason: "nothing to remove" }
+            }
+
             IconButton {
                 id: close
 

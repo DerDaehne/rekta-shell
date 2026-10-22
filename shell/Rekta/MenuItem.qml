@@ -13,6 +13,13 @@ Item {
     property string kind: "item"
     property bool checked: false
     // The keys that do the same from anywhere, such as "Ctrl S".
+    // An image at the front of the row, 20px: the shell's own addition to Rekta's text-only rows. When one row of a menu has
+    // one, every row's text starts at the same edge.
+    property url icon
+    // The same, by the name of a Rekta icon.
+    property string glyph
+    // One word in semibold before the text, such as the app a message comes from.
+    property string lead
     property string keyHint
     property string disabledReason
     readonly property bool disabled: disabledReason !== ""
@@ -20,14 +27,20 @@ Item {
     readonly property string label: disabled ? `${text} (${disabledReason})` : text
     readonly property color ink: disabled ? Tokens.color.disabled : Tokens.color.textPrimary
     readonly property real checkSpace: checkable ? Geometry.menuCheck + Tokens.spaceS : 0
+    readonly property bool hasIcon: icon.toString() !== "" || glyph !== ""
+    readonly property bool menuHasIcons: Array.from(parent?.children ?? []).some(row => row.hasIcon === true && row.visible)
+    readonly property real iconSpace: menuHasIcons ? Geometry.iconSize + Tokens.spaceS : 0
+    readonly property real leadSpace: lead !== "" ? leadWords.implicitWidth + Tokens.spaceS : 0
+    readonly property real textEdge: Tokens.spaceM + checkSpace + iconSpace + leadSpace
+    readonly property string spoken: lead !== "" ? `${lead} ${label}` : label
     // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:790, :797)
     readonly property real keySpace: keyHint !== "" ? Tokens.spaceS + Tokens.spaceL + key.implicitWidth : 0
 
     width: parent ? parent.width : implicitWidth
-    implicitWidth: 2 * Tokens.spaceM + checkSpace + words.implicitWidth + keySpace
+    implicitWidth: 2 * Tokens.spaceM + checkSpace + iconSpace + leadSpace + words.implicitWidth + keySpace
     implicitHeight: Tokens.rowHeight
     Accessible.role: Accessible.MenuItem
-    Accessible.name: label
+    Accessible.name: spoken
     Accessible.checkable: checkable
     Accessible.checked: checked
 
@@ -50,11 +63,46 @@ Item {
         border.color: item.ink
     }
 
+    Image {
+        objectName: "icon"
+        x: Tokens.spaceM + item.checkSpace
+        anchors.verticalCenter: parent.verticalCenter
+        width: Geometry.iconSize
+        height: Geometry.iconSize
+        sourceSize: Qt.size(width, height)
+        source: item.icon
+        visible: item.icon.toString() !== ""
+    }
+
+    Icon {
+        objectName: "glyph"
+        x: Tokens.spaceM + item.checkSpace
+        anchors.verticalCenter: parent.verticalCenter
+        size: Geometry.iconSize
+        name: item.glyph
+        color: item.ink
+        visible: item.glyph !== ""
+    }
+
+    Text {
+        id: leadWords
+
+        objectName: "lead"
+        x: Tokens.spaceM + item.checkSpace + item.iconSpace
+        anchors.verticalCenter: parent.verticalCenter
+        visible: item.lead !== ""
+        text: item.lead
+        font.family: Tokens.fontSans
+        font.pixelSize: Tokens.fontSizeS
+        font.weight: Tokens.fontWeightSemibold
+        color: item.ink
+    }
+
     Text {
         id: words
 
         objectName: "label"
-        x: Tokens.spaceM + item.checkSpace
+        x: item.textEdge
         anchors.verticalCenter: parent.verticalCenter
         text: item.label
         font.family: Tokens.fontSans

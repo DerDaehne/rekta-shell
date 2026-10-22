@@ -11,6 +11,11 @@ FloatSurface {
     // What opened it; the focus goes back there.
     property Item control
 
+    // A function the host sets while a deeper level stands in the menu (the host swaps the rows itself). Escape and ←
+    // then call it instead of closing; a first row "back · name" does the same. Tab still closes everything.
+    property var back: null
+    property string backName
+
     signal chosen(MenuItem item)
 
     // Opened from a focused control (the keyboard, as a click gives no focus) a row takes the focus and shows it. Opened
@@ -35,6 +40,10 @@ FloatSurface {
     function choose(item: MenuItem) {
         if (item.disabled)
             return;
+        if (item === backRow) {
+            back();
+            return;
+        }
         if (item.kind === "checkbox") {
             item.checked = !item.checked;
             chosen(item);
@@ -60,6 +69,16 @@ FloatSurface {
 
     function focusedIndex(): int {
         return items().findIndex(item => item.activeFocus);
+    }
+
+    // The first row of a level, after the back row.
+    function focusLevelStart() {
+        focusAt(back ? 1 : 0);
+    }
+
+    function focusRow(row: MenuItem) {
+        row.forceActiveFocus();
+        reveal(row);
     }
 
     // Wraps around both ends: -1 is the last.
@@ -89,7 +108,12 @@ FloatSurface {
             focusAt(-1);
             return true;
         case Qt.Key_Escape:
-            close(true);
+            goBackOrClose();
+            return true;
+        case Qt.Key_Left:
+            if (!back)
+                return false;
+            back();
             return true;
         case Qt.Key_Tab:
         case Qt.Key_Backtab:
@@ -104,6 +128,13 @@ FloatSurface {
             return true;
         }
         return jump(event, index);
+    }
+
+    function goBackOrClose() {
+        if (back)
+            back();
+        else
+            close(true);
     }
 
     // A letter jumps to the next item that starts with it, after the focused one and around.
@@ -133,6 +164,15 @@ FloatSurface {
     Accessible.role: Accessible.PopupMenu
     Keys.onPressed: event => {
         event.accepted = menu.handleKey(event);
+    }
+
+    MenuItem {
+        id: backRow
+
+        objectName: "back"
+        glyph: "back"
+        text: `back · ${menu.backName}`
+        visible: menu.back !== null
     }
 
     // Declared here it lands in the rows' column (the default property), so a tap finds its row.

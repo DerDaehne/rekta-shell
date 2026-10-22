@@ -13,6 +13,15 @@ FocusScope {
     required property Toaster toaster
     property string key
     property string text
+    // A notification's summary, semibold above the text; with it the text keeps to bodyMaxLines and ends in an ellipsis.
+    // The reader still gets all of it. The shell's own addition to Rekta's one-sentence toast.
+    property string title
+    readonly property int bodyMaxLines: 2
+    // { run }: the text is a control; pressing it calls run and ends the toast as "acted". What the press does, such as
+    // bringing the app forward, is the host's. Without it the text is only text, as in Rekta.
+    property var open: null
+    // The toast has no window and no countdown line; it ends by a press, its action, Escape or dismiss().
+    property bool stays: false
     // info | success | warning | error, or "" for the ink strip; a success says it without a status (states.md).
     property string status
     // The app the toast speaks for, at the front of the strip: the shell's own addition to Rekta's toast.
@@ -41,6 +50,9 @@ FocusScope {
     readonly property bool held: !waiting && !done && (hover.hovered || activeFocus)
     readonly property color ink: status !== "" ? Tokens.color.textPrimary : Tokens.color.bg
     readonly property string actionLabel: undoAction ? action : act?.label ?? ""
+    readonly property string spoken: title !== "" ? `${title}. ${text}` : text
+    // An undo toast says how long its window is.
+    readonly property string announcement: undoAction ? `${spoken}, ${seconds} ${seconds === 1 ? "second" : "seconds"} to ${action}` : spoken
     // Runs from 0, above the top edge, to 1, at rest.
     property real entry: 0
 
@@ -128,7 +140,7 @@ FocusScope {
     }
 
     function run() {
-        if (running || done || waiting)
+        if (running || done || waiting || stays)
             return;
         running = true;
         deadline = toaster.now() + remaining;
@@ -143,10 +155,9 @@ FocusScope {
         tick.stop();
     }
 
-    // An error is said at once; anything else when the reader is free. An undo toast says how long its window is.
+    // An error is said at once; anything else when the reader is free.
     function announce() {
-        const window = undoAction ? `, ${seconds} ${seconds === 1 ? "second" : "seconds"} to ${action}` : "";
-        Accessible.announce(`${text}${window}`, status === "error" ? Accessible.Assertive : Accessible.Polite);
+        Accessible.announce(announcement, status === "error" ? Accessible.Assertive : Accessible.Polite);
     }
 
     function goAway() {
@@ -166,6 +177,22 @@ FocusScope {
         act.run();
     }
 
+    function pressText() {
+        if (done)
+            return;
+        leave(false, "acted");
+        open.run();
+    }
+
+    // Enter and Space press once; a held key does not repeat the press.
+    function activateOnKey(event, press: var) {
+        if (![Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
+            return;
+        event.accepted = true;
+        if (!event.isAutoRepeat)
+            press();
+    }
+
     onHeldChanged: {
         if (done || waiting)
             return;
@@ -177,11 +204,11 @@ FocusScope {
 
     x: (toaster.width - width) / 2
     y: toaster.rest - (1 - entry) * (toaster.rest + height)
-    width: Math.min(Geometry.toastMaxWidth, toaster.width - 2 * Tokens.spaceM, front.width + message.implicitWidth + actionBox.width)
-    height: Math.max(Tokens.controlHeight + Tokens.spaceXs, message.height)
+    width: Math.min(Geometry.toastMaxWidth, toaster.width - 2 * Tokens.spaceM, front.width + words.implicitWidth + actionBox.width)
+    height: Math.max(Tokens.controlHeight + Tokens.spaceXs, words.height)
     visible: !waiting
     Accessible.role: status === "error" ? Accessible.AlertMessage : Accessible.Notification
-    Accessible.name: text
+    Accessible.name: spoken
 
     Timer {
         id: tick
@@ -219,6 +246,23 @@ FocusScope {
         id: hover
     }
 
+    // Hover and press lay `hover` over a part of the strip (rekta.css:916, :1032).
+    component Tint: Rectangle {
+        property bool lit
+
+        anchors.fill: parent
+        color: Tokens.color.hover
+        opacity: lit ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Tokens.durationShort
+                easing.type: Easing.Bezier
+                easing.bezierCurve: Tokens.easeBase
+            }
+        }
+    }
+
     Rectangle {
         objectName: "fill"
         anchors.fill: parent
@@ -239,28 +283,100 @@ FocusScope {
             width: Geometry.iconSize
             height: Geometry.iconSize
             sourceSize: Qt.size(width, height)
+            fillMode: Image.PreserveAspectCrop
             source: toast.icon
             visible: parent.width > 0
         }
     }
 
-    TextRole {
-        id: message
+    Item {
+        id: words
 
-        objectName: "message"
+        objectName: "words"
         x: front.width
         anchors.verticalCenter: parent.verticalCenter
         width: toast.width - front.width - actionBox.width
-        text: toast.text
-        font.pixelSize: Tokens.fontSizeS
-        font.weight: Tokens.fontWeightRegular
-        color: toast.ink
-        wrapMode: Text.Wrap
-        // Next to the app's icon the words keep the space a glyph keeps from its label (rekta.css:212).
-        leftPadding: front.width > 0 ? Tokens.spaceS : Tokens.spaceM
-        rightPadding: Tokens.spaceM
-        topPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxTop
-        bottomPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxBottom
+        implicitWidth: Math.max(heading.visible ? heading.implicitWidth : 0, message.implicitWidth)
+        height: message.y + message.height
+
+        TextRole {
+            id: heading
+
+            objectName: "title"
+            width: parent.width
+            visible: toast.title !== ""
+            text: toast.title
+            font.pixelSize: Tokens.fontSizeS
+            font.weight: Tokens.fontWeightSemibold
+            color: toast.ink
+            elide: Text.ElideRight
+            maximumLineCount: 1
+            leftPadding: message.leftPadding
+            rightPadding: Tokens.spaceM
+            topPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxTop
+            bottomPadding: lineBoxBottom
+        }
+
+        TextRole {
+            id: message
+
+            objectName: "message"
+            y: heading.visible ? heading.height : 0
+            width: parent.width
+            text: toast.text
+            font.pixelSize: Tokens.fontSizeS
+            font.weight: Tokens.fontWeightRegular
+            color: toast.ink
+            wrapMode: Text.Wrap
+            elide: Text.ElideRight
+            maximumLineCount: heading.visible ? toast.bodyMaxLines : 2147483647
+            // Next to the app's icon the words keep the space a glyph keeps from its label (rekta.css:212).
+            leftPadding: front.width > 0 ? Tokens.spaceS : Tokens.spaceM
+            rightPadding: Tokens.spaceM
+            topPadding: heading.visible ? lineBoxTop : Tokens.spaceS + Tokens.spaceXs + lineBoxTop
+            bottomPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxBottom
+        }
+    }
+
+    // The text as a control, from the toast's start edge to the action: pointer, Enter and Space.
+    Item {
+        id: openBox
+
+        objectName: "open"
+        width: toast.width - actionBox.width
+        height: toast.height
+        visible: toast.open !== null
+        activeFocusOnTab: visible
+        Accessible.role: Accessible.Button
+        Accessible.name: toast.spoken
+        Accessible.onPressAction: toast.pressText()
+        Keys.onPressed: event => toast.activateOnKey(event, toast.pressText)
+
+        Tint {
+            objectName: "press"
+            topLeftRadius: Tokens.radiusS
+            bottomLeftRadius: Tokens.radiusS
+            lit: openHover.hovered || openTap.pressed
+        }
+
+        FocusRing {
+            onFill: true
+            ink: toast.ink
+            offset: -Geometry.toastFocusInset
+        }
+
+        TapHandler {
+            id: openTap
+
+            longPressThreshold: 0
+            onTapped: toast.pressText()
+        }
+
+        HoverHandler {
+            id: openHover
+
+            cursorShape: Qt.PointingHandCursor
+        }
     }
 
     Item {
@@ -276,30 +392,14 @@ FocusScope {
         Accessible.name: toast.actionLabel
         Accessible.onPressAction: toast.press()
 
-        Keys.onPressed: event => {
-            if (![Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
-                return;
-            event.accepted = true;
-            if (!event.isAutoRepeat)
-                toast.press();
-        }
+        Keys.onPressed: event => toast.activateOnKey(event, toast.press)
 
         // Hover and press lay `hover` over it (rekta.css:916, :1032), up to the toast's rounded end.
-        Rectangle {
+        Tint {
             objectName: "press"
-            anchors.fill: parent
             topRightRadius: Tokens.radiusS
             bottomRightRadius: Tokens.radiusS
-            color: Tokens.color.hover
-            opacity: actionHover.hovered || actionTap.pressed ? 1 : 0
-
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Tokens.durationShort
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: Tokens.easeBase
-                }
-            }
+            lit: actionHover.hovered || actionTap.pressed
         }
 
         Rectangle {
@@ -365,7 +465,7 @@ FocusScope {
         y: toast.height - Tokens.spaceXs - height
         width: toast.width - 2 * Tokens.spaceXs
         height: Geometry.toastLine
-        visible: toast.undoAction !== null
+        visible: toast.undoAction !== null && !toast.stays
         color: toast.ink
         transform: Scale {
             origin.x: toast.width - 2 * Tokens.spaceXs
