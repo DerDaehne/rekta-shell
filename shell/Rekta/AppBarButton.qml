@@ -13,6 +13,8 @@ Item {
     property string disabledReason
     // Higher stays longer when the bar is full; the least important moves into "more" first (rekta.js appbar()).
     property int priority: 0
+    // Shown instead of the glyph and the word, from the padding on, such as a clock's two lines; `text` still names it.
+    property Item face: null
     // Moved into "more"; the bar sets it.
     property bool overflowed: false
     readonly property bool disabled: disabledReason !== ""
@@ -47,6 +49,11 @@ Item {
             Tips.leave(box);
     }
 
+    onFaceChanged: {
+        if (face)
+            face.parent = box;
+    }
+
     Keys.onPressed: event => {
         if (![Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
             return;
@@ -59,11 +66,12 @@ Item {
     Item {
         id: box
 
-        readonly property real glyph: control.icon !== "" ? Geometry.appBarGlyph + Geometry.appBarControlGap : 0
+        readonly property real glyph: control.icon !== "" && !control.face ? Geometry.appBarGlyph + Geometry.appBarControlGap : 0
+        readonly property real content: control.face ? control.face.implicitWidth : glyph + label.implicitWidth
 
         objectName: "box"
         // Whole pixels, so the bar sets its controls on whole pixels.
-        width: Math.ceil(Math.max(Geometry.appBarControl, glyph + label.implicitWidth + 2 * Geometry.appBarControlPadding))
+        width: Math.ceil(Math.max(Geometry.appBarControl, content + 2 * Geometry.appBarControlPadding))
         height: Geometry.appBarControl
 
         Rectangle {
@@ -86,7 +94,7 @@ Item {
             objectName: "glyph"
             x: Geometry.appBarControlPadding
             anchors.verticalCenter: parent.verticalCenter
-            visible: control.icon !== ""
+            visible: box.glyph > 0
             name: control.icon
             size: Geometry.appBarGlyph
             color: control.ink
@@ -96,6 +104,7 @@ Item {
             id: label
 
             objectName: "label"
+            visible: !control.face
             x: Geometry.appBarControlPadding + box.glyph
             anchors.verticalCenter: parent.verticalCenter
             text: control.text

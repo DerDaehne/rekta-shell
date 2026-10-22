@@ -129,6 +129,12 @@ QtObject {
     // `.rk-ab-mid[data-rk-priority='pinned'] { max-width: 50% }` of the bar (rekta.css:645)
     readonly property real appBarPinnedShare: 0.5
 
+    // rekta-core's month, the one Rekta draws (core/src/controls.c): `#define CELL 36.0f` (:754); today in a 1px frame
+    // 2px inside its cell, `in = { cell.x + 2, … }`, `rk_canvas_stroke_rect(c, in, 1, ink)` (:929, :932)
+    readonly property real monthCell: 36
+    readonly property real monthTodayInset: 2
+    readonly property real monthTodayFrame: 1
+
     // The place change (motion.md:11), whose angles, curves and shares have no tokens yet.
     // `:root { --_rk-turn-out: 60deg; --_rk-turn-in: 70deg; --_rk-ease-turn-out: cubic-bezier(0.35, 0, 0.65, 0.6);
     // --_rk-ease-turn-in: cubic-bezier(0.22, 0.9, 0.6, 0.98) }` (rekta.css:975)

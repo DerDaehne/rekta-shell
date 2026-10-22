@@ -46,7 +46,7 @@ PanelWindow {
         width: parent.width
         viewportHeight: panel.modelData.height
         area: Qt.size(panel.modelData.width, panel.modelData.height)
-        centre: clockSlot
+        centre: clock
         away: panel.away
 
         AppBarButton {
@@ -60,9 +60,10 @@ PanelWindow {
             parts: panel.front ? [panel.front.app, panel.front.title] : []
         }
 
-        // The clock's place.
-        Item {
-            id: clockSlot
+        AppBarClock {
+            id: clock
+
+            area: bar.area
         }
 
         AppBarButton {
@@ -87,23 +88,20 @@ PanelWindow {
         }
     }
 
-    // "more" rises past the bar's own window, so its menu lives in a popup; the compositor closes it on a click outside.
-    PopupWindow {
-        id: popup
+    FloatPopup {
+        barWindow: panel
+        surface: bar.menu
+        place: bar.menuPlace
 
-        // The linter cannot see PopupAnchor's members: Quickshell and its window module depend on each other.
-        anchor.window: panel // qmllint disable missing-property
-        anchor.rect: Qt.rect(bar.menuPlace.x, bar.menuPlace.y, 1, 1) // qmllint disable missing-property
-        implicitWidth: bar.menu.width
-        implicitHeight: bar.menu.height
-        visible: bar.menu.open
-        grabFocus: true
-        color: "transparent"
+        onDismissed: bar.menu.close(false)
+    }
 
-        onVisibleChanged: {
-            if (!visible)
-                bar.menu.close(false);
-        }
+    FloatPopup {
+        barWindow: panel
+        surface: clock.calendar
+        place: bar.floatPlace(clock, Qt.size(clock.calendar.width, clock.calendar.height))
+
+        onDismissed: clock.closeCalendar(false)
     }
 
     // A tooltip rises past the bar's own window too. It never takes the pointer, so its popup lets every click through.
@@ -134,9 +132,36 @@ PanelWindow {
         }
     }
 
-    Component.onCompleted: {
-        bar.menu.parent = popup.contentItem;
-        bar.menu.x = 0;
-        bar.menu.y = 0;
+    // A floating surface of the bar rises past the bar's own window, so it lives in a popup of its own, placed where the
+    // bar places it; the compositor closes it on a click outside.
+    component FloatPopup: PopupWindow {
+        id: host
+
+        required property QtObject barWindow
+        required property FloatSurface surface
+        // From AppBar.floatPlace: where it goes in the bar's window, and on which side of its control.
+        required property var place
+
+        signal dismissed
+
+        // The linter cannot see PopupAnchor's members: Quickshell and its window module depend on each other.
+        anchor.window: barWindow // qmllint disable missing-property
+        anchor.rect: Qt.rect(place.x, place.y, 1, 1) // qmllint disable missing-property
+        implicitWidth: surface.width
+        implicitHeight: surface.height
+        visible: surface.open
+        grabFocus: true
+        color: "transparent"
+
+        onVisibleChanged: {
+            if (!visible)
+                dismissed();
+        }
+        Component.onCompleted: {
+            surface.parent = contentItem;
+            surface.x = 0;
+            surface.y = 0;
+            surface.side = Qt.binding(() => host.place.side);
+        }
     }
 }

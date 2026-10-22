@@ -35,10 +35,12 @@ Rectangle {
     readonly property alias more: moreButton
     readonly property alias menu: moreMenu
     // Where the menu rises, in the bar's coordinates: above "more" at the trailing edge (rekta.css:649–653).
-    readonly property var menuPlace: {
+    readonly property var menuPlace: floatPlace(moreButton, Qt.size(moreMenu.width, moreMenu.height))
+
+    // Where a floating surface of one of the bar's controls goes, in the bar's coordinates (Placement.float in `area`).
+    function floatPlace(control: Item, size: size): var {
         const top = area.height - height;
-        const control = Qt.rect(moreButton.x, top + moreButton.y, moreButton.width, moreButton.height);
-        const place = Placement.float(control, Qt.size(moreMenu.width, moreMenu.height), area);
+        const place = Placement.float(Qt.rect(control.x, top + control.y, control.width, control.height), size, area);
         return { x: place.x, y: place.y - top, side: place.side };
     }
 

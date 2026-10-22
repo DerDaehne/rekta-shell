@@ -1,0 +1,276 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtTest
+import Rekta
+
+TestCase {
+    id: testCase
+
+    name: "Clock"
+    // Objects created inside an invisible test case are never rendered, so contact sheets would stay empty.
+    visible: true
+    when: windowShown
+    width: 1200
+    height: 600
+
+    // The clock in the centre of a bar along the bottom, its month placed by the bar as the shell does.
+    Component {
+        id: sceneComponent
+
+        Item {
+            id: scene
+
+            property alias bar: appBar
+            property alias clock: appClock
+
+            width: 1200
+            height: 600
+
+            AppBar {
+                id: appBar
+
+                y: scene.height - height
+                width: scene.width
+                centre: appClock
+
+                AppBarButton { objectName: "go to"; icon: "search"; text: "go to" }
+                AppBarMiddle { parts: ["konsole", "~/projects"] }
+
+                AppBarClock {
+                    id: appClock
+
+                    objectName: "clock"
+                    locale: Qt.locale("de_DE")
+                    now: new Date(2026, 9, 20, 14, 32, 15, 250)
+                    calendar.x: appBar.floatPlace(appClock, Qt.size(calendar.width, calendar.height)).x - x
+                    calendar.y: appBar.floatPlace(appClock, Qt.size(calendar.width, calendar.height)).y - y
+                    calendar.side: appBar.floatPlace(appClock, Qt.size(calendar.width, calendar.height)).side
+                }
+
+                AppBarButton { objectName: "controls"; icon: "tune"; text: "controls" }
+            }
+        }
+    }
+
+    // Untyped: qmllint stops without a word on members an Item-typed value lacks.
+    property var scene
+    property var clock
+
+    function init() {
+        failOnWarning(/TypeError|ReferenceError|Binding loop/);
+        scene = createTemporaryObject(sceneComponent, testCase);
+        clock = scene.clock;
+    }
+
+    function cleanup() {
+        Prefs.theme = "system";
+    }
+
+    function cell(index: int): var {
+        return findChild(clock.month, `day ${index}`);
+    }
+
+    function cellOf(day: date): var {
+        for (let i = 0; i < 42; i++) {
+            if (Calendar.sameDay(cell(i).day, day))
+                return cell(i);
+        }
+        return null;
+    }
+
+    function test_time_and_date_follow_the_locale() {
+        const tuesday = new Date(2026, 9, 20, 14, 32);
+        compare(Calendar.timeWords(tuesday, Qt.locale("de_DE")), "14:32");
+        compare(Calendar.dateWords(tuesday, Qt.locale("de_DE")), "di 20. okt");
+        compare(Calendar.timeWords(tuesday, Qt.locale("en_US")), "2:32 PM");
+        compare(Calendar.dateWords(tuesday, Qt.locale("en_US")), "tue oct 20");
+        compare(Calendar.timeWords(tuesday, Qt.locale("en_GB")), "14:32");
+        compare(Calendar.dateWords(tuesday, Qt.locale("en_GB")), "tue 20 oct");
+        compare(clock.text, "14:32 di 20. okt", "the clock reads both");
+    }
+
+    function test_the_time_stands_over_the_date_in_the_48px_control() {
+        const time = findChild(clock, "time");
+        const day = findChild(clock, "date");
+        compare(time.text, "14:32");
+        compare(day.text, "di 20. okt");
+        compare(time.font.pixelSize, Tokens.fontSizeXs);
+        compare(time.font.weight, Tokens.fontWeightSemibold);
+        compare(time.font.features.tnum, 1);
+        compare(day.font.pixelSize, Tokens.fontSizeXxs);
+        compare(day.font.weight, Tokens.fontWeightRegular);
+        compare(day.color, Tokens.color.textContrastHigh);
+        compare(day.y, time.height, "the date right under the time");
+        compare(time.x, day.x, "both from the same edge");
+        const face = time.parent;
+        compare(face.x, Geometry.appBarControlPadding);
+        compare(findChild(clock, "box").height, Geometry.appBarControl);
+        verify(face.y >= 0 && face.y + face.height <= Geometry.appBarControl, "two lines inside the control");
+    }
+
+    function test_the_clock_wakes_when_the_minute_changes_and_not_before() {
+        const tick = findChild(clock, "tick");
+        verify(tick.running);
+        verify(tick.repeat);
+        compare(tick.interval, 44750, "14:32:15.250 waits for 14:33");
+        clock.now = new Date(2026, 9, 20, 14, 33, 0, 0);
+        compare(tick.interval, 60000, "on the minute it waits a whole one");
+        clock.now = new Date(2026, 9, 20, 14, 33, 59, 999);
+        compare(tick.interval, 1);
+        const before = Date.now();
+        tick.triggered();
+        verify(clock.now.getTime() >= before && clock.now.getTime() <= Date.now(), "it reads the time when it wakes");
+        compare(tick.interval, Calendar.untilNextMinute(clock.now));
+        verify(tick.running && tick.repeat, "and keeps waking, each time at the next minute");
+    }
+
+    function test_iso_weeks_count_from_the_week_of_the_first_thursday() {
+        compare(Calendar.isoWeek(new Date(2026, 9, 22)), 43);
+        compare(Calendar.isoWeek(new Date(2027, 0, 1)), 53, "a Friday 1 January belongs to the year before");
+        compare(Calendar.isoWeek(new Date(2026, 11, 28)), 53);
+        compare(Calendar.isoWeek(new Date(2021, 0, 4)), 1);
+        compare(Calendar.isoWeek(new Date(2024, 11, 30)), 1, "a Monday 30 December belongs to the year after");
+    }
+
+    function test_the_week_starts_on_the_locales_first_day_and_each_week_leads_with_its_number() {
+        clock.openCalendar();
+        clock.month.cursor = new Date(2026, 9, 22);
+        compare(findChild(clock.month, "weekday 0").text, "mo");
+        compare(findChild(clock.month, "weekday 6").text, "so");
+        compare(cellOf(new Date(2026, 9, 1)).x, cell(3).x, "Thursday 1 October in the fourth column");
+        compare(findChild(clock.month, "week 0").text, "40");
+        compare(findChild(clock.month, "week 4").text, "44");
+        verify(!findChild(clock.month, "week 5").visible, "no number for a week without a day of the month");
+        clock.locale = Qt.locale("en_US");
+        compare(findChild(clock.month, "weekday 0").text, "sun");
+        compare(cellOf(new Date(2026, 9, 1)).x, cell(4).x, "a Sunday first moves it one on");
+        compare(findChild(clock.month, "week 0").text, "40", "the row holds most of week 40");
+        compare(findChild(clock.month, "title").text, "october 2026");
+    }
+
+    function test_only_today_is_framed() {
+        clock.openCalendar();
+        clock.month.cursor = Calendar.addDays(clock.now, 1);
+        const today = cellOf(clock.now);
+        const frame = findChild(today, "today");
+        verify(frame.visible);
+        compare(frame.border.width, Geometry.monthTodayFrame);
+        compare(frame.border.color, Tokens.color.textPrimary);
+        compare(frame.x, Geometry.monthTodayInset);
+        compare(frame.width, Geometry.monthCell - 2 * Geometry.monthTodayInset);
+        for (let i = 0; i < 42; i++) {
+            if (cell(i) !== today)
+                verify(!findChild(cell(i), "today").visible, `${cell(i).day}`);
+        }
+        compare(findChild(today, "number").font.features.tnum, 1);
+    }
+
+    function test_a_click_opens_the_month_above_the_clock_and_another_closes_it() {
+        mouseClick(clock, 20, 20);
+        const calendar = clock.calendar;
+        verify(calendar.open);
+        verify(!clock.activeFocus, "a click gives the clock no focus");
+        verify(clock.month.activeFocus, "the month holds the keys");
+        verify(!clock.month.showsFocus, "without a ring until a key moves");
+        compare(calendar.side, "above");
+        compare(calendar.y + calendar.height, -Geometry.floatGap, "space-xs above the clock");
+        compare(Calendar.monthTitle(clock.month.cursor, clock.locale), "oktober 2026");
+        mouseClick(clock, 20, 20);
+        verify(!calendar.open);
+    }
+
+    function test_keys_move_by_day_week_month_and_year_and_home_goes_back_to_today() {
+        clock.forceActiveFocus();
+        keyClick(Qt.Key_Space);
+        verify(clock.calendar.open);
+        verify(clock.month.activeFocus);
+        verify(clock.month.showsFocus, "opened from the keyboard, the ring shows");
+        const at = () => clock.month.cursor;
+        keyClick(Qt.Key_Right);
+        verify(Calendar.sameDay(at(), new Date(2026, 9, 21)));
+        keyClick(Qt.Key_Left);
+        keyClick(Qt.Key_Left);
+        verify(Calendar.sameDay(at(), new Date(2026, 9, 19)));
+        keyClick(Qt.Key_Down);
+        verify(Calendar.sameDay(at(), new Date(2026, 9, 26)));
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Up);
+        verify(Calendar.sameDay(at(), new Date(2026, 9, 12)));
+        keyClick(Qt.Key_PageDown);
+        verify(Calendar.sameDay(at(), new Date(2026, 10, 12)));
+        compare(findChild(clock.month, "title").text, "november 2026");
+        keyClick(Qt.Key_PageUp);
+        keyClick(Qt.Key_PageUp);
+        verify(Calendar.sameDay(at(), new Date(2026, 8, 12)));
+        keyClick(Qt.Key_PageDown, Qt.ShiftModifier);
+        verify(Calendar.sameDay(at(), new Date(2027, 8, 12)), "with Shift a year");
+        keyClick(Qt.Key_Home);
+        verify(Calendar.sameDay(at(), clock.now), "home is today");
+        const focused = cellOf(at());
+        verify(focused.children.some(child => child instanceof FocusRing && child.visible), "the keys' day shows the ring");
+    }
+
+    function test_a_short_month_keeps_the_day_within_it() {
+        compare(Calendar.addMonths(new Date(2026, 0, 31), 1).getDate(), 28);
+        compare(Calendar.addMonths(new Date(2028, 0, 31), 1).getDate(), 29);
+    }
+
+    function test_escape_closes_the_month_and_gives_the_focus_back_to_the_clock() {
+        clock.forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        verify(clock.calendar.open);
+        keyClick(Qt.Key_Escape);
+        verify(!clock.calendar.open);
+        verify(clock.activeFocus);
+    }
+
+    function test_contact_sheet() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const sheet = createTemporaryObject(sheetComponent, testCase);
+            const sheetClock = findChild(sheet, "clock");
+            sheetClock.forceActiveFocus();
+            keyClick(Qt.Key_Space);
+            keyClick(Qt.Key_Right);
+            waitForRendering(sheet);
+            wait(Tokens.durationFloat + 50);
+            grabImage(sheet).save(`clock-sheet-${theme}.png`);
+        }
+    }
+
+    // The bar with the clock in its centre and the month open above it from the keyboard, one day on from today.
+    Component {
+        id: sheetComponent
+
+        Rectangle {
+            width: 1200
+            height: 520
+            color: Tokens.color.bg
+
+            AppBar {
+                id: sheetBar
+
+                y: parent.height - height
+                width: parent.width
+                centre: sheetClock
+
+                AppBarButton { icon: "search"; text: "go to" }
+                AppBarMiddle { parts: ["konsole", "~/projects: build the shell"] }
+
+                AppBarClock {
+                    id: sheetClock
+
+                    objectName: "clock"
+                    locale: Qt.locale("de_DE")
+                    now: new Date(2026, 9, 21, 14, 32)
+                    calendar.x: sheetBar.floatPlace(sheetClock, Qt.size(calendar.width, calendar.height)).x - x
+                    calendar.y: sheetBar.floatPlace(sheetClock, Qt.size(calendar.width, calendar.height)).y - y
+                    calendar.side: sheetBar.floatPlace(sheetClock, Qt.size(calendar.width, calendar.height)).side
+                }
+
+                AppBarButton { icon: "bell"; text: "messages" }
+            }
+        }
+    }
+}
