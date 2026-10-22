@@ -365,6 +365,30 @@ TestCase {
         verify(!sheet.asking, "opened again, it shows the form");
     }
 
+    function test_a_request_while_a_confirmation_leaves_answers_with_its_own_answer() {
+        Prefs.motion = "on";
+        const answered = createTemporaryObject(answeredSpyComponent, testCase, { target: confirm });
+        confirm.show();
+        tryCompare(confirm, "entry", 1, Tokens.durationShort * 4);
+        mouseClick(findChild(confirm, "ok"));
+        verify(confirm.visible, "it leaves with ok");
+        mouseClick(confirm, 100, 500);
+        compare(answered.count, 1, "the tap on the shading ended the leave at once");
+        compare(answered.signalArguments[0][0], false, "and answered cancel");
+    }
+
+    function test_with_unsaved_input_a_request_while_it_leaves_keeps_the_answer_it_leaves_with() {
+        Prefs.motion = "on";
+        sheet.dirty = true;
+        openFully(sheet);
+        mouseClick(named("save"));
+        verify(sheet.visible, "it leaves with save");
+        mouseClick(sheet, 100, 500);
+        compare(closedSpy.count, 1, "the tap on the shading ended the leave at once");
+        compare(closedSpy.signalArguments[0][0], "save");
+        verify(!sheet.asking);
+    }
+
     function test_under_reduced_motion_a_sheet_opens_and_closes_at_once() {
         Prefs.motion = "off";
         sheet.show();
