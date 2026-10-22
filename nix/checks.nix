@@ -114,6 +114,14 @@ in
         module
         enable
       ];
+      withBackground =
+        background:
+        system [
+          plasma
+          module
+          enable
+          { programs.rekta-shell.background = background; }
+        ];
       withoutPlasma = system [
         module
         enable
@@ -125,6 +133,13 @@ in
         module
       ]
     ) "importing the NixOS module with its defaults changed the system";
+    assert lib.assertMsg (
+      toplevel [ plasma ] == toplevel [
+        plasma
+        module
+        { programs.rekta-shell.background = "solid"; }
+      ]
+    ) "the background option changed a system that does not enable the module";
     assert lib.assertMsg (lib.elem "rekta" enabled.services.displayManager.sessionData.sessionNames)
       "the enabled NixOS module does not register the rekta session";
     assert lib.assertMsg (lib.elem enabled.programs.rekta-shell.package enabled.systemd.packages)
@@ -132,7 +147,11 @@ in
     assert lib.assertMsg (lib.any (
       a: !a.assertion && lib.hasInfix "plasma6" a.message
     ) withoutPlasma.assertions) "the NixOS module accepts a system without Plasma 6";
-    pkgs.runCommand "rekta-shell-nixos-module" { } "touch $out";
+    pkgs.runCommand "rekta-shell-nixos-module" { } ''
+      grep -q "REKTA_BACKGROUND=.rekta." ${enabled.programs.rekta-shell.package}/bin/rekta-shell
+      grep -q "REKTA_BACKGROUND=.solid." ${(withBackground "solid").programs.rekta-shell.package}/bin/rekta-shell
+      touch $out
+    '';
 
   home-module =
     let

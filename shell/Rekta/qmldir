@@ -61,3 +61,5 @@ AppBarMiddle 1.0 AppBarMiddle.qml
 PlaceTurn 1.0 PlaceTurn.qml
 AppBarClock 1.0 AppBarClock.qml
 Month 1.0 Month.qml
+Echo 1.0 Echo.qml
+Backdrop 1.0 Backdrop.qml

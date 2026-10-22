@@ -17,23 +17,26 @@ writeShellApplication {
   runtimeInputs = [ coreutils ];
   text = ''
     usage() {
-      echo "usage: rekta-nested [--window] [--outputs N] [--size WIDTHxHEIGHT]" >&2
+      echo "usage: rekta-nested [--window] [--outputs N] [--size WIDTHxHEIGHT] [--background rekta|solid]" >&2
       exit 2
     }
 
     window=false
     outputs=1
     size=1600x900
+    background=rekta
     while [ $# -gt 0 ]; do
       case "$1" in
         --window) window=true; shift ;;
         --outputs) outputs="''${2:?}"; shift 2 ;;
         --size) size="''${2:?}"; shift 2 ;;
+        --background) background="''${2:?}"; shift 2 ;;
         *) usage ;;
       esac
     done
     [[ "$outputs" =~ ^[1-9]$ ]] || usage
     [[ "$size" =~ ^[0-9]+x[0-9]+$ ]] || usage
+    [[ "$background" =~ ^(rekta|solid)$ ]] || usage
 
     # The working tree's shell and KWin effects when run from the repository (Quickshell reloads the shell on every
     # change), else the packages'.
@@ -107,7 +110,7 @@ writeShellApplication {
 
     # kwin_wayland starts its program without passing on any arguments, so the shell path goes into a launcher.
     launcher="$home/rekta-shell"
-    printf '#!/bin/sh\nexport QML_IMPORT_PATH=%q\nexec %q --path %q\n' "$shell_dir:${kdePackages.plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" "${rekta-shell.quickshell}/bin/quickshell" "$shell_dir" >"$launcher"
+    printf '#!/bin/sh\nexport QML_IMPORT_PATH=%q REKTA_BACKGROUND=%q\nexec %q --path %q\n' "$shell_dir:${kdePackages.plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" "$background" "${rekta-shell.quickshell}/bin/quickshell" "$shell_dir" >"$launcher"
     chmod +x "$launcher"
 
     socket="rekta-nested"

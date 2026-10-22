@@ -3,18 +3,31 @@ import Quickshell
 import Quickshell.Wayland
 import Rekta
 
-// The plain ground under everything on one screen: Rekta's bg, the Start's glass lies on it while no window is open.
+// The ground of one screen, the one surface below every window: the echo or plain bg, and no input. The option comes
+// from the package's wrapper; without it, in the nested session, the echo shows.
 PanelWindow {
+    id: panel
+
     required property ShellScreen modelData
 
     screen: modelData
-    anchors.left: true
-    anchors.right: true
-    anchors.top: true
-    anchors.bottom: true
+    anchors {
+        left: true
+        right: true
+        top: true
+        bottom: true
+    }
     exclusionMode: ExclusionMode.Ignore
-    color: Tokens.color.bg
+    focusable: false
+    color: "transparent"
     mask: Region {}
-    WlrLayershell.namespace: "rekta-ground"
+    // Not "desktop": KWin lists that namespace among the windows to switch between.
+    WlrLayershell.namespace: "rekta-background"
     WlrLayershell.layer: WlrLayer.Background
+
+    Backdrop {
+        anchors.fill: parent
+        // ponytail: an environment variable until the shell has a configuration format.
+        solid: Quickshell.env("REKTA_BACKGROUND") === "solid"
+    }
 }

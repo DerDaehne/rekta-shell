@@ -113,7 +113,7 @@ nix flake check   # package, qmllint (warnings fail), token drift, QML tests, mo
 nix develop       # qs, qmllint, qmlformat, node, gitleaks, nixfmt, rekta-qmllint
 nix build         # result/bin/rekta-shell, a wrapper around quickshell --path
 nix fmt           # formats the Nix files
-nix run .#nested -- [--window] [--outputs N] [--size WxH]   # own KWin, shell from the working tree, hot reload
+nix run .#nested -- [--window] [--outputs N] [--size WxH] [--background rekta|solid]   # own KWin, hot reload
 nix run .#nested-shot -- <file.png>                         # screenshot of the whole nested desktop (all outputs)
 nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM with Plasma 6, started from the checkout root
 ```
