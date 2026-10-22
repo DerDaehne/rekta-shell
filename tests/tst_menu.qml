@@ -429,6 +429,8 @@ TestCase {
                 MenuItem { objectName: "plain"; text: "mark all read" }
                 MenuItem { objectName: "mia"; lead: "Mia"; text: "Can we move the call?"; keyHint: "14:20"; icon: testCase.picture }
                 MenuItem { objectName: "backups"; lead: "Backups"; text: "finished"; keyHint: "14:05" }
+                MenuItem { objectName: "deeper"; text: "devices"; opensLevel: true }
+                MenuItem { objectName: "off"; text: "quit"; dimmed: true }
             }
         }
     }
@@ -543,6 +545,24 @@ TestCase {
         keyClick(Qt.Key_Return);
         compare(testCase.wentBack, 1);
         verify(levelled.open);
+    }
+
+    function test_choosing_a_row_that_opens_a_level_tells_the_host_and_leaves_the_menu_open() {
+        const levelled = levelMenu();
+        const told = createTemporaryObject(spy, testCase, { target: levelled });
+        levelled.choose(findChild(levelled, "deeper"));
+        compare(told.count, 1);
+        verify(levelled.open);
+    }
+
+    function test_a_dimmed_row_is_grey_with_the_apps_own_words_and_does_nothing() {
+        const levelled = levelMenu();
+        const told = createTemporaryObject(spy, testCase, { target: levelled });
+        const off = findChild(levelled, "off");
+        compare(findChild(off, "label").text, "quit", "no reason is made up");
+        compare(findChild(off, "label").color, Tokens.color.disabled);
+        levelled.choose(off);
+        compare(told.count, 0);
     }
 
     function test_tab_closes_everything_even_in_a_deeper_level() {

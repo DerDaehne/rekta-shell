@@ -54,7 +54,7 @@ Rectangle {
 
     // The leading and trailing side around the centre item, or the whole bar; "more" ends the last.
     function regions(): var {
-        const items = Array.from(strip.children).filter(item => item === centre || (item as AppBarButton) !== null || (item as AppBarMiddle) !== null);
+        const items = Array.from(strip.children).filter(item => item === centre || (item as AppBarButton)?.present === true || (item as AppBarMiddle) !== null);
         const at = centre ? items.indexOf(centre) : -1;
         if (at < 0)
             return [{ items, start: padding, end: width - padding, packEnd: false, more: true }];
@@ -92,7 +92,7 @@ Rectangle {
 
     // Least important first; among equals, from the end (rekta.js appbar()).
     function candidates(): var {
-        const controls = Array.from(strip.children).filter(item => item !== centre && (item as AppBarButton) !== null);
+        const controls = Array.from(strip.children).filter(item => item !== centre && (item as AppBarButton)?.present === true);
         return controls.map((control, i) => ({ control, i })).sort((a, b) => a.control.priority - b.control.priority || b.i - a.i).map(entry => entry.control);
     }
 

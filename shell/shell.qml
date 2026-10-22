@@ -11,6 +11,10 @@ ShellRoot {
         id: running
     }
 
+    Tray {
+        id: backgroundApps
+    }
+
     Launcher {
         id: appLauncher
     }
@@ -40,6 +44,7 @@ ShellRoot {
         Bar {
             windows: running
             notices: notifications.board
+            tray: backgroundApps
         }
     }
 

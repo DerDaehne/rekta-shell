@@ -22,9 +22,13 @@ Item {
     // The keys that do the same from anywhere, such as "Ctrl S".
     property string keyHint
     property string disabledReason
-    readonly property bool disabled: disabledReason !== ""
+    // Off with no reason to give: a foreign menu's entry that the app has turned off.
+    property bool dimmed: false
+    // Choosing it opens a deeper level the host swaps in, so the menu stays open.
+    property bool opensLevel: false
+    readonly property bool disabled: disabledReason !== "" || dimmed
     readonly property bool checkable: kind !== "item"
-    readonly property string label: disabled ? `${text} (${disabledReason})` : text
+    readonly property string label: disabledReason !== "" ? `${text} (${disabledReason})` : text
     readonly property color ink: disabled ? Tokens.color.disabled : Tokens.color.textPrimary
     readonly property real checkSpace: checkable ? Geometry.menuCheck + Tokens.spaceS : 0
     readonly property bool hasIcon: icon.toString() !== "" || glyph !== ""

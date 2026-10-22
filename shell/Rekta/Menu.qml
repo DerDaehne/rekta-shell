@@ -46,6 +46,10 @@ FloatSurface {
             back();
             return;
         }
+        if (item.opensLevel) {
+            chosen(item);
+            return;
+        }
         if (item.kind === "checkbox") {
             item.checked = !item.checked;
             chosen(item);

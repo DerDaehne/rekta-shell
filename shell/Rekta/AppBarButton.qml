@@ -25,6 +25,8 @@ Item {
     property Item face: null
     // Moved into "more"; the bar sets it.
     property bool overflowed: false
+    // False while there is nothing for the control to do: it is gone from the bar, not counted in its layout.
+    property bool present: true
     readonly property bool disabled: disabledReason !== ""
     readonly property bool hovered: hover.hovered
     readonly property bool pressed: tap.pressed
@@ -40,7 +42,7 @@ Item {
 
     implicitWidth: box.width
     implicitHeight: box.height
-    visible: !overflowed
+    visible: !overflowed && present
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: words

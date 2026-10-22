@@ -5,18 +5,20 @@ import Quickshell
 import Quickshell.Wayland
 import Notices
 import Rekta
+import Tray
 import "services"
 
 // The app bar on one screen (navigation.md, "App bar"): along the bottom edge, full width, and windows keep clear of
-// it. "go to" and the middle with the active window lead, the clock stands in the centre, the background apps,
-// messages and controls trail; those whose features come later stand disabled, their reason in their tooltip. Under a
-// full-screen window it slides down out of sight and comes back the same way.
+// it. "go to" and the middle with the active window lead, the clock stands in the centre, the background apps (gone
+// while none runs), messages and controls trail; those whose features come later stand disabled, their reason in their
+// tooltip. Under a full-screen window it slides down out of sight and comes back the same way.
 PanelWindow {
     id: panel
 
     required property ShellScreen modelData
     required property Windows windows
     required property NoticeBoard notices
+    required property Tray tray
     // The active window, when it is on this screen.
     readonly property var front: windows?.active?.isOn(modelData) ? windows.active : null
     // ponytail: only the active window hides the bar; a full-screen window on this screen that lost the keyboard to
@@ -68,11 +70,15 @@ PanelWindow {
             area: bar.area
         }
 
-        AppBarButton {
-            icon: "window"
-            text: "im hintergrund"
+        BackgroundControl {
+            id: background
+
+            apps: panel.tray.apps
+            area: bar.area
             priority: 0
-            disabledReason: "kommt mit dem tray"
+            opener: Component {
+                QsMenuOpener {}
+            }
         }
 
         NoticeControl {
@@ -97,6 +103,14 @@ PanelWindow {
         place: bar.menuPlace
 
         onDismissed: bar.menu.close(false)
+    }
+
+    FloatPopup {
+        barWindow: panel
+        surface: background.menu
+        place: bar.floatPlace(background.overflowed ? bar.more : background, Qt.size(background.menu.width, background.menu.height))
+
+        onDismissed: background.menu.close(false)
     }
 
     FloatPopup {
