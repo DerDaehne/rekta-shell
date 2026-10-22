@@ -6,7 +6,8 @@ import org.kde.plasma.workspace.dbus as DBus
 // registration until KWin itself ends, so they survive reloads and restarts of the shell. System Settings lists the
 // shortcut and may give it other keys; those then win over the defaults given here.
 // ponytail: through plasma-workspace's DBus module, which reaches kglobalaccel's fixed name and path; move it to the
-// shell's own DBus module once there is one.
+// shell's own DBus module once there is one. setShortcut(asaiu) is deprecated since KF 5.90, and its successor
+// setShortcutKeys takes a(ai), which that module cannot send: the own module needs a(ai) once setShortcut goes.
 Scope {
     id: shortcut
 
@@ -31,7 +32,7 @@ Scope {
         });
     }
 
-    // The order of KGlobalAccel's own client: register, give the defaults, then take the keys the user chose, if any.
+    // Register, give the defaults, then take the keys the user chose, if any.
     Component.onCompleted: {
         const isDefault = 8;
         const setPresent = 2;
