@@ -5,6 +5,7 @@
   callPackage,
   quickshell,
   kdePackages,
+  libcanberra-gtk3,
   # What the background shows: "rekta" (the echo) or "solid" (bg alone).
   background ? "rekta",
 }:
@@ -39,7 +40,7 @@ stdenvNoCC.mkDerivation {
     makeWrapper ${lib.getExe quickshell} $out/bin/rekta-shell \
       --add-flags "--path $out/share/rekta-shell" \
       --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" \
-      --prefix PATH : ${kdePackages.libkscreen}/bin \
+      --prefix PATH : ${kdePackages.libkscreen}/bin:${libcanberra-gtk3}/bin \
       --set REKTA_BACKGROUND ${background} \
       --set-default REKTA_SHELL_LAUNCH systemd
 

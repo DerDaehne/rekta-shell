@@ -135,6 +135,62 @@ TestCase {
         compare(control.Accessible.name, "go to");
     }
 
+    function test_a_count_follows_the_word_in_tabular_figures_and_none_shows_at_zero() {
+        const control = createTemporaryObject(buttonComponent, testCase);
+        const label = findChild(control, "label");
+        const count = findChild(control, "count");
+        const box = findChild(control, "box");
+        const width = box.width;
+        verify(!count.visible);
+        compare(count.implicitWidth, 0);
+        compare(control.words, "go to");
+        control.count = 3;
+        verify(count.visible);
+        compare(count.text, " 3");
+        compare(count.x, label.x + label.implicitWidth);
+        compare(count.font.features["tnum"], 1);
+        compare(count.font.weight, Tokens.fontWeightSemibold);
+        compare(box.width, Math.ceil(label.x + label.implicitWidth + count.implicitWidth + Geometry.appBarControlPadding));
+        verify(box.width > width);
+        compare(control.Accessible.name, "go to 3");
+    }
+
+    function test_a_new_count_peeks_in_the_old_one_leaving_upwards_while_the_new_one_rises_from_below() {
+        Prefs.motion = "on";
+        const control = createTemporaryObject(buttonComponent, testCase, { count: 3 });
+        const count = findChild(control, "count");
+        const ghost = findChild(control, "ghost");
+        const peek = findChild(control, "peek");
+        const run = findChild(control, "peekRun");
+        verify(!ghost.visible, "the first count is no news");
+        control.count = 4;
+        verify(run.running);
+        compare(run.duration, Tokens.durationModerate);
+        compare(ghost.text, " 3");
+        compare(count.text, " 4");
+        run.pause();
+        peek.phase = 0.1;
+        compare(count.opacity, 0, "the new one waits 0.2 ×");
+        verify(ghost.opacity > 0 && ghost.opacity < 1);
+        verify(ghost.transform[0].y < 0, "the old one moves up");
+        peek.phase = 0.6;
+        compare(ghost.opacity, 0, "gone after 0.6 ×");
+        compare(ghost.transform[0].y, -Geometry.peekShift * ghost.height);
+        verify(count.opacity > 0 && count.transform[0].y > 0, "the new one rises from below");
+        peek.phase = 1;
+        compare(count.opacity, 1);
+        compare(count.transform[0].y, 0);
+    }
+
+    function test_under_reduced_motion_a_new_count_stands_at_once() {
+        Prefs.motion = "off";
+        const control = createTemporaryObject(buttonComponent, testCase, { count: 1 });
+        control.count = 2;
+        tryVerify(() => !findChild(control, "peekRun").running);
+        compare(findChild(control, "count").opacity, 1);
+        verify(!findChild(control, "ghost").visible);
+    }
+
     function test_hover_and_press_lay_the_hover_colour_under_the_control() {
         const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 40 });
         const press = findChild(control, "press");

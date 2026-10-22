@@ -19,6 +19,15 @@ ShellRoot {
         id: primary
     }
 
+    Notifications {
+        id: notifications
+
+        toaster: toasts.toaster
+        windows: running
+        launcher: appLauncher
+        quiet: (running.active?.fullScreen && running.active.isOn(primary.screen)) ?? false
+    }
+
     Variants {
         model: Quickshell.screens
 
@@ -30,6 +39,7 @@ ShellRoot {
 
         Bar {
             windows: running
+            notices: notifications.board
         }
     }
 
@@ -37,5 +47,12 @@ ShellRoot {
         windows: running
         launcher: appLauncher
         primaryScreen: primary.screen
+    }
+
+    // After the Start, so a toast stands above it.
+    Toasts {
+        id: toasts
+
+        screen: primary.screen
     }
 }

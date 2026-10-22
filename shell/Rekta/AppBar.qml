@@ -241,7 +241,7 @@ Rectangle {
     component MovedControl: MenuItem {
         required property AppBarButton modelData
 
-        text: modelData.text
+        text: modelData.words
         disabledReason: modelData.disabledReason
     }
 }

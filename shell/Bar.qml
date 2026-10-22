@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Notices
 import Rekta
 import "services"
 
@@ -15,6 +16,7 @@ PanelWindow {
 
     required property ShellScreen modelData
     required property Windows windows
+    required property NoticeBoard notices
     // The active window, when it is on this screen.
     readonly property var front: windows?.active?.isOn(modelData) ? windows.active : null
     // ponytail: only the active window hides the bar; a full-screen window on this screen that lost the keyboard to
@@ -73,11 +75,12 @@ PanelWindow {
             disabledReason: "kommt mit dem tray"
         }
 
-        AppBarButton {
-            icon: "bell"
-            text: "meldungen"
+        NoticeControl {
+            id: messages
+
+            board: panel.notices
+            area: bar.area
             priority: 2
-            disabledReason: "kommt mit dem panel"
         }
 
         AppBarButton {
@@ -102,6 +105,14 @@ PanelWindow {
         place: bar.floatPlace(clock, Qt.size(clock.calendar.width, clock.calendar.height))
 
         onDismissed: clock.closeCalendar(false)
+    }
+
+    FloatPopup {
+        barWindow: panel
+        surface: messages.list
+        place: bar.floatPlace(messages, Qt.size(messages.list.width, messages.list.height))
+
+        onDismissed: messages.list.close(false)
     }
 
     // A tooltip rises past the bar's own window too. It never takes the pointer, so its popup lets every click through.

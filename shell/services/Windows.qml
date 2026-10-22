@@ -38,6 +38,8 @@ Scope {
         readonly property bool isWindow: model.IsWindow === true
         readonly property bool active: model.IsActive === true
         readonly property string app: model.AppName || model.AppId || ""
+        // The ID of its app's desktop entry, as "org.kde.konsole".
+        readonly property string appId: model.AppId ?? ""
         readonly property string title: model.display ?? ""
         readonly property bool fullScreen: model.IsFullScreen === true
         // The geometry of the screen the window is on.
