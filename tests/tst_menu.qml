@@ -513,6 +513,13 @@ TestCase {
         verify(levelled.open, "going back leaves the menu open");
     }
 
+    function test_the_host_sets_the_word_of_the_back_row() {
+        const levelled = levelMenu();
+        levelled.backWord = "zurück";
+        compare(findChild(levelled, "back").text, "zurück · mail");
+        compare(findChild(levelled, "back").Accessible.name, "zurück · mail");
+    }
+
     function test_without_a_deeper_level_there_is_no_back_row_and_left_does_nothing() {
         openFromKeys(0);
         verify(!findChild(menu, "back").visible);

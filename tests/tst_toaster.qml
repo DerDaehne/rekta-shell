@@ -507,10 +507,17 @@ TestCase {
         compare(testCase.ends, ["first replaced"]);
     }
 
+    // A toast at a fraction of a pixel is drawn blurred; pixel tests put it on the grid.
+    function onWholePixels(toast) {
+        toaster.width = toast.width + 200;
+        compare(toast.x, 100);
+    }
+
     function test_a_picture_in_the_icon_field_is_cropped_to_a_square_not_squeezed() {
         const toast = toaster.show("see you soon", { icon: testCase.widePicture });
         const picture = findChild(toast, "appIcon");
         tryCompare(picture, "status", Image.Ready);
+        onWholePixels(toast);
         compare(picture.fillMode, Image.PreserveAspectCrop);
         compare(picture.width, 20);
         compare(picture.height, 20);
@@ -519,6 +526,21 @@ TestCase {
         const origin = picture.mapToItem(scene, 0, 0);
         for (const [x, y] of [[1, 1], [10, 10], [18, 18]])
             compare(shot.pixel(origin.x + x, origin.y + y), Qt.color("#3a76f0"), `pixel ${x},${y} is from the middle stripe`);
+    }
+
+    function test_the_picture_has_the_tile_s_corners_in_the_strip_s_own_ground() {
+        const toast = toaster.show("see you soon", { icon: testCase.widePicture });
+        const picture = findChild(toast, "appIcon");
+        tryCompare(picture, "status", Image.Ready);
+        onWholePixels(toast);
+        compare(Tokens.radiusTile, 2);
+                waitForRendering(picture);
+        const shot = grabImage(scene);
+        const origin = picture.mapToItem(scene, 0, 0);
+        for (const [x, y] of [[0, 0], [19, 0], [0, 19], [19, 19]])
+            verify(shot.pixel(origin.x + x, origin.y + y).g < 0.25, `corner ${x},${y} is cut to the ground, not the picture`);
+        for (const [x, y] of [[2, 2], [17, 2], [2, 17], [17, 17], [10, 0], [0, 10]])
+            compare(shot.pixel(origin.x + x, origin.y + y), Qt.color("#3a76f0"), `pixel ${x},${y} is picture`);
     }
 
     function test_a_toast_slides_in_whole_from_the_top_edge_without_a_fade_and_leaves_back_up() {

@@ -12,7 +12,6 @@ Item {
     // item | checkbox | radio
     property string kind: "item"
     property bool checked: false
-    // The keys that do the same from anywhere, such as "Ctrl S".
     // An image at the front of the row, 20px: the shell's own addition to Rekta's text-only rows. When one row of a menu has
     // one, every row's text starts at the same edge.
     property url icon
@@ -20,6 +19,7 @@ Item {
     property string glyph
     // One word in semibold before the text, such as the app a message comes from.
     property string lead
+    // The keys that do the same from anywhere, such as "Ctrl S".
     property string keyHint
     property string disabledReason
     readonly property bool disabled: disabledReason !== ""

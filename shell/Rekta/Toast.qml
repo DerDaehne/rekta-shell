@@ -49,6 +49,7 @@ FocusScope {
     readonly property int seconds: Math.max(0, Math.ceil(shownLeft / 1000))
     readonly property bool held: !waiting && !done && (hover.hovered || activeFocus)
     readonly property color ink: status !== "" ? Tokens.color.textPrimary : Tokens.color.bg
+    readonly property color ground: Status.tileFill(status, Tokens.color, Tokens.color.textPrimary)
     readonly property string actionLabel: undoAction ? action : act?.label ?? ""
     readonly property string spoken: title !== "" ? `${title}. ${text}` : text
     // An undo toast says how long its window is.
@@ -267,7 +268,7 @@ FocusScope {
         objectName: "fill"
         anchors.fill: parent
         radius: Tokens.radiusS
-        color: Status.tileFill(toast.status, Tokens.color, Tokens.color.textPrimary)
+        color: toast.ground
     }
 
     Item {
@@ -286,6 +287,21 @@ FocusScope {
             fillMode: Image.PreserveAspectCrop
             source: toast.icon
             visible: parent.width > 0
+        }
+
+        // The picture is square with the tile's corners: a ring in the strip's own ground, whose inner edge is the
+        // picture's rounded outline (its radius is the outer radius less the ring's width).
+        Rectangle {
+            objectName: "corners"
+            x: Tokens.spaceM - Tokens.radiusTile
+            anchors.verticalCenter: parent.verticalCenter
+            width: Geometry.iconSize + 2 * Tokens.radiusTile
+            height: width
+            visible: parent.width > 0
+            color: "transparent"
+            radius: 2 * Tokens.radiusTile
+            border.width: Tokens.radiusTile
+            border.color: toast.ground
         }
     }
 

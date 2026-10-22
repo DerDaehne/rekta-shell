@@ -14,6 +14,8 @@ FloatSurface {
     // A function the host sets while a deeper level stands in the menu (the host swaps the rows itself). Escape and ←
     // then call it instead of closing; a first row "back · name" does the same. Tab still closes everything.
     property var back: null
+    // The word of the back row, "back · name"; the host sets its language.
+    property string backWord: "back"
     property string backName
 
     signal chosen(MenuItem item)
@@ -171,7 +173,7 @@ FloatSurface {
 
         objectName: "back"
         glyph: "back"
-        text: `back · ${menu.backName}`
+        text: `${menu.backWord} · ${menu.backName}`
         visible: menu.back !== null
     }
 
