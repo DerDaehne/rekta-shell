@@ -99,8 +99,11 @@ void FadeBackEffect::watch(LayerSurfaceV1Interface *layer)
     }
     m_start = layer;
     m_keyboard = false;
-    connect(layer->surface(), &SurfaceInterface::committed, this, [this, layer] {
-        startCommitted(layer->acceptsFocus());
+    // Qt hides a window by destroying its layer surface and committing once more on the wl_surface, which outlives it.
+    connect(layer->surface(), &SurfaceInterface::committed, this, [this, layer = QPointer(layer)] {
+        if (layer) {
+            startCommitted(layer->acceptsFocus());
+        }
     });
     // KWin forgets the keyboard of a surface that goes, unmapped or destroyed, without a word.
     connect(layer->surface(), &SurfaceInterface::unmapped, this, &FadeBackEffect::tearDown);
