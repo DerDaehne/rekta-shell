@@ -232,6 +232,16 @@ TestCase {
         const bus = connection();
         const arrays = depth => "a".repeat(depth) + "i";
         const structs = depth => "(".repeat(depth) + "i" + ")".repeat(depth);
+        // Each level opens a dictionary entry and a struct: two of the 32 brackets.
+        const entries = depth => "a{s(".repeat(depth) + "i" + ")}".repeat(depth);
+        const inEntries = depth => {
+            let value = 1;
+            for (let i = 0; i < depth; ++i)
+                value = {
+                    key: [value]
+                };
+            return value;
+        };
         for (const signature of [arrays(32), structs(32)]) {
             const deepest = inLists(1, 32);
             const answer = echo([deepest], signature, bus);
@@ -239,11 +249,15 @@ TestCase {
             compare(counterpart.lastSignature, signature);
             compare(answer.values, [deepest], signature);
         }
+        const entryAnswer = echo([inEntries(16)], entries(16), bus);
+        compare(entryAnswer.error, null, entries(16));
+        compare(counterpart.lastSignature, entries(16));
+        compare(entryAnswer.values, [inEntries(16)]);
         const strings = count => Array(count).fill("text");
         const longest = echo(strings(255), "s".repeat(255), bus);
         compare(longest.error, null);
         compare(counterpart.lastSignature.length, 255);
-        for (const [args, signature] of [[[inLists(1, 33)], arrays(33)], [[inLists(1, 33)], structs(33)], [strings(256), "s".repeat(256)]]) {
+        for (const [args, signature] of [[[inLists(1, 33)], arrays(33)], [[inLists(1, 33)], structs(33)], [[inEntries(17)], entries(17)], [strings(256), "s".repeat(256)]]) {
             const beyond = echo(args, signature, bus);
             verify(beyond.error?.includes("is not a valid D-Bus signature"), `${signature.length}: ${beyond.error}`);
         }
