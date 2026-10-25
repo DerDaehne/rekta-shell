@@ -21,7 +21,8 @@ Scope {
         Quickshell.execDetached(context);
     }
 
-    function run(command: list<string>) {
+    // A JS array of words: Quickshell.execDetached() takes no QML list<string>, it would start an empty command.
+    function run(command: var) {
         if (!starts) {
             console.info(`Launcher: would run ${JSON.stringify(command)}`);
             return;
