@@ -1,11 +1,16 @@
 {
   writeShellApplication,
+  callPackage,
   coreutils,
   kdePackages,
-  quickshell,
+  rekta-shell,
 }:
 
-# One lint command for the dev shell and the flake check, with the modules the shell imports on the import path.
+let
+  counterpart = callPackage ./dbus-counterpart.nix { };
+in
+# One lint command for the dev shell and the flake check, with the modules the shell and its tests import on the import
+# path.
 writeShellApplication {
   name = "rekta-qmllint";
   runtimeInputs = [
@@ -21,7 +26,9 @@ writeShellApplication {
     # Quickshell's type descriptions mark its windows (PanelWindow and friends) as uncreatable, although QML creates them.
     exec qmllint --max-warnings 0 --uncreatable-type disable \
       -I ${kdePackages.qtdeclarative}/lib/qt-6/qml \
-      -I ${quickshell}/lib/qt-6/qml \
+      -I ${rekta-shell.quickshell}/lib/qt-6/qml \
+      -I ${rekta-shell.dbus}/lib/qt-6/qml \
+      -I ${counterpart}/lib/qt-6/qml \
       -I ${kdePackages.plasma-workspace}/lib/qt-6/qml \
       -I ${kdePackages.kpipewire}/lib/qt-6/qml \
       "''${args[@]}"

@@ -3,7 +3,16 @@
 let
   rekta-shell = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
   rekta-kwin = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-kwin;
-  rekta-qmllint = pkgs.callPackage ./qmllint.nix { inherit (rekta-shell) quickshell; };
+  rekta-qmllint = pkgs.callPackage ./qmllint.nix { inherit rekta-shell; };
+  counterpart = pkgs.callPackage ./dbus-counterpart.nix { };
+  # The tests import the shell's directories by relative path, so both stand side by side here.
+  qml = lib.fileset.toSource {
+    root = ../.;
+    fileset = lib.fileset.unions [
+      ../shell
+      ../tests
+    ];
+  };
   dist = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-design-dist;
   qt = pkgs.kdePackages;
   inherit (pkgs) lib;
@@ -11,8 +20,20 @@ in
 {
   package = rekta-shell;
 
+  # Quickshell loads the DBus module into its own process; a Quickshell linking another Qt must stop the build.
+  package-refuses-foreign-qt =
+    let
+      foreignQuickshell = rekta-shell.quickshell.overrideAttrs { buildInputs = [ ]; };
+      foreign = rekta-shell.override { quickshell = foreignQuickshell; };
+    in
+    assert lib.assertMsg (
+      !(builtins.tryEval foreign.drvPath).success
+    ) "rekta-shell builds with a Quickshell that links another Qt";
+    pkgs.runCommand "rekta-shell-package-refuses-foreign-qt" { } "touch $out";
+
   # A system or home profile links share/ and etc/xdg of its packages into every session's XDG dirs and lib/qt-6/plugins
-  # into its plugin path, Plasma's too: the rekta packages may bring no KWin effects or config defaults there.
+  # into its plugin path, Plasma's too: the rekta packages may bring no KWin effects or config defaults there. The DBus
+  # module brings only a QML module, which nothing of Plasma's imports.
   profile-leaves-plasma-alone =
     let
       profile = pkgs.buildEnv {
@@ -30,6 +51,11 @@ in
           exit 1
         fi
       done
+      outside=$(cd ${rekta-shell.dbus} && find . -not -type d -not -path './lib/qt-6/qml/*')
+      if [ -n "$outside" ]; then
+        echo "the DBus module installs $outside outside lib/qt-6/qml" >&2
+        exit 1
+      fi
       touch $out
     '';
 
@@ -46,7 +72,7 @@ in
   '';
 
   qmllint = pkgs.runCommand "rekta-shell-qmllint" { LANG = "C.UTF-8"; } ''
-    find ${../shell} ${../tests} -name '*.qml' -print0 | xargs -0 ${pkgs.lib.getExe rekta-qmllint} -I ${../shell}
+    find ${qml} -name '*.qml' -print0 | xargs -0 ${pkgs.lib.getExe rekta-qmllint} -I ${qml}/shell
     touch $out
   '';
 
@@ -68,17 +94,22 @@ in
   qml-tests =
     pkgs.runCommand "rekta-shell-qml-tests"
       {
-        nativeBuildInputs = [ qt.qtdeclarative ];
+        nativeBuildInputs = [
+          qt.qtdeclarative
+          pkgs.dbus
+        ];
         QT_QPA_PLATFORM = "offscreen";
         QT_QUICK_BACKEND = "software";
         FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ pkgs.atkinson-hyperlegible-next ]; };
         QT_PLUGIN_PATH = "${qt.qtbase}/lib/qt-6/plugins";
-        QML_IMPORT_PATH = "${qt.qtdeclarative}/lib/qt-6/qml";
+        QML_IMPORT_PATH = "${qt.qtdeclarative}/lib/qt-6/qml:${rekta-shell.dbus}/lib/qt-6/qml:${counterpart}/lib/qt-6/qml";
         LANG = "C.UTF-8";
       }
       ''
         export HOME="$TMPDIR"
-        qmltestrunner -import ${../shell} -input ${../tests}
+        # A bus of its own for the DBus tests, which exists only while the tests run.
+        dbus-run-session --config-file=${pkgs.dbus}/share/dbus-1/session.conf -- \
+          qmltestrunner -import ${qml}/shell -input ${qml}/tests
         # Tests save contact sheets into the working directory; they end up in the check's result for review.
         mkdir $out
         cp *.png $out/ 2>/dev/null || true

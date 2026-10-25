@@ -77,7 +77,9 @@
           packages = [
             pkgs.quickshell
             pkgs.kdePackages.qtdeclarative
-            (pkgs.callPackage ./nix/qmllint.nix { })
+            (pkgs.callPackage ./nix/qmllint.nix {
+              rekta-shell = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
+            })
             pkgs.nodejs
             pkgs.gitleaks
             pkgs.nixfmt

@@ -112,7 +112,7 @@ writeShellApplication {
 
     # kwin_wayland starts its program without passing on any arguments, so the shell path goes into a launcher.
     launcher="$home/rekta-shell"
-    printf '#!/bin/sh\nexport QML_IMPORT_PATH=%q REKTA_BACKGROUND=%q\nexec %q --path %q\n' "$shell_dir:${kdePackages.plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" "$background" "${rekta-shell.quickshell}/bin/quickshell" "$shell_dir" >"$launcher"
+    printf '#!/bin/sh\nexport QML_IMPORT_PATH=%q REKTA_BACKGROUND=%q\nexec %q --path %q\n' "$shell_dir:${rekta-shell.dbus}/lib/qt-6/qml:${kdePackages.plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" "$background" "${rekta-shell.quickshell}/bin/quickshell" "$shell_dir" >"$launcher"
     chmod +x "$launcher"
 
     socket="rekta-nested"

@@ -24,7 +24,12 @@ assert lib.assertMsg (lib.elem background [
 let
   plasma-workspace = kdePackages.plasma-workspace;
   rekta-kwin = callPackage ./kwin.nix { };
+  dbus = callPackage ./dbus.nix { };
+  # Quickshell loads the DBus module into its own process, so both must link the same Qt.
+  sameQt = lib.all (qtLibrary: lib.elem qtLibrary quickshell.buildInputs) dbus.buildInputs;
 in
+assert lib.assertMsg sameQt
+  "rekta-shell's DBus module is built against another Qt than Quickshell ${quickshell.version}";
 stdenvNoCC.mkDerivation {
   pname = "rekta-shell";
   version = "0.1.0";
@@ -40,7 +45,7 @@ stdenvNoCC.mkDerivation {
     # Only this wrapper lets the shell start apps for real; run from a checkout it only logs them.
     makeWrapper ${lib.getExe quickshell} $out/bin/rekta-shell \
       --add-flags "--path $out/share/rekta-shell" \
-      --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" \
+      --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${dbus}/lib/qt-6/qml:${plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" \
       --prefix PATH : ${kdePackages.libkscreen}/bin:${libcanberra-gtk3}/bin:${gnugrep}/bin \
       --set REKTA_BACKGROUND ${background} \
       --set-default REKTA_SHELL_LAUNCH systemd
@@ -58,7 +63,7 @@ stdenvNoCC.mkDerivation {
   '';
 
   passthru = {
-    inherit quickshell;
+    inherit quickshell dbus;
     providedSessions = [ "rekta" ];
   };
 

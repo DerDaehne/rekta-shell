@@ -131,7 +131,14 @@ nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM
   the tests render, e.g. `icon-sheet.png`); `generator-tests` makes sure the
   generator stops on tokens it cannot map instead of dropping them.
 - `rekta-qmllint -I shell <files>` in the dev shell lints exactly like the flake check
-  (Qt, Quickshell and plasma-workspace on the import path, warnings fail).
+  (Qt, Quickshell, the DBus module and plasma-workspace on the import path, warnings fail).
+- `plugins/dbus/` is the shell's DBus module `RektaShell.DBus` (C++, QtDBus and QtQml only):
+  one type, `DBusConnection`, with a bus connection of its own per instance, listens to
+  signals, calls methods typed by a full D-Bus signature and owns names. `nix/dbus.nix`
+  builds it from the same pkgs as Quickshell, and the package refuses a Quickshell with
+  another Qt; the wrapper, the nested session and `rekta-qmllint` put it on the import path.
+  The QML tests run on a private bus (`dbus-run-session`) with `tests/counterpart/` (QtDBus
+  alone) as the other end.
 - `session/` holds the rekta session's files: its desktop entry, the start script
   (`XDG_SESSION_DESKTOP=rekta`, `PLASMA_DEFAULT_SHELL`, then `startplasma-wayland`),
   `rekta-shell.service` and the drop-ins that skip plasmashell and pull the shell into
