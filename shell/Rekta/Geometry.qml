@@ -185,6 +185,15 @@ QtObject {
     // `min(var(--rk-i, 0), 10) * var(--rk-duration-stagger)` (rekta.css:110, :91)
     readonly property real buildInRise: 6
     readonly property int buildInStaggerCap: 10
+    // Coming and going in a list or a grid (rekta.js:3414, :3420, :3423, :3440): a tile arrives from
+    // `translateY(6px) scale(0.96)`, a row from `translateY(-6px)`; both leave over `duration-short * 0.6`, a tile to
+    // `scale(0.9)`, a row to `translateX(12px)`; past `going.length + coming.length > 60` the change applies at once.
+    readonly property real arriveShift: 6
+    readonly property real arriveTileScale: 0.96
+    readonly property real leaveShare: 0.6
+    readonly property real leaveTileScale: 0.9
+    readonly property real leaveRowDrift: 12
+    readonly property int presenceAtOnceAbove: 60
     // A peek moves the stat by `translateY(40%)` of its own height (rekta.js:3473–3474); a flip turns the tile to
     // `rotateX(-90deg)` and back from `rotateX(90deg)` (rekta.js:3456, :3460)
     readonly property real peekShift: 0.4

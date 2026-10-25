@@ -41,6 +41,7 @@ singleton KeyLayers 1.0 KeyLayers.qml
 singleton Tips 1.0 Tips.qml
 Placement 1.0 Placement.js
 Calendar 1.0 Calendar.js
+Match 1.0 Match.js
 FloatSurface 1.0 FloatSurface.qml
 Menu 1.0 Menu.qml
 MenuItem 1.0 MenuItem.qml
@@ -60,6 +61,7 @@ AppBar 1.0 AppBar.qml
 AppBarButton 1.0 AppBarButton.qml
 AppBarMiddle 1.0 AppBarMiddle.qml
 PlaceTurn 1.0 PlaceTurn.qml
+Presence 1.0 Presence.qml
 AppBarClock 1.0 AppBarClock.qml
 AppBarDisplay 1.0 AppBarDisplay.qml
 Month 1.0 Month.qml
