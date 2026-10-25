@@ -29,7 +29,8 @@ FocusScope {
     // From open() to close(): the Start is open or on its way.
     readonly property bool wanted: phase === "opening" || phase === "open"
     // From open() to the hand-over, when the glass starts to go. KWin's fade-back steps the windows back when the
-    // surface takes the keyboard and brings them forward when it gives it back.
+    // surface takes the keyboard and brings them forward when it gives it back; the surface, glass and blur, fades
+    // along with them.
     readonly property bool holdsKeyboard: wanted || (phase === "closing" && !glassOut.running)
     readonly property bool turning: turner.running || waitForWindows.running
     readonly property var running: Rules.recentFirst(windows)
@@ -48,7 +49,6 @@ FocusScope {
         returnTo = windows.find(window => window.active) ?? null;
         phase = "opening";
         glassOut.stop();
-        glassIn.restart();
         pivot.focus = false;
         forgetTileFocus();
         body.visible = false;
@@ -122,7 +122,10 @@ FocusScope {
     // Start's stays mapped. Not earlier: the activated window moves to the front of "läuft", whose tiles are then made
     // anew and would stand still amid the turn.
     function partsOut() {
-        glassOut.restart();
+        if (glassOut.interval > 0)
+            glassOut.restart();
+        else
+            hide();
         if (windows.includes(returnTo))
             returnTo.activate();
         returnTo = null;
@@ -293,42 +296,22 @@ FocusScope {
         onTapped: start.back()
     }
 
+    // Whole while the Start shows: KWin's fade-back fades the surface in as the windows step back and out as they come
+    // forward, so the glass and the blur behind it go together.
     Rectangle {
-        id: glass
-
         objectName: "glass"
         anchors.fill: parent
         color: Tokens.color.glass
-        opacity: 0
+        visible: start.shown
     }
 
-    // The glass comes as the windows step back and goes as they come forward (the shell's decision for the Start).
-    NumberAnimation {
-        id: glassIn
-
-        objectName: "glassIn"
-        target: glass
-        property: "opacity"
-        to: 1
-        duration: Tokens.durationModerate
-        easing.type: Easing.Bezier
-        easing.bezierCurve: Tokens.easeOut
-    }
-
-    NumberAnimation {
+    // The glass goes in duration-moderate from the hand-over; then the Start empties.
+    Timer {
         id: glassOut
 
         objectName: "glassOut"
-        target: glass
-        property: "opacity"
-        to: 0
-        duration: Tokens.durationModerate
-        easing.type: Easing.Bezier
-        easing.bezierCurve: Tokens.easeIn
-        onFinished: {
-            if (start.phase === "closing")
-                start.hide();
-        }
+        interval: Tokens.durationModerate
+        onTriggered: start.hide()
     }
 
     Timer {

@@ -177,7 +177,8 @@ void FadeBackEffect::step()
 }
 
 // The window's own opacity, not the paint data's: KWin's blur follows it as well, and it holds once the effect rests
-// at 0, until the shell has emptied the surface.
+// at 0, until the shell has emptied the surface. ponytail: the glass goes with p, the blur with p² (KWin squares the
+// opacity); should the blur lag visibly, set √p here and have the shell fade its glass by √p too.
 void FadeBackEffect::fadeStart(qreal opacity) const
 {
     if (Window *start = m_start ? waylandServer()->findWindow(m_start->surface()) : nullptr) {

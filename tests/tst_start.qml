@@ -232,7 +232,7 @@ TestCase {
         start.windows = [...start.windows, fakeWindow("dolphin", 40)];
         tryVerify(() => closedSpy.count === 1, 3000);
         verify(!start.shown);
-        compare(findChild(start, "glass").opacity, 0);
+        verify(!findChild(start, "glass").visible);
     }
 
     // Opaque, with no turn's rotation left on it.
@@ -342,13 +342,32 @@ TestCase {
         tryVerify(() => start.phase === "open", 3000);
     }
 
-    function test_the_glass_comes_over_moderate_with_ease_out_and_goes_with_ease_in() {
-        const glassIn = findChild(start, "glassIn");
-        const glassOut = findChild(start, "glassOut");
-        compare(glassIn.duration, Tokens.durationModerate);
-        compare(glassIn.easing.bezierCurve, Tokens.easeOut);
-        compare(glassOut.easing.bezierCurve, Tokens.easeIn);
-        compare(findChild(start, "glass").color, Tokens.color.glass);
+    // KWin's fade-back fades the whole surface, glass and blur together; a glass that faded itself would stand at p².
+    function glassWhole(): bool {
+        const glass = findChild(start, "glass");
+        return glass.visible && glass.opacity === 1 && Qt.colorEqual(glass.color, Tokens.color.glass);
+    }
+
+    function test_the_glass_stands_whole_from_the_opening_and_leaves_the_fade_to_kwin() {
+        start.open();
+        verify(glassWhole(), "whole in the frame the windows start to step back");
+        tryVerify(() => start.phase === "open", 3000);
+        verify(glassWhole());
+    }
+
+    function test_the_start_empties_moderate_after_the_hand_over_with_the_glass_whole_until_then() {
+        openNow();
+        keyClick(Qt.Key_Escape);
+        turner.paused = true;
+        turner.elapsed = turner.handOverAt;
+        const handedOver = Date.now();
+        verify(!start.holdsKeyboard);
+        wait(Tokens.durationModerate / 2);
+        verify(glassWhole(), "the windows come forward under it as KWin fades it");
+        compare(closedSpy.count, 0);
+        tryVerify(() => closedSpy.count === 1, 2000);
+        verify(Date.now() - handedOver >= Tokens.durationModerate - 2);
+        verify(!findChild(start, "glass").visible);
     }
 
     function test_escape_turns_the_start_out_back_the_way_it_came() {
@@ -359,7 +378,7 @@ TestCase {
         verify(turner.pressedTile === null);
         tryVerify(() => closedSpy.count === 1, 3000);
         verify(!start.shown);
-        compare(findChild(start, "glass").opacity, 0);
+        verify(!findChild(start, "glass").visible);
     }
 
     function test_after_a_press_the_start_turns_out_forward_with_the_pressed_tile_last() {
@@ -445,7 +464,7 @@ TestCase {
         verify(start.wanted);
         tryVerify(() => start.phase === "open", 3000);
         compare(closedSpy.count, 0);
-        compare(findChild(start, "glass").opacity, 1);
+        verify(glassWhole());
     }
 
     function test_under_reduced_motion_the_start_stands_and_goes_at_once() {
@@ -453,7 +472,7 @@ TestCase {
         start.open();
         compare(start.phase, "open");
         verify(named("body").visible);
-        compare(findChild(start, "glass").opacity, 1);
+        verify(glassWhole());
         keyClick(Qt.Key_Escape);
         compare(start.phase, "closed");
         compare(closedSpy.count, 1);

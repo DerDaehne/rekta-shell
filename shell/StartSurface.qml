@@ -23,6 +23,9 @@ PanelWindow {
     // KWin gives the keyboard to the next window when a surface goes, also when the side panel over the open Start goes;
     // it hands it to a layer surface only as that one starts to ask for it (LayerShellV1Window::handleAcceptsFocusChanged).
     property bool askingAgain: false
+    // KWin's fade-back takes a single commit without the keyboard for asking anew. Nothing on the Start changes after its
+    // hand-over, so it draws one frame more then, to say it let go.
+    property bool confirmingHandOver: false
 
     // Asks for the keyboard anew, one commit without it and one with it, while the Start is open. KWin's fade-back holds
     // the windows through the first, as it would at a hand-over, and the next one keeps them back.
@@ -77,6 +80,10 @@ PanelWindow {
         preview: Component {
             WindowPreview {}
         }
+        onHoldsKeyboardChanged: {
+            if (!place.holdsKeyboard && place.shown)
+                surface.confirmingHandOver = true;
+        }
     }
 
     Apps {
@@ -98,6 +105,10 @@ PanelWindow {
 
         function onFrameSwapped() {
             surface.askingAgain = false;
+            if (surface.confirmingHandOver) {
+                surface.confirmingHandOver = false;
+                surface.contentItem.Window.window.update();
+            }
         }
     }
 
