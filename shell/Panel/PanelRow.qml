@@ -1,9 +1,9 @@
 import QtQuick
 import Rekta
 
-// A row on a hairline (rekta.css:68–70): its words at the start, its control at the end, space-s above and below; where
-// the two do not fit on one line, the control goes below them (flex-wrap). Words too long for the row are cut. A row
-// without words has its control at the start.
+// A row of a group, a form's field rather than a list's item, so it stands on no hairline: its words at the start, its
+// control at the end; where the two do not fit on one line, the control goes below them (flex-wrap, rekta.css:69).
+// Words too long for the row are cut. A row without words has its control at the start.
 Item {
     id: row
 
@@ -18,18 +18,14 @@ Item {
     readonly property real lineHeight: Math.max(label !== "" ? words.height : 0, wraps ? 0 : controlHeight)
 
     width: parent ? parent.width : 0
-    implicitHeight: Geometry.hairline + 2 * Tokens.spaceS + lineHeight + (wraps ? controlHeight : 0)
+    implicitHeight: lineHeight + (wraps ? controlHeight : 0)
     visible: present
-
-    Hairline {
-        width: row.width
-    }
 
     Body {
         id: words
 
         objectName: "words"
-        y: Geometry.hairline + Tokens.spaceS + (row.lineHeight - height) / 2
+        y: (row.lineHeight - height) / 2
         width: row.wraps ? row.width : row.width - row.controlWidth - Tokens.spaceM
         visible: row.label !== ""
         text: row.label
@@ -42,7 +38,7 @@ Item {
 
         objectName: "holder"
         x: row.label === "" || row.wraps ? 0 : row.width - row.controlWidth
-        y: Geometry.hairline + Tokens.spaceS + (row.wraps ? row.lineHeight : (row.lineHeight - row.controlHeight) / 2)
+        y: row.wraps ? row.lineHeight : (row.lineHeight - row.controlHeight) / 2
         width: row.controlWidth
         height: row.controlHeight
     }

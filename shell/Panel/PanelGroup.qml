@@ -3,10 +3,11 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 
-// A group of rows under its heading, a section of a compact place: space-l above and below, its parts space-m apart,
-// and a hairline between it and the group before (rekta.css:854–856). Its rows stand on hairlines, the last with one
-// below too (rekta.css:68–70). A group without a row present falls away. An open level stands in place of the rows:
-// it comes in from the trailing edge and the rows come back from the leading edge (motion.md, "Next item, same place").
+// A group of rows under its heading, a section of a compact place: space-l above and below, its parts space-m apart
+// (rekta.css:854, :856). Its rows are a form's fields, not a list's items: each is a part of its own, space-m from the
+// next, on no hairline, and groups stand apart by their headings and that space. A group without a row present falls
+// away. An open level stands in place of the rows: it comes in from the trailing edge and the rows come back from the
+// leading edge (motion.md, "Next item, same place").
 Column {
     id: group
 
@@ -21,56 +22,36 @@ Column {
 
     width: parent ? parent.width : 0
     visible: hasRows
+    topPadding: Tokens.spaceL
+    bottomPadding: Tokens.spaceL
+    spacing: Tokens.spaceM
 
-    // The first group in sight stands at the top of its column and has no group before it.
-    Hairline {
-        objectName: "between"
+    GroupHeading {
+        objectName: "heading"
         width: group.width
-        visible: group.y > 0
+        text: group.title
+        placeWidth: group.placeWidth
     }
 
-    Column {
+    Facets {
+        objectName: "parts"
         width: group.width
-        topPadding: Tokens.spaceL
-        bottomPadding: Tokens.spaceL
-        spacing: Tokens.spaceM
+        height: group.level?.implicitHeight ?? list.implicitHeight
+        currentIndex: group.level ? 1 : 0
 
-        GroupHeading {
-            objectName: "heading"
+        Column {
+            id: list
+
+            objectName: "rows"
             width: parent.width
-            text: group.title
-            placeWidth: group.placeWidth
+            spacing: Tokens.spaceM
         }
 
-        Facets {
-            objectName: "parts"
+        Item {
+            id: levelHolder
+
             width: parent.width
-            height: group.level?.implicitHeight ?? rowsPart.implicitHeight
-            currentIndex: group.level ? 1 : 0
-
-            Column {
-                id: rowsPart
-
-                width: parent.width
-
-                Column {
-                    id: list
-
-                    objectName: "rows"
-                    width: parent.width
-                }
-
-                Hairline {
-                    width: parent.width
-                }
-            }
-
-            Item {
-                id: levelHolder
-
-                width: parent.width
-                height: group.level?.implicitHeight ?? 0
-            }
+            height: group.level?.implicitHeight ?? 0
         }
     }
 }

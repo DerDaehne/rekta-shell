@@ -215,6 +215,12 @@ TestCase {
         return row;
     }
 
+    // The hairlines that show inside an item, its own included.
+    function hairlinesIn(item: var): var {
+        const own = item instanceof Hairline && item.visible ? [item] : [];
+        return Array.from(item.children).reduce((lines, child) => lines.concat(hairlinesIn(child)), own);
+    }
+
     // Two outputs and two inputs, the first of each the default, as the host hands them to the controls.
     function giveSound(target: var): var {
         const device = (description, isSink) => createTemporaryObject(deviceComponent, testCase, { description, isSink });
@@ -635,7 +641,7 @@ TestCase {
         compare(findChild(row, "words").text, "lautstärke");
         compare(slider.width, row.width);
         compare(findChild(row, "holder").x, 0);
-        compare(findChild(row, "holder").y, Geometry.hairline + Tokens.spaceS + findChild(row, "words").height);
+        compare(findChild(row, "holder").y, findChild(row, "words").height);
     }
 
     function test_the_slider_and_stumm_set_the_device_and_follow_changes_from_elsewhere() {
@@ -846,9 +852,25 @@ TestCase {
         compare(findChild(groups[2], "heading").text, "anzeige");
         compare(findChild(groups[3], "heading").text, "sitzung");
         tryCompare(groups[2], "y", 0, 1000, "the first in sight at the top");
-        verify(!findChild(groups[2], "between").visible, "with no group before it");
         verify(groups[3].y > groups[2].y);
-        verify(findChild(groups[3], "between").visible, "a hairline between the two");
+    }
+
+    // Its rows are a form's controls, not a list (forms.md); groups stand apart by their headings and space.
+    function test_the_rows_of_a_group_stand_space_m_apart_on_no_hairline_and_no_hairline_divides_the_groups() {
+        giveSound(controls);
+        side.show(0);
+        waitForRendering(side);
+        for (const name of ["sound", "display", "session"]) {
+            const group = findChild(controls, name);
+            verify(group.visible, name);
+            compare(hairlinesIn(group).length, 0, name);
+        }
+        const dark = rowOf(control("dark"));
+        const doNotDisturb = rowOf(control("doNotDisturb"));
+        compare(doNotDisturb.y - (dark.y + dark.height), Tokens.spaceM, "a section's parts are space-m apart");
+        const display = findChild(controls, "display");
+        const session = findChild(controls, "session");
+        compare(session.y - (display.y + display.height), 0, "the groups' own space-l above and below parts them");
     }
 
     function test_a_group_whose_rows_are_all_absent_falls_away() {
@@ -866,10 +888,10 @@ TestCase {
         waitForRendering(side);
         compare(heading.mapToItem(group, 0, 0).y, Tokens.spaceL);
         compare(rows.mapToItem(group, 0, 0).y, Tokens.spaceL + heading.height + Tokens.spaceM);
-        compare(group.height, 2 * Tokens.spaceL + heading.height + Tokens.spaceM + rows.height + Geometry.hairline, "the last row's line below");
+        compare(group.height, 2 * Tokens.spaceL + heading.height + Tokens.spaceM + rows.height);
     }
 
-    function test_a_row_has_its_words_at_the_start_and_its_control_at_the_end_on_a_hairline() {
+    function test_a_row_has_its_words_at_the_start_and_its_control_at_the_end() {
         side.show(0);
         const toggle = control("dark");
         const row = rowOf(toggle);
@@ -878,8 +900,7 @@ TestCase {
         compare(words.text, "dunkel");
         compare(words.x, 0);
         compare(findChild(row, "holder").x, row.width - toggle.implicitWidth, "the control at the end");
-        compare(row.height, Geometry.hairline + 2 * Tokens.spaceS + Math.max(words.height, toggle.implicitHeight), "space-s above and below");
-        compare(row.children[0].color, Tokens.color.textContrastLow, "on a hairline");
+        compare(row.height, Math.max(words.height, toggle.implicitHeight), "the height of its line");
         compare(findChild(rowOf(control("lock")), "holder").x, 0, "a row without words has its control at the start");
     }
 
@@ -891,7 +912,7 @@ TestCase {
         waitForRendering(side);
         const words = findChild(row, "words");
         compare(findChild(row, "holder").x, 0);
-        compare(findChild(row, "holder").y, Geometry.hairline + Tokens.spaceS + words.height, "below the words");
+        compare(findChild(row, "holder").y, words.height, "below the words");
         compare(words.width, row.width);
         verify(words.truncated, "the words are cut, not wrapped");
         compare(words.lineCount, 1);
