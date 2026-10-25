@@ -1,0 +1,9 @@
+{
+    "KPlugin": {
+        "Category": "Appearance",
+        "Description": "Steps the windows back while the Start of the rekta shell is open, and fades the Start in over them",
+        "EnabledByDefault": false,
+        "License": "MIT",
+        "Name": "Rekta fade-back"
+    }
+}

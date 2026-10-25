@@ -4,7 +4,8 @@ import QtQuick
 // Fixed values Rekta Design keeps as literals rather than tokens: its fixed geometry, the same in every theme and
 // density (rekta.css, header), the motion of the loading line, the dots, the place change and live tile news, which
 // has no tokens yet, and the CSS timing keywords Rekta uses where it has no curve token (ease-in-out). Each value names
-// the rule it comes from in rekta.css (or rekta.js) at the pinned commit.
+// the rule it comes from in rekta.css (or rekta.js) at the pinned commit, except the windows stepping back behind the
+// Start, a motion Rekta has no row for yet.
 QtObject {
     // `.rk-rows > li { border-top: 1px solid var(--rk-text-contrast-low) }` (rekta.css:69)
     readonly property real hairline: 1
@@ -211,6 +212,11 @@ QtObject {
     readonly property real toastLine: 2
     // `@keyframes rk-banner-in { from { opacity: 0; transform: translateY(-8px) } }` (rekta.css:955)
     readonly property real bannerShift: 8
+
+    // The windows step back behind the Start, smaller about their screen's centre and dimmed. motion.md has no row for
+    // this (motion.md:9–35), so the shell's own values stand until Rekta has one.
+    readonly property real fadeBackScale: 0.86
+    readonly property real fadeBackBrightness: 0.78
 
     // `.rk-sheet { width: min(32rem, 100%) }` (rekta.css:826), a rem being 16 logical px
     readonly property real sheetMaxWidth: 512

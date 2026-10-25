@@ -11,8 +11,8 @@ in
 {
   package = rekta-shell;
 
-  # A system or home profile links share/ and etc/xdg of its packages into every session's XDG dirs, Plasma's too: the
-  # rekta packages may bring no KWin effects or config defaults there.
+  # A system or home profile links share/ and etc/xdg of its packages into every session's XDG dirs and lib/qt-6/plugins
+  # into its plugin path, Plasma's too: the rekta packages may bring no KWin effects or config defaults there.
   profile-leaves-plasma-alone =
     let
       profile = pkgs.buildEnv {
@@ -24,7 +24,7 @@ in
       };
     in
     pkgs.runCommand "rekta-shell-profile-leaves-plasma-alone" { } ''
-      for path in share/kwin etc/xdg; do
+      for path in share/kwin etc/xdg lib/qt-6/plugins/kwin; do
         if [ -e ${profile}/$path ]; then
           echo "a profile with the rekta packages puts $path into every session" >&2
           exit 1

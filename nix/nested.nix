@@ -40,7 +40,7 @@ writeShellApplication {
     [[ "$background" =~ ^(rekta|solid)$ ]] || usage
 
     # The working tree's shell and KWin effects when run from the repository (Quickshell reloads the shell on every
-    # change), else the packages'.
+    # change), else the packages'. The compiled effects always come from the package.
     shell_dir=${rekta-shell}/share/rekta-shell
     kwin_dir=${rekta-kwin}/share/rekta-kwin/kwin
     if [ -f shell/shell.qml ] && [ -f flake.nix ]; then
@@ -120,7 +120,8 @@ writeShellApplication {
 
     echo "rekta-nested: shell from $shell_dir, HOME $home"
     # The effects take their values from the shell's Rekta module, and KWin's animation speed through KDE's Kirigami units.
-    env -i "''${session[@]}" "''${host_display[@]}" QML_IMPORT_PATH="$shell_dir" QT_QUICK_CONTROLS_STYLE=org.kde.desktop kwin_wayland "''${backend[@]}" --socket "$socket" \
+    env -i "''${session[@]}" "''${host_display[@]}" QML_IMPORT_PATH="$shell_dir" QT_QUICK_CONTROLS_STYLE=org.kde.desktop \
+      QT_PLUGIN_PATH=${rekta-kwin}/share/rekta-kwin/plugins kwin_wayland "''${backend[@]}" --socket "$socket" \
       --width "''${size%x*}" --height "''${size#*x}" --output-count "$outputs" \
       --no-lockscreen --no-global-shortcuts --no-kactivities \
       -- "$launcher" &

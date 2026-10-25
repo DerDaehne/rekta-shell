@@ -48,6 +48,7 @@ MenuSeparator 1.0 MenuSeparator.qml
 MenuLabel 1.0 MenuLabel.qml
 Tooltip 1.0 Tooltip.qml
 singleton Turnstile 1.0 Turnstile.qml
+singleton FadeBack 1.0 FadeBack.qml
 Sparkline 1.0 Sparkline.qml
 internal TileNews TileNews.qml
 Toaster 1.0 Toaster.qml
