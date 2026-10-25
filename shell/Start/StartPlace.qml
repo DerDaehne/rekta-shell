@@ -11,8 +11,10 @@ import Rekta
 FocusScope {
     id: start
 
-    // The open windows: {title, icon, lastActivated, stackingOrder, activate()}.
+    // The open windows: {title, icon, lastActivated, stackingOrder, active, activate()}.
     property var windows: []
+    // The window that had the keyboard when the Start opened; it gets it back unless a press chose where to go.
+    property var returnTo: null
     // The pinned apps: {name, icon, columns, rows, launch()}.
     property var pinned: []
     // Draws a window's preview on its tile (RunningTile.preview); null for none.
@@ -37,6 +39,7 @@ FocusScope {
         if (wanted)
             return;
         quietly(() => turner.finish());
+        returnTo = windows.find(window => window.active) ?? null;
         phase = "opening";
         glassOut.stop();
         glassIn.restart();
@@ -55,9 +58,11 @@ FocusScope {
         if (!wanted)
             return;
         phase = "closing";
+        if (pressed)
+            returnTo = null;
         if (waitForWindows.running) {
             waitForWindows.stop();
-            glassOut.restart();
+            partsOut();
             return;
         }
         turn(body, null, {
@@ -99,7 +104,17 @@ FocusScope {
         if (phase === "opening")
             phase = "open";
         else if (phase === "closing")
-            glassOut.restart();
+            partsOut();
+    }
+
+    // The parts are out: the glass goes, and the keyboard goes back, as KWin hands it on only when a surface goes and the
+    // Start's stays mapped. Not earlier: the activated window moves to the front of "läuft", whose tiles are then made
+    // anew and would stand still amid the turn.
+    function partsOut() {
+        glassOut.restart();
+        if (windows.includes(returnTo))
+            returnTo.activate();
+        returnTo = null;
     }
 
     function showPlace(index: int) {

@@ -28,8 +28,16 @@ TestCase {
             icon: testCase.blueIcon,
             lastActivated: lastActivated,
             stackingOrder: 0,
+            active: false,
             activate: () => testCase.calls = [...testCase.calls, `activate ${title}`]
         };
+    }
+
+    // Konsole and the docs, the docs with the keyboard.
+    function windowsWithTheDocsActive(): var {
+        const docs = fakeWindow("Rekta Design — docs", 30);
+        docs.active = true;
+        return [fakeWindow("konsole: build", 10), docs];
     }
 
     function fakeApp(name: string, columns: int): var {
@@ -193,6 +201,27 @@ TestCase {
         mouseClick(tilesIn("pinned")[1]);
         compare(calls, ["launch dolphin"]);
         verify(!start.wanted);
+    }
+
+    function test_closing_without_a_press_gives_the_keyboard_back_to_the_window_that_had_it_once_the_parts_are_out() {
+        start.windows = windowsWithTheDocsActive();
+        openNow();
+        keyClick(Qt.Key_Escape);
+        compare(calls, [], "not while its tiles still turn");
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(calls, ["activate Rekta Design — docs"]);
+    }
+
+    function test_after_a_launch_or_a_window_choice_the_window_that_had_the_keyboard_is_not_activated() {
+        start.windows = windowsWithTheDocsActive();
+        Prefs.motion = "off";
+        start.open();
+        waitForRendering(start);
+        mouseClick(tilesIn("pinned")[1]);
+        start.open();
+        waitForRendering(start);
+        mouseClick(tilesIn("running")[1]);
+        compare(calls, ["launch dolphin", "activate konsole: build"]);
     }
 
     // A launched app's window comes while the Start turns out, and the running tiles are made anew.
