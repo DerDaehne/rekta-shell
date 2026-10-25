@@ -1,8 +1,9 @@
+#include "core/backendoutput.h"
 #include "core/output.h"
+#include "core/renderloop.h"
 #include "effect/effect.h"
 #include "effect/effecthandler.h"
 #include "effect/effectwindow.h"
-#include "effect/timeline.h"
 #include "wayland/layershell_v1.h"
 #include "wayland/surface.h"
 #include "wayland_server.h"
@@ -13,10 +14,17 @@
 #include <QQmlEngine>
 #include <QVector2D>
 
+#include <optional>
+
 using namespace std::chrono_literals;
 
 namespace KWin
 {
+
+static LogicalOutput *primaryScreen()
+{
+    return workspace()->outputOrder().value(0);
+}
 
 // The windows on the primary screen step back while the Start is open, smaller about the screen's centre and dimmed,
 // and the Start's surface fades in over them with its glass and blur. The Start opens by taking the keyboard and hands
@@ -38,6 +46,7 @@ private:
     void watch(LayerSurfaceV1Interface *layer);
     void head(qreal target);
     void stand(qreal at);
+    void advance(std::chrono::nanoseconds presentation);
     void step();
     void fadeStart(qreal opacity) const;
     bool stepsBack(const EffectWindow *w) const;
@@ -52,8 +61,8 @@ private:
 
     QObject *m_rules;
     QPointer<LayerSurfaceV1Interface> m_start;
-    AnimationClock m_clock;
-    std::chrono::milliseconds m_elapsed = 0ms;
+    std::optional<std::chrono::nanoseconds> m_setOffAt;
+    std::chrono::nanoseconds m_elapsed = 0ns;
     qreal m_from = 0;
     qreal m_to = 0;
     qreal m_progress = 0;
@@ -105,8 +114,8 @@ void FadeBackEffect::head(qreal target)
     }
     m_from = m_progress;
     m_to = target;
-    m_elapsed = 0ms;
-    m_clock.reset();
+    m_setOffAt.reset();
+    m_elapsed = 0ns;
     step();
     effects->addRepaintFull();
 }
@@ -119,9 +128,20 @@ void FadeBackEffect::stand(qreal at)
     effects->addRepaintFull();
 }
 
+// The time since the frame the windows set off in, as the primary screen presents its frames. KWin's AnimationClock
+// counts whole milliseconds per frame, which would stretch a motion by a sixth at 144 Hz.
+void FadeBackEffect::advance(std::chrono::nanoseconds presentation)
+{
+    if (!m_setOffAt) {
+        m_setOffAt = presentation;
+    }
+    m_elapsed = presentation - *m_setOffAt;
+    step();
+}
+
 void FadeBackEffect::step()
 {
-    m_progress = rule("progress", m_from, m_to, m_elapsed.count());
+    m_progress = rule("progress", m_from, m_to, std::chrono::duration<double, std::milli>(m_elapsed).count());
     m_scale = rule("scale", m_progress);
     m_brightness = rule("brightness", m_progress);
     fadeStart(m_progress);
@@ -140,14 +160,13 @@ void FadeBackEffect::fadeStart(qreal opacity) const
 bool FadeBackEffect::stepsBack(const EffectWindow *w) const
 {
     const bool layer = w->window()->inherits("KWin::LayerShellV1Window");
-    return !layer && !w->isLockScreen() && !w->isInputMethod() && w->screen() == workspace()->outputOrder().value(0);
+    return !layer && !w->isLockScreen() && !w->isInputMethod() && w->screen() == primaryScreen();
 }
 
 void FadeBackEffect::prePaintScreen(ScreenPrePaintData &data)
 {
-    if (m_progress != m_to) {
-        m_elapsed += m_clock.tick(data.view);
-        step();
+    if (m_progress != m_to && data.screen == primaryScreen()) {
+        advance(data.screen->backendOutput()->renderLoop()->nextPresentationTimestamp());
     }
     effects->prePaintScreen(data);
 }
