@@ -98,6 +98,8 @@ writeShellApplication {
       XDG_CONFIG_DIRS="$home/rekta-kwin/kwin"
       XDG_DATA_DIRS="$home/rekta-kwin:${kdePackages.kwin}/share"
       LANG="''${LANG:-C.UTF-8}"
+      # The rekta session's name, which the shell checks before it takes over names of Plasma's.
+      XDG_SESSION_DESKTOP=rekta
       # Its programs log to its own stderr, not to the desktop's journal.
       QT_FORCE_STDERR_LOGGING=1
     )
