@@ -312,8 +312,27 @@ FocusScope {
         x: front.width
         anchors.verticalCenter: parent.verticalCenter
         width: toast.width - front.width - actionBox.width
-        implicitWidth: Math.max(heading.visible ? heading.implicitWidth : 0, message.implicitWidth)
+        // From unwrapped copies: a wrapped Text's implicitWidth follows its width, which follows the toast's.
+        implicitWidth: Math.max(heading.visible ? naturalWidth(heading, headingLine) : 0, naturalWidth(message, messageLine))
         height: message.y + message.height
+
+        function naturalWidth(role: Text, line: Text): real {
+            return line.implicitWidth + role.leftPadding + role.rightPadding;
+        }
+
+        Unwrapped {
+            id: headingLine
+
+            role: heading
+        }
+
+        Unwrapped {
+            id: messageLine
+
+            objectName: "messageLine"
+
+            role: message
+        }
 
         TextRole {
             id: heading
@@ -352,6 +371,15 @@ FocusScope {
             topPadding: heading.visible ? lineBoxTop : Tokens.spaceS + Tokens.spaceXs + lineBoxTop
             bottomPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxBottom
         }
+    }
+
+    component Unwrapped: Text {
+        required property Text role
+
+        visible: false
+        font: role.font
+        text: role.text
+        textFormat: role.textFormat
     }
 
     // The text as a control, from the toast's start edge to the action: pointer, Enter and Space.

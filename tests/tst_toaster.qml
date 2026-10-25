@@ -388,6 +388,22 @@ TestCase {
         compare(findChild(toast, "message").text, long);
     }
 
+    // Qt's wrapped implicitWidth would follow the toast's width, which follows the words' width: the words measure
+    // single-line copies instead.
+    function test_the_words_are_measured_on_single_line_copies_not_on_the_wrapped_text() {
+        const toast = toaster.show("a long message body that says what happened in many words, and then some more", { title: "Mia" });
+        const words = findChild(toast, "words");
+        const message = findChild(toast, "message");
+        const copy = findChild(toast, "messageLine");
+        copy.text = "a copy of another length";
+        compare(words.implicitWidth, copy.implicitWidth + message.leftPadding + message.rightPadding);
+        copy.text = message.text;
+        const natural = words.implicitWidth;
+        toaster.width = 300;
+        compare(words.implicitWidth, natural, "the toaster's width does not reach it");
+        compare(message.lineCount, 2);
+    }
+
     function test_without_a_title_the_text_has_no_limit_and_no_heading() {
         const long = "a long message body that says what happened in many words, and then some more words, so that it needs a third line to be said, and a fourth line besides, because a message may run on and on and on until nobody reads it to the end";
         const toast = toaster.show(long, {});
