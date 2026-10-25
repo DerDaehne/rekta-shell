@@ -20,7 +20,7 @@ Rectangle {
     readonly property alias rows: column.children
     readonly property real maxWidth: Math.min(Geometry.floatMaxSize, area.width - 2 * Tokens.spaceM)
     readonly property real maxHeight: Math.min(Geometry.floatMaxSize, Geometry.floatMaxHeightShare * area.height)
-    readonly property real widestRow: Array.from(rows).reduce((widest, row) => row.visible ? Math.max(widest, row.implicitWidth) : widest, 0)
+    readonly property real widestRow: Array.from(rows).reduce((widest, row) => row.visible || !surface.visible ? Math.max(widest, row.implicitWidth) : widest, 0)
 
     // Scrolls a row into view, as focus does on the web.
     function reveal(row: Item) {

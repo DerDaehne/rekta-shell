@@ -428,6 +428,81 @@ TestCase {
         verify(scene.bar.plan.moved.includes(scene.control));
     }
 
+    function test_right_click_opens_the_menu_of_an_app_that_has_a_window_in_place() {
+        const menu = open(threeApps());
+        mouseClick(rowAt(menu, "Nextcloud"), undefined, undefined, Qt.RightButton);
+        compare(calls, [], "the app is not brought forward");
+        verify(menu.open, "the list stays");
+        compare(rowNames(menu), ["zurück · Nextcloud", "Open folder", "Pause", "Devices"]);
+    }
+
+    function test_right_click_on_an_app_without_a_menu_does_nothing() {
+        const menu = open(threeApps());
+        mouseClick(rowAt(menu, "Steam"), undefined, undefined, Qt.RightButton);
+        compare(calls, []);
+        verify(menu.open);
+        compare(rowNames(menu), ["Nextcloud", "KDE Connect", "Steam"]);
+    }
+
+    function test_right_click_on_an_entry_with_children_opens_the_next_level() {
+        const menu = open(threeApps());
+        keyClick(Qt.Key_Right);
+        mouseClick(rowAt(menu, "Devices"), undefined, undefined, Qt.RightButton);
+        compare(rowNames(menu), ["zurück · Nextcloud", "Pair", "Refresh"]);
+    }
+
+    function test_right_click_on_the_back_row_does_nothing() {
+        const menu = open(threeApps());
+        keyClick(Qt.Key_Right);
+        mouseClick(rowAt(menu, "zurück · Nextcloud"), undefined, undefined, Qt.RightButton);
+        compare(rowNames(menu)[0], "zurück · Nextcloud");
+    }
+
+    Component {
+        id: remapComponent
+
+        PopupRemap {
+            surface: Item {
+                width: 100
+                height: 100
+            }
+        }
+    }
+
+    Component {
+        id: mapSpyComponent
+
+        SignalSpy {
+            signalName: "mappedChanged"
+        }
+    }
+
+    function test_a_popup_that_changes_size_while_mapped_is_unmapped_for_a_turn_and_mapped_again() {
+        const remap = createTemporaryObject(remapComponent, testCase, { wanted: true });
+        const spy = createTemporaryObject(mapSpyComponent, testCase, { target: remap });
+        verify(remap.mapped);
+        remap.surface.height = 160;
+        tryCompare(spy, "count", 2, 5000, "unmapped, then mapped again");
+        verify(remap.mapped);
+        verify(!remap.remapping);
+    }
+
+    function test_a_popup_that_changes_width_is_remapped_too() {
+        const remap = createTemporaryObject(remapComponent, testCase, { wanted: true });
+        const spy = createTemporaryObject(mapSpyComponent, testCase, { target: remap });
+        remap.surface.width = 180;
+        tryCompare(spy, "count", 2);
+    }
+
+    function test_a_popup_that_is_not_wanted_stays_unmapped_when_its_surface_changes() {
+        const remap = createTemporaryObject(remapComponent, testCase, { wanted: false });
+        const spy = createTemporaryObject(mapSpyComponent, testCase, { target: remap });
+        remap.surface.height = 160;
+        wait(100);
+        compare(spy.count, 0);
+        verify(!remap.mapped);
+    }
+
     function test_passive_apps_are_not_listed() {
         verify(!TrayRules.listed(0));
         verify(TrayRules.listed(1));
@@ -445,9 +520,9 @@ TestCase {
         compare(TrayRules.state(1, "", ""), "");
     }
 
-    function test_an_app_that_needs_attention_says_so_first() {
-        compare(TrayRules.state(2, "2 neue", ""), "aufmerksamkeit · 2 neue");
-        compare(TrayRules.state(2, "", ""), "aufmerksamkeit");
+    function test_an_app_that_needs_attention_says_wartet_first() {
+        compare(TrayRules.state(2, "2 neue", ""), "wartet · 2 neue");
+        compare(TrayRules.state(2, "", ""), "wartet");
     }
 
     function test_a_long_state_is_cut_with_an_ellipsis_and_short_ones_stay() {

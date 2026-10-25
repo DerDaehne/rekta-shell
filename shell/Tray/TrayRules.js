@@ -17,11 +17,11 @@ function word(title, id) {
     return title !== "" ? title : id;
 }
 
-// The tooltip's title, else its description, cut short; an app that wants attention says so first.
+// The tooltip's title, else its description, cut short; an app that wants attention says "wartet" first.
 function state(status, tooltipTitle, tooltipDescription) {
     const said = tooltipTitle !== "" ? tooltipTitle : tooltipDescription;
     const cut = said.length > stateLength ? said.slice(0, stateLength - 1) + "…" : said;
     if (status !== needsAttention)
         return cut;
-    return cut !== "" ? `aufmerksamkeit · ${cut}` : "aufmerksamkeit";
+    return cut !== "" ? `wartet · ${cut}` : "wartet";
 }

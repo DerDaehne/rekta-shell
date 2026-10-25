@@ -596,4 +596,18 @@ TestCase {
         keyClick(Qt.Key_Escape);
         verify(!levelled.open, "at the top level Escape closes");
     }
+
+    function test_a_menu_is_as_wide_while_closed_as_open_so_a_popup_made_from_it_does_not_resize_on_mapping() {
+        const level = createTemporaryObject(levelComponent, testCase);
+        const closed = findChild(level, "menu");
+        const width = closed.implicitWidth;
+        closed.back = () => {};
+        closed.backName = "mail";
+        const withBack = closed.implicitWidth;
+        closed.open = true;
+        compare(closed.implicitWidth, withBack);
+        closed.back = null;
+        closed.open = false;
+        compare(closed.implicitWidth, width, "the back row only counts while it stands");
+    }
 }

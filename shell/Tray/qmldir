@@ -2,3 +2,4 @@ module Tray
 TrayMenu 1.0 TrayMenu.qml
 BackgroundControl 1.0 BackgroundControl.qml
 TrayRules 1.0 TrayRules.js
+PopupRemap 1.0 PopupRemap.qml

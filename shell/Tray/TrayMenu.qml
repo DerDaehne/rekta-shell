@@ -116,6 +116,18 @@ Menu {
         items().forEach(row => (row as EntryRow)?.follow());
     }
 
+    // The secondary button opens the menu of the row under the pointer, whether or not its app has a window.
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        longPressThreshold: 0
+
+        onTapped: eventPoint => {
+            const row = parent.childAt(eventPoint.position.x, eventPoint.position.y);
+            if (row)
+                tray.openMenuOf(row);
+        }
+    }
+
     ListModel {
         id: rowKinds
     }

@@ -174,14 +174,22 @@ PanelWindow {
         anchor.rect: Qt.rect(place.x, place.y, 1, 1) // qmllint disable missing-property
         implicitWidth: surface.width
         implicitHeight: surface.height
-        visible: surface.open
+        visible: remap.mapped
         grabFocus: true
         color: "transparent"
 
         onVisibleChanged: {
-            if (!visible)
+            if (!visible && !remap.remapping)
                 dismissed();
         }
+
+        PopupRemap {
+            id: remap
+
+            surface: host.surface
+            wanted: host.surface.open
+        }
+
         Component.onCompleted: {
             surface.parent = contentItem;
             surface.x = 0;

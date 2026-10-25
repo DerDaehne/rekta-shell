@@ -32,7 +32,7 @@ Item {
     readonly property color ink: disabled ? Tokens.color.disabled : Tokens.color.textPrimary
     readonly property real checkSpace: checkable ? Geometry.menuCheck + Tokens.spaceS : 0
     readonly property bool hasIcon: icon.toString() !== "" || glyph !== ""
-    readonly property bool menuHasIcons: Array.from(parent?.children ?? []).some(row => row.hasIcon === true && row.visible)
+    readonly property bool menuHasIcons: Array.from(parent?.children ?? []).some(row => row.hasIcon === true && (row.visible || !item.visible))
     readonly property real iconSpace: menuHasIcons ? Geometry.iconSize + Tokens.spaceS : 0
     readonly property real leadSpace: lead !== "" ? leadWords.implicitWidth + Tokens.spaceS : 0
     readonly property real textEdge: Tokens.spaceM + checkSpace + iconSpace + leadSpace
