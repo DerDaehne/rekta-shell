@@ -44,9 +44,11 @@ public:
 
 private:
     void watch(LayerSurfaceV1Interface *layer);
+    void startCommitted(bool keyboard);
     void head(qreal target);
-    void stand(qreal at);
+    void tearDown();
     void advance(std::chrono::nanoseconds presentation);
+    qreal progress() const;
     void step();
     void fadeStart(qreal opacity) const;
     bool stepsBack(const EffectWindow *w) const;
@@ -61,6 +63,8 @@ private:
 
     QObject *m_rules;
     QPointer<LayerSurfaceV1Interface> m_start;
+    bool m_keyboard = false;
+    bool m_handOverUnconfirmed = false;
     std::optional<std::chrono::nanoseconds> m_setOffAt;
     std::chrono::nanoseconds m_elapsed = 0ns;
     qreal m_from = 0;
@@ -94,24 +98,29 @@ void FadeBackEffect::watch(LayerSurfaceV1Interface *layer)
         return;
     }
     m_start = layer;
-    connect(layer, &LayerSurfaceV1Interface::acceptsFocusChanged, this, [this, layer] {
-        head(layer->acceptsFocus() ? 1 : 0);
+    m_keyboard = false;
+    connect(layer->surface(), &SurfaceInterface::committed, this, [this, layer] {
+        startCommitted(layer->acceptsFocus());
     });
     // KWin forgets the keyboard of a surface that goes, unmapped or destroyed, without a word.
-    connect(layer->surface(), &SurfaceInterface::unmapped, this, [this] {
-        stand(0);
-    });
-    connect(layer, &LayerSurfaceV1Interface::aboutToBeDestroyed, this, [this] {
-        stand(0);
-    });
+    connect(layer->surface(), &SurfaceInterface::unmapped, this, &FadeBackEffect::tearDown);
+    connect(layer, &LayerSurfaceV1Interface::aboutToBeDestroyed, this, &FadeBackEffect::tearDown);
+}
+
+// To ask for the keyboard anew, the Start goes without it for a single commit. So a hand-over holds the windows where
+// they are until the Start's next commit still goes without.
+void FadeBackEffect::startCommitted(bool keyboard)
+{
+    const bool changed = keyboard != m_keyboard;
+    m_keyboard = keyboard;
+    m_handOverUnconfirmed = changed && !keyboard;
+    if (changed) {
+        head(keyboard ? 1 : 0);
+    }
 }
 
 void FadeBackEffect::head(qreal target)
 {
-    if (effects->animationTimeFactor() == 0) {
-        stand(target);
-        return;
-    }
     m_from = m_progress;
     m_to = target;
     m_setOffAt.reset();
@@ -120,10 +129,12 @@ void FadeBackEffect::head(qreal target)
     effects->addRepaintFull();
 }
 
-void FadeBackEffect::stand(qreal at)
+void FadeBackEffect::tearDown()
 {
-    m_from = at;
-    m_to = at;
+    m_keyboard = false;
+    m_handOverUnconfirmed = false;
+    m_from = 0;
+    m_to = 0;
     step();
     effects->addRepaintFull();
 }
@@ -139,9 +150,24 @@ void FadeBackEffect::advance(std::chrono::nanoseconds presentation)
     step();
 }
 
+// Under reduced motion the windows stand where they head at once. The Start draws nothing after its hand-over there, so
+// the hand-over holds them for a frame only. ponytail: a re-ask slower than a frame still shows under reduced motion;
+// hold until the next commit there too once the Start draws a frame after its hand-over.
+qreal FadeBackEffect::progress() const
+{
+    const bool reducedMotion = effects->animationTimeFactor() == 0;
+    if (m_handOverUnconfirmed && !(reducedMotion && m_elapsed > 0ns)) {
+        return m_from;
+    }
+    if (reducedMotion) {
+        return m_to;
+    }
+    return rule("progress", m_from, m_to, std::chrono::duration<double, std::milli>(m_elapsed).count());
+}
+
 void FadeBackEffect::step()
 {
-    m_progress = rule("progress", m_from, m_to, std::chrono::duration<double, std::milli>(m_elapsed).count());
+    m_progress = progress();
     m_scale = rule("scale", m_progress);
     m_brightness = rule("brightness", m_progress);
     fadeStart(m_progress);

@@ -24,8 +24,8 @@ PanelWindow {
     // it hands it to a layer surface only as that one starts to ask for it (LayerShellV1Window::handleAcceptsFocusChanged).
     property bool askingAgain: false
 
-    // Asks for the keyboard anew, one commit without it and one with it, while the Start is open. KWin's fade-back reads
-    // the first as a hand-over and the next, a frame later, takes it back before the windows have moved.
+    // Asks for the keyboard anew, one commit without it and one with it, while the Start is open. KWin's fade-back holds
+    // the windows through the first, as it would at a hand-over, and the next one keeps them back.
     function takeKeyboardBack() {
         if (place.wanted)
             askingAgain = true;
