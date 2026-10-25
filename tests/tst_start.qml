@@ -206,6 +206,35 @@ TestCase {
         compare(findChild(start, "glass").opacity, 0);
     }
 
+    // Opaque, with no turn's rotation left on it.
+    function atRest(item: Item): bool {
+        return item.opacity === 1 && Array.from(item.transform).every(transform => (transform as Rotation) === null);
+    }
+
+    function pinnedAtRest(): bool {
+        return [findChild(named("pinned"), "heading"), ...tilesIn("pinned")].every(atRest);
+    }
+
+    function test_window_tiles_made_anew_while_the_start_turns_out_leave_the_pinned_apps_whole_at_the_next_opening() {
+        openNow();
+        mouseClick(tilesIn("pinned")[1]);
+        start.windows = [...start.windows, fakeWindow("dolphin", 40)];
+        tryVerify(() => !start.shown, 3000);
+        start.open();
+        tryVerify(() => start.phase === "open", 3000);
+        verify(pinnedAtRest());
+    }
+
+    // Desktop entries that come late, or a new start.json, make the pinned tiles anew.
+    function test_pinned_apps_that_come_while_the_start_turns_in_all_show() {
+        start.open();
+        tryVerify(() => turner.running, 2000);
+        start.pinned = [fakeApp("kate", 1), ...start.pinned];
+        tryVerify(() => start.phase === "open", 3000);
+        compare(tilesIn("pinned").length, 4);
+        verify(pinnedAtRest());
+    }
+
     function test_a_pinned_tile_shows_its_name_along_the_bottom_and_spans_its_units() {
         openNow();
         const dolphin = tilesIn("pinned")[1];
