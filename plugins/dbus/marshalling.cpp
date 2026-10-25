@@ -11,9 +11,19 @@ using namespace Qt::StringLiterals;
 namespace
 {
 
-// The D-Bus specification allows 32 arrays and 32 structs inside each other.
-constexpr int maxDepth = 64;
+// The limits of the D-Bus specification: 255 characters, 32 arrays and 32 structs inside each other. Dictionary entries
+// count with the structs, so no value lies inside more than the 64 containers the bus accepts. Beyond them libdbus aborts
+// the process or the bus drops the connection, so nothing beyond them may reach it.
+constexpr qsizetype maxSignatureLength = 255;
+constexpr int maxArrayNesting = 32;
+constexpr int maxBracketNesting = 32;
 const QString basicTypes = u"ybnqiuxtdsog"_s;
+
+// The arrays and the brackets (structs and dictionary entries) around a type.
+struct Nesting {
+    int arrays = 0;
+    int brackets = 0;
+};
 
 // The type code at index, or none past the end.
 QChar codeAt(const QString &signature, qsizetype index)
@@ -21,41 +31,46 @@ QChar codeAt(const QString &signature, qsizetype index)
     return index < signature.size() ? signature[index] : QChar();
 }
 
-qsizetype endOfType(const QString &signature, qsizetype start, int depth);
+qsizetype endOfType(const QString &signature, qsizetype start, Nesting nesting);
 
-qsizetype endOfStruct(const QString &signature, qsizetype open, int depth)
+qsizetype endOfStruct(const QString &signature, qsizetype open, Nesting nesting)
 {
-    if (codeAt(signature, open + 1) == u')')
+    if (++nesting.brackets > maxBracketNesting || codeAt(signature, open + 1) == u')')
         return -1;
     qsizetype end = open + 1;
     while (end != -1 && end < signature.size() && signature[end] != u')')
-        end = endOfType(signature, end, depth + 1);
+        end = endOfType(signature, end, nesting);
     return end == -1 || end >= signature.size() ? -1 : end + 1;
 }
 
 // A dictionary entry holds a basic key and one value.
-qsizetype endOfDictEntry(const QString &signature, qsizetype open, int depth)
+qsizetype endOfDictEntry(const QString &signature, qsizetype open, Nesting nesting)
 {
-    if (!basicTypes.contains(codeAt(signature, open + 1)))
+    if (++nesting.brackets > maxBracketNesting || !basicTypes.contains(codeAt(signature, open + 1)))
         return -1;
-    const qsizetype end = endOfType(signature, open + 2, depth + 1);
+    const qsizetype end = endOfType(signature, open + 2, nesting);
     return end != -1 && codeAt(signature, end) == u'}' ? end + 1 : -1;
 }
 
-qsizetype endOfType(const QString &signature, qsizetype start, int depth)
+qsizetype endOfArray(const QString &signature, qsizetype start, Nesting nesting)
+{
+    if (++nesting.arrays > maxArrayNesting)
+        return -1;
+    if (codeAt(signature, start + 1) == u'{')
+        return endOfDictEntry(signature, start + 1, nesting);
+    return endOfType(signature, start + 1, nesting);
+}
+
+qsizetype endOfType(const QString &signature, qsizetype start, Nesting nesting)
 {
     const QChar code = codeAt(signature, start);
-    if (depth > maxDepth)
-        return -1;
     if (basicTypes.contains(code) || code == u'v')
         return start + 1;
     if (code == u'(')
-        return endOfStruct(signature, start, depth);
-    if (code != u'a')
-        return -1;
-    if (codeAt(signature, start + 1) == u'{')
-        return endOfDictEntry(signature, start + 1, depth + 1);
-    return endOfType(signature, start + 1, depth + 1);
+        return endOfStruct(signature, start, nesting);
+    if (code == u'a')
+        return endOfArray(signature, start, nesting);
+    return -1;
 }
 
 // QDBusArgument opens an array only for a registered element type, so one placeholder type stands in for the element
@@ -115,6 +130,9 @@ public:
     }
 
 private:
+    // The containers around the value being written. Only values in variants can lie deeper than their signature allows.
+    int m_containers = 0;
+
     void fail(const QString &message)
     {
         if (error.isEmpty())
@@ -128,8 +146,14 @@ private:
             fail(u"%1 cannot go into a variant"_s.arg(QString::fromLatin1(value.typeName())));
             type = u"s"_s;
         }
+        if (m_containers >= maxArrayNesting + maxBracketNesting) {
+            fail(u"a value in a variant lies inside more than %1 containers"_s.arg(m_containers));
+            type = u"s"_s;
+        }
         QDBusArgument content;
+        ++m_containers;
         write(content, value, type);
+        --m_containers;
         out << QDBusVariant(QVariant::fromValue(content));
     }
 
@@ -139,10 +163,12 @@ private:
         const QVariantList members = value.toList();
         if (members.size() != memberTypes.size())
             fail(u"%1 needs %2 values, not %3"_s.arg(type).arg(memberTypes.size()).arg(members.size()));
+        ++m_containers;
         out.beginStructure();
         for (qsizetype i = 0; i < memberTypes.size(); ++i)
             write(out, members.value(i), memberTypes[i]);
         out.endStructure();
+        --m_containers;
     }
 
     void writeDictionary(QDBusArgument &out, const QVariant &value, const QString &entryType)
@@ -152,6 +178,8 @@ private:
         const QString keyType = entryType.sliced(1, 1);
         const QString valueType = entryType.sliced(2, entryType.size() - 3);
         const QVariantMap entries = value.toMap();
+        // The array and its entry.
+        m_containers += 2;
         beginArray(out, entryType);
         for (const auto &[key, entryValue] : entries.asKeyValueRange()) {
             out.beginMapEntry();
@@ -160,16 +188,19 @@ private:
             out.endMapEntry();
         }
         out.endArray();
+        m_containers -= 2;
     }
 
     void writeArray(QDBusArgument &out, const QVariant &value, const QString &elementType)
     {
         if (!value.canConvert<QVariantList>())
             fail(u"a%1 needs an array"_s.arg(elementType));
+        ++m_containers;
         beginArray(out, elementType);
         for (const QVariant &element : value.toList())
             write(out, element, elementType);
         out.endArray();
+        --m_containers;
     }
 
     void writeBasic(QDBusArgument &out, const QVariant &value, QChar code)
@@ -304,9 +335,11 @@ namespace Marshalling
 
 std::optional<QStringList> completeTypes(const QString &signature)
 {
+    if (signature.size() > maxSignatureLength)
+        return std::nullopt;
     QStringList types;
     for (qsizetype start = 0; start < signature.size();) {
-        const qsizetype end = endOfType(signature, start, 0);
+        const qsizetype end = endOfType(signature, start, {});
         if (end == -1)
             return std::nullopt;
         types.append(signature.sliced(start, end - start));
@@ -319,7 +352,7 @@ Encoded encode(const QVariantList &values, const QString &signature)
 {
     const std::optional<QStringList> types = completeTypes(signature);
     if (!types)
-        return {{}, u"%1 is not a D-Bus signature"_s.arg(signature)};
+        return {{}, u"%1 is not a valid D-Bus signature"_s.arg(signature)};
     if (types->size() != values.size())
         return {{}, u"the signature %1 needs %2 values, not %3"_s.arg(signature).arg(types->size()).arg(values.size())};
     Writer writer;

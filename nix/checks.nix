@@ -103,6 +103,8 @@ in
         FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ pkgs.atkinson-hyperlegible-next ]; };
         QT_PLUGIN_PATH = "${qt.qtbase}/lib/qt-6/plugins";
         QML_IMPORT_PATH = "${qt.qtdeclarative}/lib/qt-6/qml:${rekta-shell.dbus}/lib/qt-6/qml:${counterpart}/lib/qt-6/qml";
+        # The tests' system-bus instance must find no bus, wherever they run.
+        DBUS_SYSTEM_BUS_ADDRESS = "unix:path=/nonexistent/system_bus_socket";
         LANG = "C.UTF-8";
       }
       ''

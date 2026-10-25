@@ -11,6 +11,8 @@
 #include <QUuid>
 #include <QXmlStreamReader>
 
+#include <algorithm>
+
 using namespace Qt::StringLiterals;
 
 namespace
@@ -59,6 +61,13 @@ private:
     QString m_method;
 };
 
+bool hasValidSignatures(const QHash<QString, Method> &methods)
+{
+    return std::all_of(methods.cbegin(), methods.cend(), [](const Method &method) {
+        return Marshalling::completeTypes(method.in) && Marshalling::completeTypes(method.out);
+    });
+}
+
 std::optional<Interfaces> readInterfaces(const QString &xml)
 {
     // The interfaces stand side by side, which XML only accepts inside one element.
@@ -68,9 +77,10 @@ std::optional<Interfaces> readInterfaces(const QString &xml)
         if (xmlReader.readNext() == QXmlStreamReader::StartElement)
             reader.read(xmlReader.name(), xmlReader.attributes());
     }
-    if (xmlReader.hasError())
+    const Interfaces &interfaces = reader.interfaces;
+    if (xmlReader.hasError() || !std::all_of(interfaces.cbegin(), interfaces.cend(), hasValidSignatures))
         return std::nullopt;
-    return reader.interfaces;
+    return interfaces;
 }
 
 // An object own() exports. It answers the methods of its interfaces through the connection's handler and leaves
@@ -120,6 +130,12 @@ private:
     Interfaces m_interfaces;
     QString m_xml;
 };
+
+// A D-Bus error as the callback of call() reports it.
+QString errorText(const QDBusError &error)
+{
+    return error.name() + u": "_s + error.message();
+}
 
 // One out argument is the handler's value itself, several are the array it returns.
 QVariantList replyValues(const QJSValue &result, const QString &outSignature)
@@ -178,22 +194,32 @@ void DBusConnection::call(const QString &service,
 {
     const Marshalling::Encoded encoded = Marshalling::encode(args.toVariant(QJSValue::ConvertJSObjects).toList(), signature);
     if (!encoded.error.isEmpty()) {
-        // Like every answer, this one arrives after call() has returned.
-        QTimer::singleShot(0, this, [this, callback, error = encoded.error] {
-            respond(callback, error, {});
-        });
+        respondLater(callback, encoded.error);
+        return;
+    }
+    const QDBusConnection bus = connection();
+    if (!bus.isConnected()) {
+        respondLater(callback, errorText(QDBusError(QDBusError::Disconnected, bus.lastError().message())));
         return;
     }
     QDBusMessage message = QDBusMessage::createMethodCall(service, path, interfaceName, method);
     message.setArguments(encoded.arguments);
-    auto *watcher = new QDBusPendingCallWatcher(connection().asyncCall(message), this);
+    auto *watcher = new QDBusPendingCallWatcher(bus.asyncCall(message), this);
     connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, callback](QDBusPendingCallWatcher *finished) {
         finished->deleteLater();
         const QDBusMessage reply = finished->reply();
         if (reply.type() == QDBusMessage::ErrorMessage)
-            respond(callback, reply.errorName() + u": "_s + reply.errorMessage(), {});
+            respond(callback, errorText(QDBusError(reply)), {});
         else
             respond(callback, {}, Marshalling::decode(reply.arguments()));
+    });
+}
+
+void DBusConnection::respondLater(const QJSValue &callback, const QString &error)
+{
+    // Like every answer, this one arrives after call() has returned.
+    QTimer::singleShot(0, this, [this, callback, error] {
+        respond(callback, error, {});
     });
 }
 
@@ -212,7 +238,7 @@ bool DBusConnection::own(const QString &name, const QString &path, const QString
 {
     std::optional<Interfaces> interfaces = readInterfaces(introspectionXml);
     if (!interfaces) {
-        qWarning() << "DBusConnection: the introspection XML for" << path << "is not XML";
+        qWarning() << "DBusConnection: the introspection XML for" << path << "is not XML or has a type that is not a valid D-Bus signature";
         return false;
     }
     if (!connection().isConnected()) {

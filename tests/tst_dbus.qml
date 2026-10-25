@@ -68,8 +68,14 @@ TestCase {
         return answer;
     }
 
-    function echo(args, signature) {
-        return callThrough(connection(), "org.rekta.Counterpart", "/echo", "org.rekta.Echo", "Echo", args, signature);
+    function echo(args, signature, bus) {
+        return callThrough(bus ?? connection(), "org.rekta.Counterpart", "/echo", "org.rekta.Echo", "Echo", args, signature);
+    }
+
+    function inLists(value, depth) {
+        for (let i = 0; i < depth; ++i)
+            value = [value];
+        return value;
     }
 
     // A round trip to the bus: what the connection sent before, such as its subscriptions, has reached the bus.
@@ -209,11 +215,68 @@ TestCase {
         compare(missing.values, []);
         const refused = callThrough(bus, "org.rekta.Counterpart", "/echo", "org.rekta.Echo", "Fail", [], "");
         compare(refused.error, "org.rekta.Counterpart.Failed: asked to fail");
-        for (const [args, signature] of [[[[1]], "a(i"], [["a", "b"], "s"], [["seven"], "i"], [["no path"], "o"], [[{}], "as"], [[[1]], "(ii)"], [[null], "v"]]) {
-            const wrong = echo(args, signature);
+        ignoreWarning('QDBusObjectPath: invalid path "no path"');
+        for (const [args, signature] of [[["a", "b"], "s"], [["seven"], "i"], [["no path"], "o"], [[{}], "as"], [[[1]], "(ii)"], [[null], "v"]]) {
+            const wrong = echo(args, signature, bus);
             verify(wrong.error !== null, signature);
             compare(wrong.values, [], signature);
         }
+        for (const [args, signature] of [[[[1]], "a(i"], [[{}], "a{vs}"], [[{}], "a{sss}"], [[[]], "()"]]) {
+            const invalid = echo(args, signature, bus);
+            verify(invalid.error?.includes("is not a valid D-Bus signature"), `${signature}: ${invalid.error}`);
+        }
+        compare(echo(["still connected"], "s", bus).values, ["still connected"]);
+    }
+
+    function test_signatures_hold_to_the_limits_of_the_specification() {
+        const bus = connection();
+        const arrays = depth => "a".repeat(depth) + "i";
+        const structs = depth => "(".repeat(depth) + "i" + ")".repeat(depth);
+        for (const signature of [arrays(32), structs(32)]) {
+            const deepest = inLists(1, 32);
+            const answer = echo([deepest], signature, bus);
+            compare(answer.error, null, signature);
+            compare(counterpart.lastSignature, signature);
+            compare(answer.values, [deepest], signature);
+        }
+        const strings = count => Array(count).fill("text");
+        const longest = echo(strings(255), "s".repeat(255), bus);
+        compare(longest.error, null);
+        compare(counterpart.lastSignature.length, 255);
+        for (const [args, signature] of [[[inLists(1, 33)], arrays(33)], [[inLists(1, 33)], structs(33)], [strings(256), "s".repeat(256)]]) {
+            const beyond = echo(args, signature, bus);
+            verify(beyond.error?.includes("is not a valid D-Bus signature"), `${signature.length}: ${beyond.error}`);
+        }
+        compare(echo(["still connected"], "s", bus).values, ["still connected"]);
+    }
+
+    function test_a_value_too_deep_inside_variants_is_refused_and_the_connection_lives_on() {
+        const bus = connection();
+        const refused = echo([inLists("bottom", 70)], "v", bus);
+        verify(refused.error?.includes("containers"), refused.error);
+        compare(echo(["still connected"], "s", bus).values, ["still connected"]);
+    }
+
+    function test_an_instance_without_a_bus_calls_back_with_the_error_and_refuses_to_listen_or_own() {
+        const bus = connection({
+            bus: DBusConnection.System
+        });
+        const answer = callThrough(bus, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetId", [], "");
+        verify(answer.error?.startsWith("org.freedesktop.DBus.Error.Disconnected: "), answer.error);
+        compare(answer.values, []);
+        verify(!bus.listen("org.rekta.Events", "Changed"));
+        ignoreWarning(/no bus to own/);
+        verify(!bus.own("org.rekta.Test.NoBus", "/nobus", `<interface name="org.rekta.NoBus"/>`));
+    }
+
+    function test_own_refuses_introspection_with_a_type_beyond_the_specification() {
+        ignoreWarning(/not a valid D-Bus signature/);
+        verify(!connection().own("org.rekta.Test.Invalid", "/invalid", `
+            <interface name="org.rekta.Invalid">
+              <method name="keys">
+                <arg type="a{vs}" direction="out"/>
+              </method>
+            </interface>`));
     }
 
     function test_structs_arrive_as_lists_and_dictionaries_as_objects() {

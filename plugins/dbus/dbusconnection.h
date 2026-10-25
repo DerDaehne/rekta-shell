@@ -70,6 +70,7 @@ private Q_SLOTS:
 
 private:
     QDBusConnection connection();
+    void respondLater(const QJSValue &callback, const QString &error);
     void respond(const QJSValue &callback, const QString &error, const QVariantList &values);
 
     Bus m_bus = Session;
