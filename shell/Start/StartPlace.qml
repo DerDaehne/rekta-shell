@@ -28,6 +28,9 @@ FocusScope {
     readonly property bool shown: phase !== "closed"
     // From open() to close(): the Start is open or on its way.
     readonly property bool wanted: phase === "opening" || phase === "open"
+    // From open() to the hand-over, when the glass starts to go. KWin's fade-back steps the windows back when the
+    // surface takes the keyboard and brings them forward when it gives it back.
+    readonly property bool holdsKeyboard: wanted || (phase === "closing" && !glassOut.running)
     readonly property bool turning: turner.running || waitForWindows.running
     readonly property var running: Rules.recentFirst(windows)
     // The time of the last wheel event, to tell one gesture from the next.

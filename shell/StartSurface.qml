@@ -24,7 +24,8 @@ PanelWindow {
     // it hands it to a layer surface only as that one starts to ask for it (LayerShellV1Window::handleAcceptsFocusChanged).
     property bool askingAgain: false
 
-    // Asks for the keyboard anew, one commit without it and one with it, while the Start is open.
+    // Asks for the keyboard anew, one commit without it and one with it, while the Start is open. KWin's fade-back reads
+    // the first as a hand-over and the next, a frame later, takes it back before the windows have moved.
     function takeKeyboardBack() {
         if (place.wanted)
             askingAgain = true;
@@ -60,7 +61,7 @@ PanelWindow {
     }
     WlrLayershell.namespace: "rekta-start"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: place.wanted && !askingAgain ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: place.holdsKeyboard && !askingAgain ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     // A deliberate deviation, as for the app bar: KWin blurs at the strength of its blur effect, not glass's blur(12px).
     BackgroundEffect.blurRegion: Region {
         item: place.shown ? place : null

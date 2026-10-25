@@ -385,6 +385,28 @@ TestCase {
         turner.paused = false;
     }
 
+    function test_the_start_holds_the_keyboard_from_opening_until_the_hand_over() {
+        verify(!start.holdsKeyboard);
+        start.open();
+        verify(start.holdsKeyboard, "the windows step back as it takes the keyboard");
+        tryVerify(() => start.phase === "open", 3000);
+        keyClick(Qt.Key_Escape);
+        turner.paused = true;
+        turner.elapsed = turner.handOverAt - 1;
+        verify(start.holdsKeyboard, "the parts turn out in front of the windows");
+        turner.elapsed = turner.handOverAt;
+        verify(!start.holdsKeyboard, "the windows come forward from the hand-over");
+        turner.paused = false;
+        tryVerify(() => closedSpy.count === 1, 3000);
+        verify(!start.holdsKeyboard);
+    }
+
+    function test_closed_before_its_parts_came_the_start_hands_over_at_once() {
+        start.open();
+        keyClick(Qt.Key_Escape);
+        verify(!start.holdsKeyboard);
+    }
+
     function test_while_the_start_turns_a_tile_takes_no_press() {
         openNow();
         keyClick(Qt.Key_Right);
