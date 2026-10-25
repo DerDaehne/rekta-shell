@@ -155,6 +155,19 @@ TestCase {
         verifyInside(above, Qt.size(200, 500), "above");
     }
 
+    function test_a_centred_surface_is_as_far_left_of_the_control_s_centre_as_right_of_it() {
+        const placed = Placement.float(Qt.rect(500, 100, 80, 32), Qt.size(250, 150), window, "centre");
+        compare(placed.x + 125, 540);
+    }
+
+    function test_a_centred_surface_never_leaves_the_window() {
+        const size = Qt.size(250, 300);
+        for (let x = -40; x <= 1040; x += 60) {
+            for (let y = -20; y <= 620; y += 40)
+                verifyInside(Placement.float(Qt.rect(x, y, 48, 32), size, window, "centre"), size, `control at ${x}, ${y}`);
+        }
+    }
+
     function test_near_the_trailing_edge_it_opens_from_the_control_s_trailing_edge() {
         const placed = Placement.float(Qt.rect(900, 100, 80, 32), Qt.size(200, 150), window);
         compare(placed.x, 980 - 200);

@@ -5,8 +5,8 @@
 // side ("below" or "above") tells the motion which way to come in.
 
 // A floating surface (states.md, "Floating surfaces"; rekta.js place(), :1652–1665): below its control, aligned to its
-// leading edge; above it when there is no room below; never outside the window.
-function float(control, size, window) {
+// leading edge, or centred on it with align "centre"; above it when there is no room below; never outside the window.
+function float(control, size, window, align = "start") {
     const gap = Rekta.Geometry.floatGap;
     const edge = Rekta.Tokens.spaceS;
     const roomBelow = window.height - control.bottom - gap - edge;
@@ -15,9 +15,7 @@ function float(control, size, window) {
     const wanted = side === "below" ? control.bottom + gap : control.top - gap - size.height;
     // rekta.js lets one too tall for either side run off the bottom; like rekta-core it stays in, over its control.
     const y = Math.max(edge, Math.min(wanted, window.height - edge - size.height));
-    // One too near the trailing edge opens from the control's trailing edge instead.
-    const fits = control.left + size.width <= window.width - edge;
-    const x = fits ? Math.max(edge, control.left) : Math.max(edge, Math.min(control.right, window.width - edge) - size.width);
+    const x = align === "centre" ? centredX(control, size, window) : leadingX(control, size, window);
     return { x: Math.round(x), y: Math.round(y), side: side };
 }
 
@@ -31,4 +29,16 @@ function tip(control, size, window) {
     const x = Math.min(Math.max(edge, centred), window.width - size.width - edge);
     const y = above ? control.top - gap - size.height : control.bottom + gap;
     return { x: Math.round(x), y: Math.round(y), side: above ? "above" : "below" };
+}
+
+function centredX(control, size, window) {
+    const edge = Rekta.Tokens.spaceS;
+    return Math.max(edge, Math.min(control.left + (control.width - size.width) / 2, window.width - edge - size.width));
+}
+
+// One too near the trailing edge opens from the control's trailing edge instead.
+function leadingX(control, size, window) {
+    const edge = Rekta.Tokens.spaceS;
+    const fits = control.left + size.width <= window.width - edge;
+    return fits ? Math.max(edge, control.left) : Math.max(edge, Math.min(control.right, window.width - edge) - size.width);
 }

@@ -43,9 +43,9 @@ TestCase {
                     objectName: "clock"
                     locale: Qt.locale("de_DE")
                     now: new Date(2026, 9, 20, 14, 32, 15, 250)
-                    calendar.x: appBar.floatPlace(appClock, Qt.size(calendar.width, calendar.height)).x - x
-                    calendar.y: appBar.floatPlace(appClock, Qt.size(calendar.width, calendar.height)).y - y
-                    calendar.side: appBar.floatPlace(appClock, Qt.size(calendar.width, calendar.height)).side
+                    calendar.x: appBar.floatPlace(appClock, Qt.size(calendar.width, calendar.height), "centre").x - x
+                    calendar.y: appBar.floatPlace(appClock, Qt.size(calendar.width, calendar.height), "centre").y - y
+                    calendar.side: appBar.floatPlace(appClock, Qt.size(calendar.width, calendar.height), "centre").side
                 }
 
                 AppBarButton { objectName: "controls"; icon: "tune"; text: "controls" }
@@ -64,6 +64,7 @@ TestCase {
     }
 
     function cleanup() {
+        Prefs.density = "auto";
         Prefs.theme = "system";
     }
 
@@ -190,6 +191,18 @@ TestCase {
         verify(!calendar.open);
     }
 
+    function test_the_open_month_is_centred_over_the_clock_in_both_densities() {
+        for (const density of ["compact", "comfortable"]) {
+            Prefs.density = density;
+            clock.openCalendar();
+            const calendar = clock.calendar;
+            const month = calendar.mapToItem(scene, calendar.width / 2, 0).x;
+            const centre = clock.mapToItem(scene, clock.width / 2, 0).x;
+            verify(Math.abs(month - centre) <= 0.5, `${density}: month at ${month}, clock at ${centre}`);
+            clock.closeCalendar(false);
+        }
+    }
+
     function test_keys_move_by_day_week_month_and_year_and_home_and_end_go_to_the_months_edges() {
         clock.forceActiveFocus();
         keyClick(Qt.Key_Space);
@@ -276,9 +289,9 @@ TestCase {
                     objectName: "clock"
                     locale: Qt.locale("de_DE")
                     now: new Date(2026, 9, 21, 14, 32)
-                    calendar.x: sheetBar.floatPlace(sheetClock, Qt.size(calendar.width, calendar.height)).x - x
-                    calendar.y: sheetBar.floatPlace(sheetClock, Qt.size(calendar.width, calendar.height)).y - y
-                    calendar.side: sheetBar.floatPlace(sheetClock, Qt.size(calendar.width, calendar.height)).side
+                    calendar.x: sheetBar.floatPlace(sheetClock, Qt.size(calendar.width, calendar.height), "centre").x - x
+                    calendar.y: sheetBar.floatPlace(sheetClock, Qt.size(calendar.width, calendar.height), "centre").y - y
+                    calendar.side: sheetBar.floatPlace(sheetClock, Qt.size(calendar.width, calendar.height), "centre").side
                 }
 
                 AppBarButton { icon: "bell"; text: "messages" }

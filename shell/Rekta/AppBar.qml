@@ -38,9 +38,9 @@ Rectangle {
     readonly property var menuPlace: floatPlace(moreButton, Qt.size(moreMenu.width, moreMenu.height))
 
     // Where a floating surface of one of the bar's controls goes, in the bar's coordinates (Placement.float in `area`).
-    function floatPlace(control: Item, size: size): var {
+    function floatPlace(control: Item, size: size, align = "start"): var {
         const top = area.height - height;
-        const place = Placement.float(Qt.rect(control.x, top + control.y, control.width, control.height), size, area);
+        const place = Placement.float(Qt.rect(control.x, top + control.y, control.width, control.height), size, area, align);
         return { x: place.x, y: place.y - top, side: place.side };
     }
 

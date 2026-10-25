@@ -116,7 +116,7 @@ PanelWindow {
     FloatPopup {
         barWindow: panel
         surface: clock.calendar
-        place: bar.floatPlace(clock, Qt.size(clock.calendar.width, clock.calendar.height))
+        place: bar.floatPlace(clock, Qt.size(clock.calendar.width, clock.calendar.height), "centre")
 
         onDismissed: clock.closeCalendar(false)
     }
