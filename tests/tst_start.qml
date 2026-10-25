@@ -195,6 +195,17 @@ TestCase {
         verify(!start.wanted);
     }
 
+    // A launched app's window comes while the Start turns out, and the running tiles are made anew.
+    function test_a_window_that_comes_while_the_start_turns_out_after_a_launch_leaves_no_glass() {
+        openNow();
+        mouseClick(tilesIn("pinned")[1]);
+        verify(turner.running);
+        start.windows = [...start.windows, fakeWindow("dolphin", 40)];
+        tryVerify(() => closedSpy.count === 1, 3000);
+        verify(!start.shown);
+        compare(findChild(start, "glass").opacity, 0);
+    }
+
     function test_a_pinned_tile_shows_its_name_along_the_bottom_and_spans_its_units() {
         openNow();
         const dolphin = tilesIn("pinned")[1];

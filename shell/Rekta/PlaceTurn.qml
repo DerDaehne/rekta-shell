@@ -133,9 +133,11 @@ QtObject {
                 animation: part.pressed && part.started ? part.pressRelease : null
             }
 
+            // A part may be gone before it is let go: its place's model made its items anew during the turn.
             function letGo() {
                 holding = false;
-                item.transform = Array.from(item.transform).filter(transform => transform !== rotation);
+                if (item)
+                    item.transform = Array.from(item.transform).filter(transform => transform !== rotation);
             }
 
             Component.onCompleted: item.transform = Array.from(item.transform).concat([rotation])
