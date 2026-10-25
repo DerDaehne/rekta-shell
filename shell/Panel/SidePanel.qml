@@ -4,11 +4,11 @@ import QtQuick
 import Rekta
 
 // The side panel, the shell's own surface (Rekta has no side panel yet): two tile units wide with a sheet's padding
-// (rekta.css:827), the full height at the trailing edge, on the ground with a hairline along its leading edge, over the
-// shading. It comes all the way in from the trailing edge over duration-moderate with ease-out while the shading fades
-// in over the same time, and leaves the way it came in 0.8 × that, as a sheet leaves (motion.md, "Sheets"). Its pivot
-// picks a facet. Escape, a press on the shading and close() send it away. Focus starts at the first control of the
-// facet in sight, Tab and ↑ ↓ move through the controls, and once the panel has gone the focus goes back.
+// (rekta.css:827), the full height of its host at the trailing edge, on the ground with a hairline along its leading
+// edge. It slides all the way in from the trailing edge over duration-moderate with ease-out and leaves the way it came
+// in 0.8 × that, as a sheet leaves (motion.md, "Sheets"); nothing beside it is shaded or blocked. Its pivot picks a
+// facet. Escape and close() send it away. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move
+// through the controls, and once the panel has gone the focus goes back.
 FocusScope {
     id: sidePanel
 
@@ -18,11 +18,11 @@ FocusScope {
     property bool open: false
     // Runs from 0 to 1 as it comes in, and back to 0 as it leaves.
     property real entry: 1
-    // The shading's opacity, faded in and out with the panel.
-    property real shade: 1
     readonly property real contentWidth: 2 * Tokens.tileUnit + Tokens.spaceS
     readonly property real panelWidth: Geometry.hairline + 2 * Tokens.spaceM + contentWidth
     readonly property real shift: (1 - entry) * panelWidth
+    // The width its host keeps clear for it: all of it from show(), none from close() on.
+    readonly property real reservedWidth: open && !going.running ? panelWidth : 0
     default property alias facets: facetHolder.content
 
     // It has gone.
@@ -35,7 +35,6 @@ FocusScope {
             memo.focused = Window.activeFocusItem;
             open = true;
             entry = 0;
-            shade = 0;
         } else {
             pivot.select(index);
             if (!going.running)
@@ -119,71 +118,29 @@ FocusScope {
         property Item focused
     }
 
-    ParallelAnimation {
+    NumberAnimation {
         id: comingIn
 
-        NumberAnimation {
-            objectName: "comingIn"
-            target: sidePanel
-            property: "entry"
-            to: 1
-            duration: Tokens.durationModerate
-            easing.type: Easing.Bezier
-            easing.bezierCurve: Tokens.easeOut
-        }
-
-        NumberAnimation {
-            objectName: "shadingIn"
-            target: sidePanel
-            property: "shade"
-            to: 1
-            duration: Tokens.durationModerate
-        }
+        objectName: "comingIn"
+        target: sidePanel
+        property: "entry"
+        to: 1
+        duration: Tokens.durationModerate
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Tokens.easeOut
     }
 
-    ParallelAnimation {
+    NumberAnimation {
         id: going
 
+        objectName: "goingOut"
+        target: sidePanel
+        property: "entry"
+        to: 0
+        duration: 0.8 * Tokens.durationModerate
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Tokens.easeOut
         onFinished: sidePanel.gone()
-
-        NumberAnimation {
-            objectName: "goingOut"
-            target: sidePanel
-            property: "entry"
-            to: 0
-            duration: 0.8 * Tokens.durationModerate
-            easing.type: Easing.Bezier
-            easing.bezierCurve: Tokens.easeOut
-        }
-
-        // The shading fades linearly as the panel leaves, as a sheet's does (rekta.js:1540).
-        NumberAnimation {
-            objectName: "shadingOut"
-            target: sidePanel
-            property: "shade"
-            to: 0
-            duration: 0.8 * Tokens.durationModerate
-        }
-    }
-
-    Rectangle {
-        objectName: "shading"
-        anchors.fill: parent
-        color: Tokens.color.shading
-        opacity: sidePanel.shade
-
-        // Nothing behind reacts while it is open; a press on the shading, not on the panel, sends it away.
-        MouseArea {
-            id: shadingArea
-
-            anchors.fill: parent
-            hoverEnabled: true
-            onClicked: mouse => {
-                if (!panel.contains(shadingArea.mapToItem(panel, mouse.x, mouse.y)))
-                    sidePanel.close();
-            }
-            onWheel: {}
-        }
     }
 
     // The hairline along its leading edge shows under the ground, as a sheet's does along its bottom (rekta.css:828).

@@ -9,9 +9,12 @@ import org.kde.plasma.workspace.dbus as DBus
 import Panel
 import "services"
 
-// The side panel's surface: the whole of the screen it opens on, above every window and the app bar, the rest of the
-// screen shaded and blurred behind it. It is mapped only while the panel shows and holds the keyboard meanwhile; once
-// it has gone, KWin gives the keyboard back to the window that had it.
+// The side panel's surface, docked at the trailing edge of the screen it opens on: as wide as the panel, from the top
+// down to the app bar, on the app bar's layer, so a full-screen window lies above it. It keeps its width clear while
+// the panel stays, so maximised windows make room, and frees it as the panel starts to leave; the rest of the screen
+// stays as it is. It is mapped only while the panel shows and takes the keyboard as it opens; a click into a window
+// takes the keyboard without closing the panel. Over the open Start it rises to the Start's layer, which KWin lays out
+// before the app bar's, so there it reaches down over the bar the Start covers.
 // ponytail: a new layer surface takes some 60ms to its first frame, so the first frames of the way in may not show;
 // keep the surface mapped, as the Start does, should that show.
 PanelWindow {
@@ -19,6 +22,8 @@ PanelWindow {
 
     required property Launcher launcher
     required property ShellScreen primaryScreen
+    // The Start is open; it stands on the primary screen.
+    required property bool startOpen
     readonly property alias doNotDisturb: controls.doNotDisturb
 
     // The panel has gone, and with it the surface.
@@ -35,21 +40,16 @@ PanelWindow {
     }
 
     screen: primaryScreen
-    anchors.left: true
     anchors.right: true
     anchors.top: true
     anchors.bottom: true
-    exclusionMode: ExclusionMode.Ignore
+    implicitWidth: panel.panelWidth
+    exclusiveZone: panel.reservedWidth
     color: "transparent"
     visible: panel.open
     WlrLayershell.namespace: "rekta-panel"
-    WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-    // A deliberate deviation, as for the app bar: KWin blurs at the strength of its blur effect, not the shading's
-    // blur(4px) (rekta.css:832).
-    BackgroundEffect.blurRegion: Region {
-        item: panel
-    }
+    WlrLayershell.layer: startOpen && screen === primaryScreen ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
     SidePanel {
         id: panel

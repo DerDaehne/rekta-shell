@@ -69,6 +69,7 @@ ShellRoot {
 
         launcher: appLauncher
         primaryScreen: primary.screen
+        startOpen: start.open
 
         onClosed: start.takeKeyboardBack()
     }

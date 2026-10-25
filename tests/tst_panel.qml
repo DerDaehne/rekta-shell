@@ -249,7 +249,7 @@ TestCase {
         compare(panel.height, 400);
     }
 
-    function test_the_panel_lies_on_the_ground_with_a_hairline_along_its_leading_edge_over_the_shading() {
+    function test_the_panel_lies_on_the_ground_with_a_hairline_along_its_leading_edge() {
         side.show(0);
         const panel = findChild(side, "panel");
         const ground = findChild(side, "ground");
@@ -257,10 +257,14 @@ TestCase {
         compare(ground.x, Geometry.hairline);
         compare(ground.width, panel.width - Geometry.hairline);
         compare(ground.color, Tokens.color.bg);
-        const shading = findChild(side, "shading");
-        compare(shading.color, Tokens.color.shading);
-        compare(shading.width, 900, "over the whole of the rest");
-        compare(shading.height, 640);
+    }
+
+    function test_nothing_beside_it_is_shaded() {
+        side.show(0);
+        waitForRendering(scene);
+        const image = grabImage(scene);
+        verify(Qt.colorEqual(image.pixel(900 - side.panelWidth - 4, 600), Tokens.color.bg), "the place beside it");
+        verify(Qt.colorEqual(image.pixel(4, 600), Tokens.color.bg));
     }
 
     function test_its_pivot_is_a_places_strip_with_a_hairline_below() {
@@ -276,46 +280,55 @@ TestCase {
         compare(findChild(side, "scroller").y, under.y + Geometry.hairline);
     }
 
-    function test_it_comes_all_the_way_in_from_the_trailing_edge_over_duration_moderate_with_ease_out_as_the_shading_fades_in() {
+    function test_it_slides_all_the_way_in_from_the_trailing_edge_over_duration_moderate_with_ease_out() {
         Prefs.motion = "on";
         const comingIn = findChild(side, "comingIn");
         compare(comingIn.duration, Tokens.durationModerate);
         compare(comingIn.easing.type, Easing.Bezier);
         compare(comingIn.easing.bezierCurve, Tokens.easeOut);
-        const shadingIn = findChild(side, "shadingIn");
-        compare(shadingIn.duration, Tokens.durationModerate, "the shading over the same time");
-        compare(shadingIn.easing.type, Easing.Linear, "linearly, as a sheet's");
         side.show(0);
         const panel = findChild(side, "panel");
         compare(panel.x, 900, "it starts wholly beyond the trailing edge");
-        compare(findChild(side, "shading").opacity, 0);
         side.entry = 0.5;
         compare(panel.x, 900 - panel.width / 2, "it moves, never fades or scales");
         compare(panel.opacity, 1);
+        compare(panel.y, 0);
         tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
-        tryCompare(side, "shade", 1, Tokens.durationModerate * 4);
-        compare(panel.x, 900 - panel.width);
+        compare(panel.x, 900 - panel.width, "and stands at the trailing edge");
     }
 
-    function test_it_leaves_the_way_it_came_in_0_8_duration_moderate_with_ease_out_and_is_closed_once_gone() {
+    function test_it_slides_out_the_way_it_came_in_0_8_duration_moderate_with_ease_out_and_is_closed_once_gone() {
         Prefs.motion = "on";
         const goingOut = findChild(side, "goingOut");
         compare(goingOut.duration, 0.8 * Tokens.durationModerate);
         compare(goingOut.easing.type, Easing.Bezier);
         compare(goingOut.easing.bezierCurve, Tokens.easeOut);
-        const shadingOut = findChild(side, "shadingOut");
-        compare(shadingOut.duration, 0.8 * Tokens.durationModerate);
-        compare(shadingOut.easing.type, Easing.Linear);
         const closed = createTemporaryObject(spyComponent, testCase, { target: side, signalName: "closed" });
         side.show(0);
         tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
         side.close();
         verify(side.open, "it is open while it leaves");
         compare(closed.count, 0);
+        const panel = findChild(side, "panel");
+        tryVerify(() => panel.x > 900 - panel.width, Tokens.durationModerate * 4, "towards the trailing edge");
         tryCompare(closed, "count", 1, Tokens.durationModerate * 4);
         verify(!side.open);
         compare(side.entry, 0, "wholly beyond the trailing edge again");
-        compare(side.shade, 0);
+        compare(panel.x, 900);
+    }
+
+    function test_its_host_keeps_its_width_clear_from_the_moment_it_opens_and_frees_it_as_it_starts_to_leave() {
+        Prefs.motion = "on";
+        compare(side.reservedWidth, 0, "closed");
+        side.show(0);
+        compare(side.reservedWidth, side.panelWidth, "at once, before it is in");
+        verify(side.entry < 1);
+        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        side.close();
+        verify(side.open, "it leaves");
+        compare(side.reservedWidth, 0, "and frees its width at once");
+        side.show(0);
+        compare(side.reservedWidth, side.panelWidth, "coming back, it takes it again");
     }
 
     function test_shown_again_while_it_leaves_it_comes_back() {
@@ -329,15 +342,15 @@ TestCase {
         verify(side.open, "it stays");
     }
 
-    function test_under_reduced_motion_the_panel_and_the_shading_stand_at_once_and_go_at_once() {
+    function test_under_reduced_motion_the_panel_stands_at_once_and_goes_at_once() {
         Prefs.motion = "off";
         side.show(0);
         compare(side.entry, 1, "in at once");
-        compare(side.shade, 1);
         compare(findChild(side, "panel").x, 900 - side.panelWidth);
         side.close();
         verify(!side.open, "gone at once, never skipped");
         verify(!side.visible);
+        compare(side.reservedWidth, 0);
     }
 
     function test_escape_closes_it_and_the_focus_goes_back_to_where_it_was() {
@@ -357,31 +370,17 @@ TestCase {
         }
     }
 
-    function test_a_press_on_the_shading_closes_it_and_a_press_on_the_panel_does_not() {
-        side.show(0);
-        waitForRendering(side);
-        mouseClick(side, 900 - side.panelWidth + 4, 600);
-        verify(side.open, "the panel's ground");
-        mouseClick(side, 900 - side.panelWidth - 4, 600);
-        verify(!side.open, "the shading");
-        verify(named("opener").activeFocus);
-    }
-
-    function test_nothing_behind_reacts_while_it_is_open() {
+    function test_what_lies_beside_it_takes_presses_and_the_wheel_and_the_panel_stays_open() {
         const opener = named("opener");
         const clicked = createTemporaryObject(spyComponent, testCase, { target: opener, signalName: "clicked" });
         const behind = createTemporaryObject(scrollerBehindComponent, scene);
-        mouseWheel(scene, 200, 300, 0, -120);
-        tryVerify(() => behind.contentY > 0, 1000, "without the panel the wheel scrolls what lies behind");
-        behind.cancelFlick();
-        behind.contentY = 0;
         side.show(0);
         waitForRendering(side);
         mouseWheel(scene, 200, 300, 0, -120);
-        wait(100);
-        compare(behind.contentY, 0, "no wheel");
+        tryVerify(() => behind.contentY > 0, 1000, "the wheel scrolls what lies beside it");
         mouseClick(opener);
-        compare(clicked.count, 0, "no press: it lands on the shading");
+        compare(clicked.count, 1, "a press reaches it");
+        verify(side.open, "and leaves the panel open");
     }
 
     function test_toggle_closes_it_on_the_facet_in_sight_and_turns_to_another() {

@@ -17,6 +17,7 @@ PanelWindow {
     required property Windows windows
     required property Launcher launcher
     required property ShellScreen primaryScreen
+    readonly property alias open: place.wanted
     // The list in start.json, null without a usable one.
     property var listedPins: null
     // KWin gives the keyboard to the next window when a surface goes, also when the side panel over the open Start goes;
