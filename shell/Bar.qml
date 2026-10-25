@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Notices
+import Readout
 import Rekta
 import Tray
 import "services"
@@ -19,6 +20,10 @@ PanelWindow {
     required property Windows windows
     required property NoticeBoard notices
     required property Tray tray
+    // The keys' readout and the screen that shows it: the display stands in the bar of the primary screen only.
+    required property KeyReadout readout
+    required property ShellScreen primaryScreen
+    readonly property bool showsReadout: modelData === primaryScreen
     // The active window, when it is on this screen.
     readonly property var front: windows?.active?.isOn(modelData) ? windows.active : null
     // ponytail: only the active window hides the bar; a full-screen window on this screen that lost the keyboard to
@@ -51,6 +56,7 @@ PanelWindow {
         viewportHeight: panel.modelData.height
         area: Qt.size(panel.modelData.width, panel.modelData.height)
         centre: clock
+        centreReserve: panel.showsReadout ? display.implicitWidth : 0
         away: panel.away
 
         AppBarButton {
@@ -68,6 +74,15 @@ PanelWindow {
             id: clock
 
             area: bar.area
+        }
+
+        AppBarDisplay {
+            id: display
+
+            replaces: clock
+            word: panel.readout.word
+            level: panel.readout.level
+            valueText: panel.readout.valueText
         }
 
         BackgroundControl {
@@ -94,6 +109,14 @@ PanelWindow {
             text: "steuerung"
             priority: 1
             disabledReason: "kommt mit dem panel"
+        }
+    }
+
+    Connections {
+        target: panel.showsReadout ? panel.readout : null
+
+        function onPressed() {
+            display.press();
         }
     }
 

@@ -173,6 +173,10 @@ QtObject {
     // `rotateX(-90deg)` and back from `rotateX(90deg)` (rekta.js:3456, :3460)
     readonly property real peekShift: 0.4
     readonly property real flipAngle: 90
+    // A display takes a bar control's place by turning it away and itself in, as a tile flips (rekta.js:3456, :3460),
+    // 200ms each way, and stays 1.7s after the last key; Rekta has no tokens for these yet
+    readonly property int flipDuration: 200
+    readonly property int displayHold: 1700
     // `.rk-spark polyline { stroke-width: 2; stroke-linejoin: round }` in the sparkline's 200 × 28 box (rekta.css:140,
     // :143); `[data-rk-live='stale'] .rk-spark { opacity: 0.35 }` (rekta.css:501)
     readonly property real sparkBoxWidth: 200

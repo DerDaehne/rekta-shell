@@ -25,6 +25,8 @@ Rectangle {
     property real viewportHeight: Window.height
     // The window "more" has to fit in; the bar runs along its bottom.
     property size area: Qt.size(Window.width, Window.height)
+    // Room kept free around the centre item for something wider that takes its place for a moment.
+    property real centreReserve: 0
     // Out of sight below the window's bottom edge.
     property bool away: false
     // While it slides away or back; a host keeps its window until it is out of sight.
@@ -58,7 +60,7 @@ Rectangle {
         const at = centre ? items.indexOf(centre) : -1;
         if (at < 0)
             return [{ items, start: padding, end: width - padding, packEnd: false, more: true }];
-        const half = centre.implicitWidth / 2;
+        const half = Math.max(centre.implicitWidth, centreReserve) / 2;
         return [
             { items: items.slice(0, at), start: padding, end: width / 2 - half - gap, packEnd: false, more: false },
             { items: items.slice(at + 1), start: width / 2 + half + gap, end: width - padding, packEnd: true, more: true }

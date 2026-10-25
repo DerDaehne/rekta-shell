@@ -19,6 +19,10 @@ ShellRoot {
         id: appLauncher
     }
 
+    ReadoutSources {
+        id: keys
+    }
+
     PrimaryScreen {
         id: primary
     }
@@ -45,6 +49,8 @@ ShellRoot {
             windows: running
             notices: notifications.board
             tray: backgroundApps
+            readout: keys.readout
+            primaryScreen: primary.screen
         }
     }
 
