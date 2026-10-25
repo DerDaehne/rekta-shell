@@ -532,6 +532,149 @@ TestCase {
         compare(calls, ["activate Rekta Design — docs"]);
     }
 
+    function installedApp(name: string): var {
+        return {
+            id: `org.example.${name}`,
+            name: name,
+            genericName: "",
+            keywords: [],
+            exec: name,
+            icon: testCase.pinkIcon,
+            launch: () => testCase.calls = [...testCase.calls, `launch ${name}`]
+        };
+    }
+
+    // The Start open on "alle apps" with these apps, at once.
+    function openOnAllApps(names: var) {
+        start.apps = names.map(name => installedApp(name));
+        Prefs.motion = "off";
+        start.open();
+        named("pivot").select(1);
+        Prefs.motion = "system";
+        waitForRendering(start);
+    }
+
+    function appRow(index: int): var {
+        return findChild(named("appList"), "view").itemAtIndex(index);
+    }
+
+    function test_alle_apps_lists_the_installed_apps_as_a_long_list_in_the_column_under_the_pivot() {
+        openOnAllApps(["ark", "Blender", "konsole"]);
+        const list = named("appList");
+        verify(list.visible);
+        compare(list.mapToItem(start, 0, 0).x, Tokens.spaceXl);
+        compare(list.width, named("column").width, "six units, as the start place");
+        compare(list.mapToItem(start, 0, 0).y, named("pivot").height + Tokens.spaceL);
+        compare([0, 1, 2].map(index => findChild(appRow(index), "text").text), ["ark", "Blender", "konsole"]);
+        compare(findChild(appRow(0), "icon").source.toString(), pinkIcon);
+    }
+
+    function test_before_the_apps_are_known_alle_apps_loads_and_without_any_it_says_so() {
+        Prefs.motion = "off";
+        start.open();
+        named("pivot").select(1);
+        verify(named("appList").loading);
+        start.apps = [];
+        verify(!named("appList").loading);
+        verify(findChild(named("appList"), "empty").visible);
+        compare(findChild(named("appList"), "empty").text, "keine apps installiert.");
+    }
+
+    function test_down_or_tab_from_the_pivot_goes_into_the_list_and_left_back_to_start() {
+        openOnAllApps(["ark", "Blender", "konsole"]);
+        keyClick(Qt.Key_Down);
+        verify(named("appList").activeFocus, "down with nothing in focus");
+        compare(named("appList").active, 0);
+        keyClick(Qt.Key_Down);
+        compare(named("appList").active, 1, "the list's own keys move in it");
+        keyClick(Qt.Key_Left);
+        compare(named("pivot").currentIndex, 0);
+        tryVerify(() => !start.turning, 3000);
+        keyClick(Qt.Key_Right);
+        tryVerify(() => !start.turning, 3000);
+        verify(!named("appList").activeFocus, "back on alle apps, the list waits for the keys");
+        named("pivot").forceActiveFocus();
+        keyClick(Qt.Key_Tab);
+        verify(named("appList").activeFocus, "tab from the pivot");
+    }
+
+    function test_clicking_an_app_presses_and_chooses_its_row_launches_it_once_and_turns_the_start_out_forward() {
+        openOnAllApps(["ark", "Blender", "konsole"]);
+        const row = appRow(1);
+        mousePress(row);
+        verify(row.held);
+        mouseRelease(row);
+        compare(calls, ["launch Blender"]);
+        compare(named("appList").chosen, 1);
+        verify(turner.running);
+        verify(!turner.back, "forward");
+        verify(turner.pressedTile === null, "no row stays behind");
+        verify(turner.leavingTurns.some(turn => turn.part.item === row), "the row turns out with the rest");
+        mouseClick(appRow(2));
+        compare(calls, ["launch Blender"], "once");
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(named("appList").chosen, -1, "the choice holds until the Start is closed");
+    }
+
+    function test_enter_or_space_on_an_app_launches_it_once() {
+        openOnAllApps(["ark", "Blender", "konsole"]);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Blender"]);
+        verify(!start.wanted);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Blender"], "once");
+        tryVerify(() => closedSpy.count === 1, 3000);
+        openOnAllApps(["ark", "Blender", "konsole"]);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Space);
+        compare(calls, ["launch Blender", "launch ark"]);
+    }
+
+    function test_after_an_app_launch_the_window_that_had_the_keyboard_is_not_activated() {
+        start.windows = windowsWithTheDocsActive();
+        openOnAllApps(["ark"]);
+        mouseClick(appRow(0));
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(calls, ["launch ark"]);
+    }
+
+    function test_going_to_alle_apps_turns_each_row_in_view_as_one_part() {
+        start.apps = Array.from({ length: 60 }, (_, i) => installedApp(`app ${i}`));
+        openNow();
+        named("pivot").select(1);
+        tryVerify(() => turner.arrivingTurns.length > 0, 3000);
+        const rows = turner.arrivingTurns.map(turn => turn.part.item).filter(item => item.turnsWhole === true && item.text !== undefined);
+        verify(rows.length >= 10, `${rows.length} rows turn`);
+        verify(rows.includes(appRow(0)));
+        verify(!turner.arrivingTurns.some(turn => turn.part.item === named("appList")), "the list is a scroller, not a part");
+        tryVerify(() => !start.turning, 3000);
+        named("pivot").select(0);
+        verify(turner.leavingTurns.some(turn => turn.part.item === appRow(0)), "and turn out the same way");
+    }
+
+    function test_under_reduced_motion_alle_apps_stands_at_once() {
+        openNow();
+        start.apps = [installedApp("ark")];
+        Prefs.motion = "off";
+        named("pivot").select(1);
+        verify(named("apps").visible);
+        verify(!start.turning);
+        compare(appRow(0).opacity, 1);
+    }
+
+    function test_an_upright_wheel_scrolls_the_list_a_sideways_one_goes_back_to_start() {
+        openOnAllApps(Array.from({ length: 60 }, (_, i) => `app ${i}`));
+        const view = findChild(named("appList"), "view");
+        mouseWheel(view, 100, 100, 0, -480);
+        tryVerify(() => view.contentY > 0);
+        compare(named("pivot").currentIndex, 1);
+        wait(Tokens.durationWheelLatch + 50);
+        mouseWheel(view, 100, 100, 120, 0);
+        compare(named("pivot").currentIndex, 0);
+    }
+
     // The headings and the active title take the primary text colour; the inactive title (text-contrast-medium) is large
     // text, at least 24px on a sideways Start, where WCAG asks 3:1 (1.4.3).
     function test_text_on_the_glass_keeps_its_contrast_before_a_white_and_a_black_window() {

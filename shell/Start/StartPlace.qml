@@ -5,9 +5,10 @@ import Rekta
 
 // The Start, after the shell's decision for it: one column at the leading edge, six tile units wide, scrolling down,
 // on glass over the windows. Its pivot "start · alle apps" picks the place; the start place shows "läuft", a tile for
-// each open window, the most recent first, then the pinned apps. It opens once the windows are three quarters back
-// (Rekta's hand-over between places), its parts turning in as a place arrives, and closes turning them out: back the
-// way they came, or forward after a press, the pressed tile last. While it turns its places take no input.
+// each open window, the most recent first, then the pinned apps; "alle apps" lists the installed apps A–Z. It opens
+// once the windows are three quarters back (Rekta's hand-over between places), its parts turning in as a place
+// arrives, and closes turning them out: back the way they came, or forward after a press or a choice, the pressed tile
+// last. While it turns its places take no input.
 FocusScope {
     id: start
 
@@ -17,6 +18,8 @@ FocusScope {
     property var returnTo: null
     // The pinned apps: {name, icon, columns, rows, launch()}.
     property var pinned: []
+    // The installed apps, A–Z: {id, name, genericName, keywords, exec, icon, launch()}; null until they are known.
+    property var apps: null
     // Draws a window's preview on its tile (RunningTile.preview); null for none.
     property Component preview: null
     // closed, opening (the glass comes, then the parts turn in), open, or closing (the parts turn out, the glass goes).
@@ -55,20 +58,25 @@ FocusScope {
 
     // `pressed` is the tile that was pressed to leave; without one the Start goes back the way it came.
     function close(pressed: Tile) {
+        leave({
+            back: pressed === null,
+            pressed: pressed
+        });
+    }
+
+    // Turns the Start out; forward, after a choice, no window gets the keyboard back.
+    function leave(options: var) {
         if (!wanted)
             return;
         phase = "closing";
-        if (pressed)
+        if (!options.back)
             returnTo = null;
         if (waitForWindows.running) {
             waitForWindows.stop();
             partsOut();
             return;
         }
-        turn(body, null, {
-            back: pressed === null,
-            pressed: pressed
-        });
+        turn(body, null, options);
     }
 
     function toggle() {
@@ -119,12 +127,12 @@ FocusScope {
 
     function showPlace(index: int) {
         column.visible = index === 0;
-        apps.visible = index !== 0;
+        appsPlace.visible = index !== 0;
     }
 
     function goToPlace(index: int) {
         forgetTileFocus();
-        turn(index === 0 ? apps : column, index === 0 ? column : apps, {
+        turn(index === 0 ? appsPlace : column, index === 0 ? column : appsPlace, {
             back: index === 0
         });
     }
@@ -133,12 +141,23 @@ FocusScope {
         phase = "closed";
         pivot.currentIndex = 0;
         showPlace(0);
+        appList.clear();
         closed();
     }
 
     function press(tile: Tile, act: var) {
         act();
         close(tile);
+    }
+
+    // A chosen app starts, and the Start turns out forward. No row stays behind: only a pressed tile goes last
+    // (rekta.js:754).
+    function launch(index: int) {
+        start.apps[index].launch();
+        leave({
+            back: false,
+            pressed: null
+        });
     }
 
     function allTiles(): var {
@@ -150,11 +169,12 @@ FocusScope {
         return allTiles().filter(tile => tile.opens && tile.visible);
     }
 
-    // A tile keeps its focus in the Start's scope while hidden or disabled and takes keys again once shown, so the Start
-    // opens, and goes to another place, with no tile in focus.
+    // A tile, or the list, keeps its focus in the Start's scope while hidden or disabled and takes keys again once
+    // shown, so the Start opens, and goes to another place, with nothing in focus.
     function forgetTileFocus() {
         for (const tile of allTiles())
             tile.focus = false;
+        appList.focus = false;
         if (!pivot.activeFocus)
             forceActiveFocus();
     }
@@ -222,12 +242,14 @@ FocusScope {
         return letter && (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) === 0;
     }
 
-    // In "alle apps" only left leads anywhere: back to the start place.
+    // In "alle apps" left goes back to the start place and down into the list, whose own keys move in it.
     function arrow(direction: string) {
         if (pivot.currentIndex === 0)
             moveFocus(direction);
         else if (direction === "left")
             pivot.select(0);
+        else if (direction === "down")
+            appList.forceActiveFocus();
     }
 
     // Back goes even while the Start turns, as a navigation always does; nothing else does.
@@ -477,9 +499,10 @@ FocusScope {
             }
         }
 
-        // "alle apps": its own place beside the start place, still empty.
+        // "alle apps": its own place beside the start place, the installed apps as a long list, the place's one
+        // section, space-l above and below (rekta.css:852).
         Item {
-            id: apps
+            id: appsPlace
 
             objectName: "apps"
             x: column.x
@@ -488,6 +511,22 @@ FocusScope {
             height: column.height
             visible: false
             enabled: !start.turning
+
+            LongList {
+                id: appList
+
+                objectName: "appList"
+                y: Tokens.spaceL
+                width: parent.width
+                height: parent.height - 2 * Tokens.spaceL
+                rows: (start.apps ?? []).map(app => ({
+                            text: app.name,
+                            icon: app.icon
+                        }))
+                loading: start.apps === null
+                empty: "keine apps installiert."
+                onShown: index => start.launch(index)
+            }
         }
     }
 }

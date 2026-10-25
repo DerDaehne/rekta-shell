@@ -72,9 +72,16 @@ PanelWindow {
         anchors.fill: parent
         windows: Array.from(surface.windows.all)
         pinned: surface.pinnedApps(Array.from(DesktopEntries.applications.values), surface.listedPins)
+        apps: installed.list
         preview: Component {
             WindowPreview {}
         }
+    }
+
+    Apps {
+        id: installed
+
+        launcher: surface.launcher
     }
 
     // Meta opens and closes it; in Plasma's own session Meta stays with Kickoff, as there this shortcut is not present.
