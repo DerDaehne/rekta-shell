@@ -57,6 +57,8 @@ ShellRoot {
     }
 
     StartSurface {
+        id: start
+
         windows: running
         launcher: appLauncher
         primaryScreen: primary.screen
@@ -67,6 +69,8 @@ ShellRoot {
 
         launcher: appLauncher
         primaryScreen: primary.screen
+
+        onClosed: start.takeKeyboardBack()
     }
 
     // After the Start, so a toast stands above it.

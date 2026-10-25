@@ -21,6 +21,9 @@ PanelWindow {
     required property ShellScreen primaryScreen
     readonly property alias doNotDisturb: controls.doNotDisturb
 
+    // The panel has gone, and with it the surface.
+    signal closed
+
     // Opens the panel on a screen with a facet, or closes it when that facet shows there already.
     function toggle(onScreen: ShellScreen, index: int) {
         if (screen !== onScreen) {
@@ -54,6 +57,7 @@ PanelWindow {
         anchors.fill: parent
         focus: true
         titles: ["steuerung", "meldungen"]
+        onClosed: surface.closed()
 
         Controls {
             id: controls

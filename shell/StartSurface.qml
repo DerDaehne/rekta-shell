@@ -19,6 +19,15 @@ PanelWindow {
     required property ShellScreen primaryScreen
     // The list in start.json, null without a usable one.
     property var listedPins: null
+    // KWin gives the keyboard to the next window when a surface goes, also when the side panel over the open Start goes;
+    // it hands it to a layer surface only as that one starts to ask for it (LayerShellV1Window::handleAcceptsFocusChanged).
+    property bool askingAgain: false
+
+    // Asks for the keyboard anew, one commit without it and one with it, while the Start is open.
+    function takeKeyboardBack() {
+        if (place.wanted)
+            askingAgain = true;
+    }
 
     // The apps pinned in start.json, or Plasma's own; those installed, as their desktop entries say.
     function pinnedApps(entries: list<DesktopEntry>, listed: var): var {
@@ -50,7 +59,7 @@ PanelWindow {
     }
     WlrLayershell.namespace: "rekta-start"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: place.wanted ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: place.wanted && !askingAgain ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     // A deliberate deviation, as for the app bar: KWin blurs at the strength of its blur effect, not glass's blur(12px).
     BackgroundEffect.blurRegion: Region {
         item: place.shown ? place : null
@@ -73,6 +82,14 @@ PanelWindow {
         text: "Open the Start"
         keys: [Qt.Key_Meta]
         onPressed: place.toggle()
+    }
+
+    Connections {
+        target: surface.contentItem.Window.window
+
+        function onFrameSwapped() {
+            surface.askingAgain = false;
+        }
     }
 
     // Without windows the Start stands: after login and once the last window closes.
