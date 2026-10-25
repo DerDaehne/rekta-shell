@@ -97,6 +97,8 @@ Column {
     }
 
     // A choice made here shows at once; a change from elsewhere (System Settings, another tool) shows as it comes.
+    // ponytail: a command that fails leaves the choice showing until the system changes next; follow the command's
+    // exit once the host reports it.
     Connections {
         target: controls
 
