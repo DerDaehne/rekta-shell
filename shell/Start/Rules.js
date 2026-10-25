@@ -57,6 +57,67 @@ function pinnedTiles(pinned, installed) {
     })).filter(tile => tile.id !== "" && installed(tile.id));
 }
 
+// Where desktop entries live, in order of precedence, as Quickshell looks for them (desktopentry.cpp, desktopPaths).
+function applicationDirs(dataHome, home, dataDirs) {
+    const first = dataHome || (home ? `${home}/.local/share` : "");
+    const rest = (dataDirs || "/usr/local/share:/usr/share").split(":").filter(dir => dir !== "");
+    return [first, ...rest].filter(dir => dir !== "").map(dir => `${dir}/applications`);
+}
+
+// The desktop file ID of a file below an applications directory: its path there with "/" as "-", without ".desktop"
+// (desktop-entry spec, "Desktop File ID").
+function desktopId(relativePath) {
+    return relativePath.replace(/\.desktop$/, "").replace(/\//g, "-");
+}
+
+// The OnlyShowIn and NotShowIn lists by desktop file ID, from what
+// `grep -R --null -E '^(Type|OnlyShowIn|NotShowIn) *='` prints over `dirs`: a file, a NUL, a line. Each ID keeps the
+// file of the first directory that has one, as the entry Quickshell shows is that one; every entry has a Type, so a
+// file without either list still claims its ID.
+function showIn(text, dirs) {
+    const files = {};
+    for (const line of text.split("\n")) {
+        const [path, entry] = line.split("\0");
+        const dir = dirs.find(candidate => path.startsWith(`${candidate}/`));
+        const pair = /^(\w+) *= *(.*)$/.exec(entry ?? "");
+        if (dir === undefined || pair === null)
+            continue;
+        const id = desktopId(path.slice(dir.length + 1));
+        files[id] = files[id] ?? { path: path };
+        if (files[id].path === path && pair[1] !== "Type")
+            files[id][pair[1]] = pair[2].split(";").filter(name => name !== "");
+    }
+    return files;
+}
+
+// Whether an entry shows on this desktop: the first of `desktops` (XDG_CURRENT_DESKTOP, in order) that it names in
+// OnlyShowIn shows it, in NotShowIn hides it; naming none, it shows unless it has an OnlyShowIn (desktop-entry spec).
+function shown(file, desktops) {
+    for (const desktop of desktops) {
+        if (file.OnlyShowIn?.includes(desktop))
+            return true;
+        if (file.NotShowIn?.includes(desktop))
+            return false;
+    }
+    return file.OnlyShowIn === undefined;
+}
+
+// A–Z whatever the case, in the locale's order.
+function byName(a, b) {
+    return a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.name.localeCompare(b.name);
+}
+
+// The entries this desktop shows, A–Z by name; `files` is what showIn() read, `currentDesktop` XDG_CURRENT_DESKTOP.
+function listedApps(entries, files, currentDesktop) {
+    const desktops = String(currentDesktop ?? "").split(":").filter(name => name !== "");
+    return entries.filter(entry => shown(files[entry.id] ?? {}, desktops)).sort(byName);
+}
+
+// The program an entry runs, by its name: "konsole" for "/usr/bin/konsole --new-tab".
+function programName(command) {
+    return String(command[0] ?? "").split("/").pop();
+}
+
 // The most recently active window first. After the shell starts only the active window has that time; the others
 // follow in stacking order, the topmost first.
 function recentFirst(windows) {

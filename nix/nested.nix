@@ -2,6 +2,7 @@
   lib,
   writeShellApplication,
   coreutils,
+  gnugrep,
   kdePackages,
   dbus,
   rekta-shell,
@@ -85,6 +86,7 @@ writeShellApplication {
           kdePackages.libkscreen
           dbus
           coreutils
+          gnugrep
         ]
       }"
       HOME="$home"

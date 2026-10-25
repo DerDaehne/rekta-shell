@@ -65,6 +65,62 @@ TestCase {
         ]);
     }
 
+    function test_desktop_entries_are_looked_for_in_the_data_home_then_the_data_dirs_as_quickshell_does() {
+        compare(Rules.applicationDirs("/h/data", "/h", "/a:/b"), ["/h/data/applications", "/a/applications", "/b/applications"]);
+        compare(Rules.applicationDirs("", "/h", ""), ["/h/.local/share/applications", "/usr/local/share/applications", "/usr/share/applications"]);
+    }
+
+    // What grep prints over two directories: a file, a NUL, a line.
+    readonly property var dirs: ["/u/.local/share/applications", "/usr/share/applications"]
+    readonly property string grepped: [
+        "/u/.local/share/applications/org.kde.kate.desktop\0Type=Application",
+        "/usr/share/applications/org.kde.kate.desktop\0Type=Application",
+        "/usr/share/applications/org.kde.kate.desktop\0OnlyShowIn=GNOME;",
+        "/usr/share/applications/kde/gnome-only.desktop\0Type=Application",
+        "/usr/share/applications/kde/gnome-only.desktop\0OnlyShowIn = GNOME;Unity;",
+        "/usr/share/applications/not-kde.desktop\0Type=Application",
+        "/usr/share/applications/not-kde.desktop\0NotShowIn=KDE;",
+        "/usr/share/applications/kde-only.desktop\0OnlyShowIn=KDE;",
+        ""
+    ].join("\n")
+
+    function test_the_show_in_lists_are_read_per_desktop_file_id_from_the_first_directory_that_has_the_file() {
+        const files = Rules.showIn(grepped, dirs);
+        verify(files["org.kde.kate"].OnlyShowIn === undefined, "the user's own copy without the list wins");
+        compare(files["kde-gnome-only"].OnlyShowIn, ["GNOME", "Unity"], "a subdirectory joins the ID with a dash");
+        compare(files["not-kde"].NotShowIn, ["KDE"]);
+        compare(files["kde-only"].OnlyShowIn, ["KDE"]);
+    }
+
+    function fakeEntry(id: string, name: string): var {
+        return { id: id, name: name };
+    }
+
+    function test_under_kde_an_app_only_for_gnome_or_not_for_kde_is_left_out() {
+        const entries = [fakeEntry("org.kde.kate", "Kate"), fakeEntry("kde-gnome-only", "Tweaks"), fakeEntry("not-kde", "Files"), fakeEntry("kde-only", "Discover"), fakeEntry("unread", "Zed")];
+        const files = Rules.showIn(grepped, dirs);
+        compare(Rules.listedApps(entries, files, "KDE").map(app => app.name), ["Discover", "Kate", "Zed"]);
+        compare(Rules.listedApps(entries, files, "GNOME").map(app => app.name), ["Files", "Kate", "Tweaks", "Zed"]);
+        compare(Rules.listedApps(entries, files, "").map(app => app.name), ["Files", "Kate", "Zed"], "no desktop: only apps without OnlyShowIn");
+    }
+
+    function test_the_first_desktop_of_xdg_current_desktop_that_an_entry_names_decides() {
+        const file = { OnlyShowIn: ["GNOME"], NotShowIn: ["KDE"] };
+        verify(Rules.shown(file, ["GNOME", "KDE"]));
+        verify(!Rules.shown(file, ["KDE", "GNOME"]));
+    }
+
+    function test_apps_are_listed_a_to_z_whatever_the_case() {
+        const entries = [fakeEntry("b", "Blender"), fakeEntry("k", "konsole"), fakeEntry("a", "ark"), fakeEntry("d", "Dolphin")];
+        compare(Rules.listedApps(entries, {}, "KDE").map(app => app.name), ["ark", "Blender", "Dolphin", "konsole"]);
+    }
+
+    function test_an_app_s_program_is_the_name_of_the_file_its_command_runs() {
+        compare(Rules.programName(["/usr/bin/konsole", "--new-tab"]), "konsole");
+        compare(Rules.programName(["dolphin"]), "dolphin");
+        compare(Rules.programName([]), "");
+    }
+
     function test_running_windows_come_most_recently_active_first_then_topmost_first() {
         const windows = [
             { title: "low", lastActivated: 0, stackingOrder: 1 },
