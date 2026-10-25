@@ -71,6 +71,18 @@ in
     touch $out
   '';
 
+  # KWin makes a layer surface of a namespace it does not know a normal window, which tiling scripts move into the work
+  # area: a surface that keeps a zone clear for itself would leave that zone, unless it is a dock.
+  docked-surfaces-are-docks = pkgs.runCommand "rekta-shell-docked-surfaces-are-docks" { } ''
+    for file in $(grep -rlE --include='*.qml' '^\s*exclusiveZone:' ${../shell}); do
+      if ! grep -q 'WlrLayershell.namespace: "dock"' "$file"; then
+        echo "$(basename "$file") keeps a zone clear but is no dock to KWin" >&2
+        exit 1
+      fi
+    done
+    touch $out
+  '';
+
   qmllint = pkgs.runCommand "rekta-shell-qmllint" { LANG = "C.UTF-8"; } ''
     find ${qml} -name '*.qml' -print0 | xargs -0 ${pkgs.lib.getExe rekta-qmllint} -I ${qml}/shell
     touch $out

@@ -55,7 +55,9 @@ PanelWindow {
     exclusiveZone: panel.reservedWidth
     color: "transparent"
     visible: panel.open
-    WlrLayershell.namespace: "rekta-panel"
+    // A dock to KWin: a namespace it does not know makes a normal window, which tiling scripts move into the work area,
+    // out of the zone the surface keeps clear itself.
+    WlrLayershell.namespace: "dock"
     WlrLayershell.layer: startOpen && screen === primaryScreen ? WlrLayer.Overlay : WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 

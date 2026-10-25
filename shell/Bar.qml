@@ -41,7 +41,9 @@ PanelWindow {
     color: "transparent"
     // Unmapped once out of sight, so a full-screen window has the screen to itself.
     visible: !away || bar.sliding
-    WlrLayershell.namespace: "rekta-appbar"
+    // A dock to KWin: a namespace it does not know makes a normal window, which tiling scripts move into the work area,
+    // out of the zone the surface keeps clear itself.
+    WlrLayershell.namespace: "dock"
     // Above the full-screen window while it slides away.
     WlrLayershell.layer: away ? WlrLayer.Overlay : WlrLayer.Top
     // A deliberate deviation: KWin blurs at the strength of its blur effect, as ext-background-effect has no radius for
