@@ -73,12 +73,6 @@ TestCase {
     }
 
     SignalSpy {
-        id: typedSpy
-
-        signalName: "typed"
-    }
-
-    SignalSpy {
         id: closedSpy
 
         signalName: "closed"
@@ -93,8 +87,6 @@ TestCase {
         calls = [];
         start = createTemporaryObject(startComponent, testCase);
         turner = findChild(start, "turn");
-        typedSpy.target = start;
-        typedSpy.clear();
         closedSpy.target = start;
         closedSpy.clear();
     }
@@ -438,13 +430,13 @@ TestCase {
         verify(start.wanted);
     }
 
-    function test_while_the_start_turns_a_key_other_than_back_does_nothing() {
+    function test_while_the_start_turns_a_key_other_than_back_or_typing_does_nothing() {
         start.open();
         tryVerify(() => turner.running, 2000);
-        keyClick(Qt.Key_K);
         keyClick(Qt.Key_Right);
-        compare(typedSpy.count, 0);
+        keyClick(Qt.Key_Down);
         compare(named("pivot").currentIndex, 0);
+        verify(tilesIn("running").concat(tilesIn("pinned")).every(tile => !tile.activeFocus), "no tile took the focus");
     }
 
     function test_closing_during_the_opening_ends_that_turn_and_goes_out() {
@@ -476,16 +468,6 @@ TestCase {
         keyClick(Qt.Key_Escape);
         compare(start.phase, "closed");
         compare(closedSpy.count, 1);
-    }
-
-    function test_a_letter_typed_in_the_open_start_goes_to_the_palette() {
-        openNow();
-        keyClick(Qt.Key_K);
-        compare(typedSpy.count, 1);
-        compare(typedSpy.signalArguments[0][0], "k");
-        keyClick(Qt.Key_K, Qt.ControlModifier);
-        keyClick(Qt.Key_5);
-        compare(typedSpy.count, 1, "a shortcut or a digit is no typing");
     }
 
     function test_the_mouse_s_back_button_closes_the_start() {
@@ -716,6 +698,341 @@ TestCase {
         compare(named("pivot").currentIndex, 0);
     }
 
+    function searchableApp(name: string, genericName: string, keywords: var): var {
+        return Object.assign(installedApp(name), {
+            genericName: genericName,
+            keywords: keywords
+        });
+    }
+
+    // A–Z, as the app model gives them.
+    function searchableApps(): var {
+        return [
+            searchableApp("Dateien", "Dateiverwaltung", ["files"]),
+            searchableApp("Filelight", "Disk Usage", ["disk"]),
+            searchableApp("Firefox", "Web Browser", ["internet", "web"]),
+            searchableApp("Kate", "Text Editor", ["text"]),
+            searchableApp("Konsole", "Terminal", ["terminal", "shell"]),
+            searchableApp("KWrite", "Text Editor", ["text"])
+        ];
+    }
+
+    // The Start open on its start place with the searchable apps, at once.
+    function openWithApps() {
+        start.apps = searchableApps();
+        openNow();
+    }
+
+    // Types without motion, so the search stands at once.
+    function typeNow(text: string) {
+        Prefs.motion = "off";
+        for (const character of text)
+            keyClick(character);
+        Prefs.motion = "system";
+    }
+
+    function hitNames(): var {
+        return start.hitTiles().map(tile => findChild(tile, "name").text);
+    }
+
+    function motionsOf(items: var): var {
+        return named("presence").moving.filter(motion => items.includes(motion.item));
+    }
+
+    function test_a_letter_shows_what_was_typed_as_the_title_with_suche_beside_it_where_the_pivot_stood() {
+        openWithApps();
+        typeNow("fi");
+        verify(!named("pivot").visible);
+        verify(!named("column").visible);
+        const title = named("searchTitle");
+        const typed = named("typed");
+        const suche = named("suche");
+        compare(Qt.point(title.x, title.y), Qt.point(named("pivot").x, named("pivot").y));
+        compare(typed.text, "fi");
+        compare(typed.font.pixelSize, findChild(named("pivot"), "word").font.pixelSize, "the pivot's active size");
+        compare(typed.font.weight, Tokens.fontWeightLight);
+        compare(typed.color, Tokens.color.textPrimary);
+        compare(suche.text, "suche");
+        compare(suche.font.pixelSize, Math.floor(named("pivot").inactiveSize));
+        compare(suche.color, Tokens.color.textContrastMedium);
+        compare(suche.x, typed.width + Tokens.spaceL);
+        compare(suche.y + suche.baselineOffset, typed.y + typed.baselineOffset, "on one baseline");
+    }
+
+    function test_a_title_too_long_for_the_column_keeps_its_size_and_is_cut_at_the_column_s_edge() {
+        openWithApps();
+        typeNow("firefox firefox firefox firefox firefox firefox");
+        const title = named("searchTitle");
+        compare(named("typed").font.pixelSize, findChild(named("pivot"), "word").font.pixelSize);
+        verify(named("typed").width > title.width);
+        compare(title.width, named("column").width);
+        verify(title.clip);
+    }
+
+    function test_the_apps_that_match_stand_as_one_unit_tiles_in_the_column_s_grid_the_best_first() {
+        openWithApps();
+        typeNow("fi");
+        compare(hitNames(), ["Filelight", "Firefox", "Dateien"]);
+        const tiles = start.hitTiles();
+        compare(Qt.size(tiles[0].width, tiles[0].height), Qt.size(Tokens.tileUnit, Tokens.tileUnit));
+        compare(tiles[1].x - tiles[0].x, Tokens.tileUnit + Tokens.spaceS);
+        compare(named("hits").mapToItem(start, 0, 0), Qt.point(Tokens.spaceXl, named("pivot").height + Tokens.spaceL));
+        compare(findChild(tiles[0], "icon").source.toString(), pinkIcon);
+    }
+
+    function test_a_letter_typed_in_alle_apps_searches_too() {
+        openOnAllApps(["Kate", "Konsole", "Okular"]);
+        typeNow("k");
+        verify(!named("apps").visible);
+        verify(named("results").visible);
+        compare(hitNames(), ["Kate", "Konsole", "Okular"]);
+    }
+
+    function test_without_a_match_a_sentence_on_the_first_hairline_says_so() {
+        openWithApps();
+        typeNow("q");
+        compare(hitNames(), []);
+        const sentence = named("noHits");
+        verify(sentence.visible);
+        compare(sentence.text, "keine app passt zu „q“.");
+        compare(sentence.color, Tokens.color.textContrastHigh);
+        compare(named("noHitsLine").y, Tokens.spaceL);
+        compare(sentence.y, Tokens.spaceL + Geometry.hairline + Tokens.spaceM);
+    }
+
+    function test_typing_on_or_erasing_changes_the_hits_and_a_digit_or_a_space_types_on() {
+        openWithApps();
+        typeNow("k");
+        compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
+        typeNow("o");
+        compare(hitNames(), ["Konsole"]);
+        Prefs.motion = "off";
+        keyClick(Qt.Key_Backspace);
+        compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
+        keyClick(Qt.Key_Space);
+        compare(start.query, "k ");
+        compare(hitNames(), ["Kate", "Konsole", "KWrite"], "space around the text does not count");
+        keyClick(Qt.Key_5);
+        compare(start.query, "k 5");
+        compare(hitNames(), []);
+    }
+
+    function test_a_shortcut_a_digit_or_a_space_starts_no_search() {
+        openWithApps();
+        keyClick(Qt.Key_K, Qt.ControlModifier);
+        keyClick(Qt.Key_5);
+        keyClick(Qt.Key_Space);
+        compare(start.query, "");
+        verify(named("pivot").visible);
+    }
+
+    function test_enter_presses_the_first_hit_in_its_centre_launches_it_once_and_turns_the_start_out_forward_with_it_last() {
+        openWithApps();
+        typeNow("ko");
+        const first = start.hitTiles()[0];
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Konsole"]);
+        verify(turner.running);
+        verify(!turner.back, "forward");
+        compare(turner.pressedTile, first);
+        verify(first.pressed);
+        compare(Qt.point(first.pressX, first.pressY), Qt.point(0, 0), "in its centre");
+        const last = turner.leavingTurns.find(turn => turn.part.item === first);
+        verify(turner.leavingTurns.every(turn => turn.at <= last.at), "the pressed tile last");
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Konsole"], "once");
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
+    function test_arrows_move_through_the_hits_and_enter_or_space_presses_the_one_in_focus() {
+        openWithApps();
+        typeNow("k");
+        const tiles = start.hitTiles();
+        keyClick(Qt.Key_Down);
+        verify(tiles[0].activeFocus);
+        keyClick(Qt.Key_Right);
+        verify(tiles[1].activeFocus);
+        keyClick(Qt.Key_Up);
+        verify(tiles[1].activeFocus, "a search has no pivot to go up to");
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Konsole"]);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        openNow();
+        typeNow("k");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Right);
+        keyClick(Qt.Key_Right);
+        keyClick(Qt.Key_Right);
+        verify(start.hitTiles()[2].activeFocus, "nor alle apps to go right to");
+        keyClick(Qt.Key_Space);
+        compare(calls, ["launch Konsole", "launch KWrite"]);
+        compare(start.query, "k", "the space pressed the tile and typed nothing");
+    }
+
+    function test_a_hit_that_takes_the_focus_scrolls_into_view() {
+        start.apps = Array.from({ length: 40 }, (_, i) => installedApp(`app ${i}`));
+        openNow();
+        typeNow("app");
+        const results = named("results");
+        for (let i = 0; i < 7; i++)
+            keyClick(Qt.Key_Down);
+        const last = start.hitTiles()[36];
+        verify(last.activeFocus);
+        const top = last.mapToItem(results, 0, 0).y;
+        verify(top >= 0 && top + last.height <= results.height, `whole in view at ${top}`);
+    }
+
+    function test_escape_clears_the_search_and_shows_the_place_before_and_a_second_escape_closes() {
+        openWithApps();
+        typeNow("k");
+        Prefs.motion = "off";
+        keyClick(Qt.Key_Escape);
+        compare(start.query, "");
+        verify(named("pivot").visible);
+        verify(named("column").visible);
+        verify(!named("results").visible);
+        verify(start.wanted);
+        keyClick(Qt.Key_Escape);
+        verify(!start.wanted);
+    }
+
+    function test_after_a_search_in_alle_apps_the_place_before_is_alle_apps() {
+        openOnAllApps(["Kate", "Konsole"]);
+        typeNow("k");
+        Prefs.motion = "off";
+        keyClick(Qt.Key_Escape);
+        compare(named("pivot").currentIndex, 1);
+        verify(named("apps").visible);
+    }
+
+    function test_back_alt_left_and_the_mouse_back_button_clear_the_search_as_escape_does() {
+        openWithApps();
+        Prefs.motion = "off";
+        for (const goBack of [() => keyClick(Qt.Key_Back), () => keyClick(Qt.Key_Left, Qt.AltModifier), () => mouseClick(start, start.width - 50, 50, Qt.BackButton)]) {
+            keyClick("k");
+            goBack();
+            compare(start.query, "");
+            verify(named("pivot").visible);
+            verify(start.wanted);
+        }
+    }
+
+    function test_erasing_to_nothing_clears_the_search() {
+        openWithApps();
+        typeNow("ko");
+        Prefs.motion = "off";
+        keyClick(Qt.Key_Backspace);
+        keyClick(Qt.Key_Backspace);
+        verify(named("pivot").visible);
+        verify(named("column").visible);
+        verify(start.wanted);
+    }
+
+    function test_letters_typed_while_the_start_opens_count_and_show_once_it_has_landed() {
+        start.apps = searchableApps();
+        start.open();
+        keyClick("k");
+        tryVerify(() => turner.running, 2000);
+        keyClick("o");
+        verify(!named("searchTitle").visible, "the search waits for the landing");
+        tryVerify(() => start.phase === "open", 3000);
+        tryVerify(() => named("searchTitle").visible, 1000);
+        compare(named("typed").text, "ko");
+        compare(hitNames(), ["Konsole"]);
+    }
+
+    function test_the_place_s_parts_leave_then_the_title_and_the_hits_arrive() {
+        openWithApps();
+        const presence = named("presence");
+        const pinned = tilesIn("pinned");
+        keyClick("k");
+        verify(named("pivot").visible, "the place leaves first");
+        const leaving = motionsOf([named("pivot"), ...pinned]);
+        compare(leaving.length, pinned.length + 1);
+        verify(leaving.every(motion => motion.duration === Geometry.leaveShare * Tokens.durationShort && motion.to.opacity === 0));
+        tryVerify(() => named("searchTitle").visible, 1000);
+        const tiles = start.hitTiles();
+        const arriving = motionsOf([named("typed"), ...tiles]);
+        compare(arriving.length, tiles.length + 1);
+        verify(motionsOf(tiles).every(motion => motion.from.scale === Geometry.arriveTileScale && motion.duration === Tokens.durationModerate));
+        compare(motionsOf([named("typed")])[0].from.y, -Geometry.arriveShift, "a line of text arrives as a row");
+        tryVerify(() => !presence.running, 1000);
+        verify(tiles.every(tile => tile.opacity === 1));
+    }
+
+    function test_typing_on_the_hits_that_no_longer_match_leave_and_the_rest_close_up() {
+        openWithApps();
+        typeNow("k");
+        const [kate, konsole, kwrite] = start.hitTiles();
+        keyClick("w");
+        compare(motionsOf([kate, konsole]).length, 2);
+        verify(motionsOf([kate, konsole]).every(motion => motion.to.scale === Geometry.leaveTileScale));
+        tryVerify(() => motionsOf([kwrite]).length === 1, 1000);
+        const glide = motionsOf([kwrite])[0];
+        compare(glide.from.x, 2 * (Tokens.tileUnit + Tokens.spaceS));
+        compare(glide.duration, Tokens.durationModerate);
+        compare(glide.curve, Tokens.easeBase);
+        tryVerify(() => !named("presence").running, 1000);
+        compare(start.hitTiles(), [kwrite], "the same tile");
+        compare(kwrite.x, 0);
+    }
+
+    function test_erasing_brings_back_the_hits_that_match_again_rising_into_their_place() {
+        openWithApps();
+        typeNow("kw");
+        keyClick(Qt.Key_Backspace);
+        tryVerify(() => start.hitTiles().length === 3, 1000);
+        const [kate, konsole] = start.hitTiles();
+        const arriving = motionsOf([kate, konsole]);
+        compare(arriving.length, 2);
+        for (const motion of arriving) {
+            compare(motion.from.y, Geometry.arriveShift);
+            compare(motion.from.opacity, 0);
+            compare(motion.curve, Tokens.easeIn);
+        }
+    }
+
+    function test_more_than_sixty_changes_apply_at_once() {
+        start.apps = Array.from({ length: 61 }, (_, i) => installedApp(`app ${i}`));
+        openNow();
+        keyClick("a");
+        verify(!named("presence").running);
+        verify(named("results").visible);
+        compare(start.hitTiles().length, 61);
+    }
+
+    function test_under_reduced_motion_the_search_comes_and_goes_at_once() {
+        openWithApps();
+        Prefs.motion = "off";
+        keyClick("k");
+        verify(named("results").visible);
+        verify(!named("presence").running);
+        verify(start.hitTiles().every(tile => tile.opacity === 1));
+        keyClick(Qt.Key_Escape);
+        verify(named("column").visible);
+        verify(tilesIn("pinned").every(tile => tile.opacity === 1));
+    }
+
+    function test_a_search_stays_where_it_is_under_a_sideways_wheel() {
+        openWithApps();
+        typeNow("k");
+        mouseWheel(named("results"), 100, 100, -120, 0);
+        compare(named("pivot").currentIndex, 0);
+        verify(named("results").visible);
+    }
+
+    function test_the_start_opens_again_without_the_search() {
+        openWithApps();
+        typeNow("k");
+        Prefs.motion = "off";
+        start.toggle();
+        start.toggle();
+        compare(start.query, "");
+        verify(named("pivot").visible);
+        verify(named("column").visible);
+        compare(start.hitTiles().length, 0);
+    }
+
     // The headings and the active title take the primary text colour; the inactive title (text-contrast-medium) is large
     // text, at least 24px on a sideways Start, where WCAG asks 3:1 (1.4.3).
     function test_text_on_the_glass_keeps_its_contrast_before_a_white_and_a_black_window() {
@@ -754,6 +1071,24 @@ TestCase {
                 grabImage(backdrop).save(`start-sheet-${theme}-${density}.png`);
                 verify(sheet.wanted, `${theme} ${density}`);
             }
+        }
+    }
+
+    function test_contact_sheet_of_the_search() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const backdrop = createTemporaryObject(backdropComponent, testCase);
+            const sheet = createTemporaryObject(startComponent, backdrop);
+            sheet.apps = searchableApps();
+            Prefs.motion = "off";
+            sheet.open();
+            keyClick("f");
+            keyClick("i");
+            keyClick(Qt.Key_Down);
+            Prefs.motion = "system";
+            waitForRendering(backdrop);
+            grabImage(backdrop).save(`start-search-sheet-${theme}.png`);
+            compare(sheet.query, "fi", theme);
         }
     }
 

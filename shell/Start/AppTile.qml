@@ -1,8 +1,9 @@
 import QtQuick
 import Rekta
 
-// An app pinned to the Start: its icon top left, its name along the bottom, neutral; a press starts it. Rekta has no
-// app tile yet; this one follows the shell's decision for the Start (an icon top left in every size).
+// An app in the Start, pinned or found by a search: its icon top left, its name along the bottom, neutral; a press
+// starts it. Rekta has no app tile yet; this one follows the shell's decision for the Start (an icon top left in every
+// size).
 Tile {
     id: tile
 

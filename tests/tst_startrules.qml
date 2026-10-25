@@ -121,6 +121,60 @@ TestCase {
         compare(Rules.programName([]), "");
     }
 
+    function app(name: string, genericName: string, keywords: var, exec: string): var {
+        return { id: name.toLowerCase(), name: name, genericName: genericName, keywords: keywords, exec: exec };
+    }
+
+    // A–Z, as the app model gives them.
+    readonly property var installed: [
+        app("Dateien", "Dateiverwaltung", ["files", "explorer"], "dolphin"),
+        app("Kate", "Text Editor", ["text"], "kate"),
+        app("Konsole", "Terminal", ["terminal", "shell", "prompt"], "konsole"),
+        app("Telegram", "Messenger", ["chat"], "telegram-desktop")
+    ]
+
+    function hitNames(text: string): var {
+        return Rules.hits(installed, text).map(hit => hit.name);
+    }
+
+    function test_an_app_is_found_by_its_name_its_generic_name_its_keywords_or_its_program() {
+        compare(hitNames("kon"), ["Konsole"]);
+        compare(hitNames("term"), ["Konsole"], "a keyword or the generic name");
+        compare(hitNames("sole"), ["Konsole"], "inside the name");
+        compare(hitNames("dol"), ["Dateien"], "the program");
+        compare(hitNames("xyz"), []);
+    }
+
+    function test_hits_come_best_first_then_a_to_z() {
+        compare(hitNames("te"), ["Telegram", "Kate", "Konsole", "Dateien"], "3, then 2 A–Z, then 1 inside a name");
+    }
+
+    function test_space_around_the_typed_text_does_not_count() {
+        compare(hitNames("kon "), ["Konsole"]);
+    }
+
+    // Applies the steps to `from`, as the hit model takes them.
+    function stepped(from: var, to: var): var {
+        const list = from.slice();
+        for (const step of Rules.steps(from, to)) {
+            if (step.remove !== undefined)
+                list.splice(step.remove, 1);
+            else if (step.move !== undefined)
+                list.splice(step.to, 0, ...list.splice(step.move, 1));
+            else
+                list.splice(step.insert, 0, step.id);
+        }
+        return list;
+    }
+
+    function test_the_hits_change_by_removing_moving_and_inserting_so_a_hit_that_stays_is_kept() {
+        compare(stepped(["a", "b", "c", "d"], ["c", "x", "a"]), ["c", "x", "a"]);
+        compare(stepped([], ["a", "b"]), ["a", "b"]);
+        compare(stepped(["a", "b"], []), []);
+        compare(Rules.steps(["a", "b", "c"], ["c", "a"]), [{ remove: 1 }, { move: 1, to: 0 }]);
+        compare(Rules.steps(["a", "b"], ["a", "b"]), [], "nothing to do when nothing changes");
+    }
+
     function test_running_windows_come_most_recently_active_first_then_topmost_first() {
         const windows = [
             { title: "low", lastActivated: 0, stackingOrder: 1 },

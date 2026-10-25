@@ -1,4 +1,5 @@
 .pragma library
+.import Rekta as Rekta
 
 // The Start's rules as pure functions, apart from its surface, so the tests check them without a compositor.
 
@@ -116,6 +117,40 @@ function listedApps(entries, files, currentDesktop) {
 // The program an entry runs, by its name: "konsole" for "/usr/bin/konsole --new-tab".
 function programName(command) {
     return String(command[0] ?? "").split("/").pop();
+}
+
+// The installed apps that match what was typed, the best first, A–Z among equals: by name, or by a word of their
+// generic name, keywords or program. Space around the text does not count (rekta.js:2192).
+function hits(apps, text) {
+    const typed = text.trim();
+    return Rekta.Match.ranked(apps, app => Rekta.Match.score(app.name, [app.genericName, ...app.keywords, app.exec].join(" "), typed));
+}
+
+// The steps that turn the list of ids `from` into `to`: first the removals, from the end, then each place in `to`
+// filled by moving an id there or inserting it; {remove: at}, {move: from, to: at} or {insert: at, id}.
+function steps(from, to) {
+    const keep = new Set(to);
+    const now = from.slice();
+    const found = [];
+    for (let at = now.length - 1; at >= 0; at--) {
+        if (!keep.has(now[at])) {
+            found.push({ remove: at });
+            now.splice(at, 1);
+        }
+    }
+    to.forEach((id, at) => {
+        const was = now.indexOf(id);
+        if (was === at)
+            return;
+        if (was < 0) {
+            found.push({ insert: at, id: id });
+        } else {
+            found.push({ move: was, to: at });
+            now.splice(was, 1);
+        }
+        now.splice(at, 0, id);
+    });
+    return found;
 }
 
 // The most recently active window first. After the shell starts only the active window has that time; the others
