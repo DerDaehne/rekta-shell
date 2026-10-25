@@ -36,14 +36,16 @@ Scope {
         stdout: StdioCollector {
             onStreamFinished: apps.read(Rules.showIn(text, apps.dirs))
         }
-        // Without grep every entry counts as shown.
+        // A grep that ran has ended its stream before this (Quickshell's Process::onFinished), so only a grep that
+        // never started gets here with no list: then every entry counts as shown.
         onRunningChanged: {
             if (!running && apps.list === null)
                 apps.read({});
         }
     }
 
-    // Setting it while grep runs reads once more after it.
+    // Set while grep runs, it runs once more as that run ends: Quickshell's Process::onFinished starts it again when it
+    // was asked to run meanwhile, so a change during a run is read too.
     Connections {
         target: DesktopEntries
 
