@@ -11,9 +11,9 @@ import "services"
 
 // The app bar on one screen (navigation.md, "App bar"): along the bottom edge, full width, and windows keep clear of
 // it. "go to" and the middle with the active window lead, the clock stands in the centre, the background apps (gone
-// while none runs), messages and controls trail, the controls opening the side panel on this screen; those whose
-// features come later stand disabled, their reason in their tooltip. Under a full-screen window it slides down out of
-// sight and comes back the same way.
+// while none runs), messages and controls trail, each opening the side panel on this screen on its facet; those
+// whose features come later stand disabled, their reason in their tooltip. Under a full-screen window it slides down
+// out of sight and comes back the same way.
 PanelWindow {
     id: panel
 
@@ -100,12 +100,12 @@ PanelWindow {
             }
         }
 
-        NoticeControl {
-            id: messages
-
-            board: panel.notices
-            area: bar.area
+        AppBarButton {
+            icon: "bell"
+            text: "meldungen"
+            count: panel.notices.unseen
             priority: 2
+            onClicked: panel.controlPanel.toggle(panel.modelData, 1)
         }
 
         AppBarButton {
@@ -146,14 +146,6 @@ PanelWindow {
         place: bar.floatPlace(clock, Qt.size(clock.calendar.width, clock.calendar.height), "centre")
 
         onDismissed: clock.closeCalendar(false)
-    }
-
-    FloatPopup {
-        barWindow: panel
-        surface: messages.list
-        place: bar.floatPlace(messages, Qt.size(messages.list.width, messages.list.height))
-
-        onDismissed: messages.list.close(false)
     }
 
     // A tooltip rises past the bar's own window too. It never takes the pointer, so its popup lets every click through.

@@ -25,8 +25,6 @@ TestCase {
     property Item scene
     property Toaster toaster
     property NoticeBoard board
-    // Untyped: qmllint stops without a word on members an Item-typed value lacks.
-    property var control
     property SignalSpy wanted
     property SignalSpy sounding
 
@@ -53,13 +51,6 @@ TestCase {
                 toaster: region
                 iconUrl: name => name === "konsole" ? testCase.konsoleIcon : ""
             }
-
-            NoticeControl {
-                objectName: "control"
-                x: 600
-                y: 580
-                board: noticeBoard
-            }
         }
     }
 
@@ -77,7 +68,6 @@ TestCase {
         scene = createTemporaryObject(sceneComponent, testCase);
         toaster = findChild(scene, "toaster");
         board = findChild(scene, "board");
-        control = findChild(scene, "control");
         wanted = createTemporaryObject(spyComponent, testCase, { target: board, signalName: "appWanted" });
         sounding = createTemporaryObject(spyComponent, testCase, { target: board, signalName: "sounding" });
     }
@@ -223,7 +213,7 @@ TestCase {
         compare(board.rows.length, 1, "the list keeps it, as Plasma's history does");
         verify(board.rows[0].unseen);
         compare(board.unseen, 1);
-        verify(!board.canAct(board.rows[0]), "an expired notification has no actions left");
+        compare(board.rows[0].notification, null, "an expired notification has no actions left");
     }
 
     function test_a_critical_toast_stays_until_it_is_pressed_and_later_ones_wait() {
@@ -270,7 +260,7 @@ TestCase {
         compare(sounding.count, 0, "no sound");
         compare(rowNames(), ["anna"]);
         compare(board.unseen, 1);
-        verify(board.canAct(board.rows[0]), "it is still open, so its default action still runs");
+        verify(board.actionOf(board.rows[0].notification, true), "it is still open, so its default action still runs");
         notify({ summary: "low", urgency: NoticeBoard.Low });
         compare(toaster.open, null);
         compare(calls, ["low closed 1"], "a low one nobody sees has expired");
@@ -305,7 +295,7 @@ TestCase {
         const toast = toaster.open;
         toast.pressText();
         compare(wanted.count, 1);
-        compare(wanted.signalArguments[0][0].desktopEntry, fake.desktopEntry);
+        compare(Array.from(wanted.signalArguments[0]), [fake.desktopEntry, fake.appName]);
         compare(calls, ["anna closed 2"]);
         verify(toast.done, "it ends as any action does");
         compare(board.rows.length, 0);
@@ -370,80 +360,131 @@ TestCase {
         compare(board.unseen, 0);
     }
 
-    function test_the_count_shows_only_unseen_ones_and_opening_the_list_sets_it_to_zero() {
+    function test_the_count_shows_only_unseen_ones_and_seeing_the_list_sets_it_to_zero() {
         notify({ summary: "anna" });
-        compare(control.count, 0, "a toast on screen is seen");
+        compare(board.unseen, 0, "a toast on screen is seen");
         runOut();
-        compare(control.count, 1, "its toast ran out unseen");
-        compare(control.words, "meldungen 1");
+        compare(board.unseen, 1, "its toast ran out unseen");
         board.quiet = true;
         notify({ summary: "ben" });
-        compare(control.count, 2);
-        mouseClick(control);
-        verify(control.list.open);
-        compare(control.count, 0);
-        compare(control.words, "meldungen");
+        compare(board.unseen, 2);
+        board.seen();
+        compare(board.unseen, 0);
         compare(board.rows.length, 2, "seen, they stay in the list");
     }
 
-    function test_the_list_shows_the_newest_first_with_the_app_word_the_summary_and_the_time() {
+    function test_a_row_shows_the_summary_one_line_of_the_body_and_the_picture_or_the_app_s_icon() {
         board.quiet = true;
-        notify({ appName: "chat", summary: "anna" }, [["default", "open"]]);
-        notify({ appName: "mail", summary: "invoice" }, [["default", "open"]]);
-        control.list.openAt(0);
-        const rows = control.list.items();
-        compare(rows.map(row => [row.lead, row.text]), [["mail", "invoice"], ["chat", "anna"], ["", "alle entfernen"]]);
-        compare(rows[0].keyHint, Calendar.timeWords(board.rows[0].time, Qt.locale()));
-        verify(rows[0].keyHint !== "");
+        notify({ summary: "anna", body: "lunch at noon?", appIcon: "konsole" });
+        notify({ summary: "", body: "disk almost full", image: testCase.picture });
+        compare(board.rows.map(row => [row.summary, row.body, row.icon]), [["disk almost full", "", testCase.picture], ["anna", "lunch at noon?", testCase.konsoleIcon]]);
     }
 
-    function test_choosing_a_row_runs_its_default_action_and_a_row_without_one_says_so() {
+    function test_removed_rows_leave_the_list_at_once_and_their_notifications_close_only_once_the_undo_window_has_run_out() {
         board.quiet = true;
-        notify({ summary: "anna" }, [["default", "open"]]);
-        notify({ summary: "ben" }, [["reply", "reply"]]);
-        control.list.openAt(0);
-        const rows = control.list.items();
-        compare(rows[0].label, "ben (keine aktion)");
-        verify(rows[0].disabled);
-        control.list.choose(rows[0]);
-        compare(calls, [], "a disabled row does nothing");
-        control.list.choose(rows[1]);
-        compare(calls, ["anna invoked default", "anna closed 2"]);
+        const anna = notify({ summary: "anna" });
+        notify({ summary: "ben" });
+        board.remove([board.rows[1]]);
         compare(rowNames(), ["ben"]);
-        verify(!control.list.open);
+        compare(toaster.open.text, "meldung entfernt");
+        compare(toaster.open.actionLabel, "undo");
+        compare(toaster.open.total, toaster.undoWindow, "the undo window: duration-toast in whole seconds");
+        time = toaster.undoWindow - 1;
+        toaster.open.step();
+        compare(calls, [], "nothing is closed while undo is possible");
+        runOut();
+        compare(calls, ["anna closed 2"]);
+        compare(anna.closedWith, NoticeBoard.Dismissed);
     }
 
-    function test_alle_entfernen_dismisses_every_notification_in_the_list() {
+    function test_undo_puts_the_rows_back_where_they_were_and_closes_nothing() {
+        board.quiet = true;
+        notify({ summary: "anna" });
+        notify({ summary: "ben" });
+        notify({ summary: "cleo" });
+        board.remove([board.rows[1]]);
+        notify({ summary: "dora" });
+        toaster.open.undo();
+        compare(rowNames(), ["dora", "cleo", "ben", "anna"]);
+        compare(calls, []);
+        compare(toaster.open, null);
+    }
+
+    function test_a_second_removal_joins_the_open_undo_toast_and_undo_brings_both_back() {
+        board.quiet = true;
+        notify({ summary: "anna" });
+        notify({ summary: "ben" });
+        notify({ summary: "cleo" });
+        board.remove([board.rows[0]]);
+        const toast = toaster.open;
+        time = 3000;
+        board.remove([board.rows[1]]);
+        compare(toaster.open, toast, "the same toast");
+        compare(toast.text, "2 meldungen entfernt");
+        compare(toast.remaining, toaster.undoWindow, "its window starts again");
+        compare(rowNames(), ["ben"]);
+        toast.undo();
+        compare(rowNames(), ["cleo", "ben", "anna"]);
+        compare(calls, []);
+    }
+
+    function test_removing_them_all_closes_them_all_once_the_window_has_run_out() {
         notify({ summary: "anna" });
         runOut();
         board.quiet = true;
         notify({ summary: "ben" });
         notify({ summary: "low", urgency: NoticeBoard.Low });
-        control.list.openAt(0);
-        const clear = findChild(control.list, "clear");
-        compare(control.list.items().slice(-1)[0], clear, "after the rows and a hairline");
-        control.list.choose(clear);
-        compare(calls, ["anna closed 1", "low closed 1", "ben closed 2"], "the expired one goes from the list; ben is dismissed");
+        board.remove(board.rows);
         compare(board.rows.length, 0);
-        control.list.openAt(0);
-        compare(clear.label, "alle entfernen (keine meldungen)");
-        compare(findChild(control.list, "clear").disabled, true);
+        compare(toaster.open.text, "2 meldungen entfernt");
+        runOut();
+        compare(calls, ["anna closed 1", "low closed 1", "ben closed 2"], "the expired one only leaves the list; ben is dismissed");
     }
 
-    function test_enter_opens_the_list_arrows_move_and_escape_gives_the_focus_back() {
+    function test_a_removed_notification_its_app_closes_or_replaces_in_the_window_is_gone_without_undo() {
         board.quiet = true;
+        const anna = notify({ summary: "anna" });
+        const ben = notify({ summary: "ben" });
+        notify({ summary: "cleo" });
+        board.remove([board.rows[1], board.rows[2]]);
+        anna.close(NoticeBoard.CloseRequested);
+        compare(toaster.open.text, "meldung entfernt", "one is left to undo");
+        ben.summary = "ben (2)";
+        ben.summaryChanged.emit();
+        compare(calls, ["anna closed 3", "ben (2) closed 2"], "replaced, it is removed for good");
+        verify(!toaster.open || toaster.open.done, "nothing is left to undo");
+        compare(rowNames(), ["cleo"]);
+    }
+
+    function test_the_undo_toast_takes_the_place_of_a_notification_s_toast_and_the_queue_waits_for_it() {
         notify({ summary: "anna" });
         notify({ summary: "ben" });
-        control.forceActiveFocus();
-        keyClick(Qt.Key_Return);
-        verify(control.list.open);
-        const rows = control.list.items();
-        verify(rows[0].activeFocus, "from the keyboard the first row has the focus");
-        keyClick(Qt.Key_Down);
-        verify(rows[1].activeFocus);
-        keyClick(Qt.Key_Escape);
-        verify(!control.list.open);
-        verify(control.activeFocus);
+        notify({ summary: "low", urgency: NoticeBoard.Low });
+        compare(toaster.open.title, "anna");
+        board.remove([board.rows[0]]);
+        compare(toaster.open.text, "meldung entfernt", "in place of anna's toast");
+        compare(calls, [], "anna stays open in the list");
+        runOut();
+        compare(calls, ["ben closed 2"]);
+        compare(toaster.open.title, "low", "then the queue goes on, without ben");
+        compare(rowNames(), ["anna"]);
+    }
+
+    function test_pressing_a_row_does_what_pressing_its_toast_does_and_a_row_that_ran_out_brings_its_app_forward() {
+        board.quiet = true;
+        notify({ summary: "anna" }, [["default", "open"]]);
+        const ben = notify({ summary: "ben" });
+        board.press(board.rows[1]);
+        compare(calls, ["anna invoked default", "anna closed 2"]);
+        board.press(board.rows[0]);
+        compare(Array.from(wanted.signalArguments[0]), [ben.desktopEntry, ben.appName]);
+        compare(calls.slice(2), ["ben closed 2"]);
+        board.quiet = false;
+        const cleo = notify({ summary: "cleo", appName: "mail", desktopEntry: "org.example.mail" });
+        runOut();
+        board.press(board.rows[0]);
+        compare(Array.from(wanted.signalArguments[1]), [cleo.desktopEntry, "mail"]);
+        compare(board.rows.length, 0, "the row goes as its toast would");
     }
 
     function test_the_sound_plays_the_hint_in_the_theme_kdeglobals_names_unless_suppressed() {
@@ -455,25 +496,15 @@ TestCase {
         compare(Sound.command({}, "ocean"), [], "no hint, no sound");
     }
 
-    // Both themes, with the list open above its control and a toast with a picture, a title and two lines.
-    function test_contact_sheet_of_a_notification_toast_and_the_list_in_both_themes() {
+    // Both themes: a toast with a picture, a title and two lines.
+    function test_contact_sheet_of_a_notification_toast_in_both_themes() {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             init();
-            board.quiet = true;
-            notify({ appName: "chat", summary: "anna" }, [["default", "open"]]);
-            notify({ appName: "mail", summary: "invoice 2026-10" }, [["default", "open"]]);
-            notify({ appName: "updates", summary: "12 updates installed" });
-            board.quiet = false;
             notify({ summary: "Mia", body: "Can we move the call to Thursday afternoon? I have the whole morning booked, so any time after lunch works.", image: testCase.picture }, [["default", "open"], ["reply", "reply"]]);
             tryCompare(findChild(toaster.open, "appIcon"), "status", Image.Ready);
-            control.list.openAt(1);
-            waitForRendering(scene);
-            control.list.x = control.width - control.list.width;
-            control.list.y = -control.list.height - Geometry.floatGap;
             waitForRendering(scene);
             grabImage(scene).save(`notices-sheet-${theme}.png`);
-            compare(control.count, 3, theme);
         }
     }
 }

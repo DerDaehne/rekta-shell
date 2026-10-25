@@ -7,6 +7,7 @@ import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import Quickshell.Wayland
 import org.kde.plasma.workspace.dbus as DBus
+import Notices
 import Panel
 import "services"
 
@@ -28,6 +29,7 @@ PanelWindow {
     // The default audio devices, bound by their tracker so their volume and muted are valid.
     required property PwNode sink
     required property PwNode source
+    required property NoticeBoard notices
     readonly property alias doNotDisturb: controls.doNotDisturb
     // Untyped, as qmllint sees Pipewire's own opaque copy of the model type, which lacks `values`.
     readonly property var nodes: Pipewire.nodes
@@ -96,8 +98,10 @@ PanelWindow {
             }
         }
 
-        // "meldungen", the notification centre's place.
-        Item {}
+        Messages {
+            board: surface.notices
+            onActed: panel.close()
+        }
     }
 
     GlobalShortcut {
@@ -107,11 +111,22 @@ PanelWindow {
         onPressed: surface.toggle(surface.primaryScreen, 0)
     }
 
+    GlobalShortcut {
+        name: "notifications"
+        text: "Open the notifications"
+        keys: [Qt.MetaModifier | Qt.Key_N]
+        onPressed: surface.toggle(surface.primaryScreen, 1)
+    }
+
     IpcHandler {
         target: "panel"
 
         function toggle(): void {
             surface.toggle(surface.primaryScreen, 0);
+        }
+
+        function notifications(): void {
+            surface.toggle(surface.primaryScreen, 1);
         }
     }
 

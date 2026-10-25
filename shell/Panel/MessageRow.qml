@@ -1,0 +1,217 @@
+import QtQuick
+import Rekta
+
+// One notification in the centre, a row on a hairline (rekta.css:68–70): the picture or the app's icon, square with a
+// tile's corners, the summary in semibold with the time in tabular figures at the end, and one line of the body, cut.
+// A click, Enter or Space presses it, tinted on hover and press like a toast's text. Pulled towards the trailing edge
+// it follows the pointer; let go past half its width it leaves, else it glides back. Leaving, it drifts and fades as a
+// row that leaves a list does (motion.md, "Arriving, leaving"); then it has gone.
+Item {
+    id: row
+
+    required property int index
+    required property int order
+    required property string app
+    required property string summary
+    required property string body
+    required property string icon
+    required property string time
+    // How far the pointer has pulled it towards the trailing edge.
+    property real pulled: 0
+    // Runs from 0 to 1 as it leaves.
+    property real leaving: 0
+    readonly property bool going: leaving > 0 || goingOut.running
+
+    signal pressed
+    // Delete was pressed on it, or it was pulled away: it should leave.
+    signal removing
+    // It has left.
+    signal gone
+
+    function leave() {
+        if (going)
+            return;
+        glidingBack.stop();
+        goingOut.start();
+    }
+
+    function letGo() {
+        if (pulled > Geometry.rowPullAway * width)
+            removing();
+        else
+            glidingBack.start();
+    }
+
+    width: parent ? parent.width : 0
+    implicitHeight: Geometry.hairline + 2 * Tokens.spaceS + heading.height + (detail.visible ? detail.height : 0)
+    activeFocusOnTab: !going
+    Accessible.role: Accessible.Button
+    Accessible.name: [app, summary, body, time].filter(part => part !== "").join(", ")
+    Accessible.onPressAction: pressed()
+
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Delete) {
+            removing();
+        } else if ([Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space].includes(event.key)) {
+            // A held key presses once.
+            if (!event.isAutoRepeat)
+                pressed();
+        } else {
+            return;
+        }
+        event.accepted = true;
+    }
+
+    NumberAnimation {
+        id: goingOut
+
+        target: row
+        property: "leaving"
+        to: 1
+        duration: Geometry.rowLeaveShare * Tokens.durationShort
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Tokens.easeOut
+        onFinished: row.gone()
+    }
+
+    // Let go short of half, it settles back as a state change does (motion.md, "State changes").
+    NumberAnimation {
+        id: glidingBack
+
+        target: row
+        property: "pulled"
+        to: 0
+        duration: Tokens.durationShort
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Tokens.easeBase
+    }
+
+    Item {
+        id: content
+
+        objectName: "content"
+        x: row.pulled + row.leaving * Geometry.rowLeaveDrift
+        width: row.width
+        height: row.height
+        opacity: 1 - row.leaving
+
+        Hairline {
+            width: row.width
+        }
+
+        Image {
+            objectName: "icon"
+            y: heading.y + (heading.height - height) / 2
+            width: Geometry.iconSize
+            height: Geometry.iconSize
+            sourceSize: Qt.size(width, height)
+            fillMode: Image.PreserveAspectCrop
+            source: row.icon
+        }
+
+        // A ring in the panel's ground, whose inner edge is the picture's rounded outline, as in a toast.
+        Rectangle {
+            x: -Tokens.radiusTile
+            y: heading.y + (heading.height - height) / 2
+            width: Geometry.iconSize + 2 * Tokens.radiusTile
+            height: width
+            color: "transparent"
+            radius: 2 * Tokens.radiusTile
+            border.width: Tokens.radiusTile
+            border.color: Tokens.color.bg
+        }
+
+        Body {
+            id: heading
+
+            objectName: "summary"
+            x: Geometry.iconSize + Tokens.spaceS
+            y: Geometry.hairline + Tokens.spaceS
+            width: row.width - x - when.width - Tokens.spaceM
+            text: row.summary
+            textFormat: Text.PlainText
+            font.weight: Tokens.fontWeightSemibold
+            wrapMode: Text.NoWrap
+            elide: Text.ElideRight
+        }
+
+        Meta {
+            id: when
+
+            objectName: "time"
+            x: row.width - width
+            anchors.baseline: heading.baseline
+            text: row.time
+            wrapMode: Text.NoWrap
+        }
+
+        Body {
+            id: detail
+
+            objectName: "body"
+            x: heading.x
+            y: heading.y + heading.height
+            width: row.width - x
+            visible: text !== ""
+            text: row.body
+            textFormat: Text.PlainText
+            wrapMode: Text.NoWrap
+            maximumLineCount: 1
+            elide: Text.ElideRight
+        }
+
+        // Hover and press lay `hover` over the row, as over a toast's text (rekta.css:916).
+        Rectangle {
+            objectName: "tint"
+            anchors.fill: parent
+            color: Tokens.color.hover
+            opacity: hover.hovered || tap.pressed ? 1 : 0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Tokens.durationShort
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: Tokens.easeBase
+                }
+            }
+        }
+
+        FocusRing {
+            shown: row.activeFocus
+        }
+    }
+
+    HoverHandler {
+        id: hover
+
+        cursorShape: Qt.PointingHandCursor
+    }
+
+    TapHandler {
+        id: tap
+
+        // A slow click is still a click.
+        longPressThreshold: 0
+        enabled: !row.going
+        onTapped: row.pressed()
+    }
+
+    DragHandler {
+        id: pull
+
+        target: null
+        yAxis.enabled: false
+        enabled: !row.going
+
+        onActiveTranslationChanged: {
+            if (active)
+                row.pulled = Math.max(0, activeTranslation.x);
+        }
+        onActiveChanged: {
+            if (active)
+                glidingBack.stop();
+            else
+                row.letGo();
+        }
+    }
+}

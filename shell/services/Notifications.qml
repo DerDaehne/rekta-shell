@@ -7,8 +7,8 @@ import Rekta
 
 // The session's notification server: it owns org.freedesktop.Notifications, and the board makes toasts and the list of
 // what it receives. Quickshell keeps no time; the board ends each notification. A press on a notification without a
-// default action brings its app forward: its window, or else the app started from its desktop entry. Sounds play as in
-// Plasma.
+// default action, or on a row of the list that ran out, brings its app forward: its window, or else the app started
+// from its desktop entry. Sounds play as in Plasma.
 // ponytail: no xdg-activation token goes with an action (Quickshell never sends ActivationToken), so an app on Wayland
 // may not raise itself on its default action; send one once the shell has a Wayland module of its own.
 Scope {
@@ -21,9 +21,9 @@ Scope {
     readonly property NoticeBoard board: noticeBoard
     property string soundTheme: "ocean"
 
-    function bringForward(notification: Notification) {
-        const entry = DesktopEntries.heuristicLookup(notification.desktopEntry || notification.appName);
-        const id = entry?.id ?? notification.desktopEntry;
+    function bringForward(desktopEntry: string, appName: string) {
+        const entry = DesktopEntries.heuristicLookup(desktopEntry || appName);
+        const id = entry?.id ?? desktopEntry;
         const window = Array.from(windows.all).find(other => other.appId === id);
         if (window)
             window.activate();
@@ -55,7 +55,7 @@ Scope {
         quiet: notifications.quiet
         iconUrl: name => name === "" || name.includes("://") ? name : Quickshell.iconPath(name, true)
 
-        onAppWanted: notification => notifications.bringForward(notification)
+        onAppWanted: (desktopEntry, appName) => notifications.bringForward(desktopEntry, appName)
         onSounding: notification => notifications.play(notification)
     }
 

@@ -2,11 +2,13 @@ import QtQuick
 import Rekta
 
 // Where the notifications the server receives go: one toast at a time, each after the one before has gone
-// (platforms.md, "Behaviours to rebuild"), and a list behind "meldungen N", newest first. A toast runs duration-toast;
-// a critical one, or one its app gives no timeout, stays until it is pressed. Low and transient ones toast but stay
-// out of the list, as Plasma's defaults have it. While `quiet` only critical ones toast; the others go into the list
-// unseen, and none follows as a toast later. A toast that ran out unseen stays in the list too, without its actions,
-// as Plasma keeps an expired one in its history. N counts the unseen ones; opening the list sees them all.
+// (platforms.md, "Behaviours to rebuild"), and the list of the notification centre, newest first. A toast runs
+// duration-toast; a critical one, or one its app gives no timeout, stays until it is pressed. Low and transient ones
+// toast but stay out of the list, as Plasma's defaults have it. While `quiet` only critical ones toast; the others go
+// into the list unseen, and none follows as a toast later. A toast that ran out unseen stays in the list too, without
+// its actions, as Plasma keeps an expired one in its history. N counts the unseen ones; opening the list sees them all.
+// Rows removed from the list leave it at once and offer undo in a toast, which takes the place of a notification's
+// toast; their notifications close only once that window has run out, as a closed notification cannot come back.
 // A notification here is the server's: appName, appIcon, summary, body, urgency, actions ({ identifier, text,
 // invoke() }), image, desktopEntry, transient, expireTimeout, lastGeneration, expire(), dismiss() and closed(reason).
 QtObject {
@@ -28,28 +30,34 @@ QtObject {
     property bool quiet: false
     // An image URL for an app icon's name or path.
     property var iconUrl: name => name
-    // Newest first: { notification (null once it has closed), app, summary, time, unseen, toast }.
-    // ponytail: every change hands out a new array, so an open list builds its rows anew and a focused row loses the
-    // focus; a ListModel would keep them, should a notification arriving under an open list bother.
+    // Newest first: { notification (null once it has closed), order (by arrival), appName, desktopEntry, summary,
+    // body, icon, time, unseen, toast }. Every change hands out a new array.
     property var rows: []
     readonly property int unseen: rows.filter(row => row.unseen).length
     property var waiting: []
+    // The record whose toast shows, or `removal` while the undo toast does.
     property var showing: null
+    // Removed rows whose undo window is still open.
+    property var pending: []
+    property int arrivals: 0
+    readonly property var removal: ({})
 
-    // The text of a notification without a default action was pressed: its app should come forward.
-    signal appWanted(var notification)
+    // A notification without a default action was pressed, or a row that ran out: its app should come forward.
+    signal appWanted(string desktopEntry, string appName)
     // Its toast begins, so its sound hint, if any, plays now.
     signal sounding(var notification)
 
     function arrive(notification: var) {
         const record = {
             notification,
-            app: notification.appName || notification.desktopEntry,
-            summary: headline(notification),
+            order: ++arrivals,
+            appName: notification.appName,
+            desktopEntry: notification.desktopEntry,
             time: new Date(),
             unseen: false,
             toast: null
         };
+        describe(record, notification);
         notification.closed.connect(reason => whenClosed(record, reason));
         notification.summaryChanged.connect(() => refresh(record));
         notification.bodyChanged.connect(() => refresh(record));
@@ -60,6 +68,14 @@ QtObject {
             return;
         waiting = [...waiting, record];
         next();
+    }
+
+    // What a row shows of its notification: its words as its toast has them, and the picture or else the app's icon.
+    function describe(record: var, notification: var) {
+        const words = toastWords(notification);
+        record.summary = words.title || words.text;
+        record.body = words.title ? words.text : "";
+        record.icon = notification.image || iconUrl(notification.appIcon);
     }
 
     function listed(notification: var): bool {
@@ -79,10 +95,6 @@ QtObject {
 
     function actionOf(notification: var, isDefault: bool): var {
         return notification?.actions.find(action => (action.identifier === "default") === isDefault) ?? null;
-    }
-
-    function canAct(row: var): bool {
-        return actionOf(row.notification, true) !== null;
     }
 
     function next() {
@@ -113,7 +125,7 @@ QtObject {
         showing = record;
         record.toast = toaster.show(words.text, {
             title: words.title,
-            icon: notification.image || iconUrl(notification.appIcon),
+            icon: record.icon,
             stays: notification.urgency === NoticeBoard.Critical || notification.expireTimeout === 0,
             act: act ? { label: act.text, run: () => act.invoke() } : null,
             open: { run: () => pressed(notification) },
@@ -128,38 +140,54 @@ QtObject {
             defaultAction.invoke();
             return;
         }
-        appWanted(notification);
+        appWanted(notification.desktopEntry, notification.appName);
         notification.dismiss();
     }
 
     // A pressed text or action has done its work by the time its toast ends; the other ends close the notification.
+    // The undo toast took the place of a replaced one, which the list keeps open, as it does one collected quietly.
     function ended(record: var, reason: string) {
-        showing = null;
+        if (showing === record)
+            showing = null;
         const notification = record.notification;
         if (notification && reason === "expired") {
             record.unseen = true;
             notification.expire();
         } else if (notification && reason === "dismissed") {
             notification.dismiss();
+        } else if (notification && reason === "replaced" && !listed(notification)) {
+            notification.expire();
         }
         next();
     }
 
-    // The server destroys a notification once it has closed; an expired one keeps its row, without actions.
+    // The server destroys a notification once it has closed; an expired one keeps its row, without actions. One its app
+    // closes while it waits out its undo window is gone without undo.
     function whenClosed(record: var, reason: int) {
         waiting = waiting.filter(other => other !== record);
         record.notification = null;
         rows = reason === NoticeBoard.Expired ? rows.slice() : rows.filter(row => row !== record);
         if (showing === record)
             record.toast.leave(false, "dismissed");
+        if (!pending.includes(record))
+            return;
+        pending = pending.filter(other => other !== record);
+        if (pending.length === 0)
+            toaster.open?.leave(false, "dismissed");
+        else
+            toaster.open.text = removedWords();
     }
 
-    // The app replaced it: the same notification, new words.
+    // The app replaced it: the same notification, new words. A removed one stays removed, for good.
     function refresh(record: var) {
         const notification = record.notification;
         if (!notification)
             return;
-        record.summary = headline(notification);
+        if (pending.includes(record)) {
+            notification.dismiss();
+            return;
+        }
+        describe(record, notification);
         rows = rows.slice();
         if (showing !== record)
             return;
@@ -173,13 +201,50 @@ QtObject {
         rows = rows.slice();
     }
 
-    function choose(row: var) {
-        actionOf(row.notification, true)?.invoke();
+    // A press on a row does what a press on its toast does; a row that ran out has no actions left, so its app comes
+    // forward and the row goes.
+    function press(row: var) {
+        if (row.notification) {
+            pressed(row.notification);
+            return;
+        }
+        rows = rows.filter(other => other !== row);
+        appWanted(row.desktopEntry, row.appName);
     }
 
-    function clear() {
-        const all = rows;
-        rows = [];
-        all.forEach(row => row.notification?.dismiss());
+    // Takes rows out of the list now and closes their notifications once the undo toast has gone without undo. A
+    // removal while that toast is open joins it.
+    function remove(removed: var) {
+        if (removed.length === 0)
+            return;
+        rows = rows.filter(row => !removed.includes(row));
+        pending = [...pending, ...removed];
+        showing = removal;
+        toaster.show(removedWords(), {
+            key: "removed",
+            undo: () => restore(),
+            onEnd: reason => undoEnded(reason)
+        });
+    }
+
+    function removedWords(): string {
+        return pending.length === 1 ? "meldung entfernt" : `${pending.length} meldungen entfernt`;
+    }
+
+    // Undo puts the rows back where they were: the list keeps the order of arrival.
+    function restore() {
+        rows = [...rows, ...pending].sort((a, b) => b.order - a.order);
+        pending = [];
+    }
+
+    // A later removal that joined the toast reports its end.
+    function undoEnded(reason: string) {
+        if (reason === "merged")
+            return;
+        const removed = pending;
+        pending = [];
+        showing = null;
+        removed.forEach(row => row.notification?.dismiss());
+        next();
     }
 }

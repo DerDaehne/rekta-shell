@@ -1,4 +1,3 @@
 module Notices
 NoticeBoard 1.0 NoticeBoard.qml
-NoticeControl 1.0 NoticeControl.qml
 Sound 1.0 Sound.js

@@ -99,7 +99,8 @@ FocusScope {
 
     visible: open
 
-    // Controls take their keys first; the rest come here.
+    // Controls take their keys first; the rest come here, and what the panel leaves goes to the key layers, such as
+    // Ctrl+Z for an open undo toast.
     Keys.onPressed: event => {
         if (!open)
             return;
@@ -108,7 +109,7 @@ FocusScope {
         else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up)
             moveFocus(event.key === Qt.Key_Down);
         else
-            return;
+            return KeyLayers.dispatch(event, Window.activeFocusItem);
         event.accepted = true;
     }
 

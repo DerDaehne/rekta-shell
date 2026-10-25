@@ -72,6 +72,7 @@ ShellRoot {
         startOpen: start.open
         sink: keys.sink
         source: keys.source
+        notices: notifications.board
 
         onClosed: start.takeKeyboardBack()
     }

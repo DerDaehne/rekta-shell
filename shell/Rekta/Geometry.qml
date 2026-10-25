@@ -5,7 +5,7 @@ import QtQuick
 // density (rekta.css, header), the motion of the loading line, the dots, the place change and live tile news, which
 // has no tokens yet, and the CSS timing keywords Rekta uses where it has no curve token (ease-in-out). Each value names
 // the rule it comes from in rekta.css (or rekta.js) at the pinned commit, except the windows stepping back behind the
-// Start, a motion Rekta has no row for yet.
+// Start, a motion Rekta has no row for yet, and how far a row is pulled away, a gesture it has no rule for yet.
 QtObject {
     // `.rk-rows > li { border-top: 1px solid var(--rk-text-contrast-low) }` (rekta.css:69)
     readonly property real hairline: 1
@@ -226,6 +226,15 @@ QtObject {
     // this (motion.md:9–35), so the shell's own values stand until Rekta has one.
     readonly property real fadeBackScale: 0.86
     readonly property real fadeBackBrightness: 0.78
+
+    // enter(): a row arrives from `translateY(-6px)` (rekta.js:3414); leave(): a row drifts to `translateX(12px)` over
+    // `duration-short × 0.6` (rekta.js:3420, :3423)
+    readonly property real rowEnterShift: 6
+    readonly property real rowLeaveDrift: 12
+    readonly property real rowLeaveShare: 0.6
+    // A row pulled towards its trailing edge past this share of its width goes when let go. Rekta has no gesture for
+    // rows yet, so the shell's own value stands until it has one.
+    readonly property real rowPullAway: 0.5
 
     // `.rk-sheet { width: min(32rem, 100%) }` (rekta.css:826), a rem being 16 logical px
     readonly property real sheetMaxWidth: 512
