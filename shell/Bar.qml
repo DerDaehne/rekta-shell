@@ -11,8 +11,9 @@ import "services"
 
 // The app bar on one screen (navigation.md, "App bar"): along the bottom edge, full width, and windows keep clear of
 // it. "go to" and the middle with the active window lead, the clock stands in the centre, the background apps (gone
-// while none runs), messages and controls trail; those whose features come later stand disabled, their reason in their
-// tooltip. Under a full-screen window it slides down out of sight and comes back the same way.
+// while none runs), messages and controls trail, the controls opening the side panel on this screen; those whose
+// features come later stand disabled, their reason in their tooltip. Under a full-screen window it slides down out of
+// sight and comes back the same way.
 PanelWindow {
     id: panel
 
@@ -20,6 +21,7 @@ PanelWindow {
     required property Windows windows
     required property NoticeBoard notices
     required property Tray tray
+    required property ControlPanel controlPanel
     // The keys' readout and the screen that shows it: the display stands in the bar of the primary screen only.
     required property KeyReadout readout
     required property ShellScreen primaryScreen
@@ -108,7 +110,7 @@ PanelWindow {
             icon: "tune"
             text: "steuerung"
             priority: 1
-            disabledReason: "kommt mit dem panel"
+            onClicked: panel.controlPanel.toggle(panel.modelData, 0)
         }
     }
 

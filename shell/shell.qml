@@ -33,7 +33,8 @@ ShellRoot {
         toaster: toasts.toaster
         windows: running
         launcher: appLauncher
-        quiet: (running.active?.fullScreen && running.active.isOn(primary.screen)) ?? false
+        // A full-screen window on the primary screen, or "nicht stören": only critical ones toast.
+        quiet: ((running.active?.fullScreen && running.active.isOn(primary.screen)) ?? false) || sidePanel.doNotDisturb
     }
 
     Variants {
@@ -51,11 +52,19 @@ ShellRoot {
             tray: backgroundApps
             readout: keys.readout
             primaryScreen: primary.screen
+            controlPanel: sidePanel
         }
     }
 
     StartSurface {
         windows: running
+        launcher: appLauncher
+        primaryScreen: primary.screen
+    }
+
+    ControlPanel {
+        id: sidePanel
+
         launcher: appLauncher
         primaryScreen: primary.screen
     }
