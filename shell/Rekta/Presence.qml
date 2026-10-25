@@ -57,7 +57,8 @@ QtObject {
                 xScale: motion.along("scale")
                 yScale: motion.along("scale")
             }
-            // A fading item fades as one, as CSS opacity does: drawn into a layer only while it is see-through.
+            // A fading item fades as one, as CSS opacity does: drawn into a layer only while it is see-through. Qt puts
+            // that layer's source beside the item, among its parent's children, until it is opaque again.
             property Binding opacityHeld: Binding {
                 target: motion.item
                 property: "opacity"

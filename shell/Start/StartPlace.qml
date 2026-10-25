@@ -76,7 +76,6 @@ FocusScope {
         if (!wanted)
             return;
         phase = "closing";
-        presence.complete();
         if (!options.back)
             returnTo = null;
         if (waitForWindows.running) {
@@ -111,7 +110,9 @@ FocusScope {
         turner.going = false;
     }
 
+    // A turn takes the parts at rest, as a swap does, and holds their opacity alone.
     function turn(from: Item, to: Item, options: var) {
+        presence.complete();
         quietly(() => turner.go(from, to, options));
         // Under reduced motion the turn lands at once.
         if (!turner.running)
@@ -200,9 +201,10 @@ FocusScope {
         return turner.partsOf(item).map(part => part.item);
     }
 
-    // What the Start shows changes: the parts in view go, and those in view after `apply` come.
+    // What the Start shows changes: the parts in view go, and those in view after `apply` come. The parts are taken
+    // with nothing moving: a fading item draws through a layer whose source Qt puts beside it, and that is no part.
     function swap(apply: var, arriving: int) {
-        presence.finish();
+        presence.complete();
         forgetTileFocus();
         presence.change(partsIn(body), [], apply, () => partsIn(body), arriving);
     }

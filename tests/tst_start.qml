@@ -992,6 +992,17 @@ TestCase {
         }
     }
 
+    // A fading item draws through a layer whose source Qt puts beside it, among the parts of the view.
+    function test_clearing_while_hits_still_fade_in_takes_only_the_hits_and_title_as_parts() {
+        openWithApps();
+        typeNow("kx");
+        keyClick(Qt.Key_Backspace);
+        tryVerify(() => start.hitTiles().some(tile => tile.opacity > 0 && tile.opacity < 1), 1000);
+        keyClick(Qt.Key_Backspace);
+        verify(named("presence").moving.every(motion => motion.item !== null));
+        tryVerify(() => named("column").visible && !named("presence").running, 2000);
+    }
+
     function test_more_than_sixty_changes_apply_at_once() {
         start.apps = Array.from({ length: 61 }, (_, i) => installedApp(`app ${i}`));
         openNow();
