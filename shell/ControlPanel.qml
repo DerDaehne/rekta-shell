@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import Quickshell.Wayland
 import org.kde.plasma.workspace.dbus as DBus
@@ -24,7 +25,14 @@ PanelWindow {
     required property ShellScreen primaryScreen
     // The Start is open; it stands on the primary screen.
     required property bool startOpen
+    // The default audio devices, bound by their tracker so their volume and muted are valid.
+    required property PwNode sink
+    required property PwNode source
     readonly property alias doNotDisturb: controls.doNotDisturb
+    // Untyped, as qmllint sees Pipewire's own opaque copy of the model type, which lacks `values`.
+    readonly property var nodes: Pipewire.nodes
+    // The sound cards and other audio devices, not the programs playing or recording.
+    readonly property list<PwNode> audioDevices: nodes.values.filter(node => node.audio && !node.isStream)
 
     // The panel has gone, and with it the surface.
     signal closed
@@ -66,6 +74,10 @@ PanelWindow {
             hasPowerProfiles: powerProfiles.registered
             powerProfile: hasPowerProfiles ? PowerProfiles.profile : PowerProfile.Balanced
             hasPerformanceProfile: hasPowerProfiles && PowerProfiles.hasPerformanceProfile
+            output: surface.sink
+            input: surface.source
+            outputs: surface.audioDevices.filter(node => node.isSink)
+            inputs: surface.audioDevices.filter(node => !node.isSink)
             onRun: command => surface.launcher.run(command)
             // The nested session reaches the host's system bus: only the session's own shell sets the profile.
             onPowerProfileChosen: profile => {
@@ -73,6 +85,12 @@ PanelWindow {
                     PowerProfiles.profile = profile;
                 else
                     console.info(`ControlPanel: would set the power profile ${PowerProfile.toString(profile)}`);
+            }
+            onDeviceChosen: node => {
+                if (node.isSink)
+                    Pipewire.preferredDefaultAudioSink = node;
+                else
+                    Pipewire.preferredDefaultAudioSource = node;
             }
         }
 

@@ -2,9 +2,9 @@ import QtQuick
 
 // One row of a menu (states.md, "Floating surfaces"; rekta.css:789–797): a lowercase verb or option at the density's
 // row height; a checkbox or radio option starts with a 10px square, filled when chosen; a key hint sits at the end.
-// A disabled item stays in the list, greyed, and says why in its label ("print (needs a printer)"). The menu moves
-// the focus between rows; the focused row shows the ring inside and the hover colour, and an enabled row under the
-// pointer takes the hover colour too (rekta.css:793, :1027).
+// A disabled item stays in the list, greyed, and says why in its label ("print (needs a printer)"). The menu moves the
+// focus between rows; the focused row shows the ring inside and the hover colour, and an enabled row under the pointer
+// takes the hover colour too (rekta.css:793, :1027). In a row narrower than its words they are cut.
 Item {
     id: item
 
@@ -108,7 +108,9 @@ Item {
         objectName: "label"
         x: item.textEdge
         anchors.verticalCenter: parent.verticalCenter
+        width: Math.max(0, item.width - item.textEdge - item.keySpace - Tokens.spaceM)
         text: item.label
+        elide: Text.ElideRight
         font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeS
         color: item.ink

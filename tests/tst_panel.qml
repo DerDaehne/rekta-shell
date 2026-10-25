@@ -19,6 +19,7 @@ TestCase {
     // What the panel asked the host to run, and the power profiles chosen in it, oldest first.
     property var commands: []
     property var chosenProfiles: []
+    property var chosenDevices: []
     property Item scene
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var side
@@ -67,6 +68,7 @@ TestCase {
             hasPowerProfiles: true
             onRun: command => testCase.commands = [...testCase.commands, command]
             onPowerProfileChosen: profile => testCase.chosenProfiles = [...testCase.chosenProfiles, profile]
+            onDeviceChosen: node => testCase.chosenDevices = [...testCase.chosenDevices, node]
         }
 
         Item {
@@ -107,6 +109,22 @@ TestCase {
                 anchors.fill: parent
             }
         }
+    }
+
+    // An audio device as PipeWire has it: its description and its audio's volume and muted.
+    component FakeDevice: QtObject {
+        property string description
+        property bool isSink: true
+        property QtObject audio: QtObject {
+            property real volume: 0.5
+            property bool muted: false
+        }
+    }
+
+    Component {
+        id: deviceComponent
+
+        FakeDevice {}
     }
 
     Component {
@@ -166,6 +184,7 @@ TestCase {
         Prefs.motion = "off";
         commands = [];
         chosenProfiles = [];
+        chosenDevices = [];
         scene = createTemporaryObject(sceneComponent, testCase);
         side = findChild(scene, "panel");
         controls = side.controls;
@@ -194,6 +213,27 @@ TestCase {
         while (row && !(row instanceof PanelRow))
             row = row.parent;
         return row;
+    }
+
+    // Two outputs and two inputs, the first of each the default, as the host hands them to the controls.
+    function giveSound(target: var): var {
+        const device = (description, isSink) => createTemporaryObject(deviceComponent, testCase, { description, isSink });
+        const sound = {
+            speakers: device("Speakers", true),
+            headphones: device("Headphones", true),
+            microphone: device("Microphone", false),
+            headset: device("Headset Microphone", false)
+        };
+        target.outputs = [sound.speakers, sound.headphones];
+        target.inputs = [sound.microphone, sound.headset];
+        target.output = sound.speakers;
+        target.input = sound.microphone;
+        return sound;
+    }
+
+    // The rows of a device list: the back row first, then one per device.
+    function levelRows(level: var): var {
+        return Array.from(level.children).filter(row => row instanceof MenuItem);
     }
 
     // A signal as a notification has them, to connect() to; the test emit()s it.
@@ -242,8 +282,11 @@ TestCase {
         compare(pivot.mapToItem(panel, 0, 0).x, Geometry.hairline + Tokens.spaceM, "space-m at the sides");
         compare(pivot.y, Tokens.spaceL, "space-l at the top");
         compare(pivot.width, contentWidth);
+        const facets = findChild(side, "facets");
+        compare(facets.mapToItem(panel, 0, 0).x, Geometry.hairline + Tokens.spaceM, "its facets too");
+        compare(facets.width, contentWidth);
         const scroller = findChild(side, "scroller");
-        compare(scroller.width, contentWidth);
+        compare(scroller.width, panel.width - Geometry.hairline, "they scroll across the ground, so no focus ring at their edge is cut off");
         compare(scroller.y + scroller.height, 640 - Tokens.spaceL, "and at the bottom");
         scene.height = 400;
         compare(panel.height, 400);
@@ -561,11 +604,243 @@ TestCase {
         compare(commands, [["loginctl", "lock-session"]]);
     }
 
+    function test_ton_shows_the_default_output_and_input_with_their_volume_and_stumm() {
+        const sound = giveSound(controls);
+        sound.speakers.audio.volume = 0.62;
+        sound.microphone.audio.muted = true;
+        side.show(0);
+        const group = findChild(controls, "sound");
+        verify(group.visible);
+        compare(findChild(group, "heading").text, "ton");
+        tryCompare(group, "y", 0, 1000, "the first group");
+        compare(findChild(rowOf(control("outputDevice")), "words").text, "ausgang · Speakers");
+        compare(findChild(rowOf(control("inputDevice")), "words").text, "eingang · Microphone");
+        compare(control("outputVolume").value, 0.62);
+        compare(findChild(control("outputVolume"), "output").text, "62%", "in tabular figures");
+        compare(findChild(control("outputVolume"), "output").font.features, { "tnum": 1 });
+        compare(control("inputVolume").value, 0.5);
+        verify(!control("outputMuted").checked);
+        verify(control("inputMuted").checked);
+        compare(findChild(rowOf(control("outputMuted")), "words").text, "stumm");
+        compare(control("outputVolume").Accessible.name, "lautstärke ausgang");
+        compare(control("inputMuted").Accessible.name, "stumm eingang");
+    }
+
+    function test_the_volume_slider_stands_below_its_words_as_wide_as_the_row() {
+        giveSound(controls);
+        side.show(0);
+        const slider = control("outputVolume");
+        const row = rowOf(slider);
+        waitForRendering(side);
+        compare(findChild(row, "words").text, "lautstärke");
+        compare(slider.width, row.width);
+        compare(findChild(row, "holder").x, 0);
+        compare(findChild(row, "holder").y, Geometry.hairline + Tokens.spaceS + findChild(row, "words").height);
+    }
+
+    function test_the_slider_and_stumm_set_the_device_and_follow_changes_from_elsewhere() {
+        const sound = giveSound(controls);
+        side.show(0);
+        const slider = control("outputVolume");
+        slider.forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        compare(sound.speakers.audio.volume, 0.51, "a step up sets the device's volume");
+        sound.speakers.audio.volume = 0.8;
+        compare(slider.value, 0.8, "a key or an app moves the slider");
+        compare(findChild(slider, "output").text, "80%");
+        sound.speakers.audio.volume = 1.4;
+        compare(slider.value, 1, "a raised volume shows as the end of the scale");
+        mouseClick(control("outputMuted"));
+        verify(sound.speakers.audio.muted, "stumm mutes the device");
+        sound.speakers.audio.muted = false;
+        verify(!control("outputMuted").checked, "and follows it");
+        control("inputVolume").forceActiveFocus();
+        keyClick(Qt.Key_Left);
+        compare(sound.microphone.audio.volume, 0.49, "the microphone the same");
+        mouseClick(control("inputMuted"));
+        verify(sound.microphone.audio.muted);
+    }
+
+    function test_rows_follow_another_default_device() {
+        const sound = giveSound(controls);
+        side.show(0);
+        sound.headphones.audio.volume = 0.3;
+        controls.output = sound.headphones;
+        compare(findChild(rowOf(control("outputDevice")), "words").text, "ausgang · Headphones");
+        compare(control("outputVolume").value, 0.3);
+    }
+
+    function test_without_audio_devices_ton_falls_away_and_without_an_input_only_its_rows_go() {
+        const sound = giveSound(controls);
+        side.show(0);
+        controls.input = null;
+        verify(findChild(controls, "sound").visible);
+        verify(!rowOf(control("inputDevice")).visible);
+        verify(!rowOf(control("inputVolume")).visible);
+        verify(!rowOf(control("inputMuted")).visible);
+        controls.output = null;
+        verify(!findChild(controls, "sound").visible);
+    }
+
+    function test_wählen_opens_the_device_list_in_place_of_the_groups_rows_headed_by_zurück() {
+        const sound = giveSound(controls);
+        side.show(0);
+        waitForRendering(side);
+        const group = findChild(controls, "sound");
+        const level = findChild(controls, "outputs");
+        mouseClick(control("outputDevice"));
+        verify(level.open);
+        verify(level.visible);
+        verify(!findChild(group, "rows").visible, "the list replaces the rows");
+        compare(findChild(group, "heading").text, "ton", "under the group's heading");
+        const rows = levelRows(level);
+        compare(rows.map(row => row.text), ["zurück · ausgang", "Speakers", "Headphones"]);
+        compare(rows[0].glyph, "back");
+        compare(rows.slice(1).map(row => row.kind), ["radio", "radio"]);
+        compare(rows.slice(1).map(row => row.checked), [true, false], "the current one is marked as a chosen menu option");
+        waitForRendering(side);
+        mouseClick(rows[2]);
+        compare(chosenDevices, [sound.headphones], "a click chooses");
+        verify(!level.open, "and goes back");
+        verify(findChild(group, "rows").visible);
+    }
+
+    function test_the_input_list_offers_the_inputs() {
+        const sound = giveSound(controls);
+        side.show(0);
+        waitForRendering(side);
+        mouseClick(control("inputDevice"));
+        const rows = levelRows(findChild(controls, "inputs"));
+        compare(rows.map(row => row.text), ["zurück · eingang", "Microphone", "Headset Microphone"]);
+        mouseClick(rows[2]);
+        compare(chosenDevices, [sound.headset]);
+    }
+
+    function test_the_back_row_goes_back_without_choosing() {
+        giveSound(controls);
+        side.show(0);
+        waitForRendering(side);
+        const level = findChild(controls, "outputs");
+        mouseClick(control("outputDevice"));
+        waitForRendering(side);
+        mouseClick(levelRows(level)[0]);
+        verify(!level.open);
+        compare(chosenDevices, []);
+    }
+
+    function test_from_the_keyboard_the_list_opens_a_device_is_chosen_and_the_focus_goes_back() {
+        const sound = giveSound(controls);
+        side.show(0);
+        const opener = control("outputDevice");
+        verify(opener.activeFocus, "the first control in steuerung");
+        keyClick(Qt.Key_Space);
+        const level = findChild(controls, "outputs");
+        verify(level.open);
+        const rows = levelRows(level);
+        verify(rows[1].activeFocus, "the focus starts on the current device");
+        keyClick(Qt.Key_Down);
+        verify(rows[2].activeFocus, "↓ to the next");
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Up);
+        verify(rows[0].activeFocus, "↑ to the back row");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        compare(chosenDevices, [sound.headphones], "Enter chooses");
+        verify(!level.open, "and goes back");
+        verify(opener.activeFocus, "to the control that opened it");
+    }
+
+    function test_escape_and_left_go_back_and_leave_the_panel_open() {
+        giveSound(controls);
+        side.show(0);
+        const opener = control("outputDevice");
+        const level = findChild(controls, "outputs");
+        for (const key of [Qt.Key_Escape, Qt.Key_Left]) {
+            opener.forceActiveFocus();
+            keyClick(Qt.Key_Return);
+            verify(level.open);
+            keyClick(key);
+            verify(!level.open, `${key} goes back`);
+            verify(side.open, "the panel stays");
+            verify(opener.activeFocus);
+        }
+        opener.forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Return);
+        verify(!level.open, "Enter on the back row goes back");
+        compare(chosenDevices, []);
+    }
+
+    function test_the_list_comes_in_from_the_trailing_edge_and_the_rows_come_back_from_the_leading_edge() {
+        Prefs.motion = "on";
+        giveSound(controls);
+        side.show(0);
+        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        const group = findChild(controls, "sound");
+        const enter = findChild(group, "enter");
+        compare(enter.duration, 0.75 * Tokens.durationModerate, "the next item, same place");
+        compare(enter.animations[0].easing.bezierCurve, Tokens.easeOut);
+        const shift = findChild(group, "shift");
+        compare(shift.x, 0, "the rows stand at first");
+        control("outputDevice").forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        compare(shift.x, Tokens.slideDistance, "forward, from the trailing edge");
+        compare(findChild(group, "holder").opacity, 0, "with a fade");
+        tryCompare(shift, "x", 0, Tokens.durationModerate * 4);
+        keyClick(Qt.Key_Escape);
+        compare(shift.x, -Tokens.slideDistance, "back, from the leading edge");
+        tryCompare(shift, "x", 0, Tokens.durationModerate * 4);
+    }
+
+    function test_under_reduced_motion_the_list_changes_at_once() {
+        giveSound(controls);
+        side.show(0);
+        const group = findChild(controls, "sound");
+        control("outputDevice").forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        verify(findChild(controls, "outputs").visible, "in at once");
+        compare(findChild(group, "shift").x, 0);
+        compare(findChild(group, "holder").opacity, 1);
+        keyClick(Qt.Key_Escape);
+        verify(findChild(group, "rows").visible, "and back at once");
+        compare(findChild(group, "shift").x, 0);
+    }
+
+    function test_the_panel_opens_again_on_the_groups_rows() {
+        giveSound(controls);
+        side.show(0);
+        waitForRendering(side);
+        mouseClick(control("outputDevice"));
+        verify(findChild(controls, "outputs").open);
+        side.close();
+        side.show(0);
+        verify(!findChild(controls, "outputs").open);
+        verify(findChild(findChild(controls, "sound"), "rows").visible);
+        verify(control("outputDevice").activeFocus);
+    }
+
+    function test_a_long_device_name_is_cut_in_its_row_and_in_the_list() {
+        const sound = giveSound(controls);
+        sound.speakers.description = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3)";
+        side.show(0);
+        waitForRendering(side);
+        const words = findChild(rowOf(control("outputDevice")), "words");
+        verify(words.truncated, "in the row");
+        mouseClick(control("outputDevice"));
+        waitForRendering(side);
+        const row = levelRows(findChild(controls, "outputs"))[1];
+        const label = findChild(row, "label");
+        verify(label.truncated, "in the list");
+        verify(label.x + label.width <= row.width - Tokens.spaceM);
+    }
+
     function test_the_groups_stand_in_order_with_headings_and_a_group_without_rows_falls_away() {
         side.show(0);
         const groups = ["sound", "connections", "display", "session"].map(name => findChild(controls, name));
-        verify(!groups[0].visible, "ton has no rows yet");
-        verify(!groups[1].visible, "nor verbindungen");
+        verify(!groups[0].visible, "ton without audio devices");
+        verify(!groups[1].visible, "verbindungen has no rows yet");
         verify(groups[2].visible);
         verify(groups[3].visible);
         compare(findChild(groups[2], "heading").text, "anzeige");
@@ -636,9 +911,13 @@ TestCase {
                 const contact = createTemporaryObject(contactComponent, testCase);
                 const panel = findChild(contact, "panel");
                 panel.controls.hasPerformanceProfile = true;
+                giveSound(panel.controls).speakers.audio.volume = 0.62;
                 panel.show(0);
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-sheet-${theme}-${density}.png`);
+                findChild(contact, "outputDevice").click();
+                waitForRendering(contact);
+                grabImage(contact).save(`panel-level-sheet-${theme}-${density}.png`);
                 verify(panel.open, `${theme} ${density}`);
                 contact.destroy();
             }

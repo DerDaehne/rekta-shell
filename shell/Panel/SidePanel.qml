@@ -184,13 +184,13 @@ FocusScope {
                 width: sidePanel.contentWidth
             }
 
+            // As wide as the ground, so the focus ring of a control at the content's edge is not cut off.
             Flickable {
                 id: scroller
 
                 objectName: "scroller"
-                x: Tokens.spaceM
                 y: pivot.y + pivot.height + Geometry.hairline
-                width: sidePanel.contentWidth
+                width: parent.width
                 height: parent.height - y - Tokens.spaceL
                 contentWidth: width
                 contentHeight: facetHolder.height
@@ -202,7 +202,8 @@ FocusScope {
                     id: facetHolder
 
                     objectName: "facets"
-                    width: scroller.width
+                    x: Tokens.spaceM
+                    width: sidePanel.contentWidth
                     height: (sidePanel.facets[currentIndex] as Item)?.implicitHeight ?? 0
                     currentIndex: pivot.currentIndex
                 }

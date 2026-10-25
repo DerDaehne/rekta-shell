@@ -70,6 +70,8 @@ ShellRoot {
         launcher: appLauncher
         primaryScreen: primary.screen
         startOpen: start.open
+        sink: keys.sink
+        source: keys.source
 
         onClosed: start.takeKeyboardBack()
     }

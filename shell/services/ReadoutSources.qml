@@ -9,7 +9,7 @@ import Readout
 
 // Feeds the key readout from the system: the default audio devices from PipeWire, the volume and microphone keys from
 // kglobalaccel's component "kmix", the brightness keys from powerdevil and the layout from KWin. The shell registers none
-// of these keys; kded6 and powerdevil act on them, and this only listens.
+// of these keys; kded6 and powerdevil act on them, and this only listens. The side panel shares the bound devices.
 // ponytail: through plasma-workspace's DBus module, whose fixed names and paths suffice; move it to the shell's own DBus
 // module once there is one.
 Scope {
