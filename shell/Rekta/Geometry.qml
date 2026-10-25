@@ -109,8 +109,23 @@ QtObject {
     readonly property real floatShift: 4
     // place(): `gap = 4` between a control and its floating surface (rekta.js:1655)
     readonly property real floatGap: 4
-    // `.rk-menu-item:focus-visible { outline-offset: -2px }` (rekta.css:793)
+    // `.rk-menu-item:focus-visible { outline-offset: -2px }` (rekta.css:793), and the active row of a long list's
+    // (rekta.css:472)
     readonly property real focusRingInsetInRow: 2
+    // A long list's row: `padding: 0 var(--rk-space-s) 0 calc(14px + var(--rk-space-s))` (rekta.css:468); chosen, a
+    // checkmark in that padding: `left: var(--rk-space-xs); top: 50%; width: 11px; height: 6px; margin-top: -5px;
+    // border-left: 2px …; border-bottom: 2px …; transform: rotate(-45deg)` (rekta.css:473–475)
+    readonly property real listRowLead: 14
+    readonly property real listCheckWidth: 11
+    readonly property real listCheckHeight: 6
+    readonly property real listCheckRaise: 5
+    readonly property real listCheckStroke: 2
+    readonly property real listCheckAngle: -45
+    // Beyond the rows in view, `over = 6` more either side exist (rekta.js:2941)
+    readonly property int listRowsAround: 6
+    // `.rk-ghost { width: 8em; height: 0.75em }` (rekta.css:673), in em of the text size
+    readonly property real ghostWidth: 8
+    readonly property real ghostHeight: 0.75
     // `.rk-menu-item[role='menuitemcheckbox']::before { width: 10px; height: 10px; border: 1px solid currentColor }`
     // (rekta.css:795)
     readonly property real menuCheck: 10

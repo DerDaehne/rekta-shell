@@ -64,3 +64,5 @@ AppBarDisplay 1.0 AppBarDisplay.qml
 Month 1.0 Month.qml
 Echo 1.0 Echo.qml
 Backdrop 1.0 Backdrop.qml
+LongList 1.0 LongList.qml
+internal ListRow ListRow.qml
