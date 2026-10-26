@@ -93,10 +93,6 @@ Column {
     bottomPadding: Tokens.spaceL
     spacing: Tokens.spaceM
 
-    onVisibleChanged: {
-        if (visible)
-            board.seen();
-    }
     Component.onCompleted: sync()
 
     Keys.onPressed: event => {
@@ -113,6 +109,12 @@ Column {
         function onRowsChanged() {
             messages.sync();
         }
+    }
+
+    Binding {
+        target: messages.board
+        property: "listInSight"
+        value: messages.visible
     }
 
     ListModel {

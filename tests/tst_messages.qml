@@ -255,6 +255,16 @@ TestCase {
         compare(board.unseen, 0);
     }
 
+    function test_what_comes_while_the_list_is_in_sight_is_seen_there_and_only_there() {
+        openOnMessages();
+        three();
+        compare(board.unseen, 0);
+        compare(opener.words, "meldungen");
+        findChild(side, "pivot").select(0);
+        notify({ summary: "dora" });
+        compare(board.unseen, 1, "on the other facet it counts");
+    }
+
     function test_focus_starts_at_the_newest_row_and_up_down_home_end_move_through_the_rows() {
         three();
         openOnMessages();

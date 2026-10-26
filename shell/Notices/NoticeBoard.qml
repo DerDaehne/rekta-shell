@@ -6,7 +6,8 @@ import Rekta
 // duration-toast; a critical one, or one its app gives no timeout, stays until it is pressed. Low and transient ones
 // toast but stay out of the list, as Plasma's defaults have it. While `quiet` only critical ones toast; the others go
 // into the list unseen, and none follows as a toast later. A toast that ran out unseen stays in the list too, without
-// its actions, as Plasma keeps an expired one in its history. N counts the unseen ones; opening the list sees them all.
+// its actions, as Plasma keeps an expired one in its history. N counts the unseen ones; opening the list sees them all,
+// and what comes into the list while it is in sight is seen there.
 // Rows removed from the list leave it at once and offer undo in a toast, which takes the place of a notification's
 // toast; their notifications close only once that window has run out, as a closed notification cannot come back.
 // A notification here is the server's: appName, appIcon, summary, body, urgency, actions ({ identifier, text,
@@ -28,6 +29,7 @@ QtObject {
 
     required property Toaster toaster
     property bool quiet: false
+    property bool listInSight: false
     // An image URL for an app icon's name or path.
     property var iconUrl: name => name
     // Newest first: { notification (null once it has closed), order (by arrival), appName, desktopEntry, summary,
@@ -114,7 +116,7 @@ QtObject {
             record.notification.expire();
             return;
         }
-        record.unseen = true;
+        record.unseen = !listInSight;
         rows = rows.slice();
     }
 
@@ -151,7 +153,7 @@ QtObject {
             showing = null;
         const notification = record.notification;
         if (notification && reason === "expired") {
-            record.unseen = true;
+            record.unseen = !listInSight;
             notification.expire();
         } else if (notification && reason === "dismissed") {
             notification.dismiss();
@@ -194,6 +196,11 @@ QtObject {
         const words = toastWords(notification);
         record.toast.title = words.title;
         record.toast.text = words.text;
+    }
+
+    onListInSightChanged: {
+        if (listInSight)
+            seen();
     }
 
     function seen() {

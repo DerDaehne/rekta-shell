@@ -373,6 +373,23 @@ TestCase {
         compare(board.rows.length, 2, "seen, they stay in the list");
     }
 
+    function test_while_the_list_is_in_sight_what_comes_into_it_is_seen_there() {
+        board.quiet = true;
+        notify({ summary: "anna" });
+        board.listInSight = true;
+        compare(board.unseen, 0, "in sight, it has seen them all");
+        notify({ summary: "ben" });
+        compare(board.unseen, 0, "collected quietly");
+        board.quiet = false;
+        notify({ summary: "cleo" });
+        runOut();
+        compare(board.unseen, 0, "its toast ran out");
+        board.listInSight = false;
+        notify({ summary: "dora" });
+        runOut();
+        compare(board.unseen, 1, "out of sight it counts again");
+    }
+
     function test_a_row_shows_the_summary_one_line_of_the_body_and_the_picture_or_the_app_s_icon() {
         board.quiet = true;
         notify({ summary: "anna", body: "lunch at noon?", appIcon: "konsole" });
