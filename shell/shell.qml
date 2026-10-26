@@ -74,7 +74,11 @@ ShellRoot {
         source: keys.source
         notices: notifications.board
 
-        onClosed: start.takeKeyboardBack()
+        // Under the session banner the Start waits: asked now, KWin would raise the Start over the banner.
+        onClosed: {
+            if (!session.visible)
+                start.takeKeyboardBack();
+        }
         onSessionAsked: session.show("")
     }
 
@@ -84,7 +88,7 @@ ShellRoot {
         launcher: appLauncher
         primaryScreen: primary.screen
 
-        onClosed: start.takeKeyboardBack()
+        onGone: start.takeKeyboardBack()
     }
 
     // After the Start, so a toast stands above it.

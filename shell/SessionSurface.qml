@@ -22,7 +22,7 @@ PanelWindow {
     required property ShellScreen primaryScreen
 
     // The banner has gone, and with it the surface.
-    signal closed
+    signal gone
 
     // Opens with the focus on the named action ("lock", "switchUser", "logout", "reboot", "shutdown", "systemMonitor"),
     // or on "sperren" for any other name.
@@ -55,7 +55,7 @@ PanelWindow {
         anchors.fill: parent
         focus: true
         actions: session.actions
-        onClosed: surface.closed()
+        onClosed: surface.gone()
     }
 
     SessionActions {
@@ -70,7 +70,8 @@ PanelWindow {
     IpcHandler {
         target: "session"
 
-        function show(): void {
+        // Not "show": `qs ipc call session show` describes the target instead of calling it.
+        function open(): void {
             surface.show("");
         }
     }

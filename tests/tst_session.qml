@@ -201,6 +201,8 @@ TestCase {
         compare(comingIn.easing.bezierCurve, Tokens.easeIn);
         compare(part("shadingIn").duration, Tokens.durationShort);
         sessionBanner.show("");
+        compare(sessionBanner.entry, 0, "the banner starts away");
+        compare(sessionBanner.shade, 0, "and the shading clear");
         sessionBanner.entry = 0.5;
         sessionBanner.shade = 0.5;
         const banner = part("banner");
@@ -390,6 +392,9 @@ TestCase {
         const why = part("why");
         verify(why.visible);
         compare(why.text, "Der Anmeldemanager bietet keinen Wechsel an.");
+        waitForRendering(sessionBanner);
+        const last = button("systemMonitor");
+        compare(why.x, last.x + last.width + Tokens.spaceS, "after the last button, never over them");
     }
 
     function test_without_the_system_monitor_its_button_cannot_act_and_says_why() {
