@@ -57,6 +57,13 @@ QtObject {
     readonly property real inputPadding: 12
     readonly property real inputBorder: 1
     readonly property real inputErrorBorder: 2
+    // `select.rk-input { padding-right: 36px; background-position: calc(100% - 18px) 55%, calc(100% - 13px) 55%;
+    // background-size: 5px 5px }` (rekta.css:296–298): a caret pointing down from two 5px halves, the second ending 13px
+    // before the end of the padding box, 55% down the room they leave
+    readonly property real selectPaddingEnd: 36
+    readonly property real selectCaretEnd: 13
+    readonly property real selectCaretHalf: 5
+    readonly property real selectCaretDown: 0.55
     // `.rk-toggle-track { width: 46px; height: 22px; padding: 2px; border: 2px }`, the thumb `width: 12px` moving
     // `translateX(34px)`, the fill `calc(100% - 14px)` of the content box (rekta.css:335–345; border-box, :38)
     readonly property real toggleWidth: 46
@@ -131,6 +138,13 @@ QtObject {
     // (rekta.css:795)
     readonly property real menuCheck: 10
     readonly property real menuCheckBorder: 1
+    // An option of a field's list: `[role='option']::before { width: 10px; height: 6px; margin: -3px 2px 0 0 }`, the
+    // chosen one's check `border-width: 0 0 2px 2px; transform: rotate(-45deg)`, a list row's stroke and angle
+    // (rekta.css:324–325)
+    readonly property real optionCheckWidth: 10
+    readonly property real optionCheckHeight: 6
+    readonly property real optionCheckLift: 3
+    readonly property real optionCheckGap: 2
     // `.rk-tip { max-width: min(20rem, …); padding: 4px var(--rk-space-s) }` (rekta.css:417–418)
     readonly property real tipMaxWidth: 320
     readonly property real tipPaddingY: 4
