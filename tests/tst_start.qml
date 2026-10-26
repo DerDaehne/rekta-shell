@@ -928,17 +928,50 @@ TestCase {
         verify(start.wanted);
     }
 
-    function test_letters_typed_while_the_start_opens_count_and_show_once_it_has_landed() {
+    function test_a_letter_typed_right_after_opening_shows_the_title_and_the_hits_before_the_parts_would_have_come() {
         start.apps = searchableApps();
         start.open();
         keyClick("k");
+        verify(!start.turning, "the opening stands at its end");
+        compare(start.phase, "open");
+        verify(start.holdsKeyboard, "the windows stay back");
+        tryVerify(() => named("searchTitle").visible, Geometry.turnOverlap * Tokens.durationModerate);
+        compare(named("typed").text, "k");
+        compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
+    }
+
+    function test_a_letter_typed_while_the_parts_turn_in_ends_the_turn_in_its_end_state_and_the_search_follows() {
+        start.apps = searchableApps();
+        start.open();
         tryVerify(() => turner.running, 2000);
-        keyClick("o");
-        verify(!named("searchTitle").visible, "the search waits for the landing");
-        tryVerify(() => start.phase === "open", 3000);
-        tryVerify(() => named("searchTitle").visible, 1000);
-        compare(named("typed").text, "ko");
-        compare(hitNames(), ["Konsole"]);
+        turner.paused = true;
+        turner.elapsed = 1;
+        const parts = [named("pivot"), ...tilesIn("pinned")];
+        keyClick("k");
+        turner.paused = false;
+        verify(!turner.running);
+        compare(start.phase, "open");
+        verify(parts.every(part => Array.from(part.transform).every(transform => (transform as Rotation) === null)), "turned all the way in");
+        compare(motionsOf(parts).length, parts.length, "and leave from there");
+        tryVerify(() => named("searchTitle").visible, 1000, "the paused turn would never have landed");
+        compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
+    }
+
+    function test_arrows_and_enter_act_on_the_hits_right_after_a_letter_typed_while_the_start_opens() {
+        start.apps = searchableApps();
+        start.open();
+        keyClick("k");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Right);
+        verify(start.hitTiles()[1].activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Konsole"]);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        start.open();
+        tryVerify(() => turner.running, 2000);
+        keyClick("k");
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Konsole", "launch Kate"], "enter presses the first hit");
     }
 
     function test_the_place_s_parts_leave_then_the_title_and_the_hits_arrive() {

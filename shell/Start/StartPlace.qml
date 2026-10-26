@@ -38,7 +38,7 @@ FocusScope {
     // The time of the last wheel event, to tell one gesture from the next.
     property double lastWheel: 0
     readonly property Item focusItem: Window.activeFocusItem
-    // What was typed. It is kept while the Start turns and shows once it has landed.
+    // What was typed.
     property string query: ""
     // The search shows, or is on its way, in place of the pivot and the places.
     property bool searching: false
@@ -126,7 +126,6 @@ FocusScope {
         }
         if (phase === "opening")
             phase = "open";
-        refresh();
     }
 
     // The parts are out: the glass goes, and the keyboard goes back, as KWin hands it on only when a surface goes and the
@@ -172,7 +171,7 @@ FocusScope {
     }
 
     // The search is a view of the place, not a place (collections.md, "Search and filters"): it comes and goes without a
-    // turn, and what it shows comes and goes as items do (Presence). It follows what was typed once nothing turns.
+    // turn, and what it shows comes and goes as items do (Presence). It follows what was typed, never amid a turn.
     function refresh() {
         if (turning)
             return;
@@ -400,12 +399,23 @@ FocusScope {
             appList.forceActiveFocus();
     }
 
+    // Typing shows the search at once: a turn still running, or the parts still waiting to turn in, ends in its end
+    // state first, as a navigation that comes while a turn runs finishes it (rekta.js:349–350, :557–558).
+    function typeOn(text: string) {
+        if (waitForWindows.running) {
+            waitForWindows.stop();
+            turn(null, body, {});
+        }
+        turner.finish();
+        query += text;
+    }
+
     function isEnter(event: KeyEvent): bool {
         return event.key === Qt.Key_Return || event.key === Qt.Key_Enter;
     }
 
-    // Back goes even while the Start turns, as a navigation always does, and so does typing, which shows once the
-    // Start has landed; nothing else does.
+    // Back goes even while the Start turns, as a navigation always does, and so does typing, which ends the turn;
+    // nothing else does.
     function useKey(event: KeyEvent): bool {
         const directions = {
             [Qt.Key_Left]: "left",
@@ -416,7 +426,7 @@ FocusScope {
         if (goesBack(event))
             back();
         else if (typesText(event))
-            query += event.text;
+            typeOn(event.text);
         else if (event.key === Qt.Key_Backspace && query !== "")
             query = query.slice(0, -1);
         else if (turning)
