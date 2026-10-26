@@ -11,12 +11,10 @@ import Notices
 import Panel
 import "services"
 
-// The side panel's surface, docked at the trailing edge of the screen it opens on: as wide as the panel, from the top
-// down to the app bar, on the app bar's layer, so a full-screen window lies above it. It keeps its width clear while
-// the panel stays, so maximised windows make room, and frees it as the panel starts to leave; the rest of the screen
-// stays as it is. It is mapped only while the panel shows and takes the keyboard as it opens; a click into a window
-// takes the keyboard without closing the panel. Over the open Start it rises to the Start's layer, which KWin lays out
-// before the app bar's, so there it reaches down over the bar the Start covers.
+// The side panel's surface at the trailing edge of the screen it opens on: as wide as the panel, from the top down to
+// the app bar, over the windows, which keep their size; on the app bar's layer, so a full-screen window lies above it.
+// It is mapped only while the panel shows and takes the keyboard as it opens; a click into a window takes the keyboard
+// without closing the panel. Over the open Start it rises to the Start's layer.
 // ponytail: a new layer surface takes some 60ms to its first frame, so the first frames of the way in may not show;
 // keep the surface mapped, as the Start does, should that show.
 PanelWindow {
@@ -54,11 +52,11 @@ PanelWindow {
     anchors.top: true
     anchors.bottom: true
     implicitWidth: panel.panelWidth
-    exclusiveZone: panel.reservedWidth
+    // No zone of its own (Quickshell's Auto would keep its width clear), yet clear of the app bar's.
+    exclusionMode: ExclusionMode.Normal
     color: "transparent"
     visible: panel.open
-    // A dock to KWin: a namespace it does not know makes a normal window, which tiling scripts move into the work area,
-    // out of the zone the surface keeps clear itself.
+    // A dock to KWin: a namespace it does not know makes a normal window, which tiling scripts move like an app's.
     WlrLayershell.namespace: "dock"
     WlrLayershell.layer: startOpen && screen === primaryScreen ? WlrLayer.Overlay : WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand

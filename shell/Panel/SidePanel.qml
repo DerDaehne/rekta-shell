@@ -21,8 +21,6 @@ FocusScope {
     readonly property real contentWidth: 2 * Tokens.tileUnit + Tokens.spaceS
     readonly property real panelWidth: Geometry.hairline + 2 * Tokens.spaceM + contentWidth
     readonly property real shift: (1 - entry) * panelWidth
-    // The width its host keeps clear for it: all of it from show(), none from close() on.
-    readonly property real reservedWidth: open && !going.running ? panelWidth : 0
     default property alias facets: facetHolder.content
     // Where its controls' lists float: on its ground, unclipped, sliding with it.
     readonly property alias overlay: ground

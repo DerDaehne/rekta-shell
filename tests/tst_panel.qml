@@ -427,20 +427,6 @@ TestCase {
         compare(panel.x, 900);
     }
 
-    function test_its_host_keeps_its_width_clear_from_the_moment_it_opens_and_frees_it_as_it_starts_to_leave() {
-        Prefs.motion = "on";
-        compare(side.reservedWidth, 0, "closed");
-        side.show(0);
-        compare(side.reservedWidth, side.panelWidth, "at once, before it is in");
-        verify(side.entry < 1);
-        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
-        side.close();
-        verify(side.open, "it leaves");
-        compare(side.reservedWidth, 0, "and frees its width at once");
-        side.show(0);
-        compare(side.reservedWidth, side.panelWidth, "coming back, it takes it again");
-    }
-
     function test_shown_again_while_it_leaves_it_comes_back() {
         Prefs.motion = "on";
         side.show(0);
@@ -460,7 +446,6 @@ TestCase {
         side.close();
         verify(!side.open, "gone at once, never skipped");
         verify(!side.visible);
-        compare(side.reservedWidth, 0);
     }
 
     function test_escape_closes_it_and_the_focus_goes_back_to_where_it_was() {
