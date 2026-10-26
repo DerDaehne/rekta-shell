@@ -76,7 +76,7 @@ ShellRoot {
         notices: notifications.board
 
         // Under the session banner the Start waits: asked now, KWin would raise the Start over the banner.
-        onClosed: {
+        onPanelClosed: {
             if (!session.visible)
                 start.takeKeyboardBack();
         }

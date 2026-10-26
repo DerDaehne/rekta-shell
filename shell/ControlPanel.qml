@@ -35,7 +35,7 @@ PanelWindow {
     readonly property list<PwNode> audioDevices: nodes.values.filter(node => node.audio && !node.isStream)
 
     // The panel has gone, and with it the surface.
-    signal closed
+    signal panelClosed
     // "sitzung …": the panel goes, and the session banner is to come.
     signal sessionAsked
 
@@ -73,7 +73,7 @@ PanelWindow {
         anchors.fill: parent
         focus: true
         titles: ["steuerung", "meldungen"]
-        onClosed: surface.closed()
+        onClosed: surface.panelClosed()
 
         Controls {
             id: controls
