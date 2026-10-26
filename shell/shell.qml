@@ -103,6 +103,17 @@ ShellRoot {
         }
     }
 
+    // Ctrl+Alt+Del, and KDE's own prompts to log out, restart or shut down. The banner takes the side panel's place, as
+    // from "sitzung …": KWin hands the keyboard on to a window or the Start once the banner goes, never to the panel.
+    LogoutPrompt {
+        sessionDesktop: Quickshell.env("XDG_SESSION_DESKTOP") ?? ""
+
+        onRequested: kind => {
+            sidePanel.close();
+            session.show(kind);
+        }
+    }
+
     // After the Start, so a toast stands above it.
     Toasts {
         id: toasts
