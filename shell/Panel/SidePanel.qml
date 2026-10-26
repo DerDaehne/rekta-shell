@@ -22,8 +22,6 @@ FocusScope {
     readonly property real panelWidth: Geometry.hairline + 2 * Tokens.spaceM + contentWidth
     readonly property real shift: (1 - entry) * panelWidth
     default property alias facets: facetHolder.content
-    // Where its controls' lists float: on its ground, unclipped, sliding with it.
-    readonly property alias overlay: ground
 
     // It has gone.
     signal closed
@@ -157,8 +155,6 @@ FocusScope {
         Accessible.name: sidePanel.titles[sidePanel.currentIndex] ?? ""
 
         Rectangle {
-            id: ground
-
             objectName: "ground"
             x: Geometry.hairline
             width: parent.width - Geometry.hairline

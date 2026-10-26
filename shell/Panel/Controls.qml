@@ -26,8 +26,6 @@ Column {
     // The devices of each kind to choose from, nodes as above.
     property var outputs: []
     property var inputs: []
-    // Where the selects' lists float.
-    property Item overlay: Window.contentItem
 
     // A command for the host to run on the session.
     signal run(var command)
@@ -195,7 +193,6 @@ Column {
             objectName: `${deviceRow.kind}Device`
             // As wide as the row, so it stands below its label (forms.md, "Fields"; rekta.css:265, an input is 100% wide).
             implicitWidth: deviceRow.width
-            overlay: controls.overlay
             label: deviceRow.name
             options: deviceRow.devices.map(node => ({ text: controls.deviceName(node), value: node }))
             currentIndex: deviceRow.devices.indexOf(deviceRow.node)

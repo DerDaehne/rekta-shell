@@ -78,7 +78,6 @@ PanelWindow {
         Controls {
             id: controls
 
-            overlay: panel.overlay
             // PowerProfiles is asked only once the daemon runs: asked before, it would have the system bus start it.
             hasPowerProfiles: powerProfiles.registered
             powerProfile: hasPowerProfiles ? PowerProfiles.profile : PowerProfile.Balanced

@@ -121,6 +121,11 @@ QtObject {
     // `.rk-menu-item:focus-visible { outline-offset: -2px }` (rekta.css:793), and the active row of a long list's
     // (rekta.css:472)
     readonly property real focusRingInsetInRow: 2
+    // `[data-rk-select] > [aria-selected='true']:focus-visible { outline-color: currentColor; outline-offset: -4px }`
+    // (rekta.css:752): on a chosen row the ring sits further in
+    readonly property real focusRingInsetOnChosenRow: 4
+    // A tree branch closes in 0.7 of the time it opens in: `duration: d * 0.7` (rekta.js:2779)
+    readonly property real branchCloseShare: 0.7
     // A long list's row: `padding: 0 var(--rk-space-s) 0 calc(14px + var(--rk-space-s))` (rekta.css:468); chosen, a
     // checkmark in that padding: `left: var(--rk-space-xs); top: 50%; width: 11px; height: 6px; margin-top: -5px;
     // border-left: 2px …; border-bottom: 2px …; transform: rotate(-45deg)` (rekta.css:473–475)
@@ -139,13 +144,6 @@ QtObject {
     // (rekta.css:795)
     readonly property real menuCheck: 10
     readonly property real menuCheckBorder: 1
-    // An option of a field's list: `[role='option']::before { width: 10px; height: 6px; margin: -3px 2px 0 0 }`, the
-    // chosen one's check `border-width: 0 0 2px 2px; transform: rotate(-45deg)`, a list row's stroke and angle
-    // (rekta.css:324–325)
-    readonly property real optionCheckWidth: 10
-    readonly property real optionCheckHeight: 6
-    readonly property real optionCheckLift: 3
-    readonly property real optionCheckGap: 2
     // `.rk-tip { max-width: min(20rem, …); padding: 4px var(--rk-space-s) }` (rekta.css:417–418)
     readonly property real tipMaxWidth: 320
     readonly property real tipPaddingY: 4

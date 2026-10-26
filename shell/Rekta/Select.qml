@@ -4,12 +4,14 @@ import QtQuick
 import QtQuick.Shapes
 
 // One of many from a list you know (forms.md, "Inputs"; rekta.css:265–273, :295–301): a field's box with the chosen
-// option, cut where it is too long, and a caret pointing down at its end. ↓, Alt+↓, Enter, Space or a press open its
-// list (forms.md, "Combobox"; rekta-core controls.c:18), a menu below the box and at least as wide, above it where
-// there is no room below; the chosen option carries a check, as in a combobox's list (rekta.css:314–325). There ↑ ↓
-// move, Enter chooses, Escape closes and Tab moves on (Menu). The list floats in an overlay, the window's unless the
-// host names another; a press or the wheel elsewhere, the window losing the keyboard or the box going out of sight
-// close it. Disabled, the box greys, stays focusable and says why below it.
+// option, cut where it is too long, and a caret pointing down at its end. ↓, Alt+↓, Enter, Space or a press expand it in
+// place, like Metro's list picker: the box grows to hold every option as a row and pushes what stands below it down;
+// nothing floats. Expanded, the box is a list as `select.rk-input[multiple]` is (rekta.css:300): no caret, space-xs
+// above and below the rows. The chosen option takes the accent like any Metro selection (rekta.css:734–736); the row
+// the keys are on looks focused while the focus stays on the select, as a combobox's active option does (rekta.css:323,
+// :752). ↑ ↓ Home End move, Enter or Space chooses and Escape collapses without a change; a press on an option chooses
+// it. It unfolds and folds as a tree branch does (motion.md, "Tree branch"; rekta.js:2776, :2779) and keeps itself in
+// view in the scroller it stands in. Disabled, the box greys, stays focusable and says why below it.
 Item {
     id: select
 
@@ -22,27 +24,33 @@ Item {
     property string label
     property string disabledReason
     readonly property bool disabled: disabledReason !== ""
-    // Where the list floats, over everything else in it.
-    property Item overlay: Window.contentItem
-    readonly property alias list: menu
+    property bool expanded: false
+    // The option the keys are on while it is expanded.
+    property int highlighted: -1
+    // Runs from 0 to 1 as it unfolds, and back as it folds.
+    property real unfolded: 0
+    readonly property real expandedHeight: 2 * Geometry.inputBorder + 2 * Tokens.spaceXs + options.length * Tokens.rowHeight
 
     // A choice made here.
     signal activated(int index)
 
-    function open(): bool {
-        if (disabled || options.length === 0 || !overlay)
+    // The keys start on the chosen option.
+    function expand(): bool {
+        if (disabled || options.length === 0)
             return false;
-        menu.anchorRect = box.mapToItem(overlay, 0, 0, box.width, box.height);
-        menu.openAt(Math.max(0, currentIndex));
+        highlighted = Math.max(0, currentIndex);
+        expanded = true;
+        folding.stop();
+        unfolding.start();
         return true;
     }
 
-    // A press on the box: the focus goes back to it only from a row the keys were on.
-    function toggle() {
-        if (menu.open)
-            menu.close(menu.focusedIndex() >= 0);
-        else
-            open();
+    function collapse() {
+        if (!expanded)
+            return;
+        expanded = false;
+        unfolding.stop();
+        folding.start();
     }
 
     function choose(index: int) {
@@ -52,29 +60,88 @@ Item {
         activated(index);
     }
 
-    implicitWidth: menu.implicitWidth
+    // Choosing collapses it, choosing the chosen option too.
+    function pick(index: int) {
+        collapse();
+        choose(index);
+    }
+
+    // Untyped, so a test can hand it a held key; a held key opens or chooses only once.
+    function handleKey(event: var): bool {
+        const choosing = [Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space].includes(event.key);
+        if (!expanded)
+            return !event.isAutoRepeat && (choosing || event.key === Qt.Key_Down) && expand();
+        if (choosing) {
+            if (!event.isAutoRepeat)
+                pick(highlighted);
+            return true;
+        }
+        const last = options.length - 1;
+        const moves = new Map([[Qt.Key_Down, Math.min(last, highlighted + 1)], [Qt.Key_Up, Math.max(0, highlighted - 1)], [Qt.Key_Home, 0], [Qt.Key_End, last]]);
+        if (moves.has(event.key))
+            highlighted = moves.get(event.key);
+        else if (event.key === Qt.Key_Escape)
+            collapse();
+        else
+            return false;
+        return true;
+    }
+
+    // Whole in the scroller it stands in, its top first, as focus does on the web.
+    function reveal() {
+        let around = parent;
+        while (around && !(around instanceof Flickable))
+            around = around.parent;
+        const view = around as Flickable;
+        if (!view)
+            return;
+        const top = mapToItem(view.contentItem, 0, 0).y;
+        view.contentY = Math.min(top, Math.max(view.contentY, top + box.height - view.height));
+    }
+
     implicitHeight: disabled ? why.y + why.height : box.height
     activeFocusOnTab: true
     Accessible.role: Accessible.ComboBox
     Accessible.name: `${label} ${currentText}`.trim()
     Accessible.description: disabledReason
+    Accessible.expandable: true
+    Accessible.expanded: expanded
 
+    // Out of sight it folds at once, so it comes back collapsed.
     onVisibleChanged: {
-        if (!visible)
-            menu.close(false);
+        if (visible)
+            return;
+        collapse();
+        folding.complete();
     }
-    Keys.onPressed: event => {
-        const opens = [Qt.Key_Down, Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space].includes(event.key);
-        event.accepted = opens && select.open();
+    onActiveFocusChanged: {
+        if (!activeFocus)
+            collapse();
+    }
+    Keys.onPressed: event => event.accepted = handleKey(event)
+
+    NumberAnimation {
+        id: unfolding
+
+        objectName: "unfolding"
+        target: select
+        property: "unfolded"
+        to: 1
+        duration: Tokens.durationShort
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Tokens.easeIn
     }
 
-    Connections {
-        target: select.Window.window
+    NumberAnimation {
+        id: folding
 
-        function onActiveChanged() {
-            if (!select.Window.active)
-                menu.close(false);
-        }
+        objectName: "folding"
+        target: select
+        property: "unfolded"
+        to: 0
+        duration: Geometry.branchCloseShare * Tokens.durationShort
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Tokens.easeOut
     }
 
     Rectangle {
@@ -82,7 +149,7 @@ Item {
 
         objectName: "box"
         width: select.width
-        height: Tokens.controlHeight
+        height: Tokens.controlHeight + select.unfolded * (select.expandedHeight - Tokens.controlHeight)
         radius: Tokens.radiusS
         color: Tokens.color.bg
         border.width: Geometry.inputBorder
@@ -93,6 +160,11 @@ Item {
             return select.activeFocus || pointer.hovered ? Tokens.color.textPrimary : Tokens.color.textContrastMedium;
         }
 
+        onHeightChanged: {
+            if (select.expanded)
+                select.reveal();
+        }
+
         Behavior on border.color {
             ColorAnimation {
                 duration: Tokens.durationShort
@@ -101,41 +173,136 @@ Item {
             }
         }
 
-        Text {
-            objectName: "chosen"
-            x: Geometry.inputPadding
-            anchors.verticalCenter: parent.verticalCenter
-            width: Math.max(0, box.width - Geometry.inputPadding - Geometry.selectPaddingEnd)
-            text: select.currentText
-            elide: Text.ElideRight
-            font.family: Tokens.fontSans
-            font.pixelSize: Tokens.fontSizeS
-            color: select.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
+        Item {
+            objectName: "folded"
+            width: box.width
+            height: Tokens.controlHeight
+            opacity: 1 - select.unfolded
+
+            Text {
+                objectName: "chosen"
+                x: Geometry.inputPadding
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.max(0, box.width - Geometry.inputPadding - Geometry.selectPaddingEnd)
+                text: select.currentText
+                elide: Text.ElideRight
+                font.family: Tokens.fontSans
+                font.pixelSize: Tokens.fontSizeS
+                color: select.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
+            }
+
+            // Drawn in the padding box, as a background is.
+            Shape {
+                objectName: "caret"
+                x: box.width - box.border.width - Geometry.selectCaretEnd - width
+                y: Math.round(box.border.width + Geometry.selectCaretDown * (parent.height - 2 * box.border.width - height))
+                width: 2 * Geometry.selectCaretHalf
+                height: Geometry.selectCaretHalf
+                preferredRendererType: Shape.CurveRenderer
+
+                ShapePath {
+                    strokeColor: "transparent"
+                    fillColor: select.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
+                    startX: 0
+                    startY: 0
+
+                    PathLine {
+                        x: 2 * Geometry.selectCaretHalf
+                        y: 0
+                    }
+
+                    PathLine {
+                        x: Geometry.selectCaretHalf
+                        y: Geometry.selectCaretHalf
+                    }
+                }
+            }
         }
 
-        // Drawn in the padding box, as a background is.
-        Shape {
-            objectName: "caret"
-            x: box.width - box.border.width - Geometry.selectCaretEnd - width
-            y: Math.round(box.border.width + Geometry.selectCaretDown * (box.height - 2 * box.border.width - height))
-            width: 2 * Geometry.selectCaretHalf
-            height: Geometry.selectCaretHalf
-            preferredRendererType: Shape.CurveRenderer
+        // Inside the border, cut to the box as it grows.
+        Item {
+            anchors.fill: parent
+            anchors.margins: box.border.width
+            clip: true
+            opacity: select.unfolded
+            visible: select.unfolded > 0
 
-            ShapePath {
-                strokeColor: "transparent"
-                fillColor: select.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
-                startX: 0
-                startY: 0
+            Item {
+                id: rows
 
-                PathLine {
-                    x: 2 * Geometry.selectCaretHalf
-                    y: 0
-                }
+                objectName: "options"
+                y: Tokens.spaceXs
+                width: parent.width
+                height: select.options.length * Tokens.rowHeight
 
-                PathLine {
-                    x: Geometry.selectCaretHalf
-                    y: Geometry.selectCaretHalf
+                Repeater {
+                    model: select.options
+
+                    Item {
+                        id: option
+
+                        required property var modelData
+                        required property int index
+                        readonly property bool chosen: index === select.currentIndex
+                        readonly property bool keyed: index === select.highlighted && select.activeFocus
+
+                        objectName: "option"
+                        // Placed by hand: a Column lays out only once its rows are in sight, a frame late.
+                        y: index * Tokens.rowHeight
+                        width: rows.width
+                        height: Tokens.rowHeight
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: modelData.text
+                        Accessible.selected: chosen
+
+                        Rectangle {
+                            objectName: "fill"
+                            anchors.fill: parent
+                            visible: option.chosen
+                            color: Tokens.color.accent
+                        }
+
+                        // Over the fill (rekta.css:1028), and on the row the keys are on (rekta.css:323).
+                        Rectangle {
+                            objectName: "tint"
+                            anchors.fill: parent
+                            visible: option.keyed || rowPointer.hovered
+                            color: Tokens.color.hover
+                        }
+
+                        Text {
+                            objectName: "label"
+                            // Where the collapsed box has its text.
+                            x: Geometry.inputPadding - Geometry.inputBorder
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.max(0, option.width - 2 * x)
+                            text: option.modelData.text
+                            elide: Text.ElideRight
+                            font.family: Tokens.fontSans
+                            font.pixelSize: Tokens.fontSizeS
+                            color: option.chosen ? Tokens.color.textOnAccent : Tokens.color.textPrimary
+                        }
+
+                        FocusRing {
+                            objectName: "ring"
+                            onFill: option.chosen
+                            ink: Tokens.color.textOnAccent
+                            offset: option.chosen ? -Geometry.focusRingInsetOnChosenRow : -Geometry.focusRingInsetInRow
+                            shown: option.keyed
+                        }
+
+                        HoverHandler {
+                            id: rowPointer
+
+                            cursorShape: Qt.PointingHandCursor
+                        }
+
+                        TapHandler {
+                            longPressThreshold: 0
+
+                            onTapped: select.pick(option.index)
+                        }
+                    }
                 }
             }
         }
@@ -147,10 +314,11 @@ Item {
 
         // A press gives no focus, so the ring shows only for the keyboard, like :focus-visible.
         TapHandler {
+            enabled: !select.expanded
             // A slow click is still a click.
             longPressThreshold: 0
 
-            onTapped: select.toggle()
+            onTapped: select.expand()
         }
 
         HoverHandler {
@@ -168,67 +336,5 @@ Item {
         width: select.width
         visible: select.disabled
         text: select.disabledReason
-    }
-
-    // Over the whole overlay while the list is open: a press or the wheel there closes it and goes on to what lies
-    // below; a press on the box goes on to the box, which closes it.
-    Item {
-        parent: select.overlay
-        anchors.fill: parent
-        z: Tokens.layerFloat
-        visible: menu.open
-
-        MouseArea {
-            objectName: "outside"
-            anchors.fill: parent
-
-            onPressed: mouse => {
-                mouse.accepted = false;
-                if (!box.contains(mapToItem(box, mouse.x, mouse.y)))
-                    menu.close(false);
-            }
-            onWheel: wheel => {
-                wheel.accepted = false;
-                menu.close(false);
-            }
-        }
-
-        Menu {
-            id: menu
-
-            // The box in the overlay, as it stood when the list opened.
-            property rect anchorRect
-            readonly property var place: Placement.float(anchorRect, Qt.size(width, height), area)
-
-            objectName: "list"
-            control: select
-            area: Qt.size(parent.width, parent.height)
-            x: place.x
-            y: place.y
-            side: place.side
-            width: Math.max(implicitWidth, box.width)
-
-            onChosen: item => {
-                for (let k = 0; k < choices.count; k++) {
-                    if (choices.itemAt(k) === item)
-                        select.choose(k);
-                }
-            }
-
-            Repeater {
-                id: choices
-
-                model: select.options
-
-                MenuItem {
-                    required property var modelData
-                    required property int index
-
-                    kind: "option"
-                    text: modelData.text
-                    checked: index === select.currentIndex
-                }
-            }
-        }
     }
 }

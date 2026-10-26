@@ -1,8 +1,7 @@
 import QtQuick
 
 // One row of a menu (states.md, "Floating surfaces"; rekta.css:789–797): a lowercase verb or option at the density's
-// row height; a checkbox or radio option starts with a 10px square, filled when chosen; an option of a field's list
-// keeps a slot at its start for the check the chosen one carries (rekta.css:324–325); a key hint sits at the end.
+// row height; a checkbox or radio option starts with a 10px square, filled when chosen; a key hint sits at the end.
 // A disabled item stays in the list, greyed, and says why in its label ("print (needs a printer)"). The menu moves the
 // focus between rows; the focused row shows the ring inside and the hover colour, and an enabled row under the pointer
 // takes the hover colour too (rekta.css:793, :1027). In a row narrower than its words they are cut.
@@ -10,7 +9,7 @@ Item {
     id: item
 
     property string text
-    // item | checkbox | radio | option
+    // item | checkbox | radio
     property string kind: "item"
     property bool checked: false
     // An image at the front of the row, 20px: the shell's own addition to Rekta's text-only rows. When one row of a menu has
@@ -31,11 +30,7 @@ Item {
     readonly property bool checkable: kind !== "item"
     readonly property string label: disabledReason !== "" ? `${text} (${disabledReason})` : text
     readonly property color ink: disabled ? Tokens.color.disabled : Tokens.color.textPrimary
-    readonly property real checkSpace: {
-        if (kind === "option")
-            return Geometry.optionCheckWidth + Geometry.optionCheckGap + Tokens.spaceS;
-        return checkable ? Geometry.menuCheck + Tokens.spaceS : 0;
-    }
+    readonly property real checkSpace: checkable ? Geometry.menuCheck + Tokens.spaceS : 0
     readonly property bool hasIcon: icon.toString() !== "" || glyph !== ""
     readonly property bool menuHasIcons: Array.from(parent?.children ?? []).some(row => row.hasIcon === true && (row.visible || !item.visible))
     readonly property real iconSpace: menuHasIcons ? Geometry.iconSize + Tokens.spaceS : 0
@@ -66,35 +61,10 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: Geometry.menuCheck
         height: Geometry.menuCheck
-        visible: item.checkable && item.kind !== "option"
+        visible: item.checkable
         color: item.checked ? item.ink : "transparent"
         border.width: Geometry.menuCheckBorder
         border.color: item.ink
-    }
-
-    // Its leading and bottom edges, turned: a check without a box.
-    Item {
-        objectName: "mark"
-        x: Tokens.spaceM
-        // Its -3px top margin counts in the box flex centres.
-        y: (item.height - (Geometry.optionCheckHeight - Geometry.optionCheckLift)) / 2 - Geometry.optionCheckLift
-        width: Geometry.optionCheckWidth
-        height: Geometry.optionCheckHeight
-        rotation: Geometry.listCheckAngle
-        visible: item.kind === "option" && item.checked
-
-        Rectangle {
-            width: Geometry.listCheckStroke
-            height: parent.height
-            color: item.ink
-        }
-
-        Rectangle {
-            y: parent.height - Geometry.listCheckStroke
-            width: parent.width
-            height: Geometry.listCheckStroke
-            color: item.ink
-        }
     }
 
     Image {
