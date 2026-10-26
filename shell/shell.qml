@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 
+import QtQuick
 import Quickshell
 import "services"
 
@@ -90,6 +91,16 @@ ShellRoot {
 
         onGone: start.takeKeyboardBack()
         onLaunched: start.stepAside()
+    }
+
+    // The Start is a whole place: a panel open as it opens slides out instead of lying blurred under its glass.
+    Connections {
+        target: start
+
+        function onOpenedChanged() {
+            if (start.opened)
+                sidePanel.close();
+        }
     }
 
     // After the Start, so a toast stands above it.

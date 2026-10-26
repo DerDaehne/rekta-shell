@@ -19,6 +19,8 @@ PanelWindow {
     required property ShellScreen primaryScreen
     // From its opening to its hand-over, when the glass starts to go: in front of everything on the primary screen.
     readonly property alias inFront: place.holdsKeyboard
+    // From the moment it opens until it starts to close.
+    readonly property alias opened: place.wanted
     // The list in start.json, null without a usable one.
     property var listedPins: null
     // KWin gives the keyboard to the next window when a surface goes, also when the side panel over the open Start goes;

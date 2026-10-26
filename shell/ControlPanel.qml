@@ -49,6 +49,10 @@ PanelWindow {
         panel.toggle(index);
     }
 
+    function close() {
+        panel.close();
+    }
+
     screen: primaryScreen
     anchors.right: true
     anchors.top: true
