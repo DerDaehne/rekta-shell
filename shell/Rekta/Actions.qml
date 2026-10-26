@@ -34,7 +34,8 @@ Item {
         readonly property Item last: {
             let last = null;
             for (const control of row.children) {
-                if (control.visible)
+                // A Repeater stands among the controls it makes and shows nothing.
+                if (control.visible && !(control instanceof Repeater))
                     last = control;
             }
             return last;

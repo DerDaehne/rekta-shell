@@ -124,6 +124,28 @@ TestCase {
         }
     }
 
+    // A hidden row whose buttons a Repeater makes once it has its model, the last unable to act.
+    Component {
+        id: repeatedActionsComponent
+
+        Actions {
+            width: 600
+            visible: false
+
+            Repeater {
+                objectName: "buttons"
+
+                Button {
+                    required property string modelData
+
+                    objectName: modelData
+                    text: modelData
+                    disabledReason: modelData === "archive" ? "Archive needs at least one done job." : ""
+                }
+            }
+        }
+    }
+
     Component {
         id: regionComponent
 
@@ -546,6 +568,18 @@ TestCase {
         verify(actions.width - why.x >= Geometry.whyBasis);
         archive.disabledReason = "";
         verify(!why.visible);
+    }
+
+    function test_why_follows_the_last_button_a_repeater_made_also_in_a_row_shown_later() {
+        const actions = createTemporaryObject(repeatedActionsComponent, testCase);
+        findChild(actions, "buttons").model = ["pause", "archive"];
+        actions.visible = true;
+        const archive = findChild(actions, "archive");
+        const why = findChild(actions, "why");
+        waitForItemPolished(actions.children[0]);
+        verify(why.visible);
+        compare(why.x, archive.x + archive.width + Tokens.spaceS);
+        compare(why.width, actions.width - why.x);
     }
 
     function test_a_hidden_button_gives_the_row_no_reason() {
