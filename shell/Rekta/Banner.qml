@@ -284,15 +284,12 @@ Item {
                 width: banner.headWidth
                 height: banner.headHeight
 
-                TextRole {
+                BannerWord {
                     id: wordText
 
                     objectName: "word"
                     text: banner.word
-                    font.pixelSize: Tokens.fluid(Tokens.fontSizeL, banner.placeWidth)
-                    font.weight: Tokens.fontWeightLight
-                    lineHeightFactor: Tokens.lineHeightTight
-                    color: Tokens.color.textPrimary
+                    placeWidth: banner.placeWidth
                 }
 
                 TextRole {

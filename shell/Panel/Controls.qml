@@ -34,6 +34,8 @@ Column {
     signal powerProfileChosen(int profile)
     // A device to make the default of its kind.
     signal deviceChosen(var node)
+    // The session's actions, which the host shows in place of the panel.
+    signal sessionAsked
 
     function deviceName(node: var): string {
         return node?.description || node?.name || "";
@@ -146,6 +148,14 @@ Column {
                 objectName: "lock"
                 text: "sperren"
                 onClicked: controls.run(["loginctl", "lock-session"])
+            }
+        }
+
+        PanelRow {
+            Button {
+                objectName: "sessionActions"
+                text: "sitzung …"
+                onClicked: controls.sessionAsked()
             }
         }
     }

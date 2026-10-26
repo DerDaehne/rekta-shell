@@ -36,6 +36,8 @@ PanelWindow {
 
     // The panel has gone, and with it the surface.
     signal closed
+    // "sitzung …": the panel goes, and the session banner is to come.
+    signal sessionAsked
 
     // Opens the panel on a screen with a facet, or closes it when that facet shows there already.
     function toggle(onScreen: ShellScreen, index: int) {
@@ -88,6 +90,10 @@ PanelWindow {
                     PowerProfiles.profile = profile;
                 else
                     console.info(`ControlPanel: would set the power profile ${PowerProfile.toString(profile)}`);
+            }
+            onSessionAsked: {
+                panel.close();
+                surface.sessionAsked();
             }
             onDeviceChosen: node => {
                 if (node.isSink)

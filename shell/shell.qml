@@ -75,6 +75,16 @@ ShellRoot {
         notices: notifications.board
 
         onClosed: start.takeKeyboardBack()
+        onSessionAsked: session.show("")
+    }
+
+    SessionSurface {
+        id: session
+
+        launcher: appLauncher
+        primaryScreen: primary.screen
+
+        onClosed: start.takeKeyboardBack()
     }
 
     // After the Start, so a toast stands above it.

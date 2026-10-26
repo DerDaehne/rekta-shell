@@ -1,0 +1,3 @@
+module Session
+SessionBanner 1.0 SessionBanner.qml
+SessionActions 1.0 SessionActions.qml

@@ -22,6 +22,8 @@ TestCase {
     property var chosenDevices: []
     // The options chosen in a level, by index.
     property var chosenOptions: []
+    // How often "sitzung …" asked for the session banner.
+    property int sessionAsked: 0
     property Item scene
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var side
@@ -72,6 +74,7 @@ TestCase {
             onRun: command => testCase.commands = [...testCase.commands, command]
             onPowerProfileChosen: profile => testCase.chosenProfiles = [...testCase.chosenProfiles, profile]
             onDeviceChosen: node => testCase.chosenDevices = [...testCase.chosenDevices, node]
+            onSessionAsked: testCase.sessionAsked += 1
         }
 
         Item {
@@ -238,6 +241,7 @@ TestCase {
         chosenProfiles = [];
         chosenDevices = [];
         chosenOptions = [];
+        sessionAsked = 0;
         scene = createTemporaryObject(sceneComponent, testCase);
         side = findChild(scene, "panel");
         controls = side.controls;
@@ -457,7 +461,7 @@ TestCase {
     }
 
     function test_escape_closes_it_from_every_control() {
-        for (const name of ["dark", "doNotDisturb", "powerProfile", "lock"]) {
+        for (const name of ["dark", "doNotDisturb", "powerProfile", "lock", "sessionActions"]) {
             side.show(0);
             control(name).forceActiveFocus();
             keyClick(Qt.Key_Escape);
@@ -533,7 +537,7 @@ TestCase {
 
     function test_tab_and_the_arrows_reach_every_control_in_order() {
         side.show(0);
-        const order = [control("dark"), control("doNotDisturb"), control("powerProfile"), control("lock")];
+        const order = [control("dark"), control("doNotDisturb"), control("powerProfile"), control("lock"), control("sessionActions")];
         for (let k = 1; k < order.length; k++) {
             keyClick(Qt.Key_Tab);
             verify(order[k].activeFocus, `Tab to ${order[k].objectName}`);
@@ -550,9 +554,9 @@ TestCase {
         verify(findChild(side, "pivot").activeFocus, "↑ from the first to the pivot");
         keyClick(Qt.Key_Down);
         verify(order[0].activeFocus, "↓ from the pivot to the first");
-        order[3].forceActiveFocus();
+        order[4].forceActiveFocus();
         keyClick(Qt.Key_Down);
-        verify(order[3].activeFocus, "the arrows never leave the panel");
+        verify(order[4].activeFocus, "the arrows never leave the panel");
     }
 
     function test_every_row_works_from_the_keyboard() {
@@ -571,6 +575,9 @@ TestCase {
         keyClick(Qt.Key_Tab);
         keyClick(Qt.Key_Return);
         compare(commands[1], ["loginctl", "lock-session"], "sperren");
+        keyClick(Qt.Key_Tab);
+        keyClick(Qt.Key_Return);
+        compare(sessionAsked, 1, "sitzung …");
     }
 
     function test_dunkel_applies_the_dark_theme_of_plasmas_pair_and_the_light_one_back() {
@@ -654,6 +661,17 @@ TestCase {
         waitForRendering(side);
         mouseClick(control("lock"));
         compare(commands, [["loginctl", "lock-session"]]);
+    }
+
+    function test_sitzung_asks_for_the_session_banner_below_sperren() {
+        side.show(0);
+        waitForRendering(side);
+        const sessionActions = control("sessionActions");
+        compare(sessionActions.text, "sitzung …");
+        verify(rowOf(sessionActions).y > rowOf(control("lock")).y, "in the group sitzung, below sperren");
+        mouseClick(sessionActions);
+        compare(sessionAsked, 1);
+        compare(commands, [], "it runs nothing itself");
     }
 
     function test_ton_shows_the_default_output_and_input_with_their_volume_and_stumm() {
