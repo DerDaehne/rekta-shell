@@ -69,7 +69,7 @@ ShellRoot {
 
         launcher: appLauncher
         primaryScreen: primary.screen
-        startOpen: start.open
+        startInFront: start.inFront
         sink: keys.sink
         source: keys.source
         notices: notifications.board
