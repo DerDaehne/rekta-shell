@@ -15,6 +15,9 @@ QtObject {
     // The system monitor's desktop entry, null while it is not installed.
     property var systemMonitor: null
 
+    // An app has started, whose window is to come to the front.
+    signal launched
+
     // { name, text, primary, disabledReason, run }; the primary one takes the focus as the banner opens.
     readonly property var actions: [
         {
@@ -48,7 +51,10 @@ QtObject {
             name: "systemMonitor",
             text: "systemmonitor",
             disabledReason: systemMonitor ? "" : "Der Systemmonitor ist nicht installiert.",
-            run: () => session.launcher.launch(session.systemMonitor)
+            run: () => {
+                session.launcher.launch(session.systemMonitor);
+                session.launched();
+            }
         }
     ]
 

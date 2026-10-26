@@ -80,6 +80,8 @@ TestCase {
             SessionActions {
                 id: sessionActions
 
+                objectName: "sessionActions"
+
                 launcher: recorder
                 seatPath: testCase.seat
                 systemMonitor: ({
@@ -363,6 +365,17 @@ TestCase {
             button(name).click();
             compare(asked, expected[name], name);
         }
+    }
+
+    function test_starting_the_system_monitor_says_an_app_has_started() {
+        const launched = createTemporaryObject(spyComponent, testCase, {
+            target: findChild(scene, "sessionActions"),
+            signalName: "launched"
+        });
+        button("lock").click();
+        compare(launched.count, 0, "a lock starts no app");
+        button("systemMonitor").click();
+        compare(launched.count, 1);
     }
 
     function test_benutzer_wechseln_locks_first_and_asks_the_display_manager_for_the_greeter_of_its_seat_once_locked() {

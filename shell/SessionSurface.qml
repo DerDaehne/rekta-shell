@@ -23,6 +23,8 @@ PanelWindow {
 
     // The banner has gone, and with it the surface.
     signal gone
+    // An action started an app.
+    signal launched
 
     // Opens with the focus on the named action ("lock", "switchUser", "logout", "reboot", "shutdown", "systemMonitor"),
     // or on "sperren" for any other name.
@@ -65,6 +67,8 @@ PanelWindow {
         seatPath: Quickshell.env("XDG_SEAT_PATH") ?? ""
         // From the list rather than byId(), so it follows the entries as they are read and change.
         systemMonitor: Array.from(DesktopEntries.applications.values).find(entry => entry.id === "org.kde.plasma-systemmonitor") ?? null
+
+        onLaunched: surface.launched()
     }
 
     IpcHandler {

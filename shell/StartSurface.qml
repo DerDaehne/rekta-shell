@@ -35,6 +35,15 @@ PanelWindow {
             askingAgain = true;
     }
 
+    // An app started from elsewhere, such as the session banner, comes to the front: the Start turns out forward, as
+    // after a choice in it.
+    function stepAside() {
+        place.leave({
+            back: false,
+            pressed: null
+        });
+    }
+
     // The apps pinned in start.json, or Plasma's own; those installed, as their desktop entries say.
     function pinnedApps(entries: list<DesktopEntry>, listed: var): var {
         const byId = id => entries.find(entry => entry.id === id) ?? null;

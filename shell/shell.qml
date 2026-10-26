@@ -89,6 +89,7 @@ ShellRoot {
         primaryScreen: primary.screen
 
         onGone: start.takeKeyboardBack()
+        onLaunched: start.stepAside()
     }
 
     // After the Start, so a toast stands above it.
