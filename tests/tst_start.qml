@@ -322,16 +322,67 @@ TestCase {
         compare(named("pivot").currentIndex, 0);
     }
 
-    function test_the_parts_turn_in_once_the_windows_are_three_quarters_back() {
+    function test_the_parts_turn_in_once_the_windows_are_three_quarters_back_in_half_a_moderate() {
         const started = Date.now();
         start.open();
         verify(start.shown);
         verify(!turner.running, "first only the glass");
         verify(!named("body").visible);
+        compare(named("waitForWindows").interval, Geometry.turnOverlap * Tokens.durationModerate / 2);
         tryVerify(() => turner.running, 2000);
-        verify(Date.now() - started >= Geometry.turnOverlap * Tokens.durationModerate - 2);
+        verify(Date.now() - started >= Geometry.turnOverlap * Tokens.durationModerate / 2 - 2);
         verify(turner.arrivingTurns.length > 0);
         tryVerify(() => start.phase === "open", 3000);
+    }
+
+    // The turns against Rekta's plan for the same parts from `from`: each part's time and the starts after `from` are
+    // `pace` of Rekta's. The starts are compared as a set: parts alike in row, place and heft may swap their order.
+    function verifyPace(turns: var, rektaDuration: real, from: real, pace: real) {
+        const rekta = Turnstile.plan(turns.map(turn => turn.part), rektaDuration, from);
+        verify(turns.length > 0);
+        for (const turn of turns)
+            fuzzyCompare(turn.duration, pace * rekta.find(planned => planned.part === turn.part).duration, 1e-9, "times");
+        const starts = plan => plan.map(turn => turn.at - from).sort((a, b) => a - b);
+        const rektaStarts = starts(rekta);
+        starts(turns).forEach((at, index) => fuzzyCompare(at, pace * rektaStarts[index], 1e-9, "starts"));
+    }
+
+    function test_the_start_s_parts_turn_in_at_half_rekta_s_pace() {
+        start.open();
+        tryVerify(() => turner.running, 2000);
+        verifyPace(turner.arrivingTurns, Tokens.durationModerate, turner.handOverAt, 0.5);
+    }
+
+    function test_closed_the_start_s_parts_turn_out_at_half_rekta_s_pace() {
+        openNow();
+        keyClick(Qt.Key_Escape);
+        verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 0.5);
+    }
+
+    function test_after_a_tile_press_the_start_turns_out_at_half_rekta_s_pace_the_pressed_tile_once_its_press_is_through() {
+        openNow();
+        const pressed = tilesIn("pinned")[0];
+        mouseClick(pressed);
+        const others = turner.leavingTurns.filter(turn => turn.part.item !== pressed);
+        const last = turner.leavingTurns.find(turn => turn.part.item === pressed);
+        verifyPace(others, Tokens.durationShort, 0, 0.5);
+        fuzzyCompare(last.duration, Turnstile.plan([last.part], Tokens.durationShort, 0)[0].duration / 2, 1e-9);
+        verify(last.at >= Tokens.durationPress - 20, "the press keeps its own time");
+    }
+
+    function test_after_an_app_chosen_in_alle_apps_the_start_turns_out_at_half_rekta_s_pace() {
+        openOnAllApps(["ark", "Blender", "konsole"]);
+        mouseClick(appRow(1));
+        compare(calls, ["launch Blender"]);
+        verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 0.5);
+    }
+
+    function test_a_change_of_place_inside_the_start_keeps_rekta_s_pace() {
+        openNow();
+        keyClick(Qt.Key_Right);
+        verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 1);
+        tryVerify(() => turner.arrivingTurns.length > 0, 3000);
+        verifyPace(turner.arrivingTurns, Tokens.durationModerate, turner.handOverAt, 1);
     }
 
     // KWin's fade-back fades the whole surface, glass and blur together; a glass that faded itself would stand at p².
@@ -347,18 +398,19 @@ TestCase {
         verify(glassWhole());
     }
 
-    function test_the_start_empties_moderate_after_the_hand_over_with_the_glass_whole_until_then() {
+    function test_the_start_empties_half_a_moderate_after_the_hand_over_with_the_glass_whole_until_then() {
         openNow();
         keyClick(Qt.Key_Escape);
         turner.paused = true;
         turner.elapsed = turner.handOverAt;
         const handedOver = Date.now();
         verify(!start.holdsKeyboard);
-        wait(Tokens.durationModerate / 2);
+        compare(findChild(start, "glassOut").interval, Tokens.durationModerate / 2);
+        wait(Tokens.durationModerate / 4);
         verify(glassWhole(), "the windows come forward under it as KWin fades it");
         compare(closedSpy.count, 0);
         tryVerify(() => closedSpy.count === 1, 2000);
-        verify(Date.now() - handedOver >= Tokens.durationModerate - 2);
+        verify(Date.now() - handedOver >= Tokens.durationModerate / 2 - 2);
         verify(!findChild(start, "glass").visible);
     }
 
@@ -928,14 +980,15 @@ TestCase {
         verify(start.wanted);
     }
 
-    function test_a_letter_typed_right_after_opening_shows_the_title_and_the_hits_before_the_parts_would_have_come() {
+    function test_a_letter_typed_right_after_opening_shows_the_title_and_the_hits_before_the_opening_could_have_landed() {
         start.apps = searchableApps();
         start.open();
         keyClick("k");
         verify(!start.turning, "the opening stands at its end");
         compare(start.phase, "open");
         verify(start.holdsKeyboard, "the windows stay back");
-        tryVerify(() => named("searchTitle").visible, Geometry.turnOverlap * Tokens.durationModerate);
+        const earliestLanding = Geometry.turnOverlap * FadeBack.duration + Geometry.startTempo * Geometry.heftMin * Tokens.durationModerate;
+        tryVerify(() => named("searchTitle").visible, earliestLanding);
         compare(named("typed").text, "k");
         compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
     }
@@ -1172,7 +1225,7 @@ TestCase {
         const turner = findChild(place, "turn");
         place.open();
         if (share < 0) {
-            wait(Geometry.turnOverlap * Tokens.durationModerate / 2);
+            wait(Geometry.turnOverlap * FadeBack.duration / 2);
             return turner;
         }
         tryVerify(() => turner.running, 2000);

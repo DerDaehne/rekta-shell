@@ -5,7 +5,8 @@ import QtQuick
 // density (rekta.css, header), the motion of the loading line, the dots, the place change and live tile news, which
 // has no tokens yet, and the CSS timing keywords Rekta uses where it has no curve token (ease-in-out). Each value names
 // the rule it comes from in rekta.css (or rekta.js) at the pinned commit, except the windows stepping back behind the
-// Start, a motion Rekta has no row for yet, and how far a row is pulled away, a gesture it has no rule for yet.
+// Start, a motion Rekta has no row for yet, how far a row is pulled away, a gesture it has no rule for yet, and the
+// Start's tempo, a deliberate deviation from Rekta's.
 QtObject {
     // `.rk-rows > li { border-top: 1px solid var(--rk-text-contrast-low) }` (rekta.css:69)
     readonly property real hairline: 1
@@ -240,6 +241,10 @@ QtObject {
     // this (motion.md:9–35), so the shell's own values stand until Rekta has one.
     readonly property real fadeBackScale: 0.86
     readonly property real fadeBackBrightness: 0.78
+    // The Start is called many times an hour, so it opens, closes and leaves after a launch at half the pace of Rekta's
+    // place change (motion.md:11), and the windows step back and forward with it: a deliberate deviation. Every time and
+    // stagger of these turns is its token's times this.
+    readonly property real startTempo: 0.5
 
     // enter(): a row arrives from `translateY(-6px)` (rekta.js:3414); leave(): a row drifts to `translateX(12px)` over
     // `duration-short × 0.6` (rekta.js:3420, :3423)

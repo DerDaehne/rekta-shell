@@ -60,7 +60,14 @@ FocusScope {
         if (waitForWindows.interval > 0)
             waitForWindows.restart();
         else
-            turn(null, body, {});
+            turnIn();
+    }
+
+    // The Start's own turns, in and out, run at its tempo; a change of place inside it at Rekta's.
+    function turnIn() {
+        turn(null, body, {
+            tempo: Geometry.startTempo
+        });
     }
 
     // `pressed` is the tile that was pressed to leave; without one the Start goes back the way it came.
@@ -83,7 +90,11 @@ FocusScope {
             partsOut();
             return;
         }
-        turn(body, null, options);
+        turn(body, null, {
+            back: options.back,
+            pressed: options.pressed,
+            tempo: Geometry.startTempo
+        });
     }
 
     function toggle() {
@@ -404,7 +415,7 @@ FocusScope {
     function typeOn(text: string) {
         if (waitForWindows.running) {
             waitForWindows.stop();
-            turn(null, body, {});
+            turnIn();
         }
         turner.finish();
         query += text;
@@ -468,20 +479,21 @@ FocusScope {
         visible: start.shown
     }
 
-    // The glass goes in duration-moderate from the hand-over; then the Start empties.
+    // The glass goes as the windows come forward from the hand-over; then the Start empties.
     Timer {
         id: glassOut
 
         objectName: "glassOut"
-        interval: Tokens.durationModerate
+        interval: FadeBack.duration
         onTriggered: start.hide()
     }
 
     Timer {
         id: waitForWindows
 
-        interval: Geometry.turnOverlap * Tokens.durationModerate
-        onTriggered: start.turn(null, body, {})
+        objectName: "waitForWindows"
+        interval: Geometry.turnOverlap * FadeBack.duration
+        onTriggered: start.turnIn()
     }
 
     Presence {

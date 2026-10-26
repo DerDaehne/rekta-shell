@@ -25,6 +25,8 @@ QtObject {
     property Item leavingPlace: null
     property Item arrivingPlace: null
     property bool back: false
+    // Its pace against Rekta's place change: every part's start and time is its token's times this.
+    property real tempo: 1
     property Tile pressedTile: null
     property real handOverAt: 0
     property bool handedOver: false
@@ -147,7 +149,8 @@ QtObject {
     signal landed
 
     // Turns from one place to the next; either may be null (nothing to leave, nothing to arrive at). `options.back`
-    // runs it the other way round; `options.pressed` is the tile that opened the next place.
+    // runs it the other way round; `options.pressed` is the tile that opened the next place; `options.tempo` is its
+    // pace, Rekta's when not given.
     function go(from: Item, to: Item, options: var) {
         finish();
         // A place still building in leaves from its end state: the turn wins over the arrival.
@@ -156,6 +159,7 @@ QtObject {
         leavingPlace = from;
         arrivingPlace = to;
         back = options?.back === true;
+        tempo = options?.tempo ?? 1;
         if (to)
             to.visible = false;
         if (Tokens.reducedMotion) {
@@ -184,10 +188,11 @@ QtObject {
     function leave(pressed: Tile) {
         const parts = leavingPlace ? partsOf(leavingPlace) : [];
         const pressedPart = parts.find(part => part.item === pressed);
-        const turns = Turnstile.plan(parts.filter(part => part !== pressedPart), Tokens.durationShort, 0);
+        const turns = plan(parts.filter(part => part !== pressedPart), Tokens.durationShort, 0);
+        // The pressed tile still sinks for the press's own time, whatever the tempo.
         if (pressedPart) {
             pressedTile = pressed;
-            turns.push(Turnstile.pressedTurn(pressedPart, Tokens.durationShort, turns, pressed.keepPressed()));
+            turns.push(Turnstile.pressedTurn(pressedPart, tempo * Tokens.durationShort, turns, pressed.keepPressed()));
         }
         leavingTurns = turns;
         arrivingTurns = [];
@@ -233,11 +238,21 @@ QtObject {
         arrivingPlace.visible = true;
         if (!clock.running)
             return;
-        arrivingTurns = Turnstile.plan(partsOf(arrivingPlace), Tokens.durationModerate, handOverAt);
+        arrivingTurns = plan(partsOf(arrivingPlace), Tokens.durationModerate, handOverAt);
         turning = arrivingTurns.map(turn => partTurn.createObject(turner, {
                 turn: turn,
                 leaving: false
             }));
+    }
+
+    // Turnstile.plan at the turn's tempo: each start after `from`, and each part's time, scaled alike.
+    function plan(parts: var, duration: real, from: real): var {
+        const turns = Turnstile.plan(parts, duration, from);
+        for (const turn of turns) {
+            turn.at = from + tempo * (turn.at - from);
+            turn.duration *= tempo;
+        }
+        return turns;
     }
 
     function release(part: var) {
