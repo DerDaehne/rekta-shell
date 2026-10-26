@@ -20,6 +20,8 @@ TestCase {
     property var commands: []
     property var chosenProfiles: []
     property var chosenDevices: []
+    // The options chosen in a level, by index.
+    property var chosenOptions: []
     property Item scene
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var side
@@ -65,6 +67,7 @@ TestCase {
             id: controlsFacet
 
             objectName: "controls"
+            overlay: panel.overlay
             hasPowerProfiles: true
             onRun: command => testCase.commands = [...testCase.commands, command]
             onPowerProfileChosen: profile => testCase.chosenProfiles = [...testCase.chosenProfiles, profile]
@@ -144,6 +147,55 @@ TestCase {
         }
     }
 
+    // A panel with a group whose button opens a level in place of its rows, as a list of networks would.
+    Component {
+        id: levelPanelComponent
+
+        SidePanel {
+            width: 900
+            height: 640
+            titles: ["steuerung"]
+
+            Column {
+                width: parent ? parent.width : 0
+
+                PanelGroup {
+                    objectName: "networks"
+                    title: "verbindungen"
+                    levels: [
+                        PanelLevel {
+                            id: networks
+
+                            objectName: "level"
+                            name: "wlan"
+                            options: ["home", "office"]
+                            currentIndex: 0
+                            onChosen: index => testCase.chosenOptions = [...testCase.chosenOptions, index]
+                        }
+                    ]
+
+                    PanelRow {
+                        label: "wlan · home"
+
+                        Button {
+                            id: chooser
+
+                            objectName: "chooseNetwork"
+                            text: "wählen"
+                            onClicked: networks.show(chooser)
+                        }
+                    }
+
+                    PanelRow {
+                        label: "an"
+
+                        Toggle {}
+                    }
+                }
+            }
+        }
+    }
+
     // A group whose one row is absent, such as one waiting for a service.
     Component {
         id: absentGroupComponent
@@ -185,6 +237,7 @@ TestCase {
         commands = [];
         chosenProfiles = [];
         chosenDevices = [];
+        chosenOptions = [];
         scene = createTemporaryObject(sceneComponent, testCase);
         side = findChild(scene, "panel");
         controls = side.controls;
@@ -237,7 +290,15 @@ TestCase {
         return sound;
     }
 
-    // The rows of a device list: the back row first, then one per device.
+    // The level panel, open and drawn.
+    function showLevelPanel(): var {
+        const panel = createTemporaryObject(levelPanelComponent, testCase);
+        panel.show(0);
+        waitForRendering(panel);
+        return panel;
+    }
+
+    // The rows of a level: the back row first, then one per option.
     function levelRows(level: var): var {
         return Array.from(level.children).filter(row => row instanceof MenuItem);
     }
@@ -619,8 +680,10 @@ TestCase {
         verify(group.visible);
         compare(findChild(group, "heading").text, "ton");
         tryCompare(group, "y", 0, 1000, "the first group");
-        compare(findChild(rowOf(control("outputDevice")), "words").text, "ausgang · Speakers");
-        compare(findChild(rowOf(control("inputDevice")), "words").text, "eingang · Microphone");
+        compare(findChild(rowOf(control("outputDevice")), "words").text, "ausgang");
+        compare(control("outputDevice").currentText, "Speakers");
+        compare(findChild(rowOf(control("inputDevice")), "words").text, "eingang");
+        compare(control("inputDevice").currentText, "Microphone");
         compare(control("outputVolume").value, 0.62);
         compare(findChild(control("outputVolume"), "output").text, "62%", "in tabular figures");
         compare(findChild(control("outputVolume"), "output").font.features, { "tnum": 1 });
@@ -628,20 +691,22 @@ TestCase {
         verify(!control("outputMuted").checked);
         verify(control("inputMuted").checked);
         compare(findChild(rowOf(control("outputMuted")), "words").text, "stumm");
+        compare(control("outputDevice").Accessible.name, "ausgang Speakers");
         compare(control("outputVolume").Accessible.name, "lautstärke ausgang");
         compare(control("inputMuted").Accessible.name, "stumm eingang");
     }
 
-    function test_the_volume_slider_stands_below_its_words_as_wide_as_the_row() {
+    function test_the_device_select_and_the_volume_slider_stand_below_their_words_as_wide_as_the_row() {
         giveSound(controls);
         side.show(0);
-        const slider = control("outputVolume");
-        const row = rowOf(slider);
         waitForRendering(side);
-        compare(findChild(row, "words").text, "lautstärke");
-        compare(slider.width, row.width);
-        compare(findChild(row, "holder").x, 0);
-        compare(findChild(row, "holder").y, findChild(row, "words").height);
+        for (const name of ["outputDevice", "outputVolume"]) {
+            const row = rowOf(control(name));
+            compare(control(name).width, row.width, name);
+            compare(findChild(row, "holder").x, 0, name);
+            compare(findChild(row, "holder").y, findChild(row, "words").height + Tokens.spaceXs, `${name} space-xs below, as a field's control below its label`);
+        }
+        compare(findChild(rowOf(control("outputVolume")), "words").text, "lautstärke");
     }
 
     function test_the_slider_and_stumm_set_the_device_and_follow_changes_from_elsewhere() {
@@ -672,7 +737,7 @@ TestCase {
         side.show(0);
         sound.headphones.audio.volume = 0.3;
         controls.output = sound.headphones;
-        compare(findChild(rowOf(control("outputDevice")), "words").text, "ausgang · Headphones");
+        compare(control("outputDevice").currentText, "Headphones");
         compare(control("outputVolume").value, 0.3);
     }
 
@@ -688,62 +753,143 @@ TestCase {
         verify(!findChild(controls, "sound").visible);
     }
 
-    function test_wählen_opens_the_device_list_in_place_of_the_groups_rows_headed_by_zurück() {
+    function test_the_output_select_lists_the_outputs_on_the_panel_and_a_click_asks_for_another_default() {
         const sound = giveSound(controls);
         side.show(0);
         waitForRendering(side);
-        const group = findChild(controls, "sound");
-        const level = findChild(controls, "outputs");
-        mouseClick(control("outputDevice"));
-        verify(level.open);
-        verify(level.visible);
-        verify(!findChild(group, "rows").visible, "the list replaces the rows");
-        compare(findChild(group, "heading").text, "ton", "under the group's heading");
-        const rows = levelRows(level);
-        compare(rows.map(row => row.text), ["zurück · ausgang", "Speakers", "Headphones"]);
-        compare(rows[0].glyph, "back");
-        compare(rows.slice(1).map(row => row.kind), ["radio", "radio"]);
-        compare(rows.slice(1).map(row => row.checked), [true, false], "the current one is marked as a chosen menu option");
+        const select = control("outputDevice");
+        mouseClick(findChild(select, "box"));
+        const list = select.list;
+        verify(list.open);
+        compare(list.parent.parent, side.overlay, "on the panel's ground, over the rows below");
+        const options = list.rows.filter(row => row instanceof MenuItem && row.kind === "option");
+        compare(options.map(row => row.text), ["Speakers", "Headphones"]);
+        compare(options.map(row => row.checked), [true, false], "the default carries the check");
         waitForRendering(side);
-        mouseClick(rows[2]);
+        mouseClick(options[1]);
         compare(chosenDevices, [sound.headphones], "a click chooses");
-        verify(!level.open, "and goes back");
-        verify(findChild(group, "rows").visible);
+        verify(!list.open);
+        compare(select.currentText, "Speakers", "the default PipeWire has, until it changes");
+        controls.output = sound.headphones;
+        compare(select.currentText, "Headphones");
+        verify(findChild(findChild(controls, "sound"), "rows").visible, "the rows stay in place");
     }
 
-    function test_the_input_list_offers_the_inputs() {
+    function test_the_input_select_lists_the_inputs() {
         const sound = giveSound(controls);
         side.show(0);
         waitForRendering(side);
-        mouseClick(control("inputDevice"));
-        const rows = levelRows(findChild(controls, "inputs"));
-        compare(rows.map(row => row.text), ["zurück · eingang", "Microphone", "Headset Microphone"]);
-        mouseClick(rows[2]);
+        const select = control("inputDevice");
+        mouseClick(findChild(select, "box"));
+        const options = select.list.rows.filter(row => row instanceof MenuItem && row.kind === "option");
+        compare(options.map(row => row.text), ["Microphone", "Headset Microphone"]);
+        waitForRendering(side);
+        mouseClick(options[1]);
         compare(chosenDevices, [sound.headset]);
-    }
-
-    function test_the_back_row_goes_back_without_choosing() {
-        giveSound(controls);
-        side.show(0);
-        waitForRendering(side);
-        const level = findChild(controls, "outputs");
-        mouseClick(control("outputDevice"));
-        waitForRendering(side);
-        mouseClick(levelRows(level)[0]);
-        verify(!level.open);
-        compare(chosenDevices, []);
     }
 
     function test_from_the_keyboard_the_list_opens_a_device_is_chosen_and_the_focus_goes_back() {
         const sound = giveSound(controls);
         side.show(0);
-        const opener = control("outputDevice");
-        verify(opener.activeFocus, "the first control in steuerung");
+        const select = control("outputDevice");
+        verify(select.activeFocus, "the first control in steuerung");
+        keyClick(Qt.Key_Down);
+        verify(select.list.open, "↓ opens the list rather than moving on");
+        const options = select.list.rows.filter(row => row instanceof MenuItem && row.kind === "option");
+        verify(options[0].activeFocus, "the focus starts on the default");
+        keyClick(Qt.Key_Down);
+        verify(options[1].activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(chosenDevices, [sound.headphones], "Enter chooses");
+        verify(!select.list.open);
+        verify(select.activeFocus, "the focus goes back to the select");
+        verify(side.open);
+    }
+
+    function test_escape_closes_the_list_and_leaves_the_panel_open() {
+        giveSound(controls);
+        side.show(0);
+        const select = control("outputDevice");
+        keyClick(Qt.Key_Return);
+        verify(select.list.open);
+        keyClick(Qt.Key_Escape);
+        verify(!select.list.open);
+        verify(side.open, "the panel stays");
+        verify(select.activeFocus);
+        compare(chosenDevices, []);
+        keyClick(Qt.Key_Escape);
+        verify(!side.open, "the next Escape closes the panel");
+    }
+
+    function test_the_list_closes_with_the_panel() {
+        giveSound(controls);
+        side.show(0);
+        keyClick(Qt.Key_Return);
+        verify(control("outputDevice").list.open);
+        side.close();
+        verify(!side.open);
+        verify(!control("outputDevice").list.open);
+        side.show(0);
+        verify(!control("outputDevice").list.open, "and stays closed when it comes back");
+    }
+
+    function test_a_long_device_name_is_cut_in_its_select_and_in_the_list() {
+        const sound = giveSound(controls);
+        sound.speakers.description = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3)";
+        side.show(0);
+        waitForRendering(side);
+        const select = control("outputDevice");
+        verify(findChild(select, "chosen").truncated, "in the select");
+        mouseClick(findChild(select, "box"));
+        waitForRendering(side);
+        const row = select.list.rows.filter(row => row instanceof MenuItem && row.kind === "option")[0];
+        const label = findChild(row, "label");
+        verify(label.truncated, "in the list");
+        verify(label.x + label.width <= row.width - Tokens.spaceM);
+        const list = select.list;
+        verify(list.x + list.width <= side.overlay.width, "the list stays on the panel");
+    }
+
+    function test_a_level_opens_in_place_of_its_groups_rows_headed_by_zurück() {
+        const panel = showLevelPanel();
+        const group = findChild(panel, "networks");
+        const level = findChild(panel, "level");
+        mouseClick(findChild(panel, "chooseNetwork"));
+        verify(level.open);
+        verify(level.visible);
+        verify(!findChild(group, "rows").visible, "the list replaces the rows");
+        compare(findChild(group, "heading").text, "verbindungen", "under the group's heading");
+        const rows = levelRows(level);
+        compare(rows.map(row => row.text), ["zurück · wlan", "home", "office"]);
+        compare(rows[0].glyph, "back");
+        compare(rows.slice(1).map(row => row.kind), ["radio", "radio"]);
+        compare(rows.slice(1).map(row => row.checked), [true, false], "the current one is marked as a chosen menu option");
+        waitForRendering(panel);
+        mouseClick(rows[2]);
+        compare(chosenOptions, [1], "a click chooses");
+        verify(!level.open, "and goes back");
+        verify(findChild(group, "rows").visible);
+    }
+
+    function test_the_back_row_goes_back_without_choosing() {
+        const panel = showLevelPanel();
+        const level = findChild(panel, "level");
+        mouseClick(findChild(panel, "chooseNetwork"));
+        waitForRendering(panel);
+        mouseClick(levelRows(level)[0]);
+        verify(!level.open);
+        compare(chosenOptions, []);
+    }
+
+    function test_from_the_keyboard_a_level_opens_an_option_is_chosen_and_the_focus_goes_back() {
+        const panel = showLevelPanel();
+        const opener = findChild(panel, "chooseNetwork");
+        verify(opener.activeFocus, "the first control");
         keyClick(Qt.Key_Space);
-        const level = findChild(controls, "outputs");
+        const level = findChild(panel, "level");
         verify(level.open);
         const rows = levelRows(level);
-        verify(rows[1].activeFocus, "the focus starts on the current device");
+        verify(rows[1].activeFocus, "the focus starts on the current option");
         keyClick(Qt.Key_Down);
         verify(rows[2].activeFocus, "↓ to the next");
         keyClick(Qt.Key_Up);
@@ -752,23 +898,22 @@ TestCase {
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Return);
-        compare(chosenDevices, [sound.headphones], "Enter chooses");
+        compare(chosenOptions, [1], "Enter chooses");
         verify(!level.open, "and goes back");
         verify(opener.activeFocus, "to the control that opened it");
     }
 
-    function test_escape_and_left_go_back_and_leave_the_panel_open() {
-        giveSound(controls);
-        side.show(0);
-        const opener = control("outputDevice");
-        const level = findChild(controls, "outputs");
+    function test_escape_and_left_leave_a_level_and_the_panel_open() {
+        const panel = showLevelPanel();
+        const opener = findChild(panel, "chooseNetwork");
+        const level = findChild(panel, "level");
         for (const key of [Qt.Key_Escape, Qt.Key_Left]) {
             opener.forceActiveFocus();
             keyClick(Qt.Key_Return);
             verify(level.open);
             keyClick(key);
             verify(!level.open, `${key} goes back`);
-            verify(side.open, "the panel stays");
+            verify(panel.open, "the panel stays");
             verify(opener.activeFocus);
         }
         opener.forceActiveFocus();
@@ -776,21 +921,20 @@ TestCase {
         keyClick(Qt.Key_Up);
         keyClick(Qt.Key_Return);
         verify(!level.open, "Enter on the back row goes back");
-        compare(chosenDevices, []);
+        compare(chosenOptions, []);
     }
 
-    function test_the_list_comes_in_from_the_trailing_edge_and_the_rows_come_back_from_the_leading_edge() {
+    function test_a_level_comes_in_from_the_trailing_edge_and_the_rows_come_back_from_the_leading_edge() {
         Prefs.motion = "on";
-        giveSound(controls);
-        side.show(0);
-        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
-        const group = findChild(controls, "sound");
+        const panel = showLevelPanel();
+        tryCompare(panel, "entry", 1, Tokens.durationModerate * 4);
+        const group = findChild(panel, "networks");
         const enter = findChild(group, "enter");
         compare(enter.duration, 0.75 * Tokens.durationModerate, "the next item, same place");
         compare(enter.animations[0].easing.bezierCurve, Tokens.easeOut);
         const shift = findChild(group, "shift");
         compare(shift.x, 0, "the rows stand at first");
-        control("outputDevice").forceActiveFocus();
+        findChild(panel, "chooseNetwork").forceActiveFocus();
         keyClick(Qt.Key_Return);
         compare(shift.x, Tokens.slideDistance, "forward, from the trailing edge");
         compare(findChild(group, "holder").opacity, 0, "with a fade");
@@ -800,13 +944,12 @@ TestCase {
         tryCompare(shift, "x", 0, Tokens.durationModerate * 4);
     }
 
-    function test_under_reduced_motion_the_list_changes_at_once() {
-        giveSound(controls);
-        side.show(0);
-        const group = findChild(controls, "sound");
-        control("outputDevice").forceActiveFocus();
+    function test_under_reduced_motion_a_level_changes_at_once() {
+        const panel = showLevelPanel();
+        const group = findChild(panel, "networks");
+        findChild(panel, "chooseNetwork").forceActiveFocus();
         keyClick(Qt.Key_Return);
-        verify(findChild(controls, "outputs").visible, "in at once");
+        verify(findChild(panel, "level").visible, "in at once");
         compare(findChild(group, "shift").x, 0);
         compare(findChild(group, "holder").opacity, 1);
         keyClick(Qt.Key_Escape);
@@ -815,30 +958,24 @@ TestCase {
     }
 
     function test_the_panel_opens_again_on_the_groups_rows() {
-        giveSound(controls);
-        side.show(0);
-        waitForRendering(side);
-        mouseClick(control("outputDevice"));
-        verify(findChild(controls, "outputs").open);
-        side.close();
-        side.show(0);
-        verify(!findChild(controls, "outputs").open);
-        verify(findChild(findChild(controls, "sound"), "rows").visible);
-        verify(control("outputDevice").activeFocus);
+        const panel = showLevelPanel();
+        mouseClick(findChild(panel, "chooseNetwork"));
+        verify(findChild(panel, "level").open);
+        panel.close();
+        panel.show(0);
+        verify(!findChild(panel, "level").open);
+        verify(findChild(findChild(panel, "networks"), "rows").visible);
+        verify(findChild(panel, "chooseNetwork").activeFocus);
     }
 
-    function test_a_long_device_name_is_cut_in_its_row_and_in_the_list() {
-        const sound = giveSound(controls);
-        sound.speakers.description = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3)";
-        side.show(0);
-        waitForRendering(side);
-        const words = findChild(rowOf(control("outputDevice")), "words");
-        verify(words.truncated, "in the row");
-        mouseClick(control("outputDevice"));
-        waitForRendering(side);
-        const row = levelRows(findChild(controls, "outputs"))[1];
+    function test_a_long_option_is_cut_in_a_level() {
+        const panel = showLevelPanel();
+        findChild(panel, "level").options = ["home", "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) guest network"];
+        mouseClick(findChild(panel, "chooseNetwork"));
+        waitForRendering(panel);
+        const row = levelRows(findChild(panel, "level"))[2];
         const label = findChild(row, "label");
-        verify(label.truncated, "in the list");
+        verify(label.truncated);
         verify(label.x + label.width <= row.width - Tokens.spaceM);
     }
 
@@ -912,7 +1049,8 @@ TestCase {
         waitForRendering(side);
         const words = findChild(row, "words");
         compare(findChild(row, "holder").x, 0);
-        compare(findChild(row, "holder").y, words.height, "below the words");
+        compare(findChild(row, "holder").y, words.height + Tokens.spaceXs, "space-xs below the words");
+        compare(row.height, words.height + Tokens.spaceXs + toggle.implicitHeight);
         compare(words.width, row.width);
         verify(words.truncated, "the words are cut, not wrapped");
         compare(words.lineCount, 1);
@@ -936,9 +1074,11 @@ TestCase {
                 panel.show(0);
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-sheet-${theme}-${density}.png`);
-                findChild(contact, "outputDevice").click();
+                findChild(contact, "outputDevice").forceActiveFocus();
+                keyClick(Qt.Key_Down);
                 waitForRendering(contact);
-                grabImage(contact).save(`panel-level-sheet-${theme}-${density}.png`);
+                grabImage(contact).save(`panel-select-sheet-${theme}-${density}.png`);
+                verify(findChild(contact, "outputDevice").list.open);
                 verify(panel.open, `${theme} ${density}`);
                 contact.destroy();
             }

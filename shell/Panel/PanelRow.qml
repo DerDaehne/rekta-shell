@@ -2,7 +2,8 @@ import QtQuick
 import Rekta
 
 // A row of a group, a form's field rather than a list's item, so it stands on no hairline: its words at the start, its
-// control at the end; where the two do not fit on one line, the control goes below them (flex-wrap, rekta.css:69).
+// control at the end; where the two do not fit on one line, the control goes below them (flex-wrap, rekta.css:69),
+// space-xs apart as a field's label and control are (rekta.css:262).
 // Words too long for the row are cut. A row without words has its control at the start.
 Item {
     id: row
@@ -18,7 +19,7 @@ Item {
     readonly property real lineHeight: Math.max(label !== "" ? words.height : 0, wraps ? 0 : controlHeight)
 
     width: parent ? parent.width : 0
-    implicitHeight: lineHeight + (wraps ? controlHeight : 0)
+    implicitHeight: lineHeight + (wraps ? Tokens.spaceXs + controlHeight : 0)
     visible: present
 
     Body {
@@ -38,7 +39,7 @@ Item {
 
         objectName: "holder"
         x: row.label === "" || row.wraps ? 0 : row.width - row.controlWidth
-        y: row.wraps ? row.lineHeight : (row.lineHeight - row.controlHeight) / 2
+        y: row.wraps ? row.lineHeight + Tokens.spaceXs : (row.lineHeight - row.controlHeight) / 2
         width: row.controlWidth
         height: row.controlHeight
     }

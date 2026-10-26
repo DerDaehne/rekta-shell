@@ -5,8 +5,8 @@ import Rekta
 
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
 // tiles (tiles.md: a tile never changes data). The groups stand in a fixed order, ton, verbindungen, anzeige, sitzung;
-// one without rows falls away. The host runs what the rows ask for and feeds back the state they show. In ton each
-// device row opens its list in place of the group, to choose the default device of its kind.
+// one without rows falls away. The host runs what the rows ask for and feeds back the state they show. In ton a select
+// chooses the default device of each kind.
 Column {
     id: controls
 
@@ -26,6 +26,8 @@ Column {
     // The devices of each kind to choose from, nodes as above.
     property var outputs: []
     property var inputs: []
+    // Where the selects' lists float.
+    property Item overlay: Window.contentItem
 
     // A command for the host to run on the session.
     signal run(var command)
@@ -42,55 +44,43 @@ Column {
     PanelGroup {
         objectName: "sound"
         title: "ton"
-        levels: [
-            DeviceLevel {
-                id: outputLevel
-
-                objectName: "outputs"
-                kind: "output"
-                name: "ausgang"
-                devices: controls.outputs
-                current: controls.output
-            },
-            DeviceLevel {
-                id: inputLevel
-
-                objectName: "inputs"
-                kind: "input"
-                name: "eingang"
-                devices: controls.inputs
-                current: controls.input
-            }
-        ]
 
         DeviceRow {
             node: controls.output
-            level: outputLevel
+            devices: controls.outputs
+            kind: "output"
+            name: "ausgang"
         }
 
         VolumeRow {
             node: controls.output
-            level: outputLevel
+            kind: "output"
+            name: "ausgang"
         }
 
         MuteRow {
             node: controls.output
-            level: outputLevel
+            kind: "output"
+            name: "ausgang"
         }
 
         DeviceRow {
             node: controls.input
-            level: inputLevel
+            devices: controls.inputs
+            kind: "input"
+            name: "eingang"
         }
 
         VolumeRow {
             node: controls.input
-            level: inputLevel
+            kind: "input"
+            name: "eingang"
         }
 
         MuteRow {
             node: controls.input
-            level: inputLevel
+            kind: "input"
+            name: "eingang"
         }
     }
 
@@ -175,36 +165,35 @@ Column {
         }
     }
 
-    // The devices of one kind, in place of the group's rows; choosing one makes it the default.
-    component DeviceLevel: PanelLevel {
-        // output or input, which names its controls.
-        property string kind
-        property var devices: []
-        property var current: null
-
-        options: devices.map(node => controls.deviceName(node))
-        currentIndex: devices.indexOf(current)
-        onChosen: index => controls.deviceChosen(devices[index])
-    }
-
-    // The default device of one kind by its name, and a button to choose another: a row's action is a button with a
-    // verb (tiles.md, "Rows follow the same split").
+    // The default device of one kind in a select of the devices of that kind; choosing one asks for it as the default.
+    // The select always shows the default PipeWire has, so a change from elsewhere shows at once.
     component DeviceRow: PanelRow {
         id: deviceRow
 
         required property var node
-        required property DeviceLevel level
+        required property var devices
+        // output or input, which names its controls.
+        required property string kind
+        required property string name
 
-        label: `${level.name} · ${controls.deviceName(node)}`
+        label: name
         present: node !== null
 
-        Button {
-            id: opener
+        Select {
+            id: picker
 
-            objectName: `${deviceRow.level.kind}Device`
-            text: "wählen"
-            Accessible.name: `${deviceRow.level.name} wählen`
-            onClicked: deviceRow.level.show(opener)
+            objectName: `${deviceRow.kind}Device`
+            // As wide as the row, so it stands below its label (forms.md, "Fields"; rekta.css:265, an input is 100% wide).
+            implicitWidth: deviceRow.width
+            overlay: controls.overlay
+            label: deviceRow.name
+            options: deviceRow.devices.map(node => ({ text: controls.deviceName(node), value: node }))
+            currentIndex: deviceRow.devices.indexOf(deviceRow.node)
+            // The choice it made ends that binding: it comes back, and the new default shows once PipeWire has it.
+            onActivated: index => {
+                controls.deviceChosen(deviceRow.devices[index]);
+                currentIndex = Qt.binding(() => deviceRow.devices.indexOf(deviceRow.node));
+            }
         }
     }
 
@@ -214,7 +203,8 @@ Column {
         id: volumeRow
 
         required property var node
-        required property DeviceLevel level
+        required property string kind
+        required property string name
         readonly property real volume: Math.min(1, node?.audio?.volume ?? 0)
 
         label: "lautstärke"
@@ -225,12 +215,12 @@ Column {
         Slider {
             id: volumeSlider
 
-            objectName: `${volumeRow.level.kind}Volume`
+            objectName: `${volumeRow.kind}Volume`
             // As wide as the row, so it stands below the words (rekta.css:367, a range is 100% wide).
             implicitWidth: volumeRow.width
             value: volumeRow.volume
             valueText: `${Math.round(value * 100)}%`
-            label: `lautstärke ${volumeRow.level.name}`
+            label: `lautstärke ${volumeRow.name}`
             onMoved: volumeRow.node.audio.volume = value
         }
     }
@@ -239,7 +229,8 @@ Column {
         id: muteRow
 
         required property var node
-        required property DeviceLevel level
+        required property string kind
+        required property string name
         readonly property bool muted: node?.audio?.muted ?? false
 
         label: "stumm"
@@ -249,11 +240,11 @@ Column {
         Toggle {
             id: muteToggle
 
-            objectName: `${muteRow.level.kind}Muted`
+            objectName: `${muteRow.kind}Muted`
             onWord: "an"
             offWord: "aus"
             checked: muteRow.muted
-            Accessible.name: `stumm ${muteRow.level.name}`
+            Accessible.name: `stumm ${muteRow.name}`
             onToggled: muteRow.node.audio.muted = checked
         }
     }
