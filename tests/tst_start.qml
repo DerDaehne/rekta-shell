@@ -153,6 +153,8 @@ TestCase {
         compare(tiles[0].width, 2 * Tokens.tileUnit + Tokens.spaceS);
         compare(findChild(tiles[0], "title").text, "Rekta Design — docs");
         compare(findChild(tiles[0], "title").maximumLineCount, 1);
+        compare(findChild(tiles[0], "title").color, Tokens.color.textPrimary);
+        compare(findChild(tiles[0], "icon").width, 2 * Geometry.iconSize);
     }
 
     function test_without_windows_the_running_section_is_gone() {
@@ -263,6 +265,8 @@ TestCase {
         compare(findChild(dolphin, "name").text, "dolphin");
         const icon = findChild(dolphin, "icon");
         compare(Qt.point(icon.x, icon.y), Qt.point(Geometry.tilePadding, Geometry.tilePadding));
+        compare(icon.width, 2 * Geometry.iconSize);
+        compare(findChild(dolphin, "name").color, Tokens.color.textPrimary);
     }
 
     function test_the_column_scrolls_down_when_its_tiles_are_longer_than_the_screen() {

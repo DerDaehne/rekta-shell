@@ -224,6 +224,8 @@ QtObject {
 
     // `.rk-icon { width: 20px; height: 20px }` (rekta.css:425)
     readonly property real iconSize: 20
+    // An app's own icon on a tile: twice the icon grid (rekta.css:425); Rekta has no rule for a foreign image on a tile.
+    readonly property real appIconSize: 2 * iconSize
     // `.rk-toast { max-width: 32rem }` sideways (rekta.css:1106)
     readonly property real toastMaxWidth: 512
     // The action's divider: `border-left: 1px solid color-mix(in srgb, currentColor 20%, transparent)` (rekta.css:914)

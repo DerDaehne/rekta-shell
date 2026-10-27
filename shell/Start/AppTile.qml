@@ -14,14 +14,13 @@ Tile {
     opens: true
     Accessible.name: name
 
-    // The icon at the size of Rekta's icons (rekta.css:425), as Rekta has none for an app's own.
     Image {
         objectName: "icon"
         parent: tile
         x: Geometry.tilePadding
         y: Geometry.tilePadding
-        width: Geometry.iconSize
-        height: Geometry.iconSize
+        width: Geometry.appIconSize
+        height: Geometry.appIconSize
         sourceSize: Qt.size(width, height)
         source: tile.icon
     }
@@ -31,6 +30,7 @@ Tile {
         objectName: "name"
         width: parent.width
         text: tile.name
+        color: Tokens.color.textPrimary
         lineHeightFactor: Tokens.lineHeightCompact
         maximumLineCount: 1
         wrapMode: Text.NoWrap

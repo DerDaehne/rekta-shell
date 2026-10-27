@@ -46,12 +46,11 @@ Tile {
         width: parent.width
         spacing: Tokens.spaceS
 
-        // The icon at the size of Rekta's icons (rekta.css:425), as a toast shows an app's.
         Image {
             objectName: "icon"
             anchors.verticalCenter: parent.verticalCenter
-            width: Geometry.iconSize
-            height: Geometry.iconSize
+            width: Geometry.appIconSize
+            height: Geometry.appIconSize
             sourceSize: Qt.size(width, height)
             source: tile.icon
         }
@@ -60,8 +59,9 @@ Tile {
         Kicker {
             objectName: "title"
             anchors.verticalCenter: parent.verticalCenter
-            width: label.width - Geometry.iconSize - label.spacing
+            width: label.width - Geometry.appIconSize - label.spacing
             text: tile.title
+            color: Tokens.color.textPrimary
             lineHeightFactor: Tokens.lineHeightCompact
             maximumLineCount: 1
             wrapMode: Text.NoWrap
