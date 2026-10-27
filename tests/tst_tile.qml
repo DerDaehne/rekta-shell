@@ -279,6 +279,33 @@ TestCase {
         compare(activations.count, 0);
     }
 
+    Component {
+        id: scrollerComponent
+
+        Flickable {
+            width: 400
+            height: 400
+            contentHeight: 1200
+
+            Tile {
+                objectName: "tile"
+                y: 200
+                opens: true
+            }
+        }
+    }
+
+    function test_a_scroller_around_it_takes_a_drag_that_starts_on_it_and_the_press_gives_up() {
+        const scroller = createTemporaryObject(scrollerComponent, testCase);
+        const tile = findChild(scroller, "tile");
+        const activations = createTemporaryObject(spy, testCase, { target: tile });
+        mouseDrag(scroller, 60, 260, 0, -200);
+        tryVerify(() => !scroller.moving, 3000);
+        verify(scroller.contentY > 0, `scrolled to ${scroller.contentY}`);
+        compare(activations.count, 0);
+        verify(!tile.pressed);
+    }
+
     function test_under_reduced_motion_a_press_only_shrinks() {
         Prefs.motion = "off";
         const tile = createTemporaryObject(tileComponent, testCase, { opens: true });

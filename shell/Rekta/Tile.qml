@@ -316,7 +316,8 @@ Item {
     }
 
     // While pressed, the hit area reaches space-m past the tile, so a release on an edge that sank away still lands
-    // (rekta.css:119–123). A press there before the tile is pressed belongs to whatever lies beneath.
+    // (rekta.css:119–123). A press there before the tile is pressed belongs to whatever lies beneath. A scroller around
+    // the tile may take a drag over, as a page scrolls under a finger; the press then gives up.
     MouseArea {
         id: area
 
@@ -331,7 +332,6 @@ Item {
         anchors.fill: parent
         anchors.margins: -Tokens.spaceM
         enabled: tile.opens
-        preventStealing: true
 
         onPressed: mouse => {
             const inside = mouse.x >= Tokens.spaceM && mouse.x <= width - Tokens.spaceM && mouse.y >= Tokens.spaceM && mouse.y <= height - Tokens.spaceM;
