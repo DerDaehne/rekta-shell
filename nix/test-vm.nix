@@ -27,6 +27,9 @@
 
   services.desktopManager.plasma6.enable = true;
   programs.rekta-shell.enable = true;
+  # BlueZ and System Settings' Bluetooth page, but no adapter: QEMU has none, and bluetoothd starts only once the
+  # bluetooth module is loaded (`modprobe bluetooth`).
+  hardware.bluetooth.enable = true;
   services.displayManager = {
     sddm.enable = true;
     sddm.wayland.enable = true;
