@@ -6,7 +6,8 @@ import Rekta
 // A deeper level of a group: a list to choose one from, which stands in the group's place while it is open (the
 // group slides it in). It starts with a back row, "zurück · name"; its options are rows of a menu, the current one
 // with a filled square (states.md, "Floating surfaces"). Choosing one, the back row, Escape and ← go back, and the
-// focus goes back to the control that opened it.
+// focus goes back to the control that opened it. MenuItems declared in it follow the options as rows of their own:
+// pressing one says so in `activated` and the level stays open.
 Column {
     id: level
 
@@ -18,37 +19,46 @@ Column {
     property Item opener
 
     signal chosen(int index)
+    signal activated(MenuItem row)
 
     function show(from: Item) {
         opener = from;
         open = true;
-        const rows = choices();
-        (rows[currentIndex] ?? rows[0] ?? back).forceActiveFocus(Qt.TabFocusReason);
+        (choices()[currentIndex] ?? rows()[0] ?? back).forceActiveFocus(Qt.TabFocusReason);
     }
 
     function leave() {
         if (!open)
             return;
-        const held = [back, ...choices()].some(row => row.activeFocus);
+        const held = [back, ...rows()].some(row => row.activeFocus);
         open = false;
         if (held)
             opener?.forceActiveFocus(Qt.TabFocusReason);
     }
 
     function choose(row: Item) {
+        if (!(row instanceof MenuItem) || (row as MenuItem).disabled)
+            return;
         if (row === back) {
             leave();
             return;
         }
         const index = choices().indexOf(row);
-        if (index < 0)
+        if (index < 0) {
+            activated(row as MenuItem);
             return;
+        }
         leave();
         chosen(index);
     }
 
-    function choices(): list<MenuItem> {
+    // The rows below the back row, the options first.
+    function rows(): list<MenuItem> {
         return Array.from(children).filter(row => row instanceof MenuItem && row !== back);
+    }
+
+    function choices(): list<MenuItem> {
+        return Array.from({ length: optionRows.count }, (_, index) => optionRows.itemAt(index));
     }
 
     width: parent ? parent.width : 0
@@ -90,6 +100,8 @@ Column {
     }
 
     Repeater {
+        id: optionRows
+
         model: level.options
 
         MenuItem {

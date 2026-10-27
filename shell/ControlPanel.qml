@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Bluetooth
 import Quickshell.Io
 import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
@@ -51,6 +52,14 @@ PanelWindow {
 
     function close() {
         panel.close();
+    }
+
+    // The nested session reaches the host's system bus: only the session's own shell acts on it, elsewhere it logs.
+    function actOnSystemBus(what: string, act: var) {
+        if (launcher.starts)
+            act();
+        else
+            console.info(`ControlPanel: would ${what}`);
     }
 
     screen: primaryScreen
@@ -104,6 +113,21 @@ PanelWindow {
                 else
                     Pipewire.preferredDefaultAudioSource = node;
             }
+            // Bluetooth is asked only once BlueZ runs, for the same reason as PowerProfiles. Quickshell's type info names the
+            // adapter's type without its C++ namespace, so qmllint cannot resolve it.
+            bluetooth: bluez.registered ? Bluetooth.defaultAdapter : null // qmllint disable unresolved-type
+            // Untyped, as with Pipewire's model above.
+            bluetoothDevices: (controls.bluetooth?.devices.values ?? []).filter(device => device.paired || device.bonded)
+            onBluetoothChosen: on => surface.actOnSystemBus(`switch bluetooth ${on ? "on" : "off"}`, () => controls.bluetooth.enabled = on)
+            onConnectionChosen: (device, connect) => surface.actOnSystemBus(`${connect ? "connect" : "disconnect"} ${device.name}`, () => connect ? device.connect() : device.disconnect())
+            onPairingAsked: {
+                panel.close();
+                const settings = DesktopEntries.byId("kcm_bluetooth");
+                if (settings)
+                    surface.launcher.launch(settings);
+                else
+                    console.warn("ControlPanel: no System Settings page kcm_bluetooth to pair a device in");
+            }
         }
 
         Messages {
@@ -143,6 +167,13 @@ PanelWindow {
 
         busType: DBus.BusType.System
         watchedService: "org.freedesktop.UPower.PowerProfiles"
+    }
+
+    DBus.DBusServiceWatcher {
+        id: bluez
+
+        busType: DBus.BusType.System
+        watchedService: "org.bluez"
     }
 
     FileView {

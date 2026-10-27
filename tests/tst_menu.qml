@@ -391,6 +391,34 @@ TestCase {
         compare(name.implicitWidth, 2 * Tokens.spaceM + 10 + Tokens.spaceS + findChild(name, "label").implicitWidth, "no hint, no gap");
     }
 
+    Component {
+        id: markedRowComponent
+
+        MenuItem {
+            width: 200
+            text: "headphones of the guest room"
+            keyHint: "F3"
+
+            Text {
+                objectName: "mark"
+                text: "80%"
+            }
+        }
+    }
+
+    function test_marks_stand_at_the_end_before_the_key_hint_and_the_words_are_cut_before_them() {
+        const item = createTemporaryObject(markedRowComponent, testCase);
+        const label = findChild(item, "label");
+        const end = findChild(item, "end");
+        const key = findChild(item, "key");
+        verify(findChild(item, "mark").parent === end, "the row's children go to its end");
+        tryCompare(end, "width", findChild(item, "mark").implicitWidth);
+        compare(end.x + end.width, item.width - Tokens.spaceM - Tokens.spaceS - Tokens.spaceL - key.implicitWidth);
+        compare(label.x + label.width, end.x - Tokens.spaceS);
+        verify(label.truncated);
+        compare(item.implicitWidth, 2 * Tokens.spaceM + label.implicitWidth + Tokens.spaceS + end.width + Tokens.spaceS + Tokens.spaceL + key.implicitWidth);
+    }
+
     function test_while_a_menu_is_open_escape_is_not_free() {
         verify(KeyLayers.escapeIsFree(row("control")));
         menu.openAt(0);

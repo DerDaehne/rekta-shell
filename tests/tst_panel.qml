@@ -24,6 +24,10 @@ TestCase {
     property var chosenOptions: []
     // How often "sitzung …" asked for the session banner.
     property int sessionAsked: 0
+    // The Bluetooth switches asked for, whether the adapter takes them, and how often pairing was asked for.
+    property var bluetoothSwitches: []
+    property bool bluetoothTakes: true
+    property int pairingAsked: 0
     property Item scene
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var side
@@ -74,6 +78,14 @@ TestCase {
             onPowerProfileChosen: profile => testCase.chosenProfiles = [...testCase.chosenProfiles, profile]
             onDeviceChosen: node => testCase.chosenDevices = [...testCase.chosenDevices, node]
             onSessionAsked: testCase.sessionAsked += 1
+            // As the host and Quickshell have it: the adapter switches at once, a device goes on its way.
+            onBluetoothChosen: on => {
+                testCase.bluetoothSwitches = [...testCase.bluetoothSwitches, on];
+                if (testCase.bluetoothTakes)
+                    controlsFacet.bluetooth.enabled = on;
+            }
+            onConnectionChosen: (device, connect) => connect ? device.connect() : device.disconnect()
+            onPairingAsked: testCase.pairingAsked += 1
         }
 
         Item {
@@ -130,6 +142,46 @@ TestCase {
         id: deviceComponent
 
         FakeDevice {}
+    }
+
+    // A Bluetooth adapter as Quickshell has it: enabled and its state.
+    component FakeAdapter: QtObject {
+        property bool enabled: true
+        property int state: Controls.Enabled
+    }
+
+    Component {
+        id: adapterComponent
+
+        FakeAdapter {}
+    }
+
+    // A paired Bluetooth device as Quickshell has it. Like Quickshell's, connect() and disconnect() set the state on its
+    // way at once and record the call; the answer is the test's to give.
+    component FakeBluetoothDevice: QtObject {
+        property string name
+        property bool connected: false
+        property int state: connected ? Controls.Connected : Controls.Disconnected
+        property bool pairing: false
+        property bool batteryAvailable: false
+        property real battery: 0
+        property var calls: []
+
+        function connect() {
+            calls = [...calls, "connect"];
+            state = Controls.Connecting;
+        }
+
+        function disconnect() {
+            calls = [...calls, "disconnect"];
+            state = Controls.Disconnecting;
+        }
+    }
+
+    Component {
+        id: bluetoothDeviceComponent
+
+        FakeBluetoothDevice {}
     }
 
     Component {
@@ -241,6 +293,9 @@ TestCase {
         chosenDevices = [];
         chosenOptions = [];
         sessionAsked = 0;
+        bluetoothSwitches = [];
+        bluetoothTakes = true;
+        pairingAsked = 0;
         scene = createTemporaryObject(sceneComponent, testCase);
         side = findChild(scene, "panel");
         controls = side.controls;
@@ -291,6 +346,31 @@ TestCase {
         target.output = sound.speakers;
         target.input = sound.microphone;
         return sound;
+    }
+
+    // An adapter that is on and three paired devices: headphones connected with their battery, a speaker and a mouse.
+    function giveBluetooth(target: var): var {
+        const device = properties => createTemporaryObject(bluetoothDeviceComponent, testCase, properties);
+        const bluetooth = {
+            adapter: createTemporaryObject(adapterComponent, testCase),
+            headphones: device({ name: "Headphones", connected: true, batteryAvailable: true, battery: 0.8 }),
+            speaker: device({ name: "Speaker" }),
+            mouse: device({ name: "Mouse" })
+        };
+        target.bluetooth = bluetooth.adapter;
+        target.bluetoothDevices = [bluetooth.headphones, bluetooth.speaker, bluetooth.mouse];
+        return bluetooth;
+    }
+
+    // The Bluetooth level of the controls, opened by its row's button.
+    function showBluetoothLevel(): var {
+        side.show(0);
+        control("chooseBluetoothDevice").forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        const level = control("bluetoothDevices");
+        verify(level.open);
+        waitForRendering(side);
+        return level;
     }
 
     // The level panel, open and drawn.
@@ -1004,6 +1084,162 @@ TestCase {
         verify(label.x + label.width <= row.width - Tokens.spaceM);
     }
 
+    function test_the_bluetooth_toggle_switches_the_adapter_and_shows_what_the_adapter_has() {
+        const bluetooth = giveBluetooth(controls);
+        side.show(0);
+        const toggle = control("bluetooth");
+        compare(findChild(rowOf(toggle), "words").text, "bluetooth");
+        verify(findChild(controls, "connections").visible, "in verbindungen");
+        verify(toggle.checked, "on, as the adapter is");
+        toggle.forceActiveFocus();
+        keyClick(Qt.Key_Space);
+        compare(bluetoothSwitches, [false]);
+        verify(!bluetooth.adapter.enabled);
+        verify(!toggle.checked);
+        bluetooth.adapter.enabled = true;
+        verify(toggle.checked, "a change from elsewhere shows");
+        bluetoothTakes = false;
+        keyClick(Qt.Key_Space);
+        compare(bluetoothSwitches, [false, false]);
+        verify(toggle.checked, "a switch the system did not take springs back");
+    }
+
+    function test_a_blocked_adapter_greys_the_toggle_which_says_why() {
+        const bluetooth = giveBluetooth(controls);
+        bluetooth.adapter.enabled = false;
+        bluetooth.adapter.state = Controls.Blocked;
+        side.show(0);
+        const toggle = control("bluetooth");
+        verify(toggle.disabled);
+        verify(findChild(toggle, "why").visible);
+        compare(findChild(toggle, "why").text, "funk gesperrt");
+        toggle.forceActiveFocus();
+        keyClick(Qt.Key_Space);
+        compare(bluetoothSwitches, []);
+        verify(!toggle.checked);
+    }
+
+    function test_geräte_opens_a_level_of_the_paired_devices_with_their_state_and_battery() {
+        giveBluetooth(controls);
+        side.show(0);
+        const opener = control("chooseBluetoothDevice");
+        compare(findChild(rowOf(opener), "words").text, "geräte · 1 verbunden");
+        waitForRendering(side);
+        mouseClick(opener);
+        const level = control("bluetoothDevices");
+        verify(level.open);
+        verify(!findChild(findChild(controls, "connections"), "rows").visible, "in place of the group's rows");
+        const rows = levelRows(level);
+        compare(rows.map(row => row.text), ["zurück · geräte", "Headphones", "Speaker", "Mouse", "neues gerät koppeln"]);
+        compare(rows.slice(1).map(row => row.kind), ["item", "item", "item", "item"], "no option to choose one of");
+        const states = rows.slice(1, 4).map(row => findChild(row, "state"));
+        compare(states.map(tag => tag.word), ["verbunden", "getrennt", "getrennt"]);
+        compare(states.map(tag => tag.status), ["info", "", ""]);
+        const battery = findChild(rows[1], "battery");
+        verify(battery.visible);
+        compare(battery.text, "80%");
+        compare(battery.font.features, { "tnum": 1 }, "in tabular figures");
+        compare(battery.font.weight, Tokens.fontWeightMedium, "a number to read as data");
+        verify(!findChild(rows[2], "battery").visible, "where the device tells none");
+        compare(rows[1].Accessible.name, "Headphones, verbunden, akku 80%");
+        compare(rows[2].Accessible.name, "Speaker, getrennt");
+        waitForRendering(side);
+        const end = findChild(rows[1], "end");
+        compare(end.x + end.width, rows[1].width - Tokens.spaceM, "state and battery at the row's end");
+    }
+
+    function test_a_press_connects_or_disconnects_and_the_device_waits_until_the_answer() {
+        const bluetooth = giveBluetooth(controls);
+        const level = showBluetoothLevel();
+        const rows = levelRows(level);
+        const stateOf = row => findChild(row, "state");
+        mouseClick(rows[2]);
+        compare(bluetooth.speaker.calls, ["connect"]);
+        verify(level.open, "the level stays");
+        compare(stateOf(rows[2]).word, "wartet");
+        compare(stateOf(rows[2]).status, "warning");
+        mouseClick(rows[2]);
+        compare(bluetooth.speaker.calls, ["connect"], "one on its way waits for the answer");
+        bluetooth.speaker.connected = true;
+        bluetooth.speaker.state = Controls.Connected;
+        compare(stateOf(rows[2]).word, "verbunden");
+        compare(stateOf(rows[2]).status, "info");
+        mouseClick(rows[1]);
+        compare(bluetooth.headphones.calls, ["disconnect"]);
+        compare(stateOf(rows[1]).word, "wartet");
+        bluetooth.headphones.state = Controls.Connected;
+        compare(stateOf(rows[1]).word, "verbunden", "a disconnection that fails shows the state from before");
+        mouseClick(rows[3]);
+        bluetooth.mouse.state = Controls.Disconnected;
+        compare(stateOf(rows[3]).word, "getrennt", "so does a connection that fails");
+        bluetooth.mouse.pairing = true;
+        compare(stateOf(rows[3]).word, "wartet", "pairing waits too");
+        keyClick(Qt.Key_Escape);
+        compare(findChild(rowOf(control("chooseBluetoothDevice")), "words").text, "geräte · 2 verbunden");
+    }
+
+    function test_neues_gerät_koppeln_asks_for_system_settings_to_pair_a_device() {
+        giveBluetooth(controls);
+        const level = showBluetoothLevel();
+        const pair = control("pairDevice");
+        compare(levelRows(level).slice(-1)[0], pair, "the last row");
+        mouseClick(pair);
+        compare(pairingAsked, 1);
+    }
+
+    function test_without_an_adapter_the_bluetooth_rows_are_gone_and_verbindungen_falls_away_quietly() {
+        giveBluetooth(controls);
+        side.show(0);
+        verify(findChild(controls, "connections").visible);
+        controls.bluetooth = null;
+        controls.bluetoothDevices = [];
+        verify(!rowOf(control("bluetooth")).visible);
+        verify(!rowOf(control("chooseBluetoothDevice")).visible);
+        verify(!findChild(controls, "connections").visible, "with no other row the group falls away");
+    }
+
+    function test_bluetooth_works_from_the_keyboard() {
+        const bluetooth = giveBluetooth(controls);
+        side.show(0);
+        verify(control("bluetooth").activeFocus, "the first control without sound");
+        keyClick(Qt.Key_Space);
+        compare(bluetoothSwitches, [false]);
+        keyClick(Qt.Key_Down);
+        const opener = control("chooseBluetoothDevice");
+        verify(opener.activeFocus);
+        keyClick(Qt.Key_Return);
+        const level = control("bluetoothDevices");
+        const rows = levelRows(level);
+        verify(rows[1].activeFocus, "the focus starts on the first device");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        compare(bluetooth.speaker.calls, ["connect"], "Enter connects");
+        verify(rows[2].activeFocus, "the focus stays");
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Space);
+        compare(bluetooth.headphones.calls, ["disconnect"], "Space too");
+        keyClick(Qt.Key_Tab);
+        keyClick(Qt.Key_Tab);
+        keyClick(Qt.Key_Tab);
+        verify(rows[4].activeFocus, "Tab to neues gerät koppeln");
+        keyClick(Qt.Key_Return);
+        compare(pairingAsked, 1);
+        keyClick(Qt.Key_Left);
+        verify(!level.open, "← goes back");
+        verify(opener.activeFocus, "to geräte");
+        verify(side.open);
+    }
+
+    function test_a_long_device_name_is_cut_before_its_state() {
+        const bluetooth = giveBluetooth(controls);
+        bluetooth.headphones.name = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo Headphones of the guest room";
+        const level = showBluetoothLevel();
+        const row = levelRows(level)[1];
+        const label = findChild(row, "label");
+        verify(label.truncated);
+        compare(label.x + label.width, findChild(row, "end").x - Tokens.spaceS);
+    }
+
     function test_the_groups_stand_in_order_with_headings_and_a_group_without_rows_falls_away() {
         side.show(0);
         const groups = ["sound", "connections", "display", "session"].map(name => findChild(controls, name));
@@ -1096,6 +1332,7 @@ TestCase {
                 const panel = findChild(contact, "panel");
                 panel.controls.hasPerformanceProfile = true;
                 giveSound(panel.controls).speakers.audio.volume = 0.62;
+                giveBluetooth(panel.controls).speaker.state = Controls.Connecting;
                 panel.show(0);
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-sheet-${theme}-${density}.png`);
@@ -1104,6 +1341,15 @@ TestCase {
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-select-sheet-${theme}-${density}.png`);
                 verify(findChild(contact, "outputDevice").expanded);
+                // Without sound, verbindungen stands first: its level open, the devices connected, on their way and not.
+                keyClick(Qt.Key_Escape);
+                panel.controls.output = null;
+                panel.controls.input = null;
+                findChild(contact, "chooseBluetoothDevice").forceActiveFocus();
+                keyClick(Qt.Key_Return);
+                waitForRendering(contact);
+                grabImage(contact).save(`panel-bluetooth-sheet-${theme}-${density}.png`);
+                verify(findChild(contact, "bluetoothDevices").open);
                 verify(panel.open, `${theme} ${density}`);
                 contact.destroy();
             }

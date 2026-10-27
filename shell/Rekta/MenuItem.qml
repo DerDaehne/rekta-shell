@@ -21,6 +21,9 @@ Item {
     property string lead
     // The keys that do the same from anywhere, such as "Ctrl S".
     property string keyHint
+    // Marks at the end of the row, before a key hint, such as a device's battery and state: the shell's own addition, as
+    // the image is.
+    default property alias trailing: end.data
     property string disabledReason
     // Off with no reason to give: a foreign menu's entry that the app has turned off.
     property bool dimmed: false
@@ -39,9 +42,10 @@ Item {
     readonly property string spoken: lead !== "" ? `${lead} ${label}` : label
     // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:790, :797)
     readonly property real keySpace: keyHint !== "" ? Tokens.spaceS + Tokens.spaceL + key.implicitWidth : 0
+    readonly property real endSpace: end.implicitWidth > 0 ? Tokens.spaceS + end.implicitWidth : 0
 
     width: parent ? parent.width : implicitWidth
-    implicitWidth: 2 * Tokens.spaceM + checkSpace + iconSpace + leadSpace + words.implicitWidth + keySpace
+    implicitWidth: 2 * Tokens.spaceM + checkSpace + iconSpace + leadSpace + words.implicitWidth + endSpace + keySpace
     implicitHeight: Tokens.rowHeight
     Accessible.role: Accessible.MenuItem
     Accessible.name: spoken
@@ -108,12 +112,22 @@ Item {
         objectName: "label"
         x: item.textEdge
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.max(0, item.width - item.textEdge - item.keySpace - Tokens.spaceM)
+        width: Math.max(0, item.width - item.textEdge - item.endSpace - item.keySpace - Tokens.spaceM)
         text: item.label
         elide: Text.ElideRight
         font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeS
         color: item.ink
+    }
+
+    Row {
+        id: end
+
+        objectName: "end"
+        anchors.right: parent.right
+        anchors.rightMargin: Tokens.spaceM + item.keySpace
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: Tokens.spaceS
     }
 
     Text {

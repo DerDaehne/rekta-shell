@@ -6,9 +6,25 @@ import Rekta
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
 // tiles (tiles.md: a tile never changes data). The groups stand in a fixed order, ton, verbindungen, anzeige, sitzung;
 // one without rows falls away. The host runs what the rows ask for and feeds back the state they show. In ton a select
-// chooses the default device of each kind.
+// chooses the default device of each kind; in verbindungen a level lists the paired Bluetooth devices to connect.
 Column {
     id: controls
+
+    // Quickshell's BluetoothAdapterState and BluetoothDeviceState, as this module goes without Quickshell.
+    enum AdapterState {
+        Disabled = 0,
+        Enabled = 1,
+        Enabling = 2,
+        Disabling = 3,
+        Blocked = 4
+    }
+
+    enum DeviceState {
+        Disconnected = 0,
+        Connected = 1,
+        Disconnecting = 2,
+        Connecting = 3
+    }
 
     // The text of kdeglobals, which names Plasma's pair of light and dark global themes.
     property string kdeglobals
@@ -26,6 +42,11 @@ Column {
     // The devices of each kind to choose from, nodes as above.
     property var outputs: []
     property var inputs: []
+    // The default Bluetooth adapter as Quickshell has it, or null: its enabled and state.
+    property var bluetooth: null
+    // Its paired devices: name, connected, state, pairing, batteryAvailable and battery (0 to 1).
+    property var bluetoothDevices: []
+    readonly property bool bluetoothOn: bluetooth?.enabled ?? false
 
     // A command for the host to run on the session.
     signal run(var command)
@@ -34,9 +55,30 @@ Column {
     signal deviceChosen(var node)
     // The session's actions, which the host shows in place of the panel.
     signal sessionAsked
+    signal bluetoothChosen(bool on)
+    // A Bluetooth device to connect, or to disconnect.
+    signal connectionChosen(var device, bool connect)
+    // System Settings is to pair a new device: the shell has no BlueZ agent to answer a pairing.
+    signal pairingAsked
 
     function deviceName(node: var): string {
         return node?.description || node?.name || "";
+    }
+
+    // On its way between connected and not; a connection that fails takes the device back to where it was.
+    function waiting(device: var): bool {
+        return device.pairing || device.state === Controls.Connecting || device.state === Controls.Disconnecting;
+    }
+
+    // A device connects or disconnects; one on its way has the system's answer to wait for.
+    function pressBluetooth(row: MenuItem) {
+        if (row === pairRow) {
+            pairingAsked();
+            return;
+        }
+        const device = (row as BluetoothDeviceItem)?.device;
+        if (device && !waiting(device))
+            connectionChosen(device, !device.connected);
     }
 
     width: parent ? parent.width : 0
@@ -87,6 +129,62 @@ Column {
     PanelGroup {
         objectName: "connections"
         title: "verbindungen"
+        levels: [
+            PanelLevel {
+                id: bluetoothLevel
+
+                objectName: "bluetoothDevices"
+                name: "geräte"
+                onActivated: row => controls.pressBluetooth(row)
+
+                Repeater {
+                    model: controls.bluetoothDevices
+
+                    BluetoothDeviceItem {}
+                }
+
+                MenuItem {
+                    id: pairRow
+
+                    objectName: "pairDevice"
+                    text: "neues gerät koppeln"
+                    activeFocusOnTab: true
+                }
+            }
+        ]
+
+        PanelRow {
+            label: "bluetooth"
+            present: controls.bluetooth !== null
+
+            Toggle {
+                objectName: "bluetooth"
+                onWord: "an"
+                offWord: "aus"
+                checked: controls.bluetoothOn
+                disabledReason: controls.bluetooth?.state === Controls.Blocked ? "funk gesperrt" : ""
+                Accessible.name: "bluetooth"
+                // It shows what the adapter has: a switch the system did not take springs back.
+                onToggled: {
+                    controls.bluetoothChosen(checked);
+                    checked = Qt.binding(() => controls.bluetoothOn);
+                }
+            }
+        }
+
+        PanelRow {
+            label: `geräte · ${controls.bluetoothDevices.filter(device => device.connected).length} verbunden`
+            present: controls.bluetooth !== null
+
+            Button {
+                id: devicesOpener
+
+                objectName: "chooseBluetoothDevice"
+                text: "wählen"
+                Accessible.name: "geräte wählen"
+                onClicked: bluetoothLevel.show(devicesOpener)
+            }
+        }
     }
 
     PanelGroup {
@@ -253,6 +351,41 @@ Column {
             checked: muteRow.muted
             Accessible.name: `stumm ${muteRow.name}`
             onToggled: muteRow.node.audio.muted = checked
+        }
+    }
+
+    // A paired device: its name, its battery where it tells, and its state as a status word of the shell's own, each on
+    // one of Rekta's statuses (colour.md, "Status vocabulary"): verbunden is active, wartet waiting, getrennt none.
+    // ponytail: a connection that fails shows only the state from before, as Quickshell reports no cause; say why once it
+    // does.
+    component BluetoothDeviceItem: MenuItem {
+        id: deviceItem
+
+        required property var modelData
+        readonly property var device: modelData
+        readonly property bool waits: controls.waiting(device)
+        readonly property string battery: device.batteryAvailable ? `${Math.round(device.battery * 100)}%` : ""
+
+        text: device.name
+        activeFocusOnTab: true
+        Accessible.name: [text, stateTag.word, battery !== "" ? `akku ${battery}` : ""].filter(part => part !== "").join(", ")
+
+        // A number to read as data (typography.md, "Weight and case").
+        Meta {
+            objectName: "battery"
+            anchors.verticalCenter: parent.verticalCenter
+            visible: deviceItem.battery !== ""
+            text: deviceItem.battery
+            font.weight: Tokens.fontWeightMedium
+        }
+
+        StatusTag {
+            id: stateTag
+
+            objectName: "state"
+            anchors.verticalCenter: parent.verticalCenter
+            status: deviceItem.waits ? "warning" : deviceItem.device.connected ? "info" : ""
+            word: deviceItem.waits ? "wartet" : deviceItem.device.connected ? "verbunden" : "getrennt"
         }
     }
 }
