@@ -2,13 +2,15 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Rekta
+import Settings
 
-// The ground of one screen, the one surface below every window: the echo or plain bg, and no input. The option comes
-// from the package's wrapper; without it, in the nested session, the echo shows.
+// The ground of one screen, the one surface below every window: the echo or plain bg, as the setting "background"
+// says, and no input.
 PanelWindow {
     id: panel
 
     required property ShellScreen modelData
+    required property Layers settings
 
     screen: modelData
     anchors {
@@ -27,7 +29,6 @@ PanelWindow {
 
     Backdrop {
         anchors.fill: parent
-        // ponytail: an environment variable until the shell has a configuration format.
-        solid: Quickshell.env("REKTA_BACKGROUND") === "solid"
+        solid: panel.settings.value("background") === "solid"
     }
 }

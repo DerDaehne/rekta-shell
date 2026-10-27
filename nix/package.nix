@@ -7,19 +7,14 @@
   kdePackages,
   libcanberra-gtk3,
   gnugrep,
-  # What the background shows: "rekta" (the echo) or "solid" (bg alone).
-  background ? "rekta",
+  # Settings from the Nix configuration, which the shell takes as its defaults; the user's settings.json wins over them.
+  defaults ? { },
 }:
 
 # The QML is written against Quickshell 0.3; a new minor or major must be adopted on purpose.
 assert lib.assertMsg (
   lib.versions.majorMinor quickshell.version == "0.3"
 ) "rekta-shell needs Quickshell 0.3.x, but nixpkgs provides ${quickshell.version}";
-
-assert lib.assertMsg (lib.elem background [
-  "rekta"
-  "solid"
-]) "rekta-shell: background must be \"rekta\" or \"solid\", not \"${background}\"";
 
 let
   plasma-workspace = kdePackages.plasma-workspace;
@@ -42,12 +37,17 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
     mkdir -p $out/share/rekta-shell
     cp -r . $out/share/rekta-shell
+    defaultsArgs=()
+    ${lib.optionalString (defaults != { }) ''
+      echo ${lib.escapeShellArg (builtins.toJSON defaults)} > $out/share/rekta-shell/defaults.json
+      defaultsArgs=(--set REKTA_DEFAULTS $out/share/rekta-shell/defaults.json)
+    ''}
     # Only this wrapper lets the shell start apps for real; run from a checkout it only logs them.
     makeWrapper ${lib.getExe quickshell} $out/bin/rekta-shell \
       --add-flags "--path $out/share/rekta-shell" \
       --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${dbus}/lib/qt-6/qml:${plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" \
       --prefix PATH : ${kdePackages.libkscreen}/bin:${libcanberra-gtk3}/bin:${gnugrep}/bin \
-      --set REKTA_BACKGROUND ${background} \
+      "''${defaultsArgs[@]}" \
       --set-default REKTA_SHELL_LAUNCH systemd
 
     install -Dm644 ${../session/rekta.desktop} $out/share/wayland-sessions/rekta.desktop

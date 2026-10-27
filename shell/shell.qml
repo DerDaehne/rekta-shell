@@ -2,11 +2,17 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Settings
 import "services"
 
 ShellRoot {
     SystemMotion {}
     SplashEnd {}
+
+    // Read only: the shell never opens the write gate.
+    SettingsFiles {
+        id: settingsFiles
+    }
 
     Windows {
         id: running
@@ -41,7 +47,9 @@ ShellRoot {
     Variants {
         model: Quickshell.screens
 
-        Ground {}
+        Ground {
+            settings: settingsFiles
+        }
     }
 
     Variants {

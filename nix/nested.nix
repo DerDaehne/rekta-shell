@@ -112,9 +112,12 @@ writeShellApplication {
     # KWin hands its screenshot interface only to programs whose desktop file asks for it; nested-shot uses spectacle.
     cp ${kdePackages.spectacle}/share/applications/org.kde.spectacle.desktop "$home/.local/share/applications/"
 
+    # The Nix defaults, as the module's package carries them; the user's own settings live in the session's HOME.
+    printf '{"background":"%s"}\n' "$background" >"$home/defaults.json"
+
     # kwin_wayland starts its program without passing on any arguments, so the shell path goes into a launcher.
     launcher="$home/rekta-shell"
-    printf '#!/bin/sh\nexport QML_IMPORT_PATH=%q REKTA_BACKGROUND=%q\nexec %q --path %q\n' "$shell_dir:${rekta-shell.dbus}/lib/qt-6/qml:${kdePackages.plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" "$background" "${rekta-shell.quickshell}/bin/quickshell" "$shell_dir" >"$launcher"
+    printf '#!/bin/sh\nexport QML_IMPORT_PATH=%q REKTA_DEFAULTS=%q\nexec %q --path %q\n' "$shell_dir:${rekta-shell.dbus}/lib/qt-6/qml:${kdePackages.plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" "$home/defaults.json" "${rekta-shell.quickshell}/bin/quickshell" "$shell_dir" >"$launcher"
     chmod +x "$launcher"
 
     socket="rekta-nested"

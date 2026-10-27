@@ -189,12 +189,27 @@ in
       "the enabled NixOS module does not register the rekta session";
     assert lib.assertMsg (lib.elem enabled.programs.rekta-shell.package enabled.systemd.packages)
       "the enabled NixOS module does not hand its package to systemd";
+    assert lib.assertMsg
+      (lib.elem enabled.programs.rekta-shell.package enabled.environment.systemPackages)
+      "the enabled NixOS module leaves its package out of the system's packages";
     assert lib.assertMsg (lib.any (
       a: !a.assertion && lib.hasInfix "plasma6" a.message
     ) withoutPlasma.assertions) "the NixOS module accepts a system without Plasma 6";
     pkgs.runCommand "rekta-shell-nixos-module" { } ''
-      grep -q "REKTA_BACKGROUND=.rekta." ${enabled.programs.rekta-shell.package}/bin/rekta-shell
-      grep -q "REKTA_BACKGROUND=.solid." ${(withBackground "solid").programs.rekta-shell.package}/bin/rekta-shell
+      # The wrapper names the package's defaults file, and the option's value stands in it.
+      names_defaults() {
+        if ! grep -q "REKTA_DEFAULTS=.$1/share/rekta-shell/defaults.json." "$1/bin/rekta-shell" ||
+          ! grep -qF "\"background\":\"$2\"" "$1/share/rekta-shell/defaults.json"; then
+          echo "the module's package does not carry background $2 as its default" >&2
+          exit 1
+        fi
+      }
+      names_defaults ${enabled.programs.rekta-shell.package} rekta
+      names_defaults ${(withBackground "solid").programs.rekta-shell.package} solid
+      if grep -q REKTA_DEFAULTS ${rekta-shell}/bin/rekta-shell; then
+        echo "the package without defaults names a defaults file" >&2
+        exit 1
+      fi
       touch $out
     '';
 

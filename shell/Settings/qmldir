@@ -1,0 +1,3 @@
+module Settings
+Layers 1.0 Layers.qml
+SettingsFiles 1.0 SettingsFiles.qml

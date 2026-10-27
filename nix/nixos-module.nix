@@ -15,7 +15,7 @@ in
     package = lib.mkOption {
       type = lib.types.package;
       # Built with this system's nixpkgs, so Quickshell shares Qt with its Plasma.
-      default = pkgs.callPackage ./package.nix { inherit (cfg) background; };
+      default = pkgs.callPackage ./package.nix { defaults = { inherit (cfg) background; }; };
       defaultText = lib.literalExpression "rekta-shell built with this system's pkgs";
       description = "The rekta-shell package; it carries the session, its user units and the plasmashell drop-in.";
     };
@@ -26,7 +26,7 @@ in
         "solid"
       ];
       default = "rekta";
-      description = "What each monitor shows behind the windows: \"rekta\" is the colour bg with a faint print of tiles in the bottom right corner, \"solid\" the colour bg alone. It takes effect with the default package once the module is enabled.";
+      description = "What each monitor shows behind the windows: \"rekta\" is the colour bg with a faint print of tiles in the bottom right corner, \"solid\" the colour bg alone. It takes effect with the default package once the module is enabled, as the default that a \"background\" in the user's ~/.config/rekta-shell/settings.json overrides.";
     };
   };
 
@@ -40,5 +40,7 @@ in
 
     services.displayManager.sessionPackages = [ cfg.package ];
     systemd.packages = [ cfg.package ];
+    # On the system's XDG data path, so the desktop entries the package brings are found.
+    environment.systemPackages = [ cfg.package ];
   };
 }
