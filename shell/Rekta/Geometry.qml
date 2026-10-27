@@ -235,8 +235,8 @@ QtObject {
     // `@keyframes rk-banner-in { from { opacity: 0; transform: translateY(-8px) } }` (rekta.css:955)
     readonly property real bannerShift: 8
 
-    // The windows step back behind the Start, smaller about their screen's centre and dimmed. motion.md has no row for
-    // this (motion.md:9–35), so the shell's own values stand until Rekta has one.
+    // The windows step back behind the Start and as the session is left, smaller about their screen's centre and dimmed.
+    // motion.md has no row for either (motion.md:9–35), so the shell's own values stand until Rekta has one.
     readonly property real fadeBackScale: 0.86
     readonly property real fadeBackBrightness: 0.78
     // The Start is called many times an hour, so it opens, closes and leaves after a launch at half the pace of Rekta's

@@ -52,6 +52,24 @@ TestCase {
         compare(FadeBack.progress(1, 0, 0), 0);
     }
 
+    function test_as_the_session_is_left_they_step_back_in_a_whole_duration_moderate_with_ease_out() {
+        compare(FadeBack.leaveProgress(0, 1, 0), 0);
+        fuzzyCompare(FadeBack.leaveProgress(0, 1, Tokens.durationModerate / 2), easeOut.valueForProgress(0.5), 1e-9);
+        compare(FadeBack.leaveProgress(0, 1, Tokens.durationModerate), 1);
+    }
+
+    function test_after_the_session_could_not_be_left_they_come_forward_the_same_way_with_ease_in() {
+        fuzzyCompare(FadeBack.leaveProgress(1, 0, Tokens.durationModerate / 2), 1 - easeIn.valueForProgress(0.5), 1e-9);
+        compare(FadeBack.leaveProgress(1, 0, Tokens.durationModerate), 0);
+        compare(FadeBack.leaveDuration, Tokens.durationModerate);
+    }
+
+    function test_under_reduced_motion_they_leave_at_once_too() {
+        Tokens.reducedMotion = true;
+        compare(FadeBack.leaveProgress(0, 1, 0), 1);
+        compare(FadeBack.leaveProgress(1, 0, 0), 0);
+    }
+
     function test_all_the_way_back_a_window_is_86_percent_and_dimmed_to_0_78() {
         compare(FadeBack.scale(0), 1);
         compare(FadeBack.brightness(0), 1);

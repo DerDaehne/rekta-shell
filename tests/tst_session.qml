@@ -19,13 +19,15 @@ TestCase {
     // What the actions asked the launcher for, oldest first: ["run", command], ["launch", id] or
     // ["call", bus, service, path, interface, method].
     property var asked: []
-    // The reply to a lock the launcher holds back until the test gives it.
+    // The replies to a lock and to the question whether the session is locked, which the launcher holds back until the
+    // test gives them: reply(error, values).
     property var lockReply: null
+    property var activeReply: null
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var scene
     property var sessionBanner
 
-    // Records what it is asked for instead of acting; a lock waits for its reply.
+    // Records what it is asked for instead of acting; a lock and the question whether it holds wait for their replies.
     component Recorder: QtObject {
         function run(command) {
             testCase.asked = [...testCase.asked, ["run", command]];
@@ -39,8 +41,10 @@ TestCase {
             testCase.asked = [...testCase.asked, ["call", onSystemBus ? "system" : "session", service, path, iface, method]];
             if (method === "Lock")
                 testCase.lockReply = done;
+            else if (method === "GetActive")
+                testCase.activeReply = done;
             else
-                done?.(null);
+                done?.(null, []);
         }
     }
 
@@ -77,12 +81,20 @@ TestCase {
                 id: recorder
             }
 
+            Toaster {
+                id: toastRegion
+
+                objectName: "toaster"
+                width: parent.width
+            }
+
             SessionActions {
                 id: sessionActions
 
                 objectName: "sessionActions"
 
                 launcher: recorder
+                toaster: toastRegion
                 seatPath: testCase.seat
                 systemMonitor: ({
                         id: "org.kde.plasma-systemmonitor"
@@ -108,6 +120,7 @@ TestCase {
         Prefs.motion = "off";
         asked = [];
         lockReply = null;
+        activeReply = null;
         scene = createTemporaryObject(sceneComponent, testCase);
         sessionBanner = findChild(scene, "sessionBanner");
         named("opener").forceActiveFocus();
@@ -137,6 +150,10 @@ TestCase {
     function callOf(service, path, iface, method, bus) {
         return ["call", bus ?? "session", service, path, iface, method];
     }
+
+    readonly property var lockCall: callOf("org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", "Lock")
+    readonly property var activeCall: callOf("org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", "GetActive")
+    readonly property var greeterCall: callOf("org.freedesktop.DisplayManager", seat, "org.freedesktop.DisplayManager.Seat", "SwitchToGreeter", "system")
 
     function test_it_shows_the_word_sitzung_and_the_six_actions_with_sperren_primary_and_holding_the_focus() {
         sessionBanner.show("");
@@ -341,7 +358,8 @@ TestCase {
             verify(!sessionBanner.open, actionNames[k]);
         }
         lockReply(null);
-        compare(asked, [["run", ["loginctl", "lock-session"]], callOf("org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", "Lock"), callOf("org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", "logout"), callOf("org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", "logoutAndReboot"), callOf("org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", "logoutAndShutdown"), ["launch", "org.kde.plasma-systemmonitor"], callOf("org.freedesktop.DisplayManager", seat, "org.freedesktop.DisplayManager.Seat", "SwitchToGreeter", "system")]);
+        activeReply(null, [true]);
+        compare(asked, [["run", ["loginctl", "lock-session"]], lockCall, callOf("org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", "logout"), callOf("org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", "logoutAndReboot"), callOf("org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", "logoutAndShutdown"), ["launch", "org.kde.plasma-systemmonitor"], activeCall, greeterCall]);
     }
 
     function test_a_click_acts_and_the_banner_goes() {
@@ -378,18 +396,100 @@ TestCase {
         compare(launched.count, 1);
     }
 
-    function test_benutzer_wechseln_locks_first_and_asks_the_display_manager_for_the_greeter_of_its_seat_once_locked() {
-        button("switchUser").click();
-        compare(asked, [callOf("org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", "Lock")], "the lock alone, until it is done");
-        lockReply(null);
-        compare(asked[1], callOf("org.freedesktop.DisplayManager", seat, "org.freedesktop.DisplayManager.Seat", "SwitchToGreeter", "system"), "then the greeter, on the system bus, at the seat's path");
-        compare(asked.length, 2);
+    function sessionActions(): var {
+        return named("sessionActions");
     }
 
-    function test_benutzer_wechseln_does_not_leave_for_the_greeter_when_the_lock_fails() {
+    function toastSays(): string {
+        const toast = named("toaster").open;
+        return toast ? `${toast.status}: ${toast.text}` : "none";
+    }
+
+    function test_choosing_benutzer_wechseln_takes_the_shading_away_at_once_and_the_banner_leaves_as_a_sheet_does() {
+        Prefs.motion = "on";
+        sessionBanner.show("");
+        tryCompare(sessionBanner, "entry", 1, Tokens.durationShort * 4);
         button("switchUser").click();
+        verify(!sessionBanner.shaded, "the host's blur goes with it");
+        verify(!part("shading").visible, "in the same frame, without a fade");
+        verify(sessionBanner.open, "the banner is still on its way up");
+        tryVerify(() => part("banner").mapToItem(sessionBanner, 0, 0).y < 0, Tokens.durationShort * 4, "back up, as a sheet leaves");
+        tryVerify(() => !sessionBanner.open, Tokens.durationShort * 4);
+        sessionBanner.show("");
+        verify(sessionBanner.shaded && part("shading").visible, "shown again, it is shaded again");
+    }
+
+    function test_the_other_actions_leave_the_shading_to_fade_with_the_banner() {
+        Prefs.motion = "on";
+        for (const name of ["lock", "logout", "reboot", "shutdown", "systemMonitor"]) {
+            sessionBanner.show("");
+            tryCompare(sessionBanner, "entry", 1, Tokens.durationShort * 4);
+            button(name).click();
+            verify(part("shading").visible && sessionBanner.shaded, name);
+            tryVerify(() => !sessionBanner.open, Tokens.durationShort * 4);
+        }
+    }
+
+    function test_the_windows_step_back_at_rektas_pace_while_the_session_is_still_open_and_only_then_it_locks() {
+        Prefs.motion = "on";
+        button("switchUser").click();
+        verify(sessionActions().leaving, "the host shows its clear surface");
+        verify(sessionActions().windowsBack, "holding the keyboard, so the windows step back");
+        wait(0.8 * Tokens.durationModerate);
+        compare(asked, [], "nothing is locked while they step back, in a whole duration-moderate");
+        tryCompare(testCase, "asked", [lockCall], Tokens.durationModerate);
+        verify(sessionActions().windowsBack, "they stand back while it locks");
+    }
+
+    function test_it_locks_then_asks_whether_the_session_is_locked_and_only_then_asks_for_the_greeter_of_its_seat() {
+        button("switchUser").click();
+        compare(asked, [lockCall], "the lock alone, until it is done");
+        lockReply(null, []);
+        compare(asked, [lockCall, activeCall], "then whether it holds, until that is answered");
+        activeReply(null, [true]);
+        compare(asked, [lockCall, activeCall, greeterCall], "then the greeter, on the system bus, at the seat's path");
+        verify(!sessionActions().leaving, "the surface goes under the lock");
+        verify(!sessionActions().windowsBack, "and the windows stand in front again for whoever comes back");
+        compare(toastSays(), "none");
+    }
+
+    function test_when_the_session_does_not_lock_it_stays_the_windows_come_forward_and_a_toast_says_why() {
+        Prefs.motion = "on";
+        const failures = {
+            "the lock fails": [["org.freedesktop.DBus.Error.ServiceUnknown: no screen locker"]],
+            "the lock does not hold": [[null, []], [null, [false]]],
+            "the question fails": [[null, []], ["org.freedesktop.DBus.Error.NoReply: no answer", []]]
+        };
+        for (const [failure, replies] of Object.entries(failures)) {
+            asked = [];
+            named("toaster").dismiss();
+            button("switchUser").click();
+            tryCompare(testCase, "asked", [lockCall], Tokens.durationModerate * 3, failure);
+            lockReply(...replies[0]);
+            if (replies.length > 1)
+                activeReply(...replies[1]);
+            verify(!asked.some(call => call[5] === "SwitchToGreeter"), `${failure}: no greeter`);
+            verify(!sessionActions().windowsBack, `${failure}: the surface hands the keyboard over`);
+            verify(sessionActions().leaving, `${failure}: and stays while the windows come forward`);
+            compare(toastSays(), "error: nicht gewechselt: die sitzung ließ sich nicht sperren.", failure);
+            tryCompare(sessionActions(), "leaving", false, Tokens.durationModerate * 3, failure);
+        }
+    }
+
+    function test_under_reduced_motion_nothing_moves_and_the_lock_follows_at_once() {
+        Prefs.motion = "off";
+        button("switchUser").click();
+        verify(sessionActions().windowsBack, "the windows stand back at once");
+        compare(asked, [lockCall], "and the lock follows at once");
         lockReply("org.freedesktop.DBus.Error.ServiceUnknown: no screen locker");
-        compare(asked.length, 1, "the session stays as it is");
+        verify(!sessionActions().leaving, "failed, the windows stand in front at once");
+        compare(toastSays(), "error: nicht gewechselt: die sitzung ließ sich nicht sperren.");
+        asked = [];
+        button("switchUser").click();
+        lockReply(null, []);
+        activeReply(null, [true]);
+        compare(asked, [lockCall, activeCall, greeterCall]);
+        verify(!sessionActions().leaving);
     }
 
     function test_without_a_seat_benutzer_wechseln_cannot_act_and_says_why() {

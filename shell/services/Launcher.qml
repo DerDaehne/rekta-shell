@@ -38,19 +38,20 @@ Scope {
         Quickshell.execDetached(command);
     }
 
-    // A method without arguments on the session's or the system's bus; done(error), if given, follows its reply, with
-    // error null on success. Where the shell does not act, it follows at once as if the call had succeeded.
+    // A method without arguments on the session's or the system's bus; done(error, values), if given, follows its reply,
+    // with error null on success and values the reply's. Where the shell does not act, it follows at once as if the call
+    // had succeeded without values.
     function call(onSystemBus: bool, service: string, path: string, iface: string, method: string, done: var) {
         const what = `${onSystemBus ? "system" : "session"} bus ${service} ${path} ${iface}.${method}`;
         if (!starts) {
             console.info(`Launcher: would call ${what}`);
-            done?.(null);
+            done?.(null, []);
             return;
         }
-        (onSystemBus ? systemBus : sessionBus).call(service, path, iface, method, [], "", error => {
+        (onSystemBus ? systemBus : sessionBus).call(service, path, iface, method, [], "", (error, values) => {
             if (error)
                 console.warn(`Launcher: ${what}: ${error}`);
-            done?.(error);
+            done?.(error, values);
         });
     }
 }

@@ -8,8 +8,9 @@ import Rekta
 // "sitzung" large and light in the first tile column, the actions as buttons from the second, sharing its baseline.
 // It comes in once with a fade and 8px over duration-short, as a banner state does (motion.md, "Status banner"), the
 // shading fading in alongside; it leaves the same way in 0.8 × that with ease-out, as a sheet leaves (motion.md,
-// "Sheets"). Escape, Back and a press on the shading send it away; ← → and Tab go from button to button, Enter or
-// Space acts. Once it has gone the focus goes back.
+// "Sheets"). An action that clears the shading takes the shading away at once as it is chosen, and the banner leaves
+// alone. Escape, Back and a press on the shading send it away; ← → and Tab go from button to button, Enter or Space
+// acts. Once it has gone the focus goes back.
 FocusScope {
     id: sessionBanner
 
@@ -20,6 +21,8 @@ FocusScope {
     // Runs from 0 to 1 as it comes in, and back to 0 as it leaves; the shading's opacity runs alongside.
     property real entry: 1
     property real shade: 1
+    // The screen behind lies shaded, and blurred by the host, until an action that clears the shading is chosen.
+    property bool shaded: true
     readonly property real padX: Tokens.spaceXl
     readonly property real padY: Tokens.spaceM
     readonly property real headWidth: Math.max(Tokens.tileUnit, word.implicitWidth)
@@ -40,6 +43,7 @@ FocusScope {
             entry = 0;
             shade = 0;
         }
+        shaded = true;
         going.stop();
         comingIn.restart();
         buttonFor(focusOn).forceActiveFocus(Qt.TabFocusReason);
@@ -54,6 +58,7 @@ FocusScope {
 
     // It goes, and the action acts.
     function choose(action: var) {
+        shaded = !action.clearsShading;
         close();
         action.run();
     }
@@ -155,6 +160,7 @@ FocusScope {
         anchors.fill: parent
         color: Tokens.color.shading
         opacity: sessionBanner.shade
+        visible: sessionBanner.shaded
 
         // Nothing behind reacts while it is open; a press on the shading, not on the banner, or the Back button sends
         // it away.

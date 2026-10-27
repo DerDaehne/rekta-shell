@@ -96,9 +96,25 @@ ShellRoot {
 
         launcher: appLauncher
         primaryScreen: primary.screen
+        toaster: toasts.toaster
 
-        onGone: start.takeKeyboardBack()
+        // While the session is left, the surface leaving holds the keyboard; the Start asks again once that one goes.
+        onGone: {
+            if (!session.leaving)
+                start.takeKeyboardBack();
+        }
         onLaunched: start.stepAside()
+    }
+
+    LeaveSurface {
+        primaryScreen: primary.screen
+        leaving: session.leaving
+        holdsKeyboard: session.windowsBack
+
+        onVisibleChanged: {
+            if (!visible)
+                start.takeKeyboardBack();
+        }
     }
 
     // The Start is a whole place: a panel open as it opens slides out instead of lying blurred under its glass.
