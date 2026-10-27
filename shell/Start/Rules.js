@@ -126,6 +126,18 @@ function hits(apps, text) {
     return Rekta.Match.ranked(apps, app => Rekta.Match.score(app.name, [app.genericName, ...app.keywords, app.exec].join(" "), typed));
 }
 
+// Where a typed key jumps among `names`: the next after `from` that starts with it, whatever the case, round past the
+// end; -1 when none does. A tree's rule (collections.md:142; rekta.js:2810–2811), carried over to the apps' row.
+function jumpTarget(names, from, key) {
+    const typed = key.toLowerCase();
+    for (let step = 1; step <= names.length; step++) {
+        const at = (from + step) % names.length;
+        if (names[at].trim().toLowerCase().startsWith(typed))
+            return at;
+    }
+    return -1;
+}
+
 // The steps that turn the list of ids `from` into `to`: first the removals, from the end, then each place in `to`
 // filled by moving an id there or inserting it; {remove: at}, {move: from, to: at} or {insert: at, id}.
 function steps(from, to) {

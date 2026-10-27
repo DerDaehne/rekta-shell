@@ -370,13 +370,6 @@ TestCase {
         verify(last.at >= Tokens.durationPress - 20, "the press keeps its own time");
     }
 
-    function test_after_an_app_chosen_in_alle_apps_the_start_turns_out_at_half_rekta_s_pace() {
-        openOnAllApps(["ark", "Blender", "konsole"]);
-        mouseClick(appRow(1));
-        compare(calls, ["launch Blender"]);
-        verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 0.5);
-    }
-
     function test_a_change_of_place_inside_the_start_keeps_rekta_s_pace() {
         openNow();
         keyClick(Qt.Key_Right);
@@ -629,66 +622,113 @@ TestCase {
         waitForRendering(start);
     }
 
-    function appRow(index: int): var {
-        return findChild(named("appList"), "view").itemAtIndex(index);
+    function rowTile(index: int): var {
+        return start.rowTiles()[index];
     }
 
-    function test_alle_apps_lists_the_installed_apps_as_a_long_list_in_the_column_under_the_pivot() {
+    function appNames(count: int): var {
+        return Array.from({ length: count }, (_, i) => `app ${String(i).padStart(2, "0")}`);
+    }
+
+    readonly property real step: Tokens.tileUnit + Tokens.spaceS
+
+    function test_alle_apps_shows_every_app_a_to_z_as_a_one_unit_tile_with_its_icon_and_name_under_the_pivot() {
         openOnAllApps(["ark", "Blender", "konsole"]);
-        const list = named("appList");
-        verify(list.visible);
-        compare(list.mapToItem(start, 0, 0).x, Tokens.spaceXl);
-        compare(list.width, named("column").width, "six units, as the start place");
-        compare(list.mapToItem(start, 0, 0).y, named("pivot").height + Tokens.spaceL);
-        compare([0, 1, 2].map(index => findChild(appRow(index), "text").text), ["ark", "Blender", "konsole"]);
-        compare(findChild(appRow(0), "icon").source.toString(), pinkIcon);
+        const tiles = start.rowTiles();
+        compare(tiles.map(tile => findChild(tile, "name").text), ["ark", "Blender", "konsole"]);
+        compare(Qt.size(tiles[0].width, tiles[0].height), Qt.size(Tokens.tileUnit, Tokens.tileUnit));
+        compare(tiles[0].mapToItem(start, 0, 0), Qt.point(Tokens.spaceXl, named("pivot").height + Tokens.spaceL));
+        compare(findChild(tiles[0], "icon").source.toString(), pinkIcon);
+        compare(named("appRow").width, named("column").width, "six units, as the start place");
+        verify(tiles.every(tile => tile.opens));
+    }
+
+    function test_the_row_fills_each_column_top_down_with_as_many_tiles_as_the_column_s_height_holds() {
+        openOnAllApps(appNames(20));
+        const tiles = start.rowTiles();
+        const row = named("appRow");
+        const rows = tiles.findIndex(tile => tile.x > 0);
+        verify(rows > 1, `${rows} rows`);
+        for (let i = 1; i < rows; i++)
+            compare(Qt.point(tiles[i].x, tiles[i].y), Qt.point(0, i * step), `down the first column: ${i}`);
+        compare(Qt.point(tiles[rows].x, tiles[rows].y), Qt.point(step, 0), "then the next column from the top");
+        verify(tiles[rows - 1].y + Tokens.tileUnit <= row.height, "the last of a column is whole");
+        verify(rows * step + Tokens.tileUnit > row.height, "and one more would not fit");
+        compare(row.height, start.height - named("pivot").height - 2 * Tokens.spaceL);
+        start.height = 600;
+        tryVerify(() => start.rowTiles().findIndex(tile => tile.x > 0) < rows, 1000, "a lower Start holds fewer rows");
+    }
+
+    function test_the_row_scrolls_sideways_within_the_column() {
+        openOnAllApps(appNames(60));
+        const row = named("appRow");
+        verify(row.clip);
+        verify(row.contentWidth > row.width);
+        compare(row.contentWidth, Math.ceil(60 / start.rowTiles().findIndex(tile => tile.x > 0)) * step - Tokens.spaceS);
     }
 
     function test_before_the_apps_are_known_alle_apps_loads_and_without_any_it_says_so() {
         Prefs.motion = "off";
         start.open();
         named("pivot").select(1);
-        verify(named("appList").loading);
+        verify(named("appsBusy").busy);
+        verify(named("appsLine").visible, "the line runs on the region's first hairline");
+        verify(!named("noApps").visible);
         start.apps = [];
-        verify(!named("appList").loading);
-        verify(findChild(named("appList"), "empty").visible);
-        compare(findChild(named("appList"), "empty").text, "keine apps installiert.");
+        verify(!named("appsBusy").busy);
+        const sentence = named("noApps");
+        verify(sentence.visible);
+        compare(sentence.text, "keine apps installiert.");
+        compare(sentence.color, Tokens.color.textContrastHigh);
+        compare(sentence.y, Tokens.spaceL + Geometry.hairline + Tokens.spaceM);
     }
 
-    function test_down_or_tab_from_the_pivot_goes_into_the_list_and_left_back_to_start() {
-        openOnAllApps(["ark", "Blender", "konsole"]);
+    function test_down_or_tab_from_the_pivot_goes_to_the_first_app_and_left_from_the_first_column_back_to_start() {
+        openOnAllApps(appNames(20));
         keyClick(Qt.Key_Down);
-        verify(named("appList").activeFocus, "down with nothing in focus");
-        compare(named("appList").active, 0);
-        keyClick(Qt.Key_Down);
-        compare(named("appList").active, 1, "the list's own keys move in it");
+        verify(rowTile(0).activeFocus, "down with nothing in focus");
         keyClick(Qt.Key_Left);
         compare(named("pivot").currentIndex, 0);
         tryVerify(() => !start.turning, 3000);
         keyClick(Qt.Key_Right);
         tryVerify(() => !start.turning, 3000);
-        verify(!named("appList").activeFocus, "back on alle apps, the list waits for the keys");
+        verify(start.rowTiles().every(tile => !tile.activeFocus), "back on alle apps, no app waits in the ring");
         named("pivot").forceActiveFocus();
         keyClick(Qt.Key_Tab);
-        verify(named("appList").activeFocus, "tab from the pivot");
+        verify(rowTile(0).activeFocus, "tab from the pivot");
     }
 
-    function test_clicking_an_app_presses_and_chooses_its_row_launches_it_once_and_turns_the_start_out_forward() {
-        openOnAllApps(["ark", "Blender", "konsole"]);
-        const row = appRow(1);
-        mousePress(row);
-        verify(row.held);
-        mouseRelease(row);
-        compare(calls, ["launch Blender"]);
-        compare(named("appList").chosen, 1);
-        verify(turner.running);
-        verify(!turner.back, "forward");
-        verify(turner.pressedTile === null, "no row stays behind");
-        verify(turner.leavingTurns.some(turn => turn.part.item === row), "the row turns out with the rest");
-        mouseClick(appRow(2));
-        compare(calls, ["launch Blender"], "once");
-        tryVerify(() => closedSpy.count === 1, 3000);
-        compare(named("appList").chosen, -1, "the choice holds until the Start is closed");
+    function test_up_and_down_move_within_a_column_left_and_right_to_the_column_beside() {
+        openOnAllApps(appNames(20));
+        const rows = start.rowTiles().findIndex(tile => tile.x > 0);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        verify(rowTile(1).activeFocus);
+        keyClick(Qt.Key_Right);
+        verify(rowTile(1 + rows).activeFocus, "the same row of the next column");
+        keyClick(Qt.Key_Up);
+        verify(rowTile(rows).activeFocus);
+        keyClick(Qt.Key_Left);
+        verify(rowTile(0).activeFocus);
+        for (let i = 0; i < rows + 2; i++)
+            keyClick(Qt.Key_Down);
+        verify(rowTile(rows - 1).activeFocus, "down stays in its column");
+        keyClick(Qt.Key_Home);
+        keyClick(Qt.Key_Up);
+        verify(named("pivot").activeFocus, "up from the first row reaches the pivot");
+    }
+
+    function test_home_and_end_go_to_the_first_and_the_last_app_and_the_row_scrolls_with_them() {
+        openOnAllApps(appNames(60));
+        const row = named("appRow");
+        keyClick(Qt.Key_End);
+        const last = rowTile(59);
+        verify(last.activeFocus);
+        const left = last.mapToItem(row, 0, 0).x;
+        verify(left >= 0 && left + last.width <= row.width, `whole in view at ${left}`);
+        keyClick(Qt.Key_Home);
+        verify(rowTile(0).activeFocus);
+        compare(row.contentX, 0);
     }
 
     function test_enter_or_space_on_an_app_launches_it_once() {
@@ -707,26 +747,96 @@ TestCase {
         compare(calls, ["launch Blender", "launch ark"]);
     }
 
+    function test_a_typed_letter_jumps_to_the_next_app_it_starts_whatever_the_case_and_again_to_the_one_after() {
+        openOnAllApps(["ark", "Blender", "Dateien", "Dolphin", "dragon", "Elisa"]);
+        keyClick("d");
+        verify(rowTile(2).activeFocus, "the first that starts with it");
+        keyClick("d");
+        verify(rowTile(3).activeFocus, "the same letter again, the next");
+        keyClick("D");
+        verify(rowTile(4).activeFocus, "a capital counts the same");
+        keyClick("d");
+        verify(rowTile(2).activeFocus, "round past the last");
+        keyClick("q");
+        verify(rowTile(2).activeFocus, "without a match nothing happens");
+        compare(start.query, "", "and nothing is searched");
+        verify(named("apps").visible);
+        verify(!named("results").visible);
+        keyClick("e");
+        verify(rowTile(5).activeFocus);
+    }
+
+    function test_a_letter_for_an_app_far_along_scrolls_the_row_to_it() {
+        openOnAllApps([...appNames(59), "zed"]);
+        const row = named("appRow");
+        keyClick("z");
+        const zed = rowTile(59);
+        verify(zed.activeFocus);
+        const left = zed.mapToItem(row, 0, 0).x;
+        verify(left >= 0 && left + zed.width <= row.width, `whole in view at ${left}`);
+    }
+
+    function test_a_letter_typed_while_the_start_turns_to_alle_apps_ends_the_turn_and_jumps() {
+        start.apps = ["ark", "Blender", "konsole"].map(name => installedApp(name));
+        openNow();
+        keyClick(Qt.Key_Right);
+        verify(start.turning);
+        keyClick("k");
+        verify(!start.turning);
+        verify(named("apps").visible);
+        verify(rowTile(2).activeFocus);
+        compare(start.query, "");
+    }
+
+    function test_in_the_start_place_typing_still_searches() {
+        openOnAllApps(["Kate", "Konsole", "Okular"]);
+        Prefs.motion = "off";
+        keyClick(Qt.Key_Left);
+        compare(named("pivot").currentIndex, 0);
+        keyClick("k");
+        compare(start.query, "k");
+        verify(named("results").visible);
+        compare(hitNames(), ["Kate", "Konsole", "Okular"]);
+    }
+
+    function test_pressing_an_app_launches_it_once_and_turns_the_start_out_forward_at_half_rekta_s_pace_with_it_last() {
+        openOnAllApps(["ark", "Blender", "konsole"]);
+        const pressed = rowTile(1);
+        mouseClick(pressed);
+        compare(calls, ["launch Blender"]);
+        verify(turner.running);
+        verify(!turner.back, "forward");
+        compare(turner.pressedTile, pressed);
+        const others = turner.leavingTurns.filter(turn => turn.part.item !== pressed);
+        const last = turner.leavingTurns.find(turn => turn.part.item === pressed);
+        verify(others.every(turn => turn.at <= last.at), "the pressed tile last");
+        verifyPace(others, Tokens.durationShort, 0, 0.5);
+        fuzzyCompare(last.duration, Turnstile.plan([last.part], Tokens.durationShort, 0)[0].duration / 2, 1e-9);
+        mouseClick(rowTile(2));
+        compare(calls, ["launch Blender"], "once");
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
     function test_after_an_app_launch_the_window_that_had_the_keyboard_is_not_activated() {
         start.windows = windowsWithTheDocsActive();
         openOnAllApps(["ark"]);
-        mouseClick(appRow(0));
+        mouseClick(rowTile(0));
         tryVerify(() => closedSpy.count === 1, 3000);
         compare(calls, ["launch ark"]);
     }
 
-    function test_going_to_alle_apps_turns_each_row_in_view_as_one_part() {
-        start.apps = Array.from({ length: 60 }, (_, i) => installedApp(`app ${i}`));
+    function test_going_to_alle_apps_turns_each_tile_in_view_as_one_part() {
+        start.apps = appNames(60).map(name => installedApp(name));
         openNow();
         named("pivot").select(1);
         tryVerify(() => turner.arrivingTurns.length > 0, 3000);
-        const rows = turner.arrivingTurns.map(turn => turn.part.item).filter(item => item.turnsWhole === true && item.text !== undefined);
-        verify(rows.length >= 10, `${rows.length} rows turn`);
-        verify(rows.includes(appRow(0)));
-        verify(!turner.arrivingTurns.some(turn => turn.part.item === named("appList")), "the list is a scroller, not a part");
+        const parts = turner.arrivingTurns.map(turn => turn.part.item);
+        verify(parts.includes(rowTile(0)));
+        verify(parts.every(item => (item as Tile) !== null), "only tiles");
+        verify(!parts.includes(named("appRow")), "the row is a scroller, not a part");
         tryVerify(() => !start.turning, 3000);
         named("pivot").select(0);
-        verify(turner.leavingTurns.some(turn => turn.part.item === appRow(0)), "and turn out the same way");
+        verify(turner.leavingTurns.some(turn => turn.part.item === rowTile(0)), "and turn out the same way");
     }
 
     function test_under_reduced_motion_alle_apps_stands_at_once() {
@@ -736,17 +846,86 @@ TestCase {
         named("pivot").select(1);
         verify(named("apps").visible);
         verify(!start.turning);
-        compare(appRow(0).opacity, 1);
+        compare(rowTile(0).opacity, 1);
     }
 
-    function test_an_upright_wheel_scrolls_the_list_a_sideways_one_goes_back_to_start() {
-        openOnAllApps(Array.from({ length: 60 }, (_, i) => `app ${i}`));
-        const view = findChild(named("appList"), "view");
-        mouseWheel(view, 100, 100, 0, -480);
-        tryVerify(() => view.contentY > 0);
-        compare(named("pivot").currentIndex, 1);
+    function test_a_wheel_over_the_row_moves_it_sideways_and_its_end_swallows_the_rest_of_that_gesture() {
+        openOnAllApps(appNames(60));
+        const row = named("appRow");
+        mouseWheel(row, 100, 100, 0, -120);
+        compare(row.contentX, 120, "a plain vertical wheel, down along the row");
+        mouseWheel(row, 100, 100, -120, 0);
+        compare(row.contentX, 240, "a sideways one too");
+        mouseWheel(row, 100, 100, 0, 960);
+        compare(row.contentX, 0, "up to the row's start");
+        mouseWheel(row, 100, 100, 0, 120);
+        compare(named("pivot").currentIndex, 1, "the same gesture stays the row's");
+    }
+
+    function test_a_wheel_that_starts_at_the_row_s_start_goes_on_back_to_start_one_at_its_end_stays() {
+        openOnAllApps(appNames(60));
+        const row = named("appRow");
+        row.contentX = row.contentWidth - row.width;
+        mouseWheel(row, 100, 100, 0, -120);
+        compare(named("pivot").currentIndex, 1, "past the end there is no place beside");
+        mouseWheel(row, 100, 100, 0, 120);
+        compare(row.contentX, row.contentWidth - row.width, "and the rest of that gesture is not the row's");
         wait(Tokens.durationWheelLatch + 50);
-        mouseWheel(view, 100, 100, 120, 0);
+        row.contentX = 0;
+        mouseWheel(row, 100, 100, 120, 0);
+        compare(named("pivot").currentIndex, 0);
+    }
+
+    function test_when_every_app_fits_a_wheel_goes_on_to_the_place_beside_at_once() {
+        openOnAllApps(["ark", "Blender", "konsole"]);
+        mouseWheel(named("appRow"), 100, 100, 0, 120);
+        compare(named("pivot").currentIndex, 0);
+    }
+
+    function test_a_swipe_over_the_apps_scrolls_the_row_and_launches_nothing() {
+        openOnAllApps(appNames(60));
+        const row = named("appRow");
+        mouseDrag(row, row.width - 60, 60, -400, 0);
+        tryVerify(() => !row.moving, 3000);
+        verify(row.contentX > 0, `scrolled to ${row.contentX}`);
+        compare(calls, []);
+        compare(named("pivot").currentIndex, 1);
+    }
+
+    function test_a_swipe_that_starts_at_the_row_s_start_goes_on_back_to_start_one_that_reaches_it_stays() {
+        openOnAllApps(appNames(60));
+        const row = named("appRow");
+        row.contentX = 100;
+        mouseDrag(row, 60, 60, 400, 0);
+        tryVerify(() => !row.moving, 3000);
+        compare(row.contentX, 0);
+        compare(named("pivot").currentIndex, 1, "the swipe that reached the start stays the row's");
+        mouseDrag(row, 60, 60, 400, 0);
+        compare(named("pivot").currentIndex, 0);
+        compare(calls, []);
+    }
+
+    function test_in_alle_apps_a_swipe_beside_the_row_goes_back_to_start() {
+        openOnAllApps(appNames(60));
+        mouseDrag(start, start.width - 300, start.height / 2, 200, 0);
+        compare(named("pivot").currentIndex, 0);
+    }
+
+    function test_a_swipe_over_a_tile_of_the_start_place_goes_to_alle_apps_and_presses_nothing() {
+        openNow();
+        mouseDrag(tilesIn("pinned")[0], 60, 60, -200, 0);
+        compare(named("pivot").currentIndex, 1);
+        compare(calls, []);
+    }
+
+    function test_an_upright_drag_over_the_tiles_scrolls_the_column() {
+        start.pinned = Array.from({ length: 40 }, (_, i) => fakeApp(`app ${i}`, 1));
+        openNow();
+        const column = named("column");
+        mouseDrag(column, 60, column.height - 60, 0, -300);
+        tryVerify(() => !column.moving, 3000);
+        verify(column.contentY > 0, `scrolled to ${column.contentY}`);
+        compare(calls, []);
         compare(named("pivot").currentIndex, 0);
     }
 
@@ -833,14 +1012,6 @@ TestCase {
         compare(tiles[1].x - tiles[0].x, Tokens.tileUnit + Tokens.spaceS);
         compare(named("hits").mapToItem(start, 0, 0), Qt.point(Tokens.spaceXl, named("pivot").height + Tokens.spaceL));
         compare(findChild(tiles[0], "icon").source.toString(), pinkIcon);
-    }
-
-    function test_a_letter_typed_in_alle_apps_searches_too() {
-        openOnAllApps(["Kate", "Konsole", "Okular"]);
-        typeNow("k");
-        verify(!named("apps").visible);
-        verify(named("results").visible);
-        compare(hitNames(), ["Kate", "Konsole", "Okular"]);
     }
 
     function test_without_a_match_a_sentence_on_the_first_hairline_says_so() {
@@ -975,15 +1146,6 @@ TestCase {
         verify(start.wanted);
         keyClick(Qt.Key_Back);
         verify(!start.wanted);
-    }
-
-    function test_after_a_search_in_alle_apps_the_place_before_is_alle_apps() {
-        openOnAllApps(["Kate", "Konsole"]);
-        typeNow("k");
-        Prefs.motion = "off";
-        keyClick(Qt.Key_Back);
-        compare(named("pivot").currentIndex, 1);
-        verify(named("apps").visible);
     }
 
     function test_back_alt_left_and_the_mouse_back_button_clear_the_search_first() {
@@ -1415,6 +1577,25 @@ TestCase {
             grabImage(backdrop).save(`start-search-selection-${theme}.png`);
             Prefs.motion = "system";
             compare(findChild(sheet, "typed").selectedText, "fire", theme);
+        }
+    }
+
+    // "alle apps" with forty-three apps, one taken by a typed letter.
+    function test_contact_sheet_of_alle_apps() {
+        const names = ["Akregator", "Ark", "Audacity", "Blender", "Chromium", "digiKam", "Discover", "Dolphin", "Elisa", "Emacs", "Falkon", "Filelight", "Firefox", "GIMP", "Gwenview", "Haruna", "Inkscape", "Kate", "KCalc", "KCharSelect", "Kdenlive", "Kleopatra", "KMail", "KolourPaint", "Konsole", "Krita", "KWrite", "LibreOffice Writer", "Okular", "Partition Manager", "qBittorrent", "Spectacle", "Steam", "System Monitor", "System Settings", "Thunderbird", "Umbrello", "VLC", "Wireshark", "Xournal++", "Yakuake", "Zeal", "Zettlr"];
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const backdrop = createTemporaryObject(backdropComponent, testCase);
+            const sheet = createTemporaryObject(startComponent, backdrop);
+            sheet.apps = names.map(name => installedApp(name)).sort(Rules.byName);
+            Prefs.motion = "off";
+            sheet.open();
+            findChild(sheet, "pivot").select(1);
+            keyClick("k");
+            Prefs.motion = "system";
+            waitForRendering(backdrop);
+            grabImage(backdrop).save(`start-allapps-sheet-${theme}.png`);
+            verify(sheet.rowTiles().some(tile => tile.activeFocus), theme);
         }
     }
 

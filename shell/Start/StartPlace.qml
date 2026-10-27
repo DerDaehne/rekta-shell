@@ -5,12 +5,12 @@ import Rekta
 
 // The Start, after the shell's decision for it: one column at the leading edge, six tile units wide, scrolling down,
 // on glass over the windows. Its pivot "start · alle apps" picks the place; the start place shows "läuft", a tile for
-// each open window, the most recent first, then the pinned apps; "alle apps" lists the installed apps A–Z. It opens
-// once the windows are three quarters back (Rekta's hand-over between places), its parts turning in as a place
-// arrives, and closes turning them out: back the way they came, or forward after a press or a choice, the pressed tile
-// last. While it turns its places take no input. A letter typed in either place searches the apps: what is typed
-// becomes the title, "suche" beside it, and the apps that match stand below as tiles. The title is a line edited as a
-// field is; Escape there closes the Start.
+// each open window, the most recent first, then the pinned apps; "alle apps" shows the installed apps A–Z as one row of
+// tiles that scrolls sideways, where a typed letter jumps to the next app it starts. It opens once the windows are
+// three quarters back (Rekta's hand-over between places), its parts turning in as a place arrives, and closes turning
+// them out: back the way they came, or forward after a press, the pressed tile last. While it turns its places take no
+// input. A letter typed in the start place searches the apps: what is typed becomes the title, "suche" beside it, and
+// the apps that match stand below as tiles. The title is a line edited as a field is; Escape there closes the Start.
 FocusScope {
     id: start
 
@@ -38,6 +38,8 @@ FocusScope {
     readonly property var running: Rules.recentFirst(windows)
     // The time of the last wheel event, to tell one gesture from the next.
     property double lastWheel: 0
+    // The wheel gesture over the apps' row started at the row's end its way, and goes on to the place beside.
+    property bool wheelPastTheRow: false
     readonly property Item focusItem: Window.activeFocusItem
     // What was typed: the text of the search's line.
     property alias query: line.text
@@ -169,7 +171,6 @@ FocusScope {
         phase = "closed";
         pivot.currentIndex = 0;
         endSearch();
-        appList.clear();
         closed();
     }
 
@@ -295,18 +296,26 @@ FocusScope {
         close(tile);
     }
 
-    // A chosen app starts, and the Start turns out forward. No row stays behind: only a pressed tile goes last
-    // (rekta.js:754).
-    function launch(index: int) {
-        start.apps[index].launch();
-        leave({
-            back: false,
-            pressed: null
-        });
+    function allTiles(): var {
+        return [...runningGrid.children, ...pinnedGrid.children, ...hitsGrid.children, ...appTiles.children].filter(item => (item as Tile) !== null);
     }
 
-    function allTiles(): var {
-        return [...runningGrid.children, ...pinnedGrid.children, ...hitsGrid.children].filter(item => (item as Tile) !== null);
+    // The apps' row, in the app model's order.
+    function rowTiles(): var {
+        return appTiles.children.filter(item => (item as Tile) !== null);
+    }
+
+    function inTheRow(): bool {
+        return !searching && pivot.currentIndex === 1;
+    }
+
+    // A key typed in the apps' row jumps to the next app it starts; a turn still running ends first, as typing ends it.
+    function jump(key: string) {
+        turner.finish();
+        const tiles = rowTiles();
+        const at = Rules.jumpTarget(tiles.map(tile => tile.name), tiles.findIndex(tile => tile.activeFocus), key);
+        if (at >= 0)
+            tiles[at].forceActiveFocus();
     }
 
     // The tiles a key can reach, in reading order of their sections; those of a hidden view are not visible.
@@ -319,12 +328,12 @@ FocusScope {
     function forgetTileFocus() {
         for (const tile of allTiles())
             tile.focus = false;
-        appList.focus = false;
         if (!pivot.activeFocus)
             forceActiveFocus();
     }
 
-    // Past the tiles, right goes to "alle apps" and up to the pivot; a search has neither, and up goes to its line.
+    // Past the tiles, right goes to "alle apps", left back to "start" and up to the pivot; a search has none of them,
+    // and up goes to its line.
     function pastTheTiles(direction: string) {
         if (searching && direction === "up")
             line.forceActiveFocus();
@@ -332,18 +341,21 @@ FocusScope {
             return;
         else if (direction === "right")
             pivot.select(1);
+        else if (direction === "left")
+            pivot.select(0);
         else if (direction === "up")
             pivot.forceActiveFocus();
     }
 
-    // Arrows move the focus to the nearest tile that way.
+    // Arrows move the focus to the nearest tile that way: in the apps' row up and down a column, left and right to the
+    // column beside, an interim rule while Rekta has none for a tile grid.
     function moveFocus(direction: string) {
         const tiles = reachableTiles();
         const from = tiles.find(tile => tile.activeFocus);
         if (!from) {
             if (direction === "down" && tiles.length > 0)
                 tiles[0].forceActiveFocus();
-            else if (direction === "right")
+            else if (direction !== "up")
                 pastTheTiles(direction);
             return;
         }
@@ -363,18 +375,24 @@ FocusScope {
         return false;
     }
 
-    // Scrolls the column, or the hits, just far enough that what takes the focus there is whole in view, by arrow or by
-    // Tab.
+    // Scrolls the column, the hits or the apps' row just far enough that what takes the focus there is whole in view, by
+    // arrow, by Tab or by a typed letter.
     function reveal(item: Item) {
-        const view = item ? [column, results].find(scroller => isIn(item, scroller.contentItem)) : undefined;
+        const view = item ? [column, results, appRow].find(scroller => isIn(item, scroller.contentItem)) : undefined;
         if (!view)
             return;
-        const top = item.mapToItem(view.contentItem, 0, 0).y;
-        const most = Math.max(0, view.contentHeight - view.height);
-        if (top < view.contentY)
-            view.contentY = Math.max(0, top);
-        else if (top + item.height > view.contentY + view.height)
-            view.contentY = Math.min(most, top + item.height - view.height);
+        const at = item.mapToItem(view.contentItem, 0, 0);
+        view.contentY = shownFrom(view.contentY, view.height, view.contentHeight, at.y, item.height);
+        view.contentX = shownFrom(view.contentX, view.width, view.contentWidth, at.x, item.width);
+    }
+
+    // Where a scroller showing `size` of `content` from `scrolled` scrolls to, so that `length` from `start` shows whole.
+    function shownFrom(scrolled: real, size: real, content: real, start: real, length: real): real {
+        if (start < scrolled)
+            return Math.max(0, start);
+        if (start + length > scrolled + size)
+            return Math.min(Math.max(0, content - size), start + length - size);
+        return scrolled;
     }
 
     // One wheel gesture is one step: events less than wheel-latch apart belong together (layout.md). Only a sideways
@@ -385,6 +403,25 @@ FocusScope {
         lastWheel = now;
         if (fresh)
             pivot.select((event.angleDelta.x || event.pixelDelta.x) < 0 ? 1 : 0);
+    }
+
+    // Over the apps' row any wheel moves it sideways, a plain vertical one down along it, as over a panorama. A gesture
+    // that starts with room to move the row its way is the row's, and its rest is swallowed at the row's end; one that
+    // starts at that end goes on to the place beside (layout.md:48–62, rules 1, 2 and 4). It moves by the pixels the
+    // device gives, or else by the wheel's angle, a notch being 120 eighths of a degree, taken as pixels.
+    function rowWheel(event: WheelEvent) {
+        const now = Date.now();
+        const fresh = now - lastWheel > Tokens.durationWheelLatch;
+        lastWheel = now;
+        const x = event.pixelDelta.x || event.angleDelta.x;
+        const y = event.pixelDelta.y || event.angleDelta.y;
+        const along = -(Math.abs(x) >= Math.abs(y) ? x : y);
+        if (fresh)
+            wheelPastTheRow = along > 0 ? appRow.atXEnd : appRow.atXBeginning;
+        if (!wheelPastTheRow)
+            appRow.contentX = Math.max(0, Math.min(appRow.contentWidth - appRow.width, appRow.contentX + along));
+        else if (fresh)
+            pivot.select(along > 0 ? 1 : 0);
     }
 
     function goesBack(event: KeyEvent): bool {
@@ -403,16 +440,24 @@ FocusScope {
         return !/[\u0000-\u001f\u007f]/.test(text);
     }
 
-    // In "alle apps" left goes back to the start place and down into the list, whose own keys move in it. A key that
-    // acts on the hits makes their change first.
+    // A key that acts on the hits makes their change first.
     function arrow(direction: string) {
         presence.finish();
-        if (searching || pivot.currentIndex === 0)
-            moveFocus(direction);
-        else if (direction === "left")
-            pivot.select(0);
-        else if (direction === "down")
-            appList.forceActiveFocus();
+        moveFocus(direction);
+    }
+
+    // In the apps' row a key that prints, other than a space, jumps (rekta.js:2810); elsewhere it would search.
+    function jumpsInTheRow(event: KeyEvent): bool {
+        return inTheRow() && event.text.length === 1 && /\S/.test(event.text) && (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) === 0;
+    }
+
+    // Home and End go to the first and the last app of the row.
+    function toTheRowsEnd(event: KeyEvent): bool {
+        const tiles = rowTiles();
+        if (!inTheRow() || (event.key !== Qt.Key_Home && event.key !== Qt.Key_End) || tiles.length === 0)
+            return false;
+        tiles[event.key === Qt.Key_Home ? 0 : tiles.length - 1].forceActiveFocus();
+        return true;
     }
 
     // Typing shows the search at once: a turn still running, or the parts still waiting to turn in, ends in its end
@@ -482,8 +527,9 @@ FocusScope {
         return event.key === Qt.Key_Return || event.key === Qt.Key_Enter;
     }
 
-    // Back goes even while the Start turns, as a navigation always does, and so does typing, which ends the turn;
-    // nothing else does. Escape in a search closes the Start at once; the other ways back clear the search first.
+    // Back goes even while the Start turns, as a navigation always does, and so does typing, to search or to jump, which
+    // ends the turn; nothing else does. Escape in a search closes the Start at once; the other ways back clear the search
+    // first.
     function useKey(event: KeyEvent): bool {
         const directions = {
             [Qt.Key_Left]: "left",
@@ -495,6 +541,8 @@ FocusScope {
             close(null);
         else if (goesBack(event))
             back();
+        else if (jumpsInTheRow(event))
+            jump(event.text);
         else if (typesText(event))
             typeOn(event.text);
         else if (event.key === Qt.Key_Backspace && query !== "")
@@ -506,7 +554,7 @@ FocusScope {
         else if (isEnter(event) && searching)
             pressFirstHit();
         else
-            return false;
+            return toTheRowsEnd(event);
         return true;
     }
 
@@ -584,13 +632,15 @@ FocusScope {
         visible: false
 
         // A sideways wheel or a swipe goes to the place beside, a navigation like any other, also while a turn runs; a
-        // search stays where it is.
+        // search stays where it is. In "alle apps" it takes no swipe over from what was pressed, so one that starts on
+        // the apps' row is the row's.
         DragHandler {
             property real dx: 0
 
             target: null
             enabled: start.wanted && !start.searching
             yAxis.enabled: false
+            grabPermissions: (pivot.currentIndex === 1 ? 0 : PointerHandler.CanTakeOverFromItems) | PointerHandler.CanTakeOverFromHandlersOfDifferentType | PointerHandler.ApprovesTakeOverByAnything
             onActiveTranslationChanged: {
                 if (active)
                     dx = activeTranslation.x;
@@ -726,8 +776,12 @@ FocusScope {
             }
         }
 
-        // "alle apps": its own place beside the start place, the installed apps as a long list, the place's one
-        // section, space-l above and below (rekta.css:852).
+        // "alle apps": its own place beside the start place, the place's one section, space-l above and below
+        // (rekta.css:852). Every installed app A–Z is a tile one unit square, space-s apart (layout.md, "Tile grids"),
+        // in one row that fills each column top down, as many tiles as the column's height holds, and scrolls sideways
+        // within the column.
+        // ponytail: a tile for every app, made once the apps are known; a view that makes only the tiles in sight if
+        // hundreds of apps make the Start slow.
         Item {
             id: appsPlace
 
@@ -739,20 +793,99 @@ FocusScope {
             visible: false
             enabled: !start.turning
 
-            LongList {
-                id: appList
+            Flickable {
+                id: appRow
 
-                objectName: "appList"
+                // Where a swipe started: at the row's start or at its end, or both when it all fits.
+                property bool swipeFromStart: false
+                property bool swipeFromEnd: false
+
+                objectName: "appRow"
                 y: Tokens.spaceL
                 width: parent.width
                 height: parent.height - 2 * Tokens.spaceL
-                rows: (start.apps ?? []).map(app => ({
-                            text: app.name,
-                            icon: app.icon
-                        }))
-                loading: start.apps === null
-                empty: "keine apps installiert."
-                onShown: index => start.launch(index)
+                clip: true
+                contentWidth: appTiles.width
+                flickableDirection: Flickable.HorizontalFlick
+                // The row stops at its ends, and tells how far a swipe went on past one.
+                boundsBehavior: Flickable.DragOverBounds
+                boundsMovement: Flickable.StopAtBounds
+
+                // A swipe that starts at an end of the row and goes on past it goes on to the place beside, as the
+                // wheel does there (layout.md:48–62, rules 1 and 4).
+                onDraggingChanged: {
+                    if (dragging) {
+                        swipeFromStart = atXBeginning;
+                        swipeFromEnd = atXEnd;
+                    } else if (horizontalOvershoot < 0 && swipeFromStart) {
+                        pivot.select(0);
+                    } else if (horizontalOvershoot > 0 && swipeFromEnd) {
+                        pivot.select(1);
+                    }
+                }
+
+                Item {
+                    id: appTiles
+
+                    readonly property real step: Tokens.tileUnit + Tokens.spaceS
+                    readonly property int rows: Math.max(1, Math.floor((appRow.height + Tokens.spaceS) / step))
+                    readonly property int columns: Math.ceil(repeater.count / rows)
+
+                    objectName: "appTiles"
+                    width: Math.max(0, columns * step - Tokens.spaceS)
+                    height: appRow.height
+
+                    Repeater {
+                        id: repeater
+
+                        model: start.apps ?? []
+
+                        delegate: AppTile {
+                            id: rowTile
+
+                            required property var modelData
+                            required property int index
+
+                            x: Math.floor(index / appTiles.rows) * appTiles.step
+                            y: index % appTiles.rows * appTiles.step
+                            name: modelData.name
+                            icon: modelData.icon
+                            onActivated: start.press(rowTile, () => rowTile.modelData.launch())
+                        }
+                    }
+                }
+            }
+
+            // The wheel over the row is the Start's, so that it can go on past the row's ends; a press goes by.
+            MouseArea {
+                anchors.fill: appRow
+                acceptedButtons: Qt.NoButton
+                onWheel: wheel => start.rowWheel(wheel)
+            }
+
+            // Loading, the line runs on the region's first hairline; without apps a sentence there says so (states.md,
+            // "Data states"; rekta.css:675).
+            Hairline {
+                objectName: "appsLine"
+                y: Tokens.spaceL
+                width: parent.width
+                visible: repeater.count === 0
+            }
+
+            BusyLine {
+                objectName: "appsBusy"
+                y: Tokens.spaceL
+                width: parent.width
+                busy: start.apps === null
+            }
+
+            Body {
+                objectName: "noApps"
+                y: Tokens.spaceL + Geometry.hairline + Tokens.spaceM
+                width: parent.width
+                visible: start.apps !== null && repeater.count === 0
+                text: "keine apps installiert."
+                color: Tokens.color.textContrastHigh
             }
         }
 

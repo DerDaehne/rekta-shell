@@ -175,6 +175,17 @@ TestCase {
         compare(Rules.steps(["a", "b"], ["a", "b"]), [], "nothing to do when nothing changes");
     }
 
+    function test_a_typed_key_jumps_to_the_next_name_it_starts_whatever_the_case_round_past_the_end() {
+        const names = ["ark", "Dateien", "Dolphin", "Elisa", "dragon"];
+        compare(Rules.jumpTarget(names, -1, "d"), 1, "from nothing, the first");
+        compare(Rules.jumpTarget(names, 1, "D"), 2, "after the one in focus");
+        compare(Rules.jumpTarget(names, 4, "d"), 1, "round past the end");
+        compare(Rules.jumpTarget(names, 1, "a"), 0);
+        compare(Rules.jumpTarget(names, 0, "a"), 0, "the only one stays");
+        compare(Rules.jumpTarget(names, 2, "q"), -1, "none starts with it");
+        compare(Rules.jumpTarget([], -1, "a"), -1);
+    }
+
     function test_running_windows_come_most_recently_active_first_then_topmost_first() {
         const windows = [
             { title: "low", lastActivated: 0, stackingOrder: 1 },
