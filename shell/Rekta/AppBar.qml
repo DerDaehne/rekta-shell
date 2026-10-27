@@ -209,7 +209,7 @@ Rectangle {
 
         objectName: "more"
         icon: "more"
-        text: "more"
+        text: "mehr"
         overflowed: true
 
         onClicked: {

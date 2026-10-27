@@ -253,6 +253,16 @@ TestCase {
         compare(toast.deadline, 30000 + 4000);
     }
 
+    function test_the_undo_word_is_the_hosts_and_ctrl_z_follows_it() {
+        toaster.undoWord = "rückgängig";
+        const toast = toaster.show("3 messages deleted", { undo: undoing("delete") });
+        compare(toast.actionLabel, "rückgängig");
+        compare(findChild(toast, "action").Accessible.name, "rückgängig");
+        findChild(scene, "trigger").forceActiveFocus();
+        keyClick(Qt.Key_Z, Qt.ControlModifier);
+        compare(testCase.undone, ["delete"]);
+    }
+
     function test_the_action_undoes_and_ends_the_toast_as_undone() {
         const toast = toaster.show("3 messages deleted", { undo: undoing("delete"), onEnd: ending("toast") });
         mouseClick(findChild(toast, "action"));

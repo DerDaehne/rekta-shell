@@ -39,7 +39,7 @@ TestCase {
                 area: Qt.size(scene.barWidth, scene.height)
                 centre: scene.withCentre ? centreSlot : null
 
-                AppBarButton { objectName: "go to"; icon: "search"; text: "go to"; priority: 3 }
+                AppBarButton { objectName: "back"; icon: "window"; text: "back"; priority: 3 }
                 AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects: build the shell and its tests"] }
                 Rectangle { id: centreSlot; objectName: "centre"; visible: scene.withCentre; implicitWidth: 80; width: implicitWidth; height: 48; color: "transparent" }
                 AppBarButton { objectName: "pause"; icon: "pause"; text: "pause"; priority: 2 }
@@ -56,7 +56,7 @@ TestCase {
 
         AppBarButton {
             icon: "search"
-            text: "go to"
+            text: "back"
         }
     }
 
@@ -95,7 +95,7 @@ TestCase {
     }
 
     function controls(): var {
-        return ["go to", "pause", "in the background", "messages", "theme", "controls"].map(named);
+        return ["back", "pause", "in the background", "messages", "theme", "controls"].map(named);
     }
 
     function endOf(item: Item): real {
@@ -132,7 +132,7 @@ TestCase {
         compare(label.font.pixelSize, Tokens.fontSizeXs);
         compare(label.font.weight, Tokens.fontWeightSemibold);
         compare(label.color, Tokens.color.textPrimary);
-        compare(control.Accessible.name, "go to");
+        compare(control.Accessible.name, "back");
     }
 
     function test_a_count_follows_the_word_in_tabular_figures_and_none_shows_at_zero() {
@@ -143,7 +143,7 @@ TestCase {
         const width = box.width;
         verify(!count.visible);
         compare(count.implicitWidth, 0);
-        compare(control.words, "go to");
+        compare(control.words, "back");
         control.count = 3;
         verify(count.visible);
         compare(count.text, " 3");
@@ -152,7 +152,7 @@ TestCase {
         compare(count.font.weight, Tokens.fontWeightSemibold);
         compare(box.width, Math.ceil(label.x + label.implicitWidth + count.implicitWidth + Geometry.appBarControlPadding));
         verify(box.width > width);
-        compare(control.Accessible.name, "go to 3");
+        compare(control.Accessible.name, "back 3");
     }
 
     function test_a_new_count_peeks_in_the_old_one_leaving_upwards_while_the_new_one_rises_from_below() {
@@ -335,9 +335,9 @@ TestCase {
         makeScene({});
         verify(controls().every(control => control.visible));
         verify(!bar.more.visible);
-        compare(named("go to").x, bar.padding);
+        compare(named("back").x, bar.padding);
         compare(endOf(named("controls")), bar.width - bar.padding, "the controls after the middle stand at the end");
-        compare(named("middle").x, endOf(named("go to")) + bar.gap);
+        compare(named("middle").x, endOf(named("back")) + bar.gap);
         compare(endOf(named("middle")), named("pause").x - bar.gap);
     }
 
@@ -356,6 +356,12 @@ TestCase {
         const lastMoved = moved.reduce((most, control) => control.priority > most.priority ? control : most);
         verify(rowWidth(staying.concat(lastMoved, bar.more)) > bar.width - 2 * bar.padding, "no control moved that would have fit");
         compare(endOf(bar.more), bar.width - bar.padding, "more ends the bar");
+    }
+
+    function test_more_is_the_german_word_as_its_text_and_accessible_name() {
+        makeScene({ barWidth: 760 });
+        compare(bar.more.text, "mehr");
+        compare(bar.more.Accessible.name, "mehr");
     }
 
     function test_more_repeats_the_moved_controls_words_in_their_order_and_nothing_disappears() {
@@ -489,15 +495,15 @@ TestCase {
         middle.parts = ["konsole", "a title much longer than the room the leading side of the bar has to give it, longer still than that"];
         verify(middle.width < middle.implicitWidth, "the leading side is full");
         compare(endOf(middle), named("centre").x - bar.gap);
-        verify(named("go to").overflowed, "the leading control makes room for it");
+        verify(named("back").overflowed, "the leading control makes room for it");
         verify(middle.visible, "and it stays while more shows");
     }
 
     function test_only_the_side_that_does_not_fit_gives_up_controls() {
         makeScene({ barWidth: 760, withCentre: true });
-        named("go to").priority = -1;
+        named("back").priority = -1;
         verify(bar.more.visible);
-        verify(named("go to").visible, "the least important control stays where its side fits");
+        verify(named("back").visible, "the least important control stays where its side fits");
         verify(controls().slice(1).some(control => control.overflowed));
     }
 
@@ -528,8 +534,8 @@ TestCase {
             Prefs.theme = theme;
             const sheet = createTemporaryObject(sheetComponent, testCase);
             mouseClick(findChild(sheet, "narrow").more, 10, 10);
-            const goTo = findChild(findChild(sheet, "wide"), "go to");
-            Tips.show(findChild(goTo, "box"), goTo.disabledReason);
+            const back = findChild(findChild(sheet, "wide"), "back");
+            Tips.show(findChild(back, "box"), back.disabledReason);
             waitForRendering(sheet);
             wait(Tokens.durationFloat + 50);
             grabImage(sheet).save(`appbar-sheet-${theme}.png`);
@@ -562,7 +568,7 @@ TestCase {
                 area: Qt.size(width, 600)
                 centre: slot
 
-                AppBarButton { objectName: "go to"; icon: "search"; text: "go to"; priority: 3; disabledReason: "comes with the palette" }
+                AppBarButton { objectName: "back"; icon: "window"; text: "back"; priority: 3; disabledReason: "comes with the palette" }
                 AppBarMiddle { id: line; parts: ["konsole", "~/projects: build the shell"] }
                 Text { id: slot; text: "14:32"; font.pixelSize: Tokens.fontSizeXs; font.weight: Tokens.fontWeightSemibold; color: Tokens.color.textPrimary }
                 AppBarButton { icon: "window"; text: "in the background"; priority: 0 }

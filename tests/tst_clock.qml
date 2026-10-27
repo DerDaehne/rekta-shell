@@ -34,7 +34,7 @@ TestCase {
                 width: scene.width
                 centre: appClock
 
-                AppBarButton { objectName: "go to"; icon: "search"; text: "go to" }
+                AppBarButton { objectName: "back"; icon: "window"; text: "back" }
                 AppBarMiddle { parts: ["konsole", "~/projects"] }
 
                 AppBarClock {
@@ -280,7 +280,7 @@ TestCase {
                 width: parent.width
                 centre: sheetClock
 
-                AppBarButton { icon: "search"; text: "go to" }
+                AppBarButton { icon: "window"; text: "back" }
                 AppBarMiddle { parts: ["konsole", "~/projects: build the shell"] }
 
                 AppBarClock {

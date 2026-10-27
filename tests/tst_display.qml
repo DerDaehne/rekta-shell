@@ -40,7 +40,7 @@ TestCase {
                 centre: appClock
                 centreReserve: appDisplay.implicitWidth
 
-                AppBarButton { id: leading; icon: "search"; text: "go to" }
+                AppBarButton { id: leading; icon: "window"; text: "back" }
                 AppBarMiddle { id: words; parts: ["konsole", "a title that runs on and on and on and on and on and on and on and on and on and on and on and on and on and on and on and on and on and on and on"] }
 
                 AppBarClock {
@@ -306,7 +306,7 @@ TestCase {
                     centre: rowClock
                     centreReserve: Tokens.tileUnit
 
-                    AppBarButton { icon: "search"; text: "go to" }
+                    AppBarButton { icon: "window"; text: "back" }
                     AppBarMiddle { parts: ["konsole", "~/projects: build the shell"] }
 
                     AppBarClock {

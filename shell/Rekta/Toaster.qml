@@ -18,6 +18,8 @@ Item {
 
     // The toast that shows or waits to show; null when none is open. Set by show(), never from outside.
     property Toast open: null
+    // The word of the undo action; Ctrl+Z undoes a toast that carries it.
+    property string undoWord: "undo"
     // Wall-clock time in ms: undo windows run against it, so a late timer never stretches them. Tests set their own.
     property var clock: () => Date.now()
     // An undo window takes duration-toast in whole seconds (rekta.js toaster(), `tokenWindow`).
@@ -35,7 +37,7 @@ Item {
     // icon, an image for the app the toast speaks for, at its front; title, open ({ run }, the text as a control) and
     // stays (no window until it is dismissed).
     function show(text: string, options: var): Toast {
-        const o = Object.assign({ key: text, undo: null, from: null, action: "undo", act: null, status: "", windowMs: 0, onEnd: null, icon: "", title: "", open: null, stays: false }, options);
+        const o = Object.assign({ key: text, undo: null, from: null, action: undoWord, act: null, status: "", windowMs: 0, onEnd: null, icon: "", title: "", open: null, stays: false }, options);
         if (open && open.key === o.key && open.undoAction && o.undo) {
             open.update(text, o.undo, o.windowMs, o.onEnd);
             return open;
@@ -105,7 +107,7 @@ Item {
 
     // Ctrl+Z undoes while an undo window is open. A text field takes its own Ctrl+Z before any layer sees it.
     function undoOnCtrlZ(event: KeyEvent): bool {
-        if (!open?.undoAction || open.action !== "undo" || !isUndoKey(event))
+        if (!open?.undoAction || open.action !== undoWord || !isUndoKey(event))
             return false;
         open.undo();
         return true;

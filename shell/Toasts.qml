@@ -34,6 +34,8 @@ PanelWindow {
     Toaster {
         id: region
 
+        undoWord: "rückgängig"
+
         width: host.width
     }
 

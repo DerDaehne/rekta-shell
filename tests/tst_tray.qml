@@ -117,7 +117,7 @@ TestCase {
                 AppBarButton {
                     objectName: "goto"
                     icon: "search"
-                    text: "go to"
+                    text: "back"
                     priority: 3
                 }
 

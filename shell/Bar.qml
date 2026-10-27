@@ -10,7 +10,7 @@ import Tray
 import "services"
 
 // The app bar on one screen (navigation.md, "App bar"): along the bottom edge, full width, and windows keep clear of
-// it. "go to" and the middle with the active window lead, the clock stands in the centre, the background apps (gone
+// it. The middle with the active window leads, the clock stands in the centre, the background apps (gone
 // while none runs), messages and controls trail, each opening the side panel on this screen on its facet; those
 // whose features come later stand disabled, their reason in their tooltip. Under a full-screen window it slides down
 // out of sight and comes back the same way.
@@ -62,13 +62,6 @@ PanelWindow {
         centre: clock
         centreReserve: panel.showsReadout ? display.implicitWidth : 0
         away: panel.away
-
-        AppBarButton {
-            icon: "search"
-            text: "go to"
-            priority: 3
-            disabledReason: "kommt mit der palette"
-        }
 
         AppBarMiddle {
             parts: panel.front ? [panel.front.app, panel.front.title] : []

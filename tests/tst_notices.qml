@@ -40,6 +40,7 @@ TestCase {
                 id: region
 
                 objectName: "toaster"
+                undoWord: "rückgängig"
                 width: parent.width
                 clock: () => testCase.time
             }
@@ -404,7 +405,7 @@ TestCase {
         board.remove([board.rows[1]]);
         compare(rowNames(), ["ben"]);
         compare(toaster.open.text, "meldung entfernt");
-        compare(toaster.open.actionLabel, "undo");
+        compare(toaster.open.actionLabel, "rückgängig");
         compare(toaster.open.total, toaster.undoWindow, "the undo window: duration-toast in whole seconds");
         time = toaster.undoWindow - 1;
         toaster.open.step();
