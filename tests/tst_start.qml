@@ -809,6 +809,9 @@ TestCase {
         compare(suche.color, Tokens.color.textContrastMedium);
         compare(suche.x, typed.width + Tokens.spaceL);
         compare(suche.y + suche.baselineOffset, typed.y + typed.baselineOffset, "on one baseline");
+        const word = findChild(named("pivot"), "word");
+        const baselineOf = item => item.mapToItem(start, 0, item.baselineOffset).y;
+        compare(baselineOf(typed), baselineOf(word), "the pivot's");
     }
 
     function test_a_title_too_long_for_the_column_keeps_its_size_and_is_cut_at_the_column_s_edge() {
@@ -905,7 +908,9 @@ TestCase {
         keyClick(Qt.Key_Right);
         verify(tiles[1].activeFocus);
         keyClick(Qt.Key_Up);
-        verify(tiles[1].activeFocus, "a search has no pivot to go up to");
+        verify(named("typed").activeFocus, "a search has no pivot; up goes to its line");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Right);
         keyClick(Qt.Key_Return);
         compare(calls, ["launch Konsole"]);
         tryVerify(() => closedSpy.count === 1, 3000);
@@ -934,17 +939,41 @@ TestCase {
         verify(top >= 0 && top + last.height <= results.height, `whole in view at ${top}`);
     }
 
-    function test_escape_clears_the_search_and_shows_the_place_before_and_a_second_escape_closes() {
+    function test_escape_in_a_search_closes_the_start_back_the_way_it_came_and_it_opens_again_without_the_search() {
+        openWithApps();
+        typeNow("ko");
+        keyClick(Qt.Key_Escape);
+        verify(!start.wanted);
+        verify(turner.running);
+        verify(turner.back);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        openNow();
+        compare(start.query, "");
+        verify(named("pivot").visible);
+        verify(named("column").visible);
+        verify(!named("results").visible);
+    }
+
+    function test_escape_closes_the_start_from_a_hit_in_focus_too() {
+        openWithApps();
+        typeNow("k");
+        keyClick(Qt.Key_Down);
+        verify(start.hitTiles()[0].activeFocus);
+        keyClick(Qt.Key_Escape);
+        verify(!start.wanted);
+    }
+
+    function test_back_clears_the_search_and_shows_the_place_before_and_a_second_back_closes() {
         openWithApps();
         typeNow("k");
         Prefs.motion = "off";
-        keyClick(Qt.Key_Escape);
+        keyClick(Qt.Key_Back);
         compare(start.query, "");
         verify(named("pivot").visible);
         verify(named("column").visible);
         verify(!named("results").visible);
         verify(start.wanted);
-        keyClick(Qt.Key_Escape);
+        keyClick(Qt.Key_Back);
         verify(!start.wanted);
     }
 
@@ -952,12 +981,12 @@ TestCase {
         openOnAllApps(["Kate", "Konsole"]);
         typeNow("k");
         Prefs.motion = "off";
-        keyClick(Qt.Key_Escape);
+        keyClick(Qt.Key_Back);
         compare(named("pivot").currentIndex, 1);
         verify(named("apps").visible);
     }
 
-    function test_back_alt_left_and_the_mouse_back_button_clear_the_search_as_escape_does() {
+    function test_back_alt_left_and_the_mouse_back_button_clear_the_search_first() {
         openWithApps();
         Prefs.motion = "off";
         for (const goBack of [() => keyClick(Qt.Key_Back), () => keyClick(Qt.Key_Left, Qt.AltModifier), () => mouseClick(start, start.width - 50, 50, Qt.BackButton)]) {
@@ -978,6 +1007,184 @@ TestCase {
         verify(named("pivot").visible);
         verify(named("column").visible);
         verify(start.wanted);
+    }
+
+    // The search's line, edited as a field is, with the motion off so that each key's change stands at once.
+    function openSearchFor(text: string): var {
+        openWithApps();
+        Prefs.motion = "off";
+        for (const character of text)
+            keyClick(character);
+        return named("typed");
+    }
+
+    function keyClicks(key: int, times: int, modifiers: int) {
+        for (let i = 0; i < times; i++)
+            keyClick(key, modifiers);
+    }
+
+    function test_the_line_has_the_keys_once_the_search_shows_its_caret_after_what_was_typed_in_rekta_s_colours() {
+        const line = openSearchFor("fi");
+        verify(line.activeFocus);
+        compare(line.cursorPosition, 2);
+        verify(line.cursorVisible);
+        compare(line.color, Tokens.color.textPrimary);
+        compare(line.selectionColor, Tokens.color.accent);
+        compare(line.selectedTextColor, Tokens.color.textOnAccent);
+    }
+
+    function test_ctrl_a_selects_the_whole_line_typing_replaces_it_and_backspace_or_delete_erase_it() {
+        const line = openSearchFor("kate");
+        keyClick(Qt.Key_A, Qt.ControlModifier);
+        compare(line.selectedText, "kate");
+        keyClick("w");
+        compare(start.query, "w");
+        keyClick(Qt.Key_A, Qt.ControlModifier);
+        keyClick(Qt.Key_Backspace);
+        compare(start.query, "");
+        verify(named("pivot").visible, "the search ends");
+        keyClick("k");
+        keyClick(Qt.Key_A, Qt.ControlModifier);
+        keyClick(Qt.Key_Delete);
+        compare(start.query, "");
+        verify(named("pivot").visible);
+    }
+
+    function test_ctrl_u_erases_to_the_line_s_start_and_ctrl_k_to_its_end() {
+        const line = openSearchFor("kon sole");
+        keyClicks(Qt.Key_Left, 4, Qt.NoModifier);
+        keyClick(Qt.Key_U, Qt.ControlModifier);
+        compare(start.query, "sole");
+        compare(line.cursorPosition, 0);
+        keyClick(Qt.Key_End);
+        keyClicks(Qt.Key_Left, 2, Qt.NoModifier);
+        keyClick(Qt.Key_K, Qt.ControlModifier);
+        compare(start.query, "so");
+        compare(line.cursorPosition, 2);
+    }
+
+    function test_ctrl_w_and_ctrl_backspace_erase_the_word_before_the_caret_and_ctrl_delete_the_word_after() {
+        const line = openSearchFor("kate kon sole");
+        keyClick(Qt.Key_W, Qt.ControlModifier);
+        compare(start.query, "kate kon ");
+        keyClick(Qt.Key_Backspace, Qt.ControlModifier);
+        compare(start.query, "kate ");
+        keyClick("w");
+        keyClick(Qt.Key_Home);
+        keyClick(Qt.Key_Delete, Qt.ControlModifier);
+        compare(start.query, "w");
+        compare(line.cursorPosition, 0);
+    }
+
+    function test_arrows_ctrl_arrows_home_and_end_move_the_caret_and_with_shift_they_select() {
+        const line = openSearchFor("kate kon");
+        keyClick(Qt.Key_Home);
+        compare(line.cursorPosition, 0);
+        keyClick(Qt.Key_End);
+        compare(line.cursorPosition, 8);
+        keyClick(Qt.Key_Left);
+        compare(line.cursorPosition, 7);
+        keyClick(Qt.Key_Left, Qt.ControlModifier);
+        compare(line.cursorPosition, 5);
+        keyClick(Qt.Key_Right, Qt.ControlModifier);
+        compare(line.cursorPosition, 8);
+        keyClicks(Qt.Key_Left, 3, Qt.ShiftModifier);
+        compare(line.selectedText, "kon");
+        keyClick(Qt.Key_Left, Qt.ShiftModifier | Qt.ControlModifier);
+        compare(line.selectedText, "kate kon");
+        keyClick(Qt.Key_Right);
+        compare(line.selectedText, "");
+        compare(line.cursorPosition, 8);
+        keyClick(Qt.Key_Home, Qt.ShiftModifier);
+        compare(line.selectedText, "kate kon");
+        keyClick(Qt.Key_Left);
+        keyClick(Qt.Key_End, Qt.ShiftModifier);
+        compare(line.selectedText, "kate kon");
+        verify(line.activeFocus, "the arrows stay in the line");
+    }
+
+    function test_ctrl_c_ctrl_x_and_ctrl_v_copy_cut_and_paste_and_a_paste_keeps_its_first_line() {
+        const line = openSearchFor("kon sole");
+        keyClick(Qt.Key_Left, Qt.ShiftModifier | Qt.ControlModifier);
+        keyClick(Qt.Key_C, Qt.ControlModifier);
+        compare(start.query, "kon sole");
+        keyClick(Qt.Key_X, Qt.ControlModifier);
+        compare(start.query, "kon ");
+        keyClick(Qt.Key_V, Qt.ControlModifier);
+        keyClick(Qt.Key_V, Qt.ControlModifier);
+        compare(start.query, "kon solesole");
+        const lines = createTemporaryQmlObject("import QtQuick; TextEdit { text: 'kate\\nkonsole\\n' }", testCase);
+        lines.selectAll();
+        lines.copy();
+        line.forceActiveFocus();
+        keyClick(Qt.Key_Home);
+        keyClick(Qt.Key_V, Qt.ControlModifier);
+        compare(start.query, "katekon solesole");
+        compare(line.cursorPosition, 4);
+    }
+
+    function test_ctrl_z_takes_back_the_last_change() {
+        openSearchFor("kate kon");
+        keyClick(Qt.Key_W, Qt.ControlModifier);
+        compare(start.query, "kate ");
+        keyClick(Qt.Key_Z, Qt.ControlModifier);
+        compare(start.query, "kate kon");
+        keyClick(Qt.Key_End);
+        keyClicks(Qt.Key_Left, 2, Qt.NoModifier);
+        keyClick(Qt.Key_K, Qt.ControlModifier);
+        compare(start.query, "kate k");
+        keyClick(Qt.Key_Z, Qt.ControlModifier);
+        compare(start.query, "kate kon");
+    }
+
+    function test_a_double_click_on_the_line_selects_a_word() {
+        const line = openSearchFor("kate kon");
+        const kon = line.positionToRectangle(6);
+        mouseDoubleClickSequence(line, kon.x, kon.y + kon.height / 2);
+        compare(line.selectedText, "kon");
+    }
+
+    function test_down_or_tab_go_on_to_the_hits_and_up_or_shift_tab_back_to_the_line() {
+        const line = openSearchFor("k");
+        const first = start.hitTiles()[0];
+        keyClick(Qt.Key_Tab);
+        verify(first.activeFocus);
+        keyClick(Qt.Key_Backtab);
+        verify(line.activeFocus);
+        keyClick(Qt.Key_Down);
+        verify(first.activeFocus);
+        keyClick(Qt.Key_Up);
+        verify(line.activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Kate"], "enter in the line presses the first hit");
+    }
+
+    function test_typing_or_erasing_with_a_hit_in_focus_goes_on_in_the_line_at_its_caret() {
+        const line = openSearchFor("ons");
+        keyClick(Qt.Key_Home);
+        keyClick(Qt.Key_Down);
+        verify(start.hitTiles()[0].activeFocus);
+        keyClick("k");
+        compare(start.query, "kons");
+        verify(line.activeFocus);
+        compare(line.cursorPosition, 1);
+        keyClick(Qt.Key_Down);
+        verify(start.hitTiles()[0].activeFocus);
+        keyClick(Qt.Key_Backspace);
+        compare(start.query, "ons");
+        verify(line.activeFocus);
+        compare(line.cursorPosition, 0);
+    }
+
+    function test_while_the_start_turns_out_the_line_takes_no_edit() {
+        const line = openSearchFor("kate");
+        Prefs.motion = "system";
+        keyClick(Qt.Key_Escape);
+        verify(turner.running);
+        keyClick("x");
+        keyClick(Qt.Key_U, Qt.ControlModifier);
+        compare(start.query, "kate");
+        verify(line.readOnly);
     }
 
     function test_a_letter_typed_right_after_opening_shows_the_title_and_the_hits_before_the_opening_could_have_landed() {
@@ -1105,7 +1312,7 @@ TestCase {
         verify(named("results").visible);
         verify(!named("presence").running);
         verify(start.hitTiles().every(tile => tile.opacity === 1));
-        keyClick(Qt.Key_Escape);
+        keyClick(Qt.Key_Back);
         verify(named("column").visible);
         verify(tilesIn("pinned").every(tile => tile.opacity === 1));
     }
@@ -1186,6 +1393,28 @@ TestCase {
             waitForRendering(backdrop);
             grabImage(backdrop).save(`start-search-sheet-${theme}.png`);
             compare(sheet.query, "fi", theme);
+        }
+    }
+
+    // The caret inside "fire|fox", then "fire" selected. Each is taken right after a key, which lights the caret.
+    function test_contact_sheet_of_the_search_line() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const backdrop = createTemporaryObject(backdropComponent, testCase);
+            const sheet = createTemporaryObject(startComponent, backdrop);
+            sheet.apps = searchableApps();
+            Prefs.motion = "off";
+            sheet.open();
+            for (const character of "firefox")
+                keyClick(character);
+            keyClicks(Qt.Key_Left, 3, Qt.NoModifier);
+            waitForRendering(backdrop);
+            grabImage(backdrop).save(`start-search-caret-${theme}.png`);
+            keyClick(Qt.Key_Home, Qt.ShiftModifier);
+            waitForRendering(backdrop);
+            grabImage(backdrop).save(`start-search-selection-${theme}.png`);
+            Prefs.motion = "system";
+            compare(findChild(sheet, "typed").selectedText, "fire", theme);
         }
     }
 

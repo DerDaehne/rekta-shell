@@ -9,7 +9,8 @@ import Rekta
 // once the windows are three quarters back (Rekta's hand-over between places), its parts turning in as a place
 // arrives, and closes turning them out: back the way they came, or forward after a press or a choice, the pressed tile
 // last. While it turns its places take no input. A letter typed in either place searches the apps: what is typed
-// becomes the title, "suche" beside it, and the apps that match stand below as tiles.
+// becomes the title, "suche" beside it, and the apps that match stand below as tiles. The title is a line edited as a
+// field is; Escape there closes the Start.
 FocusScope {
     id: start
 
@@ -38,8 +39,8 @@ FocusScope {
     // The time of the last wheel event, to tell one gesture from the next.
     property double lastWheel: 0
     readonly property Item focusItem: Window.activeFocusItem
-    // What was typed.
-    property string query: ""
+    // What was typed: the text of the search's line.
+    property alias query: line.text
     // The search shows, or is on its way, in place of the pivot and the places.
     property bool searching: false
 
@@ -194,10 +195,12 @@ FocusScope {
             filter();
     }
 
+    // The search's line has the keys while it shows.
     function showSearchView(shown: bool) {
         pivot.visible = !shown;
         searchTitle.visible = shown;
         results.visible = shown;
+        line.focus = shown;
         if (shown) {
             column.visible = false;
             appsPlace.visible = false;
@@ -321,11 +324,13 @@ FocusScope {
             forceActiveFocus();
     }
 
-    // Past the tiles, right goes to "alle apps" and up to the pivot; a search has neither.
+    // Past the tiles, right goes to "alle apps" and up to the pivot; a search has neither, and up goes to its line.
     function pastTheTiles(direction: string) {
-        if (searching)
+        if (searching && direction === "up")
+            line.forceActiveFocus();
+        else if (searching)
             return;
-        if (direction === "right")
+        else if (direction === "right")
             pivot.select(1);
         else if (direction === "up")
             pivot.forceActiveFocus();
@@ -411,14 +416,66 @@ FocusScope {
     }
 
     // Typing shows the search at once: a turn still running, or the parts still waiting to turn in, ends in its end
-    // state first, as a navigation that comes while a turn runs finishes it (rekta.js:349–350, :557–558).
+    // state first, as a navigation that comes while a turn runs finishes it (rekta.js:349–350, :557–558). What is typed
+    // goes in at the line's caret.
     function typeOn(text: string) {
         if (waitForWindows.running) {
             waitForWindows.stop();
             turnIn();
         }
         turner.finish();
-        query += text;
+        takeKeysToLine();
+        line.insert(line.cursorPosition, text);
+    }
+
+    // Backspace while a hit has the focus erases in the line as it would there.
+    function eraseBack() {
+        takeKeysToLine();
+        eraseTo(Math.max(0, line.cursorPosition - 1));
+    }
+
+    // Erases from the caret to `to`, a step of its own for Ctrl+Z: moving the caret ends the step before, where a
+    // removal alone would join the typing before it.
+    function eraseTo(to: int) {
+        line.deselect();
+        line.moveCursorSelection(to);
+        line.remove(line.selectionStart, line.selectionEnd);
+    }
+
+    // Typing on from a hit goes back to the line, which then takes the keys. A line that loses the focus loses its
+    // selection, so there is none to replace here.
+    function takeKeysToLine() {
+        if (line.visible)
+            line.forceActiveFocus();
+    }
+
+    // The line's keys a terminal has, the same on every desktop: Qt binds Ctrl+U and Ctrl+K per platform, and its
+    // Ctrl+U copies the whole line before erasing it. Ctrl+W erases the spaces before the caret and the word before
+    // them. A paste keeps its first line, a search being one line.
+    function editLine(event: KeyEvent): bool {
+        if (line.readOnly)
+            return false;
+        const ctrl = event.modifiers === Qt.ControlModifier;
+        if (ctrl && event.key === Qt.Key_U)
+            eraseTo(0);
+        else if (ctrl && event.key === Qt.Key_K)
+            eraseTo(line.length);
+        else if (ctrl && event.key === Qt.Key_W)
+            eraseTo(line.text.slice(0, line.cursorPosition).search(/\S*\s*$/));
+        else if (event.matches(StandardKey.Paste))
+            pasteFirstLine();
+        else
+            return false;
+        return true;
+    }
+
+    // ponytail: the lines after the first go in and out again, so Ctrl+Z after pasting several brings them back before
+    // it takes the paste; read the clipboard through a hidden line first if that shows.
+    function pasteFirstLine() {
+        const from = line.selectionStart;
+        line.paste();
+        const pasted = line.text.slice(from, line.cursorPosition);
+        line.remove(from + pasted.split(/[\r\n]/)[0].length, line.cursorPosition);
     }
 
     function isEnter(event: KeyEvent): bool {
@@ -426,7 +483,7 @@ FocusScope {
     }
 
     // Back goes even while the Start turns, as a navigation always does, and so does typing, which ends the turn;
-    // nothing else does.
+    // nothing else does. Escape in a search closes the Start at once; the other ways back clear the search first.
     function useKey(event: KeyEvent): bool {
         const directions = {
             [Qt.Key_Left]: "left",
@@ -434,12 +491,14 @@ FocusScope {
             [Qt.Key_Up]: "up",
             [Qt.Key_Down]: "down"
         };
-        if (goesBack(event))
+        if (event.key === Qt.Key_Escape && query !== "")
+            close(null);
+        else if (goesBack(event))
             back();
         else if (typesText(event))
             typeOn(event.text);
         else if (event.key === Qt.Key_Backspace && query !== "")
-            query = query.slice(0, -1);
+            eraseBack();
         else if (turning)
             return false;
         else if (event.key in directions)
@@ -710,19 +769,42 @@ FocusScope {
             visible: false
             clip: true
 
+            // The line box of an active title at the strip's foot, as the pivot's titles stand: it sets the type and
+            // the baseline of what was typed.
             NavTitle {
-                id: typedTitle
+                id: lineBox
+
+                anchors.bottom: parent.bottom
+                visible: false
+                font.pixelSize: pivot.activeSize
+            }
+
+            // What was typed is a line edited as a field is. Its caret is a field's, one pixel in the text's colour
+            // (`caret-color: auto` on `.rk-input`, rekta.css:267; rekta-core field.c:472, :503), as high and blinking as
+            // the platform draws it, as on the web. Its selection takes the accent with on-accent text, as any selection
+            // does (rekta.css:722; field.c:497–498).
+            // ponytail: past the column's edge the caret goes out of sight with the text; cap the width at the column
+            // and let the line scroll if queries get that long.
+            TextInput {
+                id: line
 
                 objectName: "typed"
-                anchors.bottom: parent.bottom
-                text: start.query
-                font.pixelSize: pivot.activeSize
+                anchors.baseline: lineBox.baseline
+                font: lineBox.font
+                color: lineBox.color
+                selectionColor: Tokens.color.accent
+                selectedTextColor: Tokens.color.textOnAccent
+                readOnly: !start.wanted
+                activeFocusOnTab: true
+                Accessible.name: "suche"
+
+                Keys.onPressed: event => event.accepted = start.editLine(event)
             }
 
             NavTitle {
                 objectName: "suche"
-                x: typedTitle.width + Tokens.spaceL
-                anchors.baseline: typedTitle.baseline
+                x: line.width + Tokens.spaceL
+                anchors.baseline: lineBox.baseline
                 active: false
                 text: "suche"
                 font.pixelSize: pivot.inactiveSize
