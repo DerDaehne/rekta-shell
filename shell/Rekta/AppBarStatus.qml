@@ -42,16 +42,29 @@ Item {
     // ponytail: FontMetrics measures the semibold word a little wider than the text draws it (6 px in 70 with Atkinson), so
     // the bar reserves a little too much; measure the words with hidden texts if that ever shows.
     function widthAt(count: int): real {
-        const shownWords = shownAt(count);
-        const widths = shownWords.map(word => Math.ceil(Math.max(Geometry.appBarControl, 2 * Geometry.appBarControlPadding + Geometry.tagMark + Geometry.tagGap + metrics.advanceWidth(word.word))));
+        return span(shownAt(count).map(word => wordWidth(word.word)));
+    }
+
+    function wordWidth(text: string): real {
+        return Math.ceil(Math.max(Geometry.appBarControl, 2 * Geometry.appBarControlPadding + Geometry.tagMark + Geometry.tagGap + metrics.advanceWidth(text)));
+    }
+
+    function span(widths: var): real {
         return widths.reduce((sum, width) => sum + width, 0) + Tokens.spaceXs * Math.max(0, widths.length - 1);
+    }
+
+    // The room the words take now: those that stand and those still fading out, which the bar lays out around until
+    // they have gone.
+    function occupied(): real {
+        const slots = Array.from(row.children).map(child => child as WordControl).filter(slot => slot?.present === true);
+        return span(slots.map(slot => wordWidth(slot.shown?.word ?? "")));
     }
 
     function count() {
         standing = Array.from(row.children).filter(child => (child as WordControl)?.present === true).length;
     }
 
-    implicitWidth: widthAt(limit)
+    implicitWidth: occupied()
     implicitHeight: Geometry.appBarControl
     visible: present
 

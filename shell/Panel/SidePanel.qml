@@ -18,6 +18,8 @@ FocusScope {
     property bool open: false
     // The item of the facet that stays at the top of the view, until a hand moves it.
     property Item revealed: null
+    property real settledHeight: 0
+    property int quietFrames: 0
     // Runs from 0 to 1 as it comes in, and back to 0 as it leaves.
     property real entry: 1
     readonly property real contentWidth: 2.5 * Tokens.tileUnit + Tokens.spaceS
@@ -47,12 +49,29 @@ FocusScope {
 
     // Scrolls the facet so an item of it stands at the top, or to the top without one, and puts the focus on the item's
     // first control. The facet lays itself out when it first shows, which moves the item and grows the content: the item
-    // is kept at the top until a hand moves the view or the panel goes. An item that does not show leaves the view at the top.
+    // is kept at the top through the frames that change the content, and let go after two frames without a change or when
+    // a hand moves the view. An item that does not show leaves the view at the top.
     function reveal(item: Item) {
         revealed = item?.visible ? item : null;
+        settledHeight = scroller.contentHeight;
+        quietFrames = 0;
         keepRevealed();
         if (revealed)
             focusIn(revealed);
+    }
+
+    // A frame has been drawn: content that changed takes the place again; two frames in a row without a change end the
+    // hold (one may be a frame from before the panel showed, which reaches this thread late).
+    function settle() {
+        if (scroller.contentHeight !== settledHeight) {
+            settledHeight = scroller.contentHeight;
+            quietFrames = 0;
+            keepRevealed();
+        } else if (++quietFrames >= 2) {
+            revealed = null;
+            return;
+        }
+        Window.window.update();
     }
 
     function keepRevealedIfAny() {
@@ -61,12 +80,7 @@ FocusScope {
     }
 
     function keepRevealed() {
-        if (!revealed) {
-            scroller.contentY = 0;
-            return;
-        }
-        const top = revealed.mapToItem(scroller.contentItem, 0, 0).y;
-        scroller.contentY = Math.max(0, Math.min(top, scroller.contentHeight - scroller.height));
+        scroller.contentY = revealed ? Math.max(0, Math.min(revealed.mapToItem(scroller.contentItem, 0, 0).y, scroller.contentHeight - scroller.height)) : 0;
     }
 
     // The first control inside an item, if it has one.
@@ -147,6 +161,14 @@ FocusScope {
         else
             return KeyLayers.dispatch(event, Window.activeFocusItem);
         event.accepted = true;
+    }
+
+    Connections {
+        target: sidePanel.revealed ? sidePanel.Window.window : null
+
+        function onFrameSwapped() {
+            sidePanel.settle();
+        }
     }
 
     QtObject {

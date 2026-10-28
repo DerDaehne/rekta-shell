@@ -180,6 +180,20 @@ TestCase {
         tryVerify(() => sideWidth() === background.width + messages.width + controls.width + 2 * scene.bar.gap);
     }
 
+    function test_while_a_word_fades_out_the_words_stay_clear_of_steuerung_and_the_bar_lays_out_after_it() {
+        makeScene({ shown: [muted, quiet] });
+        const controls = findChild(scene, "controls");
+        tryVerify(() => standing().length === 2);
+        const right = () => word("doNotDisturb").mapToItem(scene, word("doNotDisturb").width, 0).x;
+        scene.shown = [muted];
+        verify(word("doNotDisturb").visible, "it still stands");
+        verify(right() <= controls.x - scene.bar.gap + 0.5, `${right()} against ${controls.x}`);
+        wait(Tokens.durationShort / 2);
+        verify(right() <= controls.x - scene.bar.gap + 0.5, `half way: ${right()} against ${controls.x}`);
+        tryCompare(word("doNotDisturb"), "visible", false);
+        tryVerify(() => scene.status.width === scene.status.widthAt(2));
+    }
+
     function test_under_reduced_motion_a_word_stands_and_goes_at_once() {
         Prefs.motion = "off";
         makeScene({});
@@ -210,7 +224,7 @@ TestCase {
             const left = control.mapToItem(scene, 0, 0).x;
             const key = control.objectName;
             verify(left >= from - 0.5, `${barWidth} ${key}: ${left} is left of ${from}`);
-            verify(left + control.width <= barWidth - scene.bar.padding + 0.5, `${barWidth} ${key} runs out of the bar`);
+            verify(left + control.width <= barWidth - scene.bar.padding + 0.5, `${barWidth} ${key} runs out of the bar: left ${left} width ${control.width} status ${scene.status.x} ${scene.status.width} limit ${scene.status.limit} plan ${scene.bar.plan.statusLimit} more ${more.x} ${more.width}`);
             if (more.visible)
                 verify(left + control.width <= more.x - scene.bar.gap + 0.5, `${barWidth} ${key} runs into "more"`);
         }
@@ -226,6 +240,7 @@ TestCase {
             verify(!scene.bar.plan.moved.includes(scene.status), `${barWidth}`);
             verify(scene.status.visible, `${barWidth}`);
             tryVerify(() => scene.status.width === scene.status.widthAt(scene.status.limit));
+            tryVerify(() => scene.status.x + scene.status.width <= barWidth - scene.bar.padding + 0.5, 1000, `${barWidth}: placed`);
             checkWordsOnTheirSide(barWidth);
         }
     }

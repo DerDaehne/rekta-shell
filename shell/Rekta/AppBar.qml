@@ -37,6 +37,7 @@ Rectangle {
     readonly property real padding: Prefs.sizeClass(width, viewportHeight) === "sideways" ? Tokens.spaceXl : Tokens.spaceM
     readonly property real gap: Tokens.spaceXs
     readonly property var plan: layoutPlan()
+    readonly property AppBarStatus statusItem: statusWords()
     readonly property alias more: moreButton
     readonly property alias menu: moreMenu
     // Where the menu rises, in the bar's coordinates: above "more" at the trailing edge (rekta.css:649–653).
@@ -120,6 +121,8 @@ Rectangle {
             if (!fits(sides.find(region => region.items.includes(control)), moved, true, most))
                 moved.push(control);
         }
+        // ponytail: with the readout in the centre (centreReserve) below about 520 px not even "+N" fits beside "more" and
+        // it overlaps the clock; hide the words then, or let the bar scroll them, once a bar that narrow matters.
         let limit = most;
         while (limit > 0 && !fitAll(moved, true, limit))
             limit--;
@@ -209,6 +212,15 @@ Rectangle {
     Accessible.name: "app bar"
 
     onPlanChanged: apply()
+
+    // The room the status words take changes without the plan, as a fading word goes.
+    Connections {
+        target: bar.statusItem
+
+        function onImplicitWidthChanged() {
+            bar.apply();
+        }
+    }
     onHeightChanged: apply()
     Component.onCompleted: apply()
 

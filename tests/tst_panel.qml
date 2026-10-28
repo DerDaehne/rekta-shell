@@ -1071,6 +1071,43 @@ TestCase {
         tryVerify(() => findChild(side, "outputDevice").activeFocus || side.within(controls.places.sound, scene.Window.activeFocusItem));
     }
 
+    function test_the_place_is_let_go_once_the_facet_has_laid_out() {
+        giveSound(controls);
+        scene.height = 360;
+        side.show(0);
+        side.reveal(controls.places.doNotDisturb);
+        verify(side.revealed !== null);
+        tryVerify(() => side.revealed === null);
+    }
+
+    function test_a_device_list_unfolding_after_the_jump_scrolls_itself_whole_into_view() {
+        giveSound(controls);
+        giveBluetooth(controls);
+        scene.height = 360;
+        side.show(0);
+        side.reveal(controls.places.connections);
+        tryVerify(() => side.revealed === null);
+        const scroller = findChild(side, "scroller");
+        const branch = control("bluetoothBranch");
+        branch.expand();
+        const bottom = () => branch.mapToItem(scroller, 0, branch.height).y;
+        tryVerify(() => branch.unfolded === 1 && bottom() <= scroller.height + 0.5, 3000, `the list ends at ${bottom()} in a view ${scroller.height} high`);
+    }
+
+    function test_a_later_change_of_the_content_does_not_pull_the_view_back_to_the_place() {
+        giveSound(controls);
+        scene.height = 360;
+        side.show(0);
+        side.reveal(controls.places.doNotDisturb);
+        tryVerify(() => side.revealed === null);
+        const scroller = findChild(side, "scroller");
+        scroller.contentY = 0;
+        controls.hasPowerProfiles = false;
+        waitForRendering(side);
+        wait(100);
+        compare(scroller.contentY, 0);
+    }
+
     function test_revealing_a_place_that_is_not_there_leaves_the_view_at_the_top() {
         side.show(0);
         side.reveal(controls.places.connections);
