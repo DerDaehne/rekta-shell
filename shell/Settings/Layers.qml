@@ -18,7 +18,9 @@ QtObject {
     // Every setting there is, with the value it has without any configuration.
     readonly property var builtIn: ({
             background: "rekta",
-            density: "auto"
+            density: "auto",
+            startTempo: "fast",
+            searchEscape: "close"
         })
     readonly property var nixValues: parsed(defaultsText) ?? {}
     // null when the user's file holds no JSON object.

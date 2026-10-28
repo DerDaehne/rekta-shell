@@ -10,9 +10,11 @@ import SettingsApp
 ShellRoot {
     SystemMotion {}
 
-    // Read only here: the app writes a setting only where a field changes it.
+    // The gate is open: the app is the one place that writes every setting, and only where a field changes one.
     SettingsFiles {
         id: settingsFiles
+
+        writable: true
     }
 
     Binding {
@@ -37,6 +39,7 @@ ShellRoot {
             id: view
 
             anchors.fill: parent
+            settings: settingsFiles
             onCloseRequested: Qt.quit()
         }
     }

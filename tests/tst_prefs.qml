@@ -9,6 +9,7 @@ TestCase {
         Prefs.theme = "system";
         Prefs.density = "auto";
         Prefs.motion = "system";
+        Prefs.startPace = "fast";
         Prefs.systemColorScheme = Qt.ColorScheme.Light;
         Prefs.systemReducedMotion = false;
         Prefs.systemHasTouch = false;
@@ -74,5 +75,14 @@ TestCase {
         compare(Prefs.sizeClass(Tokens.bpSidewaysScrollMin, 900), "sideways");
         compare(Prefs.sizeClass(1200, Tokens.bpShortHeight), "compact");
         compare(Prefs.sizeClass(1200, Tokens.bpShortHeight + 1), "sideways");
+    }
+
+    function test_the_start_tempo_is_the_deviation_by_default_and_rektas_own_on_request() {
+        compare(Prefs.startTempo, Geometry.startTempo);
+        Prefs.startPace = "rekta";
+        compare(Prefs.startTempo, 1);
+        compare(FadeBack.duration, Tokens.durationModerate);
+        Prefs.startPace = "something else";
+        compare(Prefs.startTempo, Geometry.startTempo);
     }
 }

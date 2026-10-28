@@ -1,2 +1,3 @@
 module SettingsApp
+Setting 1.0 Setting.qml
 SettingsView 1.0 SettingsView.qml

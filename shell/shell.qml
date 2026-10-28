@@ -10,7 +10,7 @@ ShellRoot {
     SystemMotion {}
     SplashEnd {}
 
-    // The side panel writes the density; every other setting is the app's alone.
+    // The side panel writes the density; every other setting is the app's alone, which the shell only follows.
     SettingsFiles {
         id: settingsFiles
 
@@ -21,6 +21,12 @@ ShellRoot {
         target: Prefs
         property: "density"
         value: settingsFiles.value("density")
+    }
+
+    Binding {
+        target: Prefs
+        property: "startPace"
+        value: settingsFiles.value("startTempo")
     }
 
     Windows {
@@ -82,6 +88,7 @@ ShellRoot {
     StartSurface {
         id: start
 
+        searchEscape: settingsFiles.value("searchEscape")
         windows: running
         launcher: appLauncher
         primaryScreen: primary.screen

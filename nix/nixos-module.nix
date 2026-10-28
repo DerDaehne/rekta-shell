@@ -19,7 +19,7 @@ in
         defaults = {
           inherit (cfg) background;
         }
-        // lib.optionalAttrs (cfg.density != null) { inherit (cfg) density; };
+        // lib.filterAttrs (_: value: value != null) { inherit (cfg) density startTempo searchEscape; };
       };
       defaultText = lib.literalExpression "rekta-shell built with this system's pkgs";
       description = "The rekta-shell package; it carries the session, its user units and the plasmashell drop-in.";
@@ -43,6 +43,28 @@ in
       );
       default = null;
       description = "How much room the shell's controls take: \"comfortable\" (larger targets) or \"compact\". Null leaves it automatic: compact for a fine pointer. It takes effect with the default package once the module is enabled, as the default that a \"density\" in the user's ~/.config/rekta-shell/settings.json overrides.";
+    };
+
+    startTempo = lib.mkOption {
+      type = lib.types.nullOr (
+        lib.types.enum [
+          "fast"
+          "rekta"
+        ]
+      );
+      default = null;
+      description = "How fast the Start opens, closes and turns: \"fast\" at twice Rekta's pace, \"rekta\" at Rekta's own. Null leaves it at \"fast\". It takes effect with the default package once the module is enabled, as the default that a \"startTempo\" in the user's ~/.config/rekta-shell/settings.json overrides.";
+    };
+
+    searchEscape = lib.mkOption {
+      type = lib.types.nullOr (
+        lib.types.enum [
+          "close"
+          "back"
+        ]
+      );
+      default = null;
+      description = "What Escape does in the Start's search: \"close\" clears the search and closes the Start, \"back\" clears the search and goes back to the place before. Null leaves it at \"close\". It takes effect with the default package once the module is enabled, as the default that a \"searchEscape\" in the user's ~/.config/rekta-shell/settings.json overrides.";
     };
   };
 

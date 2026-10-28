@@ -95,6 +95,7 @@ TestCase {
         Prefs.motion = "system";
         Prefs.theme = "system";
         Prefs.density = "auto";
+        Prefs.startPace = "fast";
     }
 
     function named(name: string): var {
@@ -1219,6 +1220,36 @@ TestCase {
         verify(start.hitTiles()[0].activeFocus);
         keyClick(Qt.Key_Escape);
         verify(!start.wanted);
+    }
+
+    function test_at_rekta_s_own_pace_the_windows_wait_and_the_parts_turn_in_and_out_at_full_length() {
+        Prefs.startPace = "rekta";
+        start.open();
+        compare(named("waitForWindows").interval, Geometry.turnOverlap * Tokens.durationModerate);
+        tryVerify(() => turner.running, 2000);
+        verifyPace(turner.arrivingTurns, Tokens.durationModerate, turner.handOverAt, 1);
+        tryVerify(() => start.phase === "open", 3000);
+        keyClick(Qt.Key_Escape);
+        verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 1);
+    }
+
+    function test_the_pace_set_while_the_start_is_open_acts_on_the_next_turn_out() {
+        openNow();
+        Prefs.startPace = "rekta";
+        keyClick(Qt.Key_Escape);
+        verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 1);
+        compare(findChild(start, "glassOut").interval, Tokens.durationModerate);
+    }
+
+    function test_escape_in_a_search_clears_it_and_stays_when_the_setting_says_back() {
+        start.searchEscape = "back";
+        openWithApps();
+        typeNow("ko");
+        keyClick(Qt.Key_Escape);
+        compare(start.query, "");
+        verify(start.wanted);
+        keyClick(Qt.Key_Escape);
+        verify(!start.wanted, "a second Escape closes it from the start place");
     }
 
     function test_back_clears_the_search_and_shows_the_place_before_and_a_second_back_closes() {

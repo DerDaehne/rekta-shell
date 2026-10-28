@@ -47,6 +47,9 @@ FocusScope {
     property alias query: line.text
     // The search shows, or is on its way, in place of the pivot and the places.
     property bool searching: false
+    // What Escape does in a search: "close" closes the Start at once, "back" clears the search first like the other ways
+    // back.
+    property string searchEscape: "close"
 
     signal closed
 
@@ -71,7 +74,7 @@ FocusScope {
     // The Start's own turns, in and out, run at its tempo; a change of place inside it at Rekta's.
     function turnIn() {
         turn(null, body, {
-            tempo: Geometry.startTempo
+            tempo: Prefs.startTempo
         });
     }
 
@@ -98,7 +101,7 @@ FocusScope {
         turn(body, null, {
             back: options.back,
             pressed: options.pressed,
-            tempo: Geometry.startTempo
+            tempo: Prefs.startTempo
         });
     }
 
@@ -530,8 +533,8 @@ FocusScope {
     }
 
     // Back goes even while the Start turns, as a navigation always does, and so does typing, to search or to jump, which
-    // ends the turn; nothing else does. Escape in a search closes the Start at once; the other ways back clear the search
-    // first.
+    // ends the turn; nothing else does. Escape in a search closes the Start at once unless searchEscape says back; the
+    // other ways back clear the search first.
     function useKey(event: KeyEvent): bool {
         const directions = {
             [Qt.Key_Left]: "left",
@@ -539,7 +542,7 @@ FocusScope {
             [Qt.Key_Up]: "up",
             [Qt.Key_Down]: "down"
         };
-        if (event.key === Qt.Key_Escape && query !== "")
+        if (event.key === Qt.Key_Escape && query !== "" && searchEscape !== "back")
             close(null);
         else if (goesBack(event))
             back();

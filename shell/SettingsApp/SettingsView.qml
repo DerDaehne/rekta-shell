@@ -2,12 +2,16 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Rekta
+import Settings
 
 // The settings app's window content: the places as a strip along the top (navigation.md, "Pivot"; rekta.css:148–190),
 // each place a page of groups in two columns, one on a narrow window. A place change turns like Rekta's, and back goes
 // one place back through the places visited (navigation.md, "Places, history and back").
 FocusScope {
     id: view
+
+    // The settings the fields show and write; the app opens the gate to all of them.
+    required property Layers settings
 
     readonly property var places: [
         {
@@ -33,11 +37,61 @@ FocusScope {
     // Taller than Rekta's short viewport, so the window stays sideways (layout.md, size classes), with a space-xl of
     // margin.
     readonly property real minimumHeight: Tokens.bpShortHeight + Tokens.spaceXl
+    readonly property var tempoChoices: [
+        {
+            value: "fast",
+            text: "doppelt so schnell"
+        },
+        {
+            value: "rekta",
+            text: "wie rekta"
+        }
+    ]
+    readonly property var escapeChoices: [
+        {
+            value: "close",
+            text: "leert die suche und schließt den start"
+        },
+        {
+            value: "back",
+            text: "leert die suche, zurück zum ort davor"
+        }
+    ]
+    // The fields of the groups that have any, by group; a group without one says its fields are still to come.
+    readonly property var contents: ({
+            "fläche": echoField,
+            "öffnen und schließen": tempoField,
+            "suche": escapeField
+        })
+    // Why nothing is written, in place of a field's hint.
+    readonly property string problem: settings.fault === "" ? "" : "die datei settings.json ist nicht lesbar oder neuer als diese app; änderungen werden nicht gespeichert."
+
     // The place whose page shows (or turns in), and the places left behind it, newest last.
     property int shownPlace: 0
     property var trail: []
 
     signal closeRequested
+
+    function choiceIndex(key: string, choices: var): int {
+        return choices.findIndex(choice => choice.value === settings.value(key));
+    }
+
+    // The default's words while the setting differs from it, else "".
+    function presetWord(key: string, choices: var): string {
+        return settings.differs(key) ? (choices.find(choice => choice.value === settings.preset(key))?.text ?? "") : "";
+    }
+
+    function echoOn(): bool {
+        return settings.value("background") === "rekta";
+    }
+
+    // Escape goes back only when nothing nearer wants it, not from a text field (navigation.md, "Places, history and
+    // back"); a field takes its Escape itself.
+    function goesBack(event: KeyEvent): bool {
+        if (event.key === Qt.Key_Escape)
+            return KeyLayers.escapeIsFree(view.Window.activeFocusItem);
+        return event.key === Qt.Key_Back || (event.key === Qt.Key_Left && (event.modifiers & Qt.AltModifier) !== 0);
+    }
 
     function showPlace(index: int) {
         if (index === shownPlace)
@@ -62,9 +116,6 @@ FocusScope {
         shownPlace = index;
     }
 
-    function goesBack(event: KeyEvent): bool {
-        return event.key === Qt.Key_Escape || event.key === Qt.Key_Back || (event.key === Qt.Key_Left && (event.modifiers & Qt.AltModifier) !== 0);
-    }
 
     // The window is a plain item to its content, so the view takes the keys itself.
     focus: true
@@ -84,6 +135,80 @@ FocusScope {
     TapHandler {
         acceptedButtons: Qt.BackButton
         onTapped: view.goBack()
+    }
+
+    // A choice made in a field ends its binding; it comes back, so a refused write shows what the shell has.
+    Component {
+        id: tempoField
+
+        Setting {
+            problem: view.problem
+            hint: "wie schnell sich der start öffnet und schließt. rekta selbst dreht im vollen tempo."
+            presetWord: view.presetWord("startTempo", view.tempoChoices)
+
+            Segments {
+                objectName: "startTempo"
+                options: view.tempoChoices.map(choice => choice.text)
+                currentIndex: view.choiceIndex("startTempo", view.tempoChoices)
+                onActivated: index => {
+                    view.settings.set("startTempo", view.tempoChoices[index].value);
+                    currentIndex = Qt.binding(() => view.choiceIndex("startTempo", view.tempoChoices));
+                }
+            }
+        }
+    }
+
+    Component {
+        id: escapeField
+
+        Setting {
+            label: "escape in der suche"
+            problem: view.problem
+            hint: "was escape tut, solange du im start suchst."
+            presetWord: view.presetWord("searchEscape", view.escapeChoices)
+
+            Select {
+                objectName: "searchEscape"
+                width: parent.width
+                label: "escape in der suche"
+                options: view.escapeChoices
+                currentIndex: view.choiceIndex("searchEscape", view.escapeChoices)
+                onActivated: index => {
+                    view.settings.set("searchEscape", view.escapeChoices[index].value);
+                    currentIndex = Qt.binding(() => view.choiceIndex("searchEscape", view.escapeChoices));
+                }
+            }
+        }
+    }
+
+    Component {
+        id: echoField
+
+        Setting {
+            problem: view.problem
+            hint: "ein blasser abdruck der kacheln unten rechts im hintergrund."
+            presetWord: view.settings.differs("background") ? (view.settings.preset("background") === "rekta" ? "an" : "aus") : ""
+
+            Toggle {
+                objectName: "echo"
+                label: "kachel-echo"
+                onWord: "an"
+                offWord: "aus"
+                checked: view.echoOn()
+                onToggled: {
+                    view.settings.set("background", checked ? "rekta" : "solid");
+                    checked = Qt.binding(() => view.echoOn());
+                }
+            }
+        }
+    }
+
+    Component {
+        id: comingSoon
+
+        Hint {
+            text: "kommt"
+        }
     }
 
     PlaceTurn {
@@ -155,9 +280,9 @@ FocusScope {
                             placeWidth: view.width
                             text: group.modelData
                         }
-                        Hint {
+                        Loader {
                             width: group.width
-                            text: "kommt"
+                            sourceComponent: view.contents[group.modelData] ?? comingSoon
                         }
                     }
                 }

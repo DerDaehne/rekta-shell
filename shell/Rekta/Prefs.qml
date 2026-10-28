@@ -10,6 +10,8 @@ QtObject {
     property string theme: "system" // system | light | dark
     property string density: "auto" // auto | comfortable | compact
     property string motion: "system" // system | on | off
+    // How fast the Start turns: "fast" at Geometry.startTempo, "rekta" at Rekta's own pace.
+    property string startPace: "fast"
 
     // System sources. Under Plasma the KDE platform theme feeds the colour scheme; the shell sets reduced motion.
     property int systemColorScheme: Application.styleHints.colorScheme
@@ -19,6 +21,7 @@ QtObject {
 
     readonly property string resolvedTheme: theme !== "system" ? theme : systemColorScheme === Qt.ColorScheme.Dark ? "dark" : "light"
     readonly property string resolvedDensity: density === "comfortable" || density === "compact" ? density : systemHasTouch ? "comfortable" : "compact"
+    readonly property real startTempo: startPace === "rekta" ? 1 : Geometry.startTempo
     readonly property bool reducedMotion: motion === "off" || (motion === "system" && systemReducedMotion)
 
     readonly property list<Binding> bindings: [

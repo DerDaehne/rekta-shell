@@ -17,6 +17,8 @@ PanelWindow {
     required property Windows windows
     required property Launcher launcher
     required property ShellScreen primaryScreen
+    // What Escape does in a search: "close" or "back" (the setting searchEscape).
+    property string searchEscape: "close"
     // From its opening to its hand-over, when the glass starts to go: in front of everything on the primary screen.
     readonly property alias inFront: place.holdsKeyboard
     // From the moment it opens until it starts to close.
@@ -93,6 +95,7 @@ PanelWindow {
         windows: Array.from(surface.windows.all)
         pinned: surface.pinnedApps(Array.from(DesktopEntries.applications.values), surface.listedPins)
         apps: installed.list
+        searchEscape: surface.searchEscape
         starts: usage.starts
         preview: Component {
             WindowPreview {}

@@ -150,4 +150,41 @@ TestCase {
         verify(!layers.set("background", 1));
         compare(writes.count, 0);
     }
+
+    function test_the_start_tempo_and_escape_in_the_search_default_to_the_shells_current_behaviour() {
+        compare(layers.value("startTempo"), "fast");
+        compare(layers.value("searchEscape"), "close");
+    }
+
+    function test_a_nix_default_and_the_users_choice_for_the_start_tempo_and_escape_are_followed_live() {
+        layers.defaultsText = '{"startTempo":"rekta"}';
+        compare(layers.value("startTempo"), "rekta");
+        layers.userText = '{"version":1,"startTempo":"fast","searchEscape":"back"}';
+        compare(layers.value("startTempo"), "fast");
+        verify(layers.differs("startTempo"));
+        compare(layers.value("searchEscape"), "back");
+        layers.userText = "";
+        compare(layers.value("startTempo"), "rekta");
+    }
+
+    function test_a_start_tempo_of_the_wrong_type_is_ignored() {
+        layers.userText = '{"version":1,"startTempo":2,"searchEscape":true}';
+        compare(layers.value("startTempo"), "fast");
+        compare(layers.value("searchEscape"), "close");
+    }
+
+    function test_the_gate_lets_the_app_write_the_new_keys_and_keeps_the_others() {
+        layers.writable = true;
+        layers.userText = '{"version":1,"density":"compact"}';
+        verify(layers.set("startTempo", "rekta"));
+        compare(written().startTempo, "rekta");
+        compare(written().density, "compact");
+        verify(!layers.set("searchEscape", 3));
+    }
+
+    function test_the_shell_with_the_gate_closed_cannot_write_the_new_keys() {
+        verify(!layers.set("startTempo", "rekta"));
+        verify(!layers.set("searchEscape", "back"));
+        compare(writes.count, 0);
+    }
 }

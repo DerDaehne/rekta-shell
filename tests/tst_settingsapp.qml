@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import Settings
 import SettingsApp
 
 TestCase {
@@ -24,31 +25,76 @@ TestCase {
     }
 
     // The view inside a plain item, as Quickshell's window holds its content: nothing there gives the view the focus.
+    // The app's settings write into a file that the shell's settings read too, as the two processes share one.
     Component {
         id: hostComponent
 
         Item {
             property alias view: inner
+            property alias app: appSettings
+            property alias shell: shellSettings
+            property alias backdrop: ground
 
             width: 900
             height: 600
+
+            Layers {
+                id: appSettings
+
+                writable: true
+                onWriteRequested: text => {
+                    userText = text;
+                    shellSettings.userText = text;
+                }
+            }
+
+            Layers {
+                id: shellSettings
+            }
+
+            Binding {
+                target: Prefs
+                property: "startPace"
+                value: shellSettings.value("startTempo")
+            }
+
+            Backdrop {
+                id: ground
+
+                solid: shellSettings.value("background") === "solid"
+            }
 
             SettingsView {
                 id: inner
 
                 anchors.fill: parent
+                settings: appSettings
             }
         }
     }
 
+    Component {
+        id: fieldComponent
+
+        Field {
+            label: "farbe"
+            width: 200
+        }
+    }
+
+    // Untyped: qmllint stops without a word on members an Item-typed value lacks.
+    property var host: null
+
     function init() {
-        view = createTemporaryObject(hostComponent, testCase).view;
+        host = createTemporaryObject(hostComponent, testCase);
+        view = host.view;
         closeSpy.clear();
         waitForRendering(view);
     }
 
     function cleanup() {
         Prefs.motion = "system";
+        Prefs.startPace = "fast";
     }
 
     function pivot(): var {
@@ -160,7 +206,7 @@ TestCase {
     function test_each_group_says_that_its_fields_are_still_to_come() {
         const group = groupAt("farben");
         verify(group);
-        compare(group.children[1].text, "kommt");
+        compare(group.children[1].item.text, "kommt");
     }
 
     function test_groups_stand_in_two_columns_on_a_wide_window() {
@@ -193,5 +239,125 @@ TestCase {
     function test_a_plain_w_does_not_close() {
         keyClick(Qt.Key_W);
         compare(closeSpy.count, 0);
+    }
+
+    function control(name: string): var {
+        return findChild(view, name);
+    }
+
+    function hintOf(name: string): string {
+        return findChild(control(name).parent.parent, "hint").text;
+    }
+
+    function written(): var {
+        return JSON.parse(host.app.userText);
+    }
+
+    function test_the_start_place_offers_the_tempo_as_segments_and_escape_as_a_select() {
+        pivot().select(1);
+        compare(Array.from(control("startTempo").options), ["doppelt so schnell", "wie rekta"]);
+        compare(control("startTempo").currentIndex, 0);
+        compare(control("searchEscape").currentText, "leert die suche und schließt den start");
+    }
+
+    function test_the_aussehen_place_offers_the_tile_echo_as_a_toggle_that_is_on_by_default() {
+        verify(control("echo").checked);
+        compare(control("echo").label, "kachel-echo");
+    }
+
+    function test_choosing_a_tempo_writes_it_and_the_shell_follows_at_once() {
+        compare(Prefs.startTempo, Geometry.startTempo);
+        control("startTempo").choose(1);
+        compare(written().startTempo, "rekta");
+        compare(host.shell.value("startTempo"), "rekta");
+        compare(Prefs.startTempo, 1);
+        control("startTempo").choose(0);
+        compare(Prefs.startTempo, Geometry.startTempo);
+    }
+
+    function test_choosing_what_escape_does_writes_it_and_the_shell_follows() {
+        pivot().select(1);
+        const select = control("searchEscape");
+        select.forceActiveFocus();
+        select.expand();
+        select.highlighted = 1;
+        keyClick(Qt.Key_Return);
+        compare(written().searchEscape, "back");
+        compare(host.shell.value("searchEscape"), "back");
+        compare(select.currentText, "leert die suche, zurück zum ort davor");
+    }
+
+    function test_the_tile_echo_toggles_the_background_and_the_shell_follows() {
+        control("echo").activate();
+        compare(written().background, "solid");
+        verify(host.backdrop.solid);
+        control("echo").activate();
+        compare(written().background, "rekta");
+        verify(!host.backdrop.solid);
+    }
+
+    function test_a_value_that_differs_from_the_nix_default_names_the_default_in_the_hint() {
+        host.app.defaultsText = '{"startTempo":"rekta","searchEscape":"back","background":"solid"}';
+        compare(control("startTempo").currentIndex, 1);
+        verify(!hintOf("startTempo").includes("vorgabe"));
+        host.app.userText = '{"version":1,"startTempo":"fast","searchEscape":"close","background":"rekta"}';
+        verify(hintOf("startTempo").endsWith("vorgabe: wie rekta."));
+        verify(hintOf("searchEscape").endsWith("vorgabe: leert die suche, zurück zum ort davor."));
+        verify(hintOf("echo").endsWith("vorgabe: aus."));
+    }
+
+    function test_a_broken_file_keeps_the_defaults_and_a_choice_writes_nothing() {
+        ignoreWarning(/settings.json holds no JSON object/);
+        host.app.userText = "{ not json";
+        compare(Prefs.startTempo, Geometry.startTempo);
+        let writes = 0;
+        host.app.writeRequested.connect(() => writes++);
+        control("startTempo").choose(1);
+        control("echo").activate();
+        compare(writes, 0);
+        compare(host.app.userText, "{ not json");
+        compare(control("startTempo").currentIndex, 0, "the field shows what the shell has");
+        verify(control("echo").checked);
+        verify(hintOf("startTempo").includes("nicht gespeichert"));
+    }
+
+    function test_a_missing_file_keeps_the_defaults() {
+        compare(host.app.userText, "");
+        compare(control("startTempo").currentIndex, 0);
+        verify(control("echo").checked);
+        compare(control("searchEscape").currentIndex, 0);
+    }
+
+    function test_a_choice_keeps_the_keys_the_app_does_not_know() {
+        host.app.userText = '{"version":1,"accent":"ink"}';
+        control("startTempo").choose(1);
+        compare(written().accent, "ink");
+        compare(written().startTempo, "rekta");
+    }
+
+    function test_escape_in_a_text_field_does_not_go_back_but_outside_it_does() {
+        pivot().select(1);
+        compare(pivot().currentIndex, 1);
+        const field = createTemporaryObject(fieldComponent, view);
+        const input = findChild(field, "input");
+        input.forceActiveFocus();
+        verify(input.activeFocus);
+        keyClick(Qt.Key_Escape);
+        compare(pivot().currentIndex, 1);
+        pivot().forceActiveFocus();
+        keyClick(Qt.Key_Escape);
+        compare(pivot().currentIndex, 0);
+    }
+
+    function test_escape_in_an_expanded_select_folds_it_and_does_not_go_back() {
+        pivot().select(1);
+        const select = control("searchEscape");
+        select.forceActiveFocus();
+        verify(select.expand());
+        keyClick(Qt.Key_Escape);
+        verify(!select.expanded);
+        compare(pivot().currentIndex, 1);
+        keyClick(Qt.Key_Escape);
+        compare(pivot().currentIndex, 0);
     }
 }

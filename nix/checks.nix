@@ -199,6 +199,14 @@ in
           enable
           { programs.rekta-shell.density = density; }
         ];
+      withSettings =
+        settings:
+        system [
+          plasma
+          module
+          enable
+          { programs.rekta-shell = settings; }
+        ];
       withoutPlasma = system [
         module
         enable
@@ -224,6 +232,18 @@ in
         { programs.rekta-shell.density = "comfortable"; }
       ]
     ) "the density option changed a system that does not enable the module";
+    assert lib.assertMsg (
+      toplevel [ plasma ] == toplevel [
+        plasma
+        module
+        {
+          programs.rekta-shell = {
+            startTempo = "rekta";
+            searchEscape = "back";
+          };
+        }
+      ]
+    ) "the start tempo and search escape options changed a system that does not enable the module";
     assert lib.assertMsg (lib.elem "rekta" enabled.services.displayManager.sessionData.sessionNames)
       "the enabled NixOS module does not register the rekta session";
     assert lib.assertMsg (lib.elem enabled.programs.rekta-shell.package enabled.systemd.packages)
@@ -251,6 +271,21 @@ in
       fi
       grep -qF "\"density\":\"comfortable\"" ${(withDensity "comfortable").programs.rekta-shell.package}/share/rekta-shell/defaults.json || {
         echo "the density option is not in the package defaults" >&2
+        exit 1
+      }
+      defaults=${enabled.programs.rekta-shell.package}/share/rekta-shell/defaults.json
+      if grep -q -e startTempo -e searchEscape $defaults; then
+        echo "the module names a start tempo or search escape without being asked to" >&2
+        exit 1
+      fi
+      chosen=${
+        (withSettings {
+          startTempo = "rekta";
+          searchEscape = "back";
+        }).programs.rekta-shell.package
+      }/share/rekta-shell/defaults.json
+      grep -qF '"startTempo":"rekta"' $chosen && grep -qF '"searchEscape":"back"' $chosen || {
+        echo "the start tempo or search escape option is not in the package defaults" >&2
         exit 1
       }
       if grep -q REKTA_DEFAULTS ${rekta-shell}/bin/rekta-shell; then
