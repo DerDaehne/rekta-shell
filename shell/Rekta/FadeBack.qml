@@ -7,7 +7,9 @@ import QtQuick
 QtObject {
     readonly property easingCurve stepBack: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
     readonly property easingCurve comeForward: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
-    readonly property real duration: Prefs.startTempo * Tokens.durationModerate
+    // Fixed at the Start's fast tempo: KWin loads this singleton into the engine its other effects share, and Prefs
+    // there would override their Tokens.
+    readonly property real duration: Geometry.startTempo * Tokens.durationModerate
     readonly property real leaveDuration: Tokens.durationModerate
 
     // Where the windows behind the Start are `elapsed` ms after they set off from `from` towards `to`; exactly `to` once

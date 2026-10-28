@@ -1222,10 +1222,10 @@ TestCase {
         verify(!start.wanted);
     }
 
-    function test_at_rekta_s_own_pace_the_windows_wait_and_the_parts_turn_in_and_out_at_full_length() {
+    function test_at_rekta_s_own_pace_the_parts_turn_in_and_out_at_full_length_while_the_windows_stay_at_the_effect_s_pace() {
         Prefs.startPace = "rekta";
         start.open();
-        compare(named("waitForWindows").interval, Geometry.turnOverlap * Tokens.durationModerate);
+        compare(named("waitForWindows").interval, Geometry.turnOverlap * FadeBack.duration, "the windows come back at the effect's pace");
         tryVerify(() => turner.running, 2000);
         verifyPace(turner.arrivingTurns, Tokens.durationModerate, turner.handOverAt, 1);
         tryVerify(() => start.phase === "open", 3000);
@@ -1238,7 +1238,6 @@ TestCase {
         Prefs.startPace = "rekta";
         keyClick(Qt.Key_Escape);
         verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 1);
-        compare(findChild(start, "glassOut").interval, Tokens.durationModerate);
     }
 
     function test_escape_in_a_search_clears_it_and_stays_when_the_setting_says_back() {

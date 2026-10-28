@@ -10,8 +10,6 @@ Column {
     property string hint
     // The default in words, set while the user's value differs from it.
     property string presetWord
-    // Why nothing is written; it stands in place of the hint.
-    property string problem
     default property alias control: holder.data
 
     spacing: Tokens.spaceXs
@@ -36,6 +34,6 @@ Column {
     Hint {
         objectName: "hint"
         width: setting.width
-        text: setting.problem !== "" ? setting.problem : setting.presetWord === "" ? setting.hint : `${setting.hint} vorgabe: ${setting.presetWord}.`
+        text: setting.presetWord === "" ? setting.hint : `${setting.hint} vorgabe: ${setting.presetWord}.`
     }
 }

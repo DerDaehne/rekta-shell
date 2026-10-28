@@ -78,4 +78,11 @@ TestCase {
         fuzzyCompare(FadeBack.scale(0.5), 0.93, 1e-9);
         fuzzyCompare(FadeBack.brightness(0.5), 0.89, 1e-9);
     }
+
+    // KWin's effects share one engine; Prefs there would override the turnstile's Tokens.
+    function test_the_windows_keep_the_fast_tempo_whatever_pace_the_shell_has_set() {
+        Prefs.startPace = "rekta";
+        compare(FadeBack.duration, Geometry.startTempo * Tokens.durationModerate);
+        Prefs.startPace = "fast";
+    }
 }

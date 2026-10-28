@@ -81,7 +81,6 @@ TestCase {
         compare(Prefs.startTempo, Geometry.startTempo);
         Prefs.startPace = "rekta";
         compare(Prefs.startTempo, 1);
-        compare(FadeBack.duration, Tokens.durationModerate);
         Prefs.startPace = "something else";
         compare(Prefs.startTempo, Geometry.startTempo);
     }

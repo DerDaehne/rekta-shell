@@ -306,19 +306,48 @@ TestCase {
         verify(hintOf("echo").endsWith("vorgabe: aus."));
     }
 
-    function test_a_broken_file_keeps_the_defaults_and_a_choice_writes_nothing() {
+    function test_a_broken_file_keeps_the_defaults_and_locks_the_fields_with_the_cause_and_the_remedy() {
         ignoreWarning(/settings.json holds no JSON object/);
         host.app.userText = "{ not json";
         compare(Prefs.startTempo, Geometry.startTempo);
         let writes = 0;
         host.app.writeRequested.connect(() => writes++);
+        for (const name of ["startTempo", "searchEscape", "echo"]) {
+            verify(control(name).disabled, name);
+            verify(control(name).disabledReason.includes("kein gültiges json"), name);
+        }
         control("startTempo").choose(1);
+        verify(findChild(control("startTempo"), "options").children[0].lit, "the chosen word does not flicker");
         control("echo").activate();
         compare(writes, 0);
         compare(host.app.userText, "{ not json");
-        compare(control("startTempo").currentIndex, 0, "the field shows what the shell has");
+        compare(control("startTempo").currentIndex, 0);
         verify(control("echo").checked);
-        verify(hintOf("startTempo").includes("nicht gespeichert"));
+    }
+
+    function test_a_newer_file_locks_the_fields_and_says_it_comes_from_a_newer_version() {
+        host.app.userText = '{"version":2,"startTempo":"rekta"}';
+        compare(control("startTempo").currentIndex, 1, "it is still read");
+        verify(control("startTempo").disabled);
+        verify(control("startTempo").disabledReason.includes("neueren rekta-version"));
+        control("startTempo").choose(0);
+        compare(host.app.userText, '{"version":2,"startTempo":"rekta"}');
+    }
+
+    function test_a_usable_file_leaves_the_fields_enabled() {
+        for (const name of ["startTempo", "searchEscape", "echo"])
+            verify(!control(name).disabled, name);
+    }
+
+    function test_the_tile_echo_shows_on_for_any_background_but_solid_as_the_shell_does() {
+        host.app.userText = '{"version":1,"background":"something else"}';
+        verify(control("echo").checked);
+        host.app.userText = '{"version":1,"background":"solid"}';
+        verify(!control("echo").checked);
+    }
+
+    function test_the_tempo_field_carries_a_label_like_the_other_fields() {
+        compare(findChild(control("startTempo").parent.parent, "label").text, "tempo des start");
     }
 
     function test_a_missing_file_keeps_the_defaults() {

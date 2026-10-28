@@ -63,8 +63,11 @@ FocusScope {
             "öffnen und schließen": tempoField,
             "suche": escapeField
         })
-    // Why nothing is written, in place of a field's hint.
-    readonly property string problem: settings.fault === "" ? "" : "die datei settings.json ist nicht lesbar oder neuer als diese app; änderungen werden nicht gespeichert."
+    // Why the fields cannot be changed: cause and remedy in one sentence (forms.md, "Disabled controls say why").
+    readonly property string disabledReason: ({
+            broken: "settings.json ist kein gültiges json. korrigiere oder lösche die datei, dann lässt sich hier wieder etwas ändern.",
+            newer: "settings.json stammt von einer neueren rekta-version. aktualisiere rekta, um hier etwas zu ändern."
+        })[settings.fault] ?? ""
 
     // The place whose page shows (or turns in), and the places left behind it, newest last.
     property int shownPlace: 0
@@ -82,7 +85,7 @@ FocusScope {
     }
 
     function echoOn(): bool {
-        return settings.value("background") === "rekta";
+        return settings.value("background") !== "solid";
     }
 
     // Escape goes back only when nothing nearer wants it, not from a text field (navigation.md, "Places, history and
@@ -116,7 +119,6 @@ FocusScope {
         shownPlace = index;
     }
 
-
     // The window is a plain item to its content, so the view takes the keys itself.
     focus: true
 
@@ -142,12 +144,13 @@ FocusScope {
         id: tempoField
 
         Setting {
-            problem: view.problem
+            label: "tempo des start"
             hint: "wie schnell sich der start öffnet und schließt. rekta selbst dreht im vollen tempo."
             presetWord: view.presetWord("startTempo", view.tempoChoices)
 
             Segments {
                 objectName: "startTempo"
+                disabledReason: view.disabledReason
                 options: view.tempoChoices.map(choice => choice.text)
                 currentIndex: view.choiceIndex("startTempo", view.tempoChoices)
                 onActivated: index => {
@@ -163,12 +166,12 @@ FocusScope {
 
         Setting {
             label: "escape in der suche"
-            problem: view.problem
             hint: "was escape tut, solange du im start suchst."
             presetWord: view.presetWord("searchEscape", view.escapeChoices)
 
             Select {
                 objectName: "searchEscape"
+                disabledReason: view.disabledReason
                 width: parent.width
                 label: "escape in der suche"
                 options: view.escapeChoices
@@ -185,12 +188,12 @@ FocusScope {
         id: echoField
 
         Setting {
-            problem: view.problem
             hint: "ein blasser abdruck der kacheln unten rechts im hintergrund."
             presetWord: view.settings.differs("background") ? (view.settings.preset("background") === "rekta" ? "an" : "aus") : ""
 
             Toggle {
                 objectName: "echo"
+                disabledReason: view.disabledReason
                 label: "kachel-echo"
                 onWord: "an"
                 offWord: "aus"
