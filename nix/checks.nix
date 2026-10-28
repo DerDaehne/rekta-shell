@@ -170,6 +170,14 @@ in
           enable
           { programs.rekta-shell.background = background; }
         ];
+      withDensity =
+        density:
+        system [
+          plasma
+          module
+          enable
+          { programs.rekta-shell.density = density; }
+        ];
       withoutPlasma = system [
         module
         enable
@@ -188,6 +196,13 @@ in
         { programs.rekta-shell.background = "solid"; }
       ]
     ) "the background option changed a system that does not enable the module";
+    assert lib.assertMsg (
+      toplevel [ plasma ] == toplevel [
+        plasma
+        module
+        { programs.rekta-shell.density = "comfortable"; }
+      ]
+    ) "the density option changed a system that does not enable the module";
     assert lib.assertMsg (lib.elem "rekta" enabled.services.displayManager.sessionData.sessionNames)
       "the enabled NixOS module does not register the rekta session";
     assert lib.assertMsg (lib.elem enabled.programs.rekta-shell.package enabled.systemd.packages)
@@ -209,6 +224,14 @@ in
       }
       names_defaults ${enabled.programs.rekta-shell.package} rekta
       names_defaults ${(withBackground "solid").programs.rekta-shell.package} solid
+      if grep -q density ${enabled.programs.rekta-shell.package}/share/rekta-shell/defaults.json; then
+        echo "the module names a density without being asked to" >&2
+        exit 1
+      fi
+      grep -qF "\"density\":\"comfortable\"" ${(withDensity "comfortable").programs.rekta-shell.package}/share/rekta-shell/defaults.json || {
+        echo "the density option is not in the package defaults" >&2
+        exit 1
+      }
       if grep -q REKTA_DEFAULTS ${rekta-shell}/bin/rekta-shell; then
         echo "the package without defaults names a defaults file" >&2
         exit 1

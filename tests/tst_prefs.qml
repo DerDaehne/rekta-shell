@@ -62,6 +62,13 @@ TestCase {
         compare(Tokens.density, "comfortable");
     }
 
+    function test_a_density_that_is_none_of_the_two_counts_as_automatic() {
+        Prefs.density = "huge";
+        compare(Tokens.density, "compact");
+        Prefs.systemHasTouch = true;
+        compare(Tokens.density, "comfortable");
+    }
+
     function test_a_place_is_sideways_from_the_breakpoint_on_and_above_the_short_height() {
         compare(Prefs.sizeClass(Tokens.bpSidewaysScrollMin - 1, 900), "compact");
         compare(Prefs.sizeClass(Tokens.bpSidewaysScrollMin, 900), "sideways");

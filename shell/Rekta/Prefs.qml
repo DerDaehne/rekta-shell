@@ -18,7 +18,7 @@ QtObject {
     property bool systemHasTouch: false
 
     readonly property string resolvedTheme: theme !== "system" ? theme : systemColorScheme === Qt.ColorScheme.Dark ? "dark" : "light"
-    readonly property string resolvedDensity: density !== "auto" ? density : systemHasTouch ? "comfortable" : "compact"
+    readonly property string resolvedDensity: density === "comfortable" || density === "compact" ? density : systemHasTouch ? "comfortable" : "compact"
     readonly property bool reducedMotion: motion === "off" || (motion === "system" && systemReducedMotion)
 
     readonly property list<Binding> bindings: [

@@ -15,7 +15,8 @@ QtObject {
     readonly property int version: 1
     // Every setting there is, with the value it has without any configuration.
     readonly property var builtIn: ({
-            background: "rekta"
+            background: "rekta",
+            density: "auto"
         })
     readonly property var nixValues: parsed(defaultsText) ?? {}
     // null when the user's file holds no JSON object.

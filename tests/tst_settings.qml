@@ -66,6 +66,14 @@ TestCase {
         compare(layers.value("background"), "rekta");
     }
 
+    function test_density_is_automatic_until_the_nix_default_or_the_user_sets_it() {
+        compare(layers.value("density"), "auto");
+        layers.defaultsText = '{"density":"comfortable"}';
+        compare(layers.value("density"), "comfortable");
+        layers.userText = '{"version":1,"density":"compact"}';
+        compare(layers.value("density"), "compact");
+    }
+
     function test_a_changed_user_file_takes_effect_at_once() {
         verify(!layers.solid);
         layers.userText = '{"version":1,"background":"solid"}';

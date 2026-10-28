@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Rekta
 import Settings
 import "services"
 
@@ -12,6 +13,12 @@ ShellRoot {
     // Read only: the shell never opens the write gate.
     SettingsFiles {
         id: settingsFiles
+    }
+
+    Binding {
+        target: Prefs
+        property: "density"
+        value: settingsFiles.value("density")
     }
 
     Windows {
