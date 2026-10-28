@@ -287,6 +287,29 @@ in
     ])) "the enabled home-manager module leaves rekta-shell out of home.packages";
     pkgs.runCommand "rekta-shell-home-module" { } "touch $out";
 
+  # The Fedora VM's source ISO must list exactly the tracked files, whatever else lies in the checkout.
+  fedora-source-iso =
+    pkgs.runCommand "rekta-shell-fedora-source-iso"
+      {
+        nativeBuildInputs = [
+          pkgs.git
+          pkgs.xorriso
+          (pkgs.callPackage ./fedora-source-iso.nix { })
+        ];
+      }
+      ''
+        cp -r ${self} repo && chmod -R u+w repo && cd repo
+        git init -q && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -qm t
+        echo secret > CLAUDE.local.md && echo secret > .privacy-patterns
+        rekta-fedora-source-iso "$TMPDIR/out.iso"
+        git ls-files | sort > "$TMPDIR/tracked"
+        xorriso -indev "$TMPDIR/out.iso" -find /src -type f 2>/dev/null \
+          | sed "s|^'/src/||; s|'\$||" | sort > "$TMPDIR/listed"
+        diff "$TMPDIR/tracked" "$TMPDIR/listed"
+        ! grep -Fx -e CLAUDE.local.md -e .privacy-patterns "$TMPDIR/listed"
+        touch $out
+      '';
+
   formatting = pkgs.runCommand "rekta-shell-nixfmt" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
     find ${self} -name '*.nix' -print0 | xargs -0 nixfmt --check
     touch $out

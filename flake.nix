@@ -69,6 +69,11 @@
               vm = self.nixosConfigurations.test-vm.config.system.build.vm;
             }
           );
+          fedora-vm = app (
+            pkgs.callPackage ./nix/fedora-vm.nix {
+              sourceIso = pkgs.callPackage ./nix/fedora-source-iso.nix { };
+            }
+          );
         }
       );
 

@@ -116,6 +116,7 @@ nix fmt           # formats the Nix files
 nix run .#nested -- [--window] [--outputs N] [--size WxH] [--background rekta|solid]   # own KWin, hot reload
 nix run .#nested-shot -- <file.png>                         # screenshot of the whole nested desktop (all outputs)
 nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM with Plasma 6, started from the checkout root
+nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   # Fedora 45 test VM for the RPM, from the checkout root
 ```
 
 - Both run headless by default: the nested KWin renders into a virtual
@@ -217,6 +218,23 @@ nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM
   `audiomute`, `audioplay`, …) but not mic mute or brightness; write those to a
   uinput device in the guest as root (the guest mounts the host's `/nix/store`,
   so a tool built on the host, such as python-evdev, runs there).
+- `nix run .#fedora-vm` boots a pinned Fedora cloud image (`nix/fedora-vm.nix`; a named F45
+  compose until F45 is released, because Plasma 6.8 is in no stable Fedora yet) headless on
+  KVM with user-mode networking only and no forwarded ports. Like `.#vm` it keeps the
+  overlay in a temporary directory that is deleted on exit, ignores host variables and
+  hands arguments after `--` to QEMU; `--window` opens a GTK window. cloud-init creates
+  the test user `rekta` (password `rekta`, passwordless `sudo`) and the login prompt is on
+  ttyS0. A second CD-ROM (label `REKTA_SRC`, mounted at `/mnt/rekta`) holds `src/`, the
+  `git archive` of the checkout's tracked files (uncommitted changes to them included;
+  untracked and ignored files never), and with `--rpms <dir>` an `rpms/` directory;
+  the `fedora-source-iso` check keeps that list equal to `git ls-files`. `--disk <file>`
+  keeps the overlay at a path of your choice (its backing file is the image's store path)
+  so installed packages survive between runs. The serial console and monitor as FIFOs work
+  exactly as in the `.#vm` recipe (`-serial pipe:... -monitor pipe:...`), with the login
+  prompt about 100 seconds after QEMU starts. In the guest, `sudo dnf -y
+  --enablerepo=updates-testing install @kde-desktop-environment` takes a few minutes and
+  gives KWin 6.8.1; after `sudo systemctl set-default graphical.target` and a reboot the
+  Plasma Login Manager is up. The VM is never built by `nix flake check`.
 - The overlay (`overlays.default`) builds `rekta-shell` against the importing
   configuration's nixpkgs.
 
