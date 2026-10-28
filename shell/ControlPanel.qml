@@ -9,6 +9,7 @@ import Quickshell.Services.UPower
 import Quickshell.Wayland
 import org.kde.plasma.workspace.dbus as DBus
 import Notices
+import Settings
 import Panel
 import "services"
 
@@ -22,6 +23,8 @@ PanelWindow {
     id: surface
 
     required property Launcher launcher
+    // Opens its write gate for the density only.
+    required property Layers settings
     required property ShellScreen primaryScreen
     // The Start stands in front, from its opening to its hand-over; it stands on the primary screen.
     required property bool startInFront
@@ -93,6 +96,8 @@ PanelWindow {
             hasPowerProfiles: powerProfiles.registered
             powerProfile: hasPowerProfiles ? PowerProfiles.profile : PowerProfile.Balanced
             hasPerformanceProfile: hasPowerProfiles && PowerProfiles.hasPerformanceProfile
+            density: surface.settings.value("density")
+            onDensityChosen: density => surface.settings.set("density", density)
             output: surface.sink
             input: surface.source
             outputs: surface.audioDevices.filter(node => node.isSink)

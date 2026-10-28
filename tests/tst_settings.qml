@@ -111,6 +111,17 @@ TestCase {
         compare(writes.count, 0);
     }
 
+    function test_a_key_in_writable_keys_is_written_with_the_gate_closed_and_no_other_key_is() {
+        layers.writableKeys = ["density"];
+        verify(!layers.set("background", "solid"), "another key stays the apps");
+        compare(writes.count, 0);
+        verify(layers.set("density", "compact"));
+        compare(written(), {
+            version: 1,
+            density: "compact"
+        });
+    }
+
     function test_a_new_user_file_starts_at_version_one() {
         layers.writable = true;
         verify(layers.set("background", "solid"));

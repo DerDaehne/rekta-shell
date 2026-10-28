@@ -48,6 +48,9 @@ Column {
     property var bluetoothDevices: []
     readonly property bool bluetoothOn: bluetooth?.enabled ?? false
 
+    // The density as the shell has it: auto, comfortable or compact.
+    property string density: "auto"
+
     // A command for the host to run on the session.
     signal run(var command)
     signal powerProfileChosen(int profile)
@@ -55,6 +58,8 @@ Column {
     signal deviceChosen(var node)
     // The session's actions, which the host shows in place of the panel.
     signal sessionAsked
+    // A density to keep: auto, comfortable or compact.
+    signal densityChosen(string density)
     signal bluetoothChosen(bool on)
     // A Bluetooth device to connect, or to disconnect.
     signal connectionChosen(var device, bool connect)
@@ -80,6 +85,8 @@ Column {
         if (device && !waiting(device))
             connectionChosen(device, !device.connected);
     }
+
+    readonly property list<string> densities: ["auto", "comfortable", "compact"]
 
     width: parent ? parent.width : 0
 
@@ -217,6 +224,21 @@ Column {
                 onWord: "an"
                 offWord: "aus"
                 Accessible.name: "nicht stören"
+            }
+        }
+
+        PanelRow {
+            label: "dichte"
+
+            Segments {
+                objectName: "density"
+                options: ["automatisch", "bequem", "kompakt"]
+                currentIndex: controls.densities.indexOf(controls.density)
+                // The choice ends the binding; it comes back, so a refused write shows what the shell has.
+                onActivated: index => {
+                    controls.densityChosen(controls.densities[index]);
+                    currentIndex = Qt.binding(() => controls.densities.indexOf(controls.density));
+                }
             }
         }
     }

@@ -19,6 +19,7 @@ TestCase {
     // What the panel asked the host to run, and the power profiles chosen in it, oldest first.
     property var commands: []
     property var chosenProfiles: []
+    property var chosenDensities: []
     property var chosenDevices: []
     // The options chosen in a level, by index.
     property var chosenOptions: []
@@ -75,6 +76,7 @@ TestCase {
             objectName: "controls"
             hasPowerProfiles: true
             onRun: command => testCase.commands = [...testCase.commands, command]
+            onDensityChosen: density => testCase.chosenDensities = [...testCase.chosenDensities, density]
             onPowerProfileChosen: profile => testCase.chosenProfiles = [...testCase.chosenProfiles, profile]
             onDeviceChosen: node => testCase.chosenDevices = [...testCase.chosenDevices, node]
             onSessionAsked: testCase.sessionAsked += 1
@@ -290,6 +292,7 @@ TestCase {
         Prefs.motion = "off";
         commands = [];
         chosenProfiles = [];
+        chosenDensities = [];
         chosenDevices = [];
         chosenOptions = [];
         sessionAsked = 0;
@@ -545,7 +548,7 @@ TestCase {
     }
 
     function test_escape_closes_it_from_every_control() {
-        for (const name of ["dark", "doNotDisturb", "powerProfile", "lock", "sessionActions"]) {
+        for (const name of ["dark", "doNotDisturb", "density", "powerProfile", "lock", "sessionActions"]) {
             side.show(0);
             control(name).forceActiveFocus();
             keyClick(Qt.Key_Escape);
@@ -621,7 +624,7 @@ TestCase {
 
     function test_tab_and_the_arrows_reach_every_control_in_order() {
         side.show(0);
-        const order = [control("dark"), control("doNotDisturb"), control("powerProfile"), control("lock"), control("sessionActions")];
+        const order = [control("dark"), control("doNotDisturb"), control("density"), control("powerProfile"), control("lock"), control("sessionActions")];
         for (let k = 1; k < order.length; k++) {
             keyClick(Qt.Key_Tab);
             verify(order[k].activeFocus, `Tab to ${order[k].objectName}`);
@@ -638,9 +641,9 @@ TestCase {
         verify(findChild(side, "pivot").activeFocus, "↑ from the first to the pivot");
         keyClick(Qt.Key_Down);
         verify(order[0].activeFocus, "↓ from the pivot to the first");
-        order[4].forceActiveFocus();
+        order[5].forceActiveFocus();
         keyClick(Qt.Key_Down);
-        verify(order[4].activeFocus, "the arrows never leave the panel");
+        verify(order[5].activeFocus, "the arrows never leave the panel");
     }
 
     function test_every_row_works_from_the_keyboard() {
@@ -653,6 +656,10 @@ TestCase {
         keyClick(Qt.Key_Space);
         verify(controls.doNotDisturb, "nicht stören");
         keyClick(Qt.Key_Down);
+        verify(control("density").activeFocus);
+        keyClick(Qt.Key_Right);
+        compare(chosenDensities, ["comfortable"], "dichte, where the arrows choose");
+        keyClick(Qt.Key_Tab);
         verify(control("powerProfile").activeFocus);
         keyClick(Qt.Key_Right);
         compare(chosenProfiles, [2], "energieprofil, where the arrows choose");
@@ -730,6 +737,27 @@ TestCase {
         compare(chosenProfiles, [0]);
         controls.powerProfile = 2;
         compare(segments.currentIndex, 2, "a profile set elsewhere shows");
+    }
+
+    function test_the_density_segments_offer_automatisch_bequem_kompakt_and_ask_for_the_chosen_density() {
+        side.show(0);
+        const segments = control("density");
+        compare(segments.options, ["automatisch", "bequem", "kompakt"]);
+        compare(segments.currentIndex, 0);
+        segments.choose(2);
+        compare(chosenDensities, ["compact"]);
+        controls.density = "compact";
+        segments.choose(0);
+        compare(chosenDensities, ["compact", "auto"]);
+    }
+
+    function test_the_density_segments_show_the_density_the_shell_has_not_the_one_asked_for() {
+        side.show(0);
+        const segments = control("density");
+        segments.choose(1);
+        compare(segments.currentIndex, 0, "a refused write leaves the shown density");
+        controls.density = "compact";
+        compare(segments.currentIndex, 2, "a density set elsewhere shows");
     }
 
     function test_without_the_power_profile_daemon_its_row_is_gone() {
@@ -1345,6 +1373,8 @@ TestCase {
                 keyClick(Qt.Key_Escape);
                 panel.controls.output = null;
                 panel.controls.input = null;
+                waitForRendering(contact);
+                grabImage(contact).save(`panel-display-sheet-${theme}-${density}.png`);
                 findChild(contact, "chooseBluetoothDevice").forceActiveFocus();
                 keyClick(Qt.Key_Return);
                 waitForRendering(contact);

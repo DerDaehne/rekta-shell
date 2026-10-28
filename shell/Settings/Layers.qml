@@ -11,6 +11,8 @@ QtObject {
     property string userText: ""
     // The write gate: only the settings app opens it, the shell never does.
     property bool writable: false
+    // Settings that may be written with the gate closed: the shell's own, as the side panel keeps the density.
+    property list<string> writableKeys: []
 
     readonly property int version: 1
     // Every setting there is, with the value it has without any configuration.
@@ -67,9 +69,9 @@ QtObject {
     }
 
     // Asks the host to write the user's file with the setting changed and every other key kept, also those this version
-    // does not know. Refused behind a closed gate, over a file it cannot read as its own, and for a value that does not fit.
+    // does not know. Refused behind a closed gate (for that key), over a file it cannot read as its own, and for a value that does not fit.
     function set(key: string, newValue: var): bool {
-        if (!writable || fault !== "" || !fits(key, newValue))
+        if (!(writable || writableKeys.includes(key)) || fault !== "" || !fits(key, newValue))
             return false;
         const next = Object.assign({
             version: version

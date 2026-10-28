@@ -10,9 +10,11 @@ ShellRoot {
     SystemMotion {}
     SplashEnd {}
 
-    // Read only: the shell never opens the write gate.
+    // The side panel writes the density; every other setting is the app's alone.
     SettingsFiles {
         id: settingsFiles
+
+        writableKeys: ["density"]
     }
 
     Binding {
@@ -83,6 +85,7 @@ ShellRoot {
     ControlPanel {
         id: sidePanel
 
+        settings: settingsFiles
         launcher: appLauncher
         primaryScreen: primary.screen
         startInFront: start.inFront
