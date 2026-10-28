@@ -42,6 +42,7 @@ singleton Tips 1.0 Tips.qml
 Placement 1.0 Placement.js
 Calendar 1.0 Calendar.js
 Match 1.0 Match.js
+Middle 1.0 Middle.js
 FloatSurface 1.0 FloatSurface.qml
 Menu 1.0 Menu.qml
 MenuItem 1.0 MenuItem.qml

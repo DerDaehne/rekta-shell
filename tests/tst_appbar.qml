@@ -529,6 +529,64 @@ TestCase {
         verify(!bar.more.visible);
     }
 
+    function test_a_press_on_the_middle_signals_tapped_and_a_press_beside_it_does_not() {
+        makeScene({ viewportHeight: 400 });
+        const middle = named("middle");
+        const tapped = createTemporaryObject(spy, testCase, { target: middle, signalName: "tapped" });
+        mouseClick(scene, middle.x + 4, scene.height - bar.height / 2);
+        compare(tapped.count, 1);
+        mouseClick(scene, named("back").x + 4, scene.height - bar.height / 2);
+        compare(tapped.count, 1);
+    }
+
+    function test_the_figures_part_is_set_in_tabular_figures_and_the_next_part_follows_its_width() {
+        makeScene({ viewportHeight: 400 });
+        const middle = named("middle");
+        middle.parts = ["Title", "2:14 / 4:03"];
+        verify(!findChild(middle, "part 1").font.features.tnum, "no figures part, no tabular figures");
+        middle.figuresPart = 1;
+        compare(findChild(middle, "part 1").font.features.tnum, 1);
+        verify(!findChild(middle, "part 0").font.features.tnum);
+        compare(findChild(middle, "part 1").x, middle.advance("Title", 0) + Tokens.spaceS);
+    }
+
+    function test_a_new_kind_of_line_fades_in_over_the_short_duration_with_the_base_curve() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        const middle = named("middle");
+        const arrive = findChild(middle, "arrive");
+        middle.kind = "music";
+        verify(arrive.running);
+        compare(arrive.duration, Tokens.durationShort);
+        compare(arrive.easing.bezierCurve, Tokens.easeBase);
+        arrive.pause();
+        compare(findChild(middle, "part 0").opacity, 0);
+        arrive.complete();
+        compare(findChild(middle, "part 0").opacity, 1);
+    }
+
+    function test_a_new_title_of_the_same_kind_changes_at_once() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        const middle = named("middle");
+        middle.kind = "window";
+        findChild(middle, "arrive").complete();
+        middle.parts = ["konsole", "another title"];
+        verify(!findChild(middle, "arrive").running);
+        compare(findChild(middle, "part 1").opacity, 1);
+    }
+
+    function test_at_800px_a_line_of_music_gives_way_before_any_control() {
+        makeScene({ barWidth: 800, viewportHeight: 400 });
+        const middle = named("middle");
+        middle.figuresPart = 1;
+        middle.parts = ["A long title of a song · An artist with a long name", "12:14 / 24:03"];
+        verify(!bar.more.visible);
+        verify(controls().every(control => control.visible));
+        verify(middle.width < middle.implicitWidth);
+        compare(findChild(middle, "part 0").width, findChild(middle, "part 0").implicitWidth, "the first part keeps its words");
+    }
+
     function test_contact_sheet() {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
@@ -543,7 +601,7 @@ TestCase {
     }
 
     // A wide bar with the centre item and a disabled control showing its reason, a bar full at 760px with more open, a
-    // pinned middle.
+    // pinned middle, the middle with music.
     Component {
         id: sheetComponent
 
@@ -582,6 +640,14 @@ TestCase {
             Bar { id: wide; objectName: "wide"; y: 40 }
             Bar { objectName: "narrow"; y: 360; width: 760 }
             Bar { y: 480; width: 1000; Component.onCompleted: middle.pinned = true }
+            Ground { y: 184 }
+            Bar {
+                y: 200
+                Component.onCompleted: {
+                    middle.figuresPart = 1;
+                    middle.parts = ["Titel · Interpret", "2:14 / 4:03"];
+                }
+            }
 
             Tooltip {
                 readonly property var place: target ? wide.tipPlace(target, Qt.size(width, height)) : { x: 0, y: 0, side: "above" }

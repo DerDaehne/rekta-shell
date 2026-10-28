@@ -19,6 +19,7 @@ PanelWindow {
 
     required property ShellScreen modelData
     required property Windows windows
+    required property Media media
     required property NoticeBoard notices
     required property Tray tray
     required property ControlPanel controlPanel
@@ -31,6 +32,10 @@ PanelWindow {
     // ponytail: only the active window hides the bar; a full-screen window on this screen that lost the keyboard to
     // another screen stays above the bar anyway. Follow every screen's front window when that shows wrongly.
     readonly property bool away: front?.fullScreen ?? false
+    // What the middle says, the first of these that has something: the music that plays, else the window.
+    readonly property var musicParts: Middle.musicParts(media?.title ?? "", media?.artist ?? "", media?.position ?? 0, media?.length ?? 0)
+    readonly property bool playing: musicParts.length > 0
+    readonly property var windowParts: front ? Middle.windowParts(front.app, front.title) : []
 
     screen: modelData
     anchors.left: true
@@ -65,7 +70,11 @@ PanelWindow {
         away: panel.away
 
         AppBarMiddle {
-            parts: panel.front ? [panel.front.app, panel.front.title] : []
+            kind: panel.playing ? "music" : "window"
+            parts: Middle.firstRunning([panel.musicParts], panel.windowParts)
+            figuresPart: panel.playing ? 1 : -1
+
+            onTapped: panel.controlPanel.toggle(panel.modelData, 0)
         }
 
         AppBarClock {

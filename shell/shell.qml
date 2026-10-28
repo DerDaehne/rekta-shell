@@ -27,6 +27,10 @@ ShellRoot {
         id: running
     }
 
+    Media {
+        id: music
+    }
+
     Tray {
         id: backgroundApps
     }
@@ -66,6 +70,7 @@ ShellRoot {
 
         Bar {
             windows: running
+            media: music
             notices: notifications.board
             tray: backgroundApps
             readout: keys.readout
