@@ -2,10 +2,10 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A month to look at, after rekta-core's (core/src/controls.c:887–990): the month and year over the weekdays, six
-// weeks of days below, only the month's own days, today in a frame; the week starts on Monday. ← → go by day, ↑ ↓ by
-// week, Page Up and Page Down by month (with Shift by year), Home and End to the month's first and last day; Escape
-// asks the host to close it. A click on the arrows by the title turns the month.
+// A month to look at, after rekta-core's (core/src/controls.c:887–990): the month and year over the weekdays, the
+// weeks the month touches below with their ISO week numbers in front, only the month's own days, today on the accent;
+// the week starts on Monday. ← → go by day, ↑ ↓ by week, Page Up and Page Down by month (with Shift by year),
+// Home and End to the month's first and last day; Escape asks the host to close it. A click on the arrows by the title turns the month.
 Item {
     id: month
 
@@ -17,8 +17,11 @@ Item {
     property bool showsFocus: false
     property string previousWord: "previous month"
     property string nextWord: "next month"
+    property string weekWord: "woche"
     readonly property real pad: Tokens.spaceS
     readonly property date start: Calendar.gridStart(cursor)
+    readonly property int weeks: Calendar.weekCount(cursor)
+    readonly property real daysLeft: pad + Geometry.monthWeekColumn
     readonly property real daysTop: pad + Tokens.controlHeight + Math.ceil(Tokens.lineHeightCompact * Tokens.fontSizeXs) + Tokens.spaceXs
 
     signal escaped
@@ -67,8 +70,8 @@ Item {
         return false;
     }
 
-    implicitWidth: 2 * pad + 7 * Geometry.monthCell
-    implicitHeight: daysTop + 6 * Geometry.monthCell + pad
+    implicitWidth: daysLeft + 7 * Geometry.monthCell + pad
+    implicitHeight: daysTop + weeks * Geometry.monthCell + pad
     activeFocusOnTab: true
     Accessible.role: Accessible.Dialog
     Accessible.name: Calendar.monthTitle(cursor, locale)
@@ -118,7 +121,7 @@ Item {
             required property int index
 
             objectName: `weekday ${index}`
-            x: month.pad + index * Geometry.monthCell
+            x: month.daysLeft + index * Geometry.monthCell
             y: month.pad + Tokens.controlHeight
             width: Geometry.monthCell
             horizontalAlignment: Text.AlignHCenter
@@ -131,6 +134,29 @@ Item {
     }
 
     Repeater {
+        model: month.weeks
+
+        delegate: TextRole {
+            required property int index
+            readonly property int number: Calendar.weekNumber(month.dayAt(index * 7))
+
+            objectName: `week ${index}`
+            x: month.pad
+            y: month.daysTop + index * Geometry.monthCell
+            width: Geometry.monthWeekColumn
+            height: Geometry.monthCell
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            text: number
+            font.pixelSize: Tokens.fontSizeXs
+            font.features: ({ "tnum": 1 })
+            color: Tokens.color.textContrastHigh
+            Accessible.role: Accessible.StaticText
+            Accessible.name: `${month.weekWord} ${number}`
+        }
+    }
+
+    Repeater {
         model: 42
 
         delegate: Item {
@@ -139,7 +165,7 @@ Item {
             readonly property bool isToday: Calendar.sameDay(day, month.today)
 
             objectName: `day ${index}`
-            x: month.pad + index % 7 * Geometry.monthCell
+            x: month.daysLeft + index % 7 * Geometry.monthCell
             y: month.daysTop + Math.floor(index / 7) * Geometry.monthCell
             width: Geometry.monthCell
             height: Geometry.monthCell
@@ -152,9 +178,8 @@ Item {
                 anchors.fill: parent
                 anchors.margins: Geometry.monthTodayInset
                 visible: parent.isToday
-                color: "transparent"
-                border.width: Geometry.monthTodayFrame
-                border.color: Tokens.color.textPrimary
+                color: Tokens.color.accent
+                border.width: 0
             }
 
             Text {
@@ -164,7 +189,7 @@ Item {
                 font.family: Tokens.fontSans
                 font.pixelSize: Tokens.fontSizeS
                 font.features: ({ "tnum": 1 })
-                color: Tokens.color.textPrimary
+                color: parent.isToday ? Tokens.color.textOnAccent : Tokens.color.textPrimary
             }
 
             // On the cell's edge, as rekta-core rings the keys' day (`rk__focus_ring(c, cell, 0)`, :933).

@@ -54,6 +54,19 @@ function gridStart(date) {
     return addDays(first, -((first.getDay() + 6) % 7));
 }
 
+// How many weeks, Monday first, the month touches: 4 to 6.
+function weekCount(date) {
+    const lead = (monthStart(date).getDay() + 6) % 7;
+    return Math.ceil((lead + monthEnd(date).getDate()) / 7);
+}
+
+// ISO 8601 week number: the week belongs to the year that holds its Thursday.
+function weekNumber(date) {
+    const thursday = addDays(date, 3 - (date.getDay() + 6) % 7);
+    const yearStart = new Date(thursday.getFullYear(), 0, 1);
+    return Math.floor((thursday - yearStart) / 604800000) + 1;
+}
+
 function monthStart(date) {
     return new Date(date.getFullYear(), date.getMonth(), 1);
 }
