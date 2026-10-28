@@ -14,6 +14,9 @@ import QtQuick
 // A `centre` item stands in the middle of the bar; what comes before it holds the leading side, what comes after it the
 // trailing side, and nothing runs under it. Without one the bar is a single row, as on the web. Other items are left
 // where they are.
+//
+// The status words (`AppBarStatus`) never move into "more", as the live state never does in Rekta (navigation.md,
+// "When the bar is full"); the other controls give way to them.
 Rectangle {
     id: bar
 
@@ -56,7 +59,7 @@ Rectangle {
 
     // The leading and trailing side around the centre item, or the whole bar; "more" ends the last.
     function regions(): var {
-        const items = Array.from(strip.children).filter(item => item === centre || (item as AppBarButton)?.present === true || (item as AppBarMiddle) !== null);
+        const items = Array.from(strip.children).filter(item => item === centre || (item as AppBarButton)?.present === true || (item as AppBarMiddle) !== null || (item as AppBarStatus)?.present === true);
         const at = centre ? items.indexOf(centre) : -1;
         if (at < 0)
             return [{ items, start: padding, end: width - padding, packEnd: false, more: true }];

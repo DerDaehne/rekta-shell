@@ -1017,6 +1017,21 @@ TestCase {
         verify(top() >= 0);
     }
 
+    function test_revealing_a_place_scrolls_it_to_the_top_of_the_view_and_nothing_scrolls_back() {
+        giveSound(controls);
+        scene.height = 360;
+        side.show(0);
+        waitForRendering(side);
+        const scroller = findChild(side, "scroller");
+        const row = controls.places.doNotDisturb;
+        verify(row.mapToItem(scroller, 0, 0).y > scroller.height / 2, "below the middle of the view to begin with");
+        side.reveal(row);
+        tryVerify(() => Math.abs(row.mapToItem(scroller, 0, 0).y) < 0.5 || scroller.contentY + scroller.height >= scroller.contentHeight - 0.5);
+        verify(scroller.contentY > 0);
+        side.reveal(null);
+        tryCompare(scroller, "contentY", 0);
+    }
+
     function test_a_long_device_name_is_cut_in_its_select_and_in_its_row() {
         const sound = giveSound(controls);
         sound.speakers.description = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3)".repeat(Math.ceil(Tokens.tileUnit / 40));

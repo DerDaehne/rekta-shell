@@ -49,6 +49,13 @@ ShellRoot {
         id: keys
     }
 
+    SystemState {
+        id: systemState
+
+        sink: keys.sink
+        doNotDisturb: sidePanel.doNotDisturb
+    }
+
     PrimaryScreen {
         id: primary
     }
@@ -80,6 +87,7 @@ ShellRoot {
             notices: notifications.board
             tray: backgroundApps
             readout: keys.readout
+            status: systemState.words
             primaryScreen: primary.screen
             controlPanel: sidePanel
         }

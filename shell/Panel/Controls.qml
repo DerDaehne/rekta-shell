@@ -95,10 +95,19 @@ Column {
     }
 
     readonly property list<string> densities: ["auto", "comfortable", "compact"]
+    // Where a status word of the app bar leads, by name; the energy profile, where it is offered, else its group.
+    readonly property var places: ({
+            sound: soundGroup,
+            connections: connectionsGroup,
+            doNotDisturb: quietRow,
+            power: powerRow.present ? powerRow : sessionGroup
+        })
 
     width: parent ? parent.width : 0
 
     PanelGroup {
+        id: soundGroup
+
         objectName: "sound"
         title: "ton"
 
@@ -142,6 +151,8 @@ Column {
     }
 
     PanelGroup {
+        id: connectionsGroup
+
         objectName: "connections"
         title: "verbindungen"
         levels: [
@@ -256,6 +267,8 @@ Column {
 
         // ponytail: kept in memory only, so a restart of the shell turns it off; keep it once the shell has a config.
         PanelRow {
+            id: quietRow
+
             label: "nicht stören"
 
             Toggle {
@@ -285,10 +298,14 @@ Column {
     }
 
     PanelGroup {
+        id: sessionGroup
+
         objectName: "session"
         title: "sitzung"
 
         PanelRow {
+            id: powerRow
+
             label: "energieprofil"
             present: controls.hasPowerProfiles
 

@@ -7,6 +7,8 @@ Row {
 
     property string status: "" // info | success | warning | error, or "" for none
     property string word: Status.word(status)
+    // Tabular figures, for a word whose digits change.
+    property bool figures: false
     readonly property color mark: {
         switch (status) {
         case "info":
@@ -45,6 +47,7 @@ Row {
         text: tag.word
         font.pixelSize: Tokens.fontSizeXs
         font.weight: Tokens.fontWeightSemibold
+        font.features: ({ "tnum": tag.figures ? 1 : 0 })
         lineHeightFactor: Tokens.lineHeightCompact
         color: Tokens.color.textPrimary
     }

@@ -43,6 +43,14 @@ FocusScope {
         focusFirst();
     }
 
+    // Scrolls the facet so an item of it stands at the top, or to the top without one. The facet lays itself out at its
+    // next polish, so the place is taken again once that has run.
+    function reveal(item: Item) {
+        const scroll = () => scroller.contentY = item ? Math.max(0, Math.min(item.mapToItem(scroller.contentItem, 0, 0).y, scroller.contentHeight - scroller.height)) : 0;
+        scroll();
+        Qt.callLater(scroll);
+    }
+
     function close() {
         if (!open || going.running)
             return;

@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Wayland
 import Notices
 import Readout
+import State
 import Rekta
 import Tray
 import "services"
@@ -25,6 +26,8 @@ PanelWindow {
     required property ControlPanel controlPanel
     // The keys' readout and the screen that shows it: the display stands in the bar of the primary screen only.
     required property KeyReadout readout
+    // What deviates from normal, as the words before "steuerung".
+    required property StatusWords status
     required property ShellScreen primaryScreen
     readonly property bool showsReadout: modelData === primaryScreen
     // The active window, when it is on this screen.
@@ -109,6 +112,13 @@ PanelWindow {
             count: panel.notices.unseen
             priority: 2
             onClicked: panel.controlPanel.toggle(panel.modelData, 1)
+        }
+
+        AppBarStatus {
+            keys: panel.status.keys
+            words: panel.status.words
+
+            onActivated: word => panel.controlPanel.openAt(panel.modelData, word.opens)
         }
 
         AppBarButton {

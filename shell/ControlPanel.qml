@@ -55,6 +55,13 @@ PanelWindow {
         panel.toggle(index);
     }
 
+    // Opens "steuerung" on a screen, at a place of it (a name from Controls.places) or at the top.
+    function openAt(onScreen: ShellScreen, place: string) {
+        shownOn = onScreen;
+        panel.show(0);
+        panel.reveal(controls.places[place] ?? null);
+    }
+
     function close() {
         panel.close();
     }
