@@ -123,6 +123,8 @@ Rectangle {
         }
         // ponytail: with the readout in the centre (centreReserve) below about 520 px not even "+N" fits beside "more" and
         // it overlaps the clock; hide the words then, or let the bar scroll them, once a bar that narrow matters.
+        // ponytail: a word dropped for lack of room still fades for duration-short and counts in the row meanwhile, so on a
+        // bar under about 900 px it runs up to 82 px into the middle for at most 250 ms; let it leave at once then.
         let limit = most;
         while (limit > 0 && !fitAll(moved, true, limit))
             limit--;
