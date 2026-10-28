@@ -56,7 +56,10 @@ PanelWindow {
                 icon: Quickshell.iconPath(entry.icon, true),
                 columns: tile.columns,
                 rows: tile.rows,
-                launch: () => surface.launcher.launch(entry)
+                launch: () => {
+                    surface.launcher.launch(entry);
+                    usage.count(entry.id);
+                }
             };
         });
     }
@@ -90,6 +93,7 @@ PanelWindow {
         windows: Array.from(surface.windows.all)
         pinned: surface.pinnedApps(Array.from(DesktopEntries.applications.values), surface.listedPins)
         apps: installed.list
+        starts: usage.starts
         preview: Component {
             WindowPreview {}
         }
@@ -99,10 +103,15 @@ PanelWindow {
         }
     }
 
+    Usage {
+        id: usage
+    }
+
     Apps {
         id: installed
 
         launcher: surface.launcher
+        usage: usage
     }
 
     // Meta opens and closes it; in Plasma's own session Meta stays with Kickoff, as there this shortcut is not present.

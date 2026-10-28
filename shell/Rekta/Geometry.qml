@@ -17,6 +17,10 @@ QtObject {
     readonly property real focusRingInsetOnFill: 5
     // `.rk-kicker { letter-spacing: 0.02em }` (rekta.css:50), in em of the kicker's own size
     readonly property real kickerLetterSpacing: 0.02
+    // `.rk-key { padding: 0 4px; min-width: 1.6em; line-height: 1.5 }` (rekta.css:809); the width in em of the key's size
+    readonly property real keyPadding: 4
+    readonly property real keyMinWidth: 1.6
+    readonly property real keyLineHeight: 1.5
     // `.rk-clamp { line-clamp: 3 }` on the one main title (rekta.css:102)
     readonly property int titleMaxLines: 3
 

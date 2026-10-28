@@ -22,6 +22,8 @@ FocusScope {
     property var pinned: []
     // The installed apps, A–Z: {id, name, genericName, keywords, exec, icon, launch()}; null until they are known.
     property var apps: null
+    // How often each app was started from the Start, by id: {id: count}; the more often, the nearer the front of the hits.
+    property var starts: ({})
     // Draws a window's preview on its tile (RunningTile.preview); null for none.
     property Component preview: null
     // closed, opening (the glass comes, then the parts turn in), open, or closing (the parts turn out, the glass goes).
@@ -244,7 +246,7 @@ FocusScope {
 
     // The apps that match what was typed, read here and not bound: a binding on `query` may lag behind its handler.
     function matching(): var {
-        return query === "" ? [] : Rules.hits(apps ?? [], query);
+        return query === "" ? [] : Rules.hits(apps ?? [], query, starts);
     }
 
     // Going on typing or erasing: the hits that no longer match go, the new ones come, and the rest close up.
@@ -986,9 +988,12 @@ FocusScope {
                         required property string appId
                         required property string label
                         required property string image
+                        required property int index
 
                         name: label
                         icon: image
+                        best: index === 0
+                        columns: best ? 2 : 1
                         onActivated: start.press(hitTile, () => start.launchApp(hitTile.appId))
                     }
                 }

@@ -168,6 +168,44 @@ TestCase {
         compare(hitNames("kon "), ["Konsole"]);
     }
 
+    function startedHitNames(text: string, starts: var): var {
+        return Rules.hits(installed, text, starts).map(hit => hit.name);
+    }
+
+    function test_an_app_started_more_often_comes_before_one_that_matches_as_well_or_better() {
+        compare(startedHitNames("te", { dateien: 1 }), ["Dateien", "Telegram", "Kate", "Konsole"]);
+        compare(startedHitNames("te", { kate: 3, konsole: 2 }), ["Kate", "Konsole", "Telegram", "Dateien"]);
+    }
+
+    function test_apps_started_equally_often_keep_the_order_without_starts() {
+        compare(startedHitNames("te", { kate: 2, konsole: 2 }), ["Kate", "Konsole", "Telegram", "Dateien"]);
+        compare(startedHitNames("te", {}), hitNames("te"), "no starts, the order as before");
+        compare(startedHitNames("te", undefined), hitNames("te"));
+    }
+
+    function test_a_start_counts_one_more_without_changing_the_counts_before() {
+        const before = { kate: 1 };
+        compare(Rules.counted(before, "kate"), { kate: 2 });
+        compare(Rules.counted(before, "konsole"), { kate: 1, konsole: 1 });
+        compare(before, { kate: 1 });
+    }
+
+    function test_counts_survive_a_round_trip_through_the_usage_file_and_a_broken_file_gives_none() {
+        const counts = Rules.counted(Rules.counted({}, "kate"), "kate");
+        compare(Rules.parseStarts(JSON.stringify(counts)), { kate: 2 });
+        compare(Rules.parseStarts(""), {}, "no file");
+        compare(Rules.parseStarts("{ not json"), {});
+        compare(Rules.parseStarts("[1, 2]"), {});
+        compare(Rules.parseStarts("null"), {});
+        compare(Rules.parseStarts('{"kate": 2, "a": "x", "b": -1, "c": 1.5, "d": 0}'), { kate: 2 }, "only whole numbers from 1");
+    }
+
+    function test_the_usage_file_lives_in_the_state_directory_or_below_the_home() {
+        compare(Rules.stateDir("/s", "/h"), "/s/rekta-shell");
+        compare(Rules.stateDir("", "/h"), "/h/.local/state/rekta-shell");
+        compare(Rules.stateDir(undefined, undefined), "");
+    }
+
     // Applies the steps to `from`, as the hit model takes them.
     function stepped(from: var, to: var): var {
         const list = from.slice();

@@ -1022,13 +1022,14 @@ TestCase {
         verify(title.clip);
     }
 
-    function test_the_apps_that_match_stand_as_one_unit_tiles_in_the_column_s_grid_the_best_first() {
+    function test_the_apps_that_match_stand_in_the_column_s_grid_the_best_first_as_a_wide_tile_and_the_rest_as_one_unit_tiles() {
         openWithApps();
         typeNow("fi");
         compare(hitNames(), ["Filelight", "Firefox", "Dateien"]);
         const tiles = start.hitTiles();
-        compare(Qt.size(tiles[0].width, tiles[0].height), Qt.size(Tokens.tileUnit, Tokens.tileUnit));
-        compare(tiles[1].x - tiles[0].x, Tokens.tileUnit + Tokens.spaceS);
+        compare(Qt.size(tiles[0].width, tiles[0].height), Qt.size(2 * Tokens.tileUnit + Tokens.spaceS, Tokens.tileUnit));
+        compare(Qt.size(tiles[1].width, tiles[1].height), Qt.size(Tokens.tileUnit, Tokens.tileUnit));
+        compare(tiles[1].x - tiles[0].x, 2 * (Tokens.tileUnit + Tokens.spaceS));
         compare(named("hits").mapToItem(start, 0, 0), Qt.point(Tokens.spaceXl, named("pivot").height + Tokens.spaceL));
         compare(findChild(tiles[0], "icon").source.toString(), pinkIcon);
     }
@@ -1116,6 +1117,73 @@ TestCase {
         compare(start.query, "k", "the space pressed the tile and typed nothing");
     }
 
+    function test_the_first_hit_is_a_wide_tile_with_the_enter_key_and_bester_treffer_and_the_rest_are_single() {
+        openWithApps();
+        typeNow("k");
+        const tiles = start.hitTiles();
+        compare(tiles.length, 3);
+        compare(tiles[0].columns, 2);
+        compare(tiles[0].rows, 1);
+        verify(tiles[0].best);
+        const hint = findChild(tiles[0], "bestHit");
+        verify(hint.visible);
+        compare(findChild(hint, "key").children[0].text, "enter");
+        compare(hint.children[1].text, "bester treffer");
+        verify(hint.x >= findChild(tiles[0], "name").width, "after the name");
+        verify(hint.x + hint.width <= tiles[0].width, "inside the tile");
+        for (const tile of tiles.slice(1)) {
+            compare(tile.columns, 1);
+            verify(!findChild(tile, "bestHit").visible);
+        }
+        compare(tiles[1].x, 2 * (Tokens.tileUnit + Tokens.spaceS), "the next hit follows the wide one");
+    }
+
+    function test_enter_from_the_line_starts_exactly_the_marked_best_hit_and_arrows_move_on_from_it() {
+        openWithApps();
+        typeNow("k");
+        const tiles = start.hitTiles();
+        verify(tiles[0].best);
+        keyClick(Qt.Key_Down);
+        verify(tiles[0].activeFocus, "the arrows start at the best hit");
+        keyClick(Qt.Key_Right);
+        verify(tiles[1].activeFocus);
+        keyClick(Qt.Key_Left);
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Kate"]);
+    }
+
+    function test_enter_starts_the_tile_in_focus_when_it_is_not_the_best_hit() {
+        openWithApps();
+        typeNow("k");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Right);
+        verify(start.hitTiles()[1].activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Konsole"]);
+    }
+
+    function test_an_app_started_more_often_stands_first_and_wide_among_equal_hits() {
+        start.starts = { "org.example.KWrite": 2, "org.example.Konsole": 1 };
+        openWithApps();
+        typeNow("k");
+        compare(hitNames(), ["KWrite", "Konsole", "Kate"]);
+        verify(start.hitTiles()[0].best);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch KWrite"]);
+    }
+
+    function test_the_best_hit_changes_with_the_text_and_the_wide_tile_goes_to_the_new_first() {
+        openWithApps();
+        typeNow("k");
+        compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
+        typeNow("o");
+        compare(hitNames(), ["Konsole"]);
+        const only = start.hitTiles();
+        compare(only[0].columns, 2);
+        verify(only[0].best);
+    }
+
     function test_a_hit_that_takes_the_focus_scrolls_into_view() {
         start.apps = Array.from({ length: 40 }, (_, i) => installedApp(`app ${i}`));
         openNow();
@@ -1123,7 +1191,7 @@ TestCase {
         const results = named("results");
         for (let i = 0; i < 7; i++)
             keyClick(Qt.Key_Down);
-        const last = start.hitTiles()[36];
+        const last = start.hitTiles()[35];
         verify(last.activeFocus);
         const top = last.mapToItem(results, 0, 0).y;
         verify(top >= 0 && top + last.height <= results.height, `whole in view at ${top}`);
@@ -1443,7 +1511,7 @@ TestCase {
         verify(motionsOf([kate, konsole]).every(motion => motion.to.scale === Geometry.leaveTileScale));
         tryVerify(() => motionsOf([kwrite]).length === 1, 1000);
         const glide = motionsOf([kwrite])[0];
-        compare(glide.from.x, 2 * (Tokens.tileUnit + Tokens.spaceS));
+        compare(glide.from.x, 3 * (Tokens.tileUnit + Tokens.spaceS));
         compare(glide.duration, Tokens.durationModerate);
         compare(glide.curve, Tokens.easeBase);
         tryVerify(() => !named("presence").running, 1000);
@@ -1577,6 +1645,23 @@ TestCase {
         }
     }
 
+
+    function test_contact_sheet_of_the_search_with_the_best_hit() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const backdrop = createTemporaryObject(backdropComponent, testCase);
+            const sheet = createTemporaryObject(startComponent, backdrop);
+            sheet.apps = searchableApps();
+            Prefs.motion = "off";
+            sheet.open();
+            keyClick("k");
+            keyClick(Qt.Key_Down);
+            Prefs.motion = "system";
+            waitForRendering(backdrop);
+            grabImage(backdrop).save(`start-search-best-${theme}.png`);
+            compare(sheet.query, "k", theme);
+        }
+    }
     // The caret inside "fire|fox", then "fire" selected. Each is taken right after a key, which lights the caret.
     function test_contact_sheet_of_the_search_line() {
         for (const theme of ["light", "dark"]) {

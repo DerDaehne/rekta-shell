@@ -10,6 +10,7 @@ Scope {
     id: apps
 
     required property Launcher launcher
+    required property Usage usage
     // {id, name, genericName, keywords, exec, icon, launch()}; null until the files have been read once.
     property var list: null
     readonly property var dirs: Rules.applicationDirs(Quickshell.env("XDG_DATA_HOME"), Quickshell.env("HOME"), Quickshell.env("XDG_DATA_DIRS"))
@@ -23,7 +24,10 @@ Scope {
                     keywords: Array.from(entry.keywords),
                     exec: Rules.programName(entry.command),
                     icon: Quickshell.iconPath(entry.icon, true),
-                    launch: () => apps.launcher.launch(entry)
+                    launch: () => {
+                        apps.launcher.launch(entry);
+                        apps.usage.count(entry.id);
+                    }
                 }));
     }
 

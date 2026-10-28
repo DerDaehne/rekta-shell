@@ -130,11 +130,45 @@ function programName(command) {
     return String(command[0] ?? "").split("/").pop();
 }
 
-// The installed apps that match what was typed, the best first, A–Z among equals: by name, or by a word of their
-// generic name, keywords or program. Space around the text does not count (rekta.js:2192).
-function hits(apps, text) {
+// The installed apps that match what was typed, the most often started first, then the best match, A–Z among equals:
+// by name, or by a word of their generic name, keywords or program. `starts` counts the starts by app id. Space around
+// the text does not count (rekta.js:2192).
+function hits(apps, text, starts) {
     const typed = text.trim();
-    return Rekta.Match.ranked(apps, app => Rekta.Match.score(app.name, [app.genericName, ...app.keywords, app.exec].join(" "), typed));
+    const ranked = Rekta.Match.ranked(apps, app => Rekta.Match.score(app.name, [app.genericName, ...app.keywords, app.exec].join(" "), typed));
+    const startsOf = app => (starts ?? {})[app.id] ?? 0;
+    // Decorated with the rank, as QML's sort does not keep equals in order.
+    return ranked.map((app, at) => ({ app: app, at: at })).sort((a, b) => (startsOf(b.app) - startsOf(a.app)) || (a.at - b.at)).map(entry => entry.app);
+}
+
+// The start counts a usage file holds, by app id; a file that is not an object gives none, an entry that is not a whole
+// number from 1 is dropped.
+function parseStarts(text) {
+    let parsed = null;
+    try {
+        parsed = JSON.parse(text);
+    } catch (error) {
+        return {};
+    }
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+        return {};
+    const starts = {};
+    for (const id of Object.keys(parsed)) {
+        if (Number.isInteger(parsed[id]) && parsed[id] >= 1)
+            starts[id] = parsed[id];
+    }
+    return starts;
+}
+
+// `starts` with one start more for `id`.
+function counted(starts, id) {
+    return Object.assign({}, starts, { [id]: (starts[id] ?? 0) + 1 });
+}
+
+// Where the shell keeps what it learns of its user (XDG base directories: the state directory, else ~/.local/state).
+function stateDir(stateHome, home) {
+    const base = stateHome || (home ? `${home}/.local/state` : "");
+    return base === "" ? "" : `${base}/rekta-shell`;
 }
 
 // Where a typed key jumps among `names`: the next after `from` that starts with it, whatever the case, round past the
