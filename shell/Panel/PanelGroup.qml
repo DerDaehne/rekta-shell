@@ -3,11 +3,12 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 
-// A group of rows under its heading, a section of a compact place: space-l above and below, its parts space-m apart
-// (rekta.css:854, :856). Its rows are a form's fields, not a list's items: each is a part of its own, space-m from the
-// next, on no hairline, and groups stand apart by their headings and that space. A group without a row present falls
-// away. An open level stands in place of the rows: it comes in from the trailing edge and the rows come back from the
-// leading edge (motion.md, "Next item, same place").
+// A group of rows under its heading, a section of a compact place: space-xl above and space-l below (rekta.css:854 says
+// space-l on both sides; the panel sets its blocks further apart), its parts space-m apart (rekta.css:856).
+// Its rows are a form's fields, not a list's items: each is a part of its own, space-m from the next, on no hairline,
+// and groups stand apart by their headings and that space. A group without a row present falls away. An open level
+// stands in place of the rows: it comes in from the trailing edge and the rows come back from the leading edge
+// (motion.md, "Next item, same place").
 Column {
     id: group
 
@@ -22,7 +23,7 @@ Column {
 
     width: parent ? parent.width : 0
     visible: hasRows
-    topPadding: Tokens.spaceL
+    topPadding: Tokens.spaceXl
     bottomPadding: Tokens.spaceL
     spacing: Tokens.spaceM
 

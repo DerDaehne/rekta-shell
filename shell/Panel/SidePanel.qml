@@ -18,7 +18,7 @@ FocusScope {
     property bool open: false
     // Runs from 0 to 1 as it comes in, and back to 0 as it leaves.
     property real entry: 1
-    readonly property real contentWidth: 2 * Tokens.tileUnit + Tokens.spaceS
+    readonly property real contentWidth: 2.5 * Tokens.tileUnit + Tokens.spaceS
     readonly property real panelWidth: Geometry.hairline + 2 * Tokens.spaceM + contentWidth
     readonly property real shift: (1 - entry) * panelWidth
     default property alias facets: facetHolder.content

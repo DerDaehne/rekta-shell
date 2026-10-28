@@ -425,10 +425,10 @@ TestCase {
         return fake;
     }
 
-    function test_the_panel_stands_at_the_trailing_edge_the_full_height_two_tile_units_wide_with_a_sheets_padding() {
+    function test_the_panel_stands_at_the_trailing_edge_the_full_height_two_and_a_half_tile_units_wide_with_a_sheets_padding() {
         side.show(0);
         const panel = findChild(side, "panel");
-        const contentWidth = 2 * Tokens.tileUnit + Tokens.spaceS;
+        const contentWidth = 2.5 * Tokens.tileUnit + Tokens.spaceS;
         compare(panel.width, Geometry.hairline + 2 * Tokens.spaceM + contentWidth);
         compare(panel.x, 900 - panel.width, "at the trailing edge");
         compare(panel.y, 0);
@@ -470,7 +470,7 @@ TestCase {
         const pivot = findChild(side, "pivot");
         compare(pivot.level, "nav");
         compare(pivot.titles, ["steuerung", "meldungen"]);
-        compare(pivot.placeWidth, 2 * Tokens.tileUnit + Tokens.spaceS, "the panel is the place");
+        compare(pivot.placeWidth, 2.5 * Tokens.tileUnit + Tokens.spaceS, "the panel is the place");
         verify(pivot.compact, "and a narrow one, so the strip takes the facet sizes");
         const under = findChild(side, "underPivot");
         compare(under.y, pivot.y + pivot.height);
@@ -1278,15 +1278,15 @@ TestCase {
         verify(group.visible);
     }
 
-    function test_a_group_takes_space_l_above_and_below_and_its_heading_stands_space_m_above_its_rows() {
+    function test_a_group_takes_space_xl_above_space_l_below_and_its_heading_stands_space_m_above_its_rows() {
         side.show(0);
         const group = findChild(controls, "display");
         const heading = findChild(group, "heading");
         const rows = findChild(group, "rows");
         waitForRendering(side);
-        compare(heading.mapToItem(group, 0, 0).y, Tokens.spaceL);
-        compare(rows.mapToItem(group, 0, 0).y, Tokens.spaceL + heading.height + Tokens.spaceM);
-        compare(group.height, 2 * Tokens.spaceL + heading.height + Tokens.spaceM + rows.height);
+        compare(heading.mapToItem(group, 0, 0).y, Tokens.spaceXl);
+        compare(rows.mapToItem(group, 0, 0).y, Tokens.spaceXl + heading.height + Tokens.spaceM);
+        compare(group.height, Tokens.spaceXl + heading.height + Tokens.spaceM + rows.height + Tokens.spaceL);
     }
 
     function test_a_row_has_its_words_at_the_start_and_its_control_at_the_end() {
