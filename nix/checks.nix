@@ -124,6 +124,9 @@ in
         # A bus of its own for the DBus tests, which exists only while the tests run.
         dbus-run-session --config-file=${pkgs.dbus}/share/dbus-1/session.conf -- \
           qmltestrunner -import ${qml}/shell -input ${qml}/tests
+        # Week numbers count days across a daylight saving change, which the build zone (UTC) has none of.
+        TZ=Europe/Berlin TZDIR=${pkgs.tzdata}/share/zoneinfo \
+          qmltestrunner -import ${qml}/shell -input ${qml}/tests/tst_clock.qml
         # Tests save contact sheets into the working directory; they end up in the check's result for review.
         mkdir $out
         cp *.png $out/ 2>/dev/null || true

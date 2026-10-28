@@ -266,6 +266,9 @@ TestCase {
         compare(Calendar.weekNumber(new Date(2024, 11, 30)), 1, "Monday 30 December 2024 starts week 1 of 2025");
         compare(Calendar.weekNumber(new Date(2026, 0, 1)), 1);
         compare(Calendar.weekNumber(new Date(2021, 0, 1)), 53, "Friday 1 January 2021 is in week 53 of 2020");
+        compare(Calendar.weekNumber(new Date(2026, 9, 1)), 40, "after the summer time started");
+        compare(Calendar.weekNumber(new Date(2026, 3, 2)), 14);
+        compare(Calendar.weekNumber(new Date(2026, 3, 6)), 15);
     }
 
     function test_the_week_count_is_four_to_six() {

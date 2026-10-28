@@ -64,7 +64,9 @@ function weekCount(date) {
 function weekNumber(date) {
     const thursday = addDays(date, 3 - (date.getDay() + 6) % 7);
     const yearStart = new Date(thursday.getFullYear(), 0, 1);
-    return Math.floor((thursday - yearStart) / 604800000) + 1;
+    // Local midnights are 23 or 25 hours apart across a daylight saving change, so round to whole days.
+    const dayOfYear = Math.round((thursday - yearStart) / 86400000);
+    return Math.floor(dayOfYear / 7) + 1;
 }
 
 function monthStart(date) {

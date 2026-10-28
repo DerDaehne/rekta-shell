@@ -5,7 +5,8 @@ import QtQuick
 // A month to look at, after rekta-core's (core/src/controls.c:887–990): the month and year over the weekdays, the
 // weeks the month touches below with their ISO week numbers in front, only the month's own days, today on the accent;
 // the week starts on Monday. ← → go by day, ↑ ↓ by week, Page Up and Page Down by month (with Shift by year),
-// Home and End to the month's first and last day; Escape asks the host to close it. A click on the arrows by the title turns the month.
+// Home and End to the month's first and last day; Escape asks the host to close it.
+// A click on the arrows by the title turns the month.
 Item {
     id: month
 
