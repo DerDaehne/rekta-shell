@@ -1,4 +1,9 @@
-{ modulesPath, pkgs, ... }:
+{
+  lib,
+  modulesPath,
+  pkgs,
+  ...
+}:
 
 {
   imports = [
@@ -30,6 +35,11 @@
   # BlueZ and System Settings' Bluetooth page, but no adapter: QEMU has none, and bluetoothd starts only once the
   # bluetooth module is loaded (`modprobe bluetooth`).
   hardware.bluetooth.enable = true;
+  # NetworkManager for the panel's network rows: the guest's wired card shows as the cable, and virtual radios
+  # (`modprobe mac80211_hwsim`) give it wireless networks.
+  # qemu-vm.nix turns wpa_supplicant off, which NetworkManager needs for any wireless network.
+  networking.networkmanager.enable = true;
+  networking.wireless.enable = lib.mkOverride 5 true;
   services.displayManager = {
     sddm.enable = true;
     sddm.wayland.enable = true;
@@ -44,7 +54,10 @@
   users.users.rekta = {
     isNormalUser = true;
     password = "rekta";
-    extraGroups = [ "wheel" ];
+    extraGroups = [
+      "wheel"
+      "networkmanager"
+    ];
   };
 
   environment.systemPackages = [
