@@ -13,6 +13,18 @@ function timeWords(date, locale) {
     return date.toLocaleTimeString(locale, QtQml.Locale.ShortFormat);
 }
 
+// How long ago, in Rekta's German words (strings.de.js: justNow, minutesAgo, at): "gerade eben", "vor 4 min", then the
+// time of day, and the day too from yesterday on. A minute is the finest step, as it is renewed once a minute.
+function ago(date, now, locale) {
+    const minutes = Math.floor((now - date) / 60000);
+    if (minutes < 1)
+        return "gerade eben";
+    if (minutes < 60)
+        return `vor ${minutes} min`;
+    const time = `um ${timeWords(date, locale)}`;
+    return sameDay(date, now) ? time : `${dateWords(date, locale)} ${time}`;
+}
+
 // A day or month name as a lowercase word, without the abbreviation's dot: "di", "okt".
 function word(name) {
     return name.replace(/\.$/, "").toLowerCase();

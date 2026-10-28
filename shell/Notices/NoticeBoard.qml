@@ -99,6 +99,18 @@ QtObject {
         return notification?.actions.find(action => (action.identifier === "default") === isDefault) ?? null;
     }
 
+    // The actions a row offers besides the default one, at most two, as { identifier, text }; none once it has run out.
+    function actionsOf(row: var): var {
+        const actions = row.notification?.actions ?? [];
+        const offered = actions.filter(action => action.identifier !== "default").slice(0, 2);
+        return offered.map(action => ({ identifier: action.identifier, text: action.text }));
+    }
+
+    // A press on one of a row's actions does what a press on a toast's action does.
+    function invokeAction(row: var, identifier: string) {
+        row?.notification?.actions.find(action => action.identifier === identifier)?.invoke();
+    }
+
     function next() {
         while (!showing && waiting.length > 0) {
             const record = waiting[0];

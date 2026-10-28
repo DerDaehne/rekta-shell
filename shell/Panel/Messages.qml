@@ -6,10 +6,11 @@ import Rekta
 
 // The facet "meldungen", the notification centre: the board's list, newest first, a row each (live.md, "A growing
 // list"). In sight, it has seen them all. A press on a row does what a press on its toast does, and the panel goes.
-// A row pulled away past half its width, or Delete on it, is removed, and the focus goes to the next row; "alle
-// entfernen", a quiet button at the end, removes them all. The board offers undo for each removal. Rows that leave
-// drift and fade, then the rest close the gap; rows that arrive or come back slide in from above while the rest make
-// room (motion.md, "Arriving, leaving", "Reordering"). Home and End go to the first and the last row.
+// A row pulled away past half its width, Delete on it, or its "entfernen" button is removed, and the focus goes to the
+// next row; "alle entfernen", a quiet button in the head above the rows beside their count, removes them all. The board
+// offers undo for each removal. Rows that leave drift and fade, then the rest close the gap; rows that arrive or come
+// back slide in from above while the rest make room (motion.md, "Arriving, leaving", "Reordering"). Home and End go to
+// the first and the last row. The times in the rows are told against `now`, which is renewed once a minute, and only while the list is in sight.
 // ponytail: a row arriving on top pushes the rows down also while the panel is scrolled away from the top; hold the
 // rows read in place (or hold new ones back behind a count) once lists that long show up.
 Column {
@@ -17,6 +18,9 @@ Column {
 
     required property NoticeBoard board
     property var locale: Qt.locale()
+    // The wall clock, replaceable for tests.
+    property var clock: () => new Date()
+    property var now: clock()
     readonly property bool hasRows: shown.count > 0
     // Runs from 0 to 1 as all rows leave at once.
     property real allLeaving: 0
@@ -47,7 +51,8 @@ Column {
             summary: row.summary,
             body: row.body,
             icon: row.icon.toString(),
-            time: Calendar.timeWords(row.time, locale)
+            stamp: row.time.getTime(),
+            actions: JSON.stringify(board.actionsOf(row))
         };
     }
 
@@ -65,7 +70,7 @@ Column {
 
     // The next row takes the focus, else the one before, else what comes before the list.
     function remove(row: MessageRow) {
-        if (row.activeFocus) {
+        if (row.holdsFocus) {
             const others = rowsInPlace();
             const at = others.indexOf(row);
             const next = others[at + 1] ?? others[at - 1];
@@ -84,6 +89,24 @@ Column {
         allGoing.start();
     }
 
+    // Home and End go to the ends; Up and Down go to the row before or after the one holding the focus, also from its
+    // buttons. Down from the last row goes on to "alle entfernen", Up from the first is left to the panel.
+    function focusTargetFor(key: int, rows: list<MessageRow>): Item {
+        if (key === Qt.Key_Home)
+            return rows[0] ?? null;
+        if (key === Qt.Key_End)
+            return rows[rows.length - 1] ?? null;
+        const step = key === Qt.Key_Up ? -1 : key === Qt.Key_Down ? 1 : 0;
+        const at = rows.findIndex(row => row.holdsFocus);
+        if (step === 0 || at < 0)
+            return null;
+        return rows[at + step] ?? (step > 0 ? clearAll : null);
+    }
+
+    function renewNow() {
+        now = clock();
+    }
+
     function focusBefore() {
         messages.nextItemInFocusChain(false)?.forceActiveFocus(Qt.BacktabFocusReason);
     }
@@ -96,10 +119,10 @@ Column {
     Component.onCompleted: sync()
 
     Keys.onPressed: event => {
-        const rows = rowsInPlace();
-        if (rows.length === 0 || (event.key !== Qt.Key_Home && event.key !== Qt.Key_End))
+        const target = focusTargetFor(event.key, rowsInPlace());
+        if (!target)
             return;
-        (event.key === Qt.Key_Home ? rows[0] : rows[rows.length - 1]).forceActiveFocus(Qt.TabFocusReason);
+        target.forceActiveFocus(Qt.TabFocusReason);
         event.accepted = true;
     }
 
@@ -119,6 +142,19 @@ Column {
 
     ListModel {
         id: shown
+    }
+
+    // Once a minute while in sight; coming into sight it catches up at once.
+    Timer {
+        objectName: "tick"
+        interval: Calendar.untilNextMinute(messages.now)
+        running: messages.visible
+        repeat: true
+        onTriggered: messages.renewNow()
+        onRunningChanged: {
+            if (running)
+                messages.renewNow();
+        }
     }
 
     // All rows leave together, as one row would (motion.md, "Arriving, leaving").
@@ -158,87 +194,123 @@ Column {
         }
     }
 
-    Column {
+    Item {
+        id: filled
+
         width: messages.width
+        height: head.height + Tokens.spaceM + stack.height
         visible: messages.hasRows
         x: messages.allLeaving * Geometry.rowLeaveDrift
         opacity: 1 - messages.allLeaving
 
         Column {
-            id: list
+            id: stack
 
-            objectName: "rows"
+            y: head.height + Tokens.spaceM
             width: parent.width
 
-            // A row that comes slides in from above and fades up.
-            add: Transition {
-                NumberAnimation {
-                    property: "y"
-                    from: ViewTransition.destination.y - Geometry.rowEnterShift
-                    duration: Tokens.durationShort
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: Tokens.easeIn
+            Column {
+                id: list
+
+                objectName: "rows"
+                width: parent.width
+
+                // A row that comes slides in from above and fades up.
+                add: Transition {
+                    NumberAnimation {
+                        property: "y"
+                        from: ViewTransition.destination.y - Geometry.rowEnterShift
+                        duration: Tokens.durationShort
+                        easing.type: Easing.Bezier
+                        easing.bezierCurve: Tokens.easeIn
+                    }
+                    NumberAnimation {
+                        property: "opacity"
+                        from: 0
+                        to: 1
+                        duration: Tokens.durationShort
+                        easing.type: Easing.Bezier
+                        easing.bezierCurve: Tokens.easeIn
+                    }
                 }
-                NumberAnimation {
-                    property: "opacity"
-                    from: 0
-                    to: 1
-                    duration: Tokens.durationShort
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: Tokens.easeIn
+
+                // The rest close the gap or make room; an arrival cut short still ends whole.
+                move: Transition {
+                    NumberAnimation {
+                        property: "y"
+                        duration: Tokens.durationModerate
+                        easing.type: Easing.Bezier
+                        easing.bezierCurve: Tokens.easeBase
+                    }
+                    NumberAnimation {
+                        property: "opacity"
+                        to: 1
+                        duration: Tokens.durationModerate
+                        easing.type: Easing.Bezier
+                        easing.bezierCurve: Tokens.easeBase
+                    }
+                }
+
+                Repeater {
+                    id: rowItems
+
+                    model: shown
+
+                    delegate: MessageRow {
+                        id: row
+
+                        now: messages.now
+                        locale: messages.locale
+
+                        onPressed: {
+                            messages.board.press(messages.recordOf(order));
+                            messages.acted();
+                        }
+                        onActionPressed: identifier => {
+                            messages.board.invokeAction(messages.recordOf(order), identifier);
+                            messages.acted();
+                        }
+                        onRemoving: messages.remove(row)
+                        // Unless its notification closed meanwhile.
+                        onGone: {
+                            const record = messages.recordOf(order);
+                            if (record)
+                                messages.board.remove([record]);
+                        }
+                    }
                 }
             }
 
-            // The rest close the gap or make room; an arrival cut short still ends whole.
-            move: Transition {
-                NumberAnimation {
-                    property: "y"
-                    duration: Tokens.durationModerate
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: Tokens.easeBase
-                }
-                NumberAnimation {
-                    property: "opacity"
-                    to: 1
-                    duration: Tokens.durationModerate
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: Tokens.easeBase
-                }
-            }
-
-            Repeater {
-                id: rowItems
-
-                model: shown
-
-                delegate: MessageRow {
-                    id: row
-
-                    onPressed: {
-                        messages.board.press(messages.recordOf(order));
-                        messages.acted();
-                    }
-                    onRemoving: messages.remove(row)
-                    // Unless its notification closed meanwhile.
-                    onGone: {
-                        const record = messages.recordOf(order);
-                        if (record)
-                            messages.board.remove([record]);
-                    }
-                }
+            Hairline {
+                width: parent.width
             }
         }
 
-        Hairline {
-            width: parent.width
-        }
-    }
+        // Declared after the rows, so the first focus stays on the newest row and not on "alle entfernen".
+        Item {
+            id: head
 
-    Button {
-        objectName: "clear"
-        variant: "quiet"
-        text: "alle entfernen"
-        visible: messages.hasRows
-        onClicked: messages.removeAll()
+            objectName: "head"
+            width: parent.width
+            height: Tokens.controlHeight
+
+            Body {
+                objectName: "count"
+                anchors.verticalCenter: parent.verticalCenter
+                text: messages.board.rows.length === 1 ? "1 meldung" : `${messages.board.rows.length} meldungen`
+                color: Tokens.color.textContrastHigh
+            }
+
+            Button {
+                id: clearAll
+
+                objectName: "clear"
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                variant: "quiet"
+                text: "alle entfernen"
+                onClicked: messages.removeAll()
+            }
+        }
     }
 }

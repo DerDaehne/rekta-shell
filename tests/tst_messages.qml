@@ -209,8 +209,7 @@ TestCase {
         compare(findChild(first, "icon").source.toString(), testCase.picture);
         compare(findChild(first, "icon").width, Geometry.iconSize);
         compare(findChild(first, "summary").font.weight, Tokens.fontWeightSemibold);
-        compare(findChild(first, "time").text, Calendar.timeWords(board.rows[0].time, Qt.locale()));
-        verify(findChild(first, "time").text !== "");
+        compare(findChild(first, "time").text, "gerade eben");
         compare(findChild(first, "time").font.features.tnum, 1, "tabular figures");
         const body = findChild(first, "body");
         compare(body.lineCount, 1, "one line of the body");
@@ -230,7 +229,7 @@ TestCase {
         openOnMessages();
         verify(named("empty").visible);
         compare(rows().length, 0);
-        verify(!named("clear").visible);
+        verify(!named("head").visible);
         verify(findChild(side, "pivot").activeFocus, "nothing to focus in the list");
     }
 
@@ -378,6 +377,161 @@ TestCase {
         compare(calls, ["cleo closed 2", "ben closed 2", "anna closed 2"]);
     }
 
+    // The first row arrived at the given date; the clock tells the given date.
+    function tellTime(arrived: date, now: date): string {
+        board.rows[0].time = arrived;
+        board.rows = board.rows.slice();
+        messages.clock = () => now;
+        messages.renewNow();
+        return findChild(rows()[0], "time").text;
+    }
+
+    function test_a_row_tells_how_long_ago_in_rektas_words() {
+        notify({ summary: "anna" });
+        openOnMessages();
+        const arrived = new Date(2026, 9, 28, 10, 0, 20);
+        compare(tellTime(arrived, new Date(2026, 9, 28, 10, 0, 50)), "gerade eben");
+        compare(tellTime(arrived, new Date(2026, 9, 28, 10, 4, 30)), "vor 4 min");
+        compare(tellTime(arrived, new Date(2026, 9, 28, 10, 59, 30)), "vor 59 min");
+        compare(tellTime(arrived, new Date(2026, 9, 28, 12, 0, 30)), `um ${Calendar.timeWords(arrived, Qt.locale())}`);
+        compare(tellTime(arrived, new Date(2026, 9, 29, 9, 0, 0)), `${Calendar.dateWords(arrived, Qt.locale())} um ${Calendar.timeWords(arrived, Qt.locale())}`);
+        compare(tellTime(arrived, new Date(2026, 9, 28, 9, 0, 0)), "gerade eben", "a clock that runs behind does not count backwards");
+    }
+
+    function test_the_times_are_renewed_by_one_tick_a_minute_while_the_list_is_in_sight_and_by_none_otherwise() {
+        notify({ summary: "anna" });
+        const tick = named("tick");
+        verify(!tick.running, "the panel is closed");
+        openOnMessages();
+        verify(tick.running && tick.repeat);
+        compare(tick.interval, Calendar.untilNextMinute(messages.now), "it wakes when the minute changes");
+        verify(tick.interval <= 60000);
+        side.close();
+        verify(!tick.running, "closed again");
+    }
+
+    function test_the_remove_button_shows_with_the_pointer_or_the_focus_and_removes_with_undo() {
+        three();
+        openOnMessages();
+        const [cleo, ben] = rows();
+        const remove = findChild(ben, "remove");
+        verify(!remove.visible, "not on a row at rest");
+        verify(findChild(ben, "time").visible);
+        mouseMove(ben, 40, 10);
+        verify(remove.visible, "on a row under the pointer");
+        verify(!findChild(ben, "time").visible, "in the place of the time");
+        compare(remove.label, "entfernen");
+        compare(remove.icon, "close");
+        verify(!findChild(cleo, "remove").visible || cleo.activeFocus, "only on that row");
+        mouseMove(scene, 1, 1);
+        verify(!remove.visible);
+        ben.forceActiveFocus(Qt.TabFocusReason);
+        verify(remove.visible, "on a row with the focus");
+        mouseClick(remove);
+        compare(summaries(), ["cleo", "anna"]);
+        compare(toaster.open.text, "meldung entfernt");
+        compare(calls, [], "it closes only once the undo window has run out");
+        toaster.open.press();
+        compare(summaries(), ["cleo", "ben", "anna"], "undo brings it back");
+    }
+
+    function test_the_focus_reaches_the_remove_button_and_the_actions_with_tab_and_enter_presses_them() {
+        notify({ summary: "ben" });
+        notify({ summary: "anna" }, [["reply", "antworten"], ["later", "später"]]);
+        openOnMessages();
+        const [row] = rows();
+        verify(row.activeFocus);
+        keyClick(Qt.Key_Tab);
+        verify(findChild(row, "remove").activeFocus, "the remove button");
+        keyClick(Qt.Key_Tab);
+        verify(offers(row)[0].activeFocus, "antworten");
+        keyClick(Qt.Key_Tab);
+        verify(offers(row)[1].activeFocus, "später");
+        keyClick(Qt.Key_Tab);
+        verify(rows()[1].activeFocus, "then the next row");
+        keyClick(Qt.Key_Backtab);
+        keyClick(Qt.Key_Backtab);
+        keyClick(Qt.Key_Backtab);
+        verify(findChild(row, "remove").activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(summaries(), ["ben"], "Enter on the remove button removes it");
+        verify(rows()[0].activeFocus, "and the focus goes to the next row");
+        compare(toaster.open.text, "meldung entfernt");
+    }
+
+    function test_delete_on_a_button_of_the_row_removes_the_row() {
+        notify({ summary: "anna" }, [["reply", "antworten"]]);
+        openOnMessages();
+        offers(rows()[0])[0].forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Delete);
+        compare(summaries(), []);
+    }
+
+    function offers(row): var {
+        return Array.from(findChild(row, "offers").children).filter(child => child instanceof Button);
+    }
+
+    function test_up_to_two_actions_stand_under_the_text_and_a_press_runs_the_action_and_not_the_default() {
+        notify({ summary: "anna", body: "lunch at noon?" }, [["default", "open"], ["reply", "antworten"], ["later", "später"], ["mute", "stumm"]]);
+        notify({ summary: "ben" });
+        openOnMessages();
+        const [ben, anna] = rows();
+        verify(!findChild(ben, "offers").visible, "none without actions");
+        const buttons = offers(anna);
+        compare(buttons.map(button => button.text), ["antworten", "später"], "two, and not the default one");
+        verify(buttons.every(button => button.variant === "quiet"));
+        verify(buttons[0].mapToItem(anna, 0, 0).y >= findChild(anna, "body").y + findChild(anna, "body").height, "under the text");
+        verify(anna.height >= findChild(anna, "body").y + findChild(anna, "body").height + buttons[0].height);
+        mouseClick(buttons[1]);
+        compare(calls, ["anna invoked later", "anna closed 2"]);
+        verify(!side.open, "as a press on the row, the panel goes");
+        compare(summaries(), ["ben"]);
+    }
+
+    function test_a_row_that_ran_out_offers_no_actions() {
+        notify({ summary: "anna" }, [["reply", "antworten"]]);
+        board.rows[0].notification.expire();
+        openOnMessages();
+        compare(summaries(), ["anna"]);
+        verify(!findChild(rows()[0], "offers").visible);
+    }
+
+    function test_the_row_itself_still_runs_the_default_action_beside_its_buttons() {
+        notify({ summary: "anna" }, [["default", "open"], ["reply", "antworten"]]);
+        openOnMessages();
+        mouseClick(rows()[0], 100, 12);
+        compare(calls, ["anna invoked default", "anna closed 2"]);
+    }
+
+    function test_the_head_above_the_rows_counts_them_and_removes_them_all_with_undo() {
+        notify({ summary: "anna" });
+        openOnMessages();
+        compare(named("count").text, "1 meldung");
+        three();
+        waitForRendering(scene);
+        compare(named("count").text, "4 meldungen");
+        const head = named("head");
+        verify(head.visible);
+        verify(head.mapToItem(scene, 0, 0).y + head.height <= rows()[0].mapToItem(scene, 0, 0).y, "above the rows");
+        verify(named("clear").x + named("clear").width <= head.width && named("clear").x > named("count").width, "the count first, the button at the end");
+        compare(named("clear").text, "alle entfernen");
+        mouseClick(named("clear"));
+        compare(summaries(), []);
+        compare(toaster.open.text, "4 meldungen entfernt");
+        toaster.open.press();
+        compare(summaries().length, 4, "undo for all");
+    }
+
+    function test_nothing_stands_below_the_last_row_but_its_hairline() {
+        three();
+        openOnMessages();
+        const last = rows()[2];
+        const list = findChild(messages, "rows");
+        verify(named("clear").mapToItem(messages, 0, 0).y < list.mapToItem(messages, 0, 0).y, "the button is not at the end");
+        verify(messages.height <= list.mapToItem(messages, 0, 0).y + list.height + Geometry.hairline + Tokens.spaceL + 1);
+        verify(last.y >= 0);
+    }
+
     function test_a_press_on_a_row_runs_its_default_action_and_the_panel_goes() {
         three();
         openOnMessages();
@@ -458,7 +612,7 @@ TestCase {
             init();
             notify({ appName: "updates", summary: "12 updates installed", image: "" });
             notify({ summary: "invoice 2026-10", body: "Your invoice for October is ready. It lists every build minute and every gigabyte of storage you used." });
-            notify({ summary: "Mia", body: "Can we move the call to Thursday afternoon?" });
+            notify({ summary: "Mia", body: "Can we move the call to Thursday afternoon?" }, [["reply", "antworten"], ["later", "später"]]);
             openOnMessages();
             keyClick(Qt.Key_Down);
             tryVerify(() => rows().every(row => findChild(row, "icon").status !== Image.Loading));

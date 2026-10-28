@@ -1,11 +1,15 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Rekta
 
 // One notification in the centre, a row on a hairline (rekta.css:68–70): the picture or the app's icon, square with a
-// tile's corners, the summary in semibold with the time in tabular figures at the end, and one line of the body, cut.
-// A click, Enter or Space presses it, tinted on hover and press like a toast's text. Pulled towards the trailing edge
-// it follows the pointer; let go past half its width it leaves, else it glides back. Leaving, it drifts and fades as a
-// row that leaves a list does (motion.md, "Arriving, leaving"); then it has gone.
+// tile's corners, the summary in semibold with how long ago at the end, one line of the body, cut, and under it up to two
+// of the notification's actions as quiet buttons. A click, Enter or Space presses the row, tinted on hover and press like
+// a toast's text. While the pointer is on the row or the focus is in it, a quiet "entfernen" button takes the place of
+// the time; Delete, or pulling the row towards the trailing edge, are shortcuts to it. Let go past half its width the pulled
+// row leaves, else it glides back. Leaving, it drifts and fades as a row that leaves a list does (motion.md, "Arriving,
+// leaving"); then it has gone.
 Item {
     id: row
 
@@ -15,7 +19,22 @@ Item {
     required property string summary
     required property string body
     required property string icon
-    required property string time
+    // When it arrived, in ms, and the time it is told against; the words follow `now`.
+    required property double stamp
+    // JSON: [{ identifier, text }], the actions beside the default one.
+    required property string actions
+    property var now: new Date()
+    property var locale: Qt.locale()
+    readonly property string time: Calendar.ago(new Date(stamp), now, locale)
+    readonly property var actionList: JSON.parse(actions)
+    // The pointer is on it, or the focus is in it (also on a button of its own).
+    readonly property bool engaged: hover.hovered || holdsFocus
+    readonly property bool holdsFocus: {
+        let item = Window.window?.activeFocusItem;
+        while (item && item !== row)
+            item = item.parent;
+        return item === row;
+    }
     // How far the pointer has pulled it towards the trailing edge.
     property real pulled: 0
     // Runs from 0 to 1 as it leaves.
@@ -23,6 +42,7 @@ Item {
     readonly property bool going: leaving > 0 || goingOut.running
 
     signal pressed
+    signal actionPressed(string identifier)
     // Delete was pressed on it, or it was pulled away: it should leave.
     signal removing
     // It has left.
@@ -43,7 +63,7 @@ Item {
     }
 
     width: parent ? parent.width : 0
-    implicitHeight: Geometry.hairline + 2 * Tokens.spaceS + heading.height + (detail.visible ? detail.height : 0)
+    implicitHeight: Geometry.hairline + 2 * Tokens.spaceS + heading.height + (detail.visible ? detail.height : 0) + (offers.visible ? offers.height : 0)
     activeFocusOnTab: !going
     Accessible.role: Accessible.Button
     Accessible.name: [app, summary, body, time].filter(part => part !== "").join(", ")
@@ -141,6 +161,7 @@ Item {
             objectName: "time"
             x: row.width - width
             anchors.baseline: heading.baseline
+            visible: !row.engaged
             text: row.time
             wrapMode: Text.NoWrap
         }
@@ -172,6 +193,38 @@ Item {
                     duration: Tokens.durationShort
                     easing.type: Easing.Bezier
                     easing.bezierCurve: Tokens.easeBase
+                }
+            }
+        }
+
+        IconButton {
+            objectName: "remove"
+            x: row.width - width
+            y: heading.y + (heading.height - height) / 2
+            visible: row.engaged
+            variant: "quiet"
+            icon: "close"
+            label: "entfernen"
+            onClicked: row.removing()
+        }
+
+        Row {
+            id: offers
+
+            objectName: "offers"
+            x: heading.x - Tokens.controlPadding - Geometry.buttonBorder
+            y: (detail.visible ? detail.y + detail.height : heading.y + heading.height)
+            visible: row.actionList.length > 0
+
+            Repeater {
+                model: row.actionList
+
+                delegate: Button {
+                    required property var modelData
+
+                    variant: "quiet"
+                    text: modelData.text
+                    onClicked: row.actionPressed(modelData.identifier)
                 }
             }
         }
