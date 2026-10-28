@@ -136,8 +136,18 @@ Column {
             connectionChosen(device, !device.connected);
     }
 
+    // Networks already listed keep their place and the vanished ones drop out; new ones follow by signal.
     function rank() {
-        ranked = networkList.filter(network => network.name !== "").sort((a, b) => b.signalStrength - a.signalStrength || a.name.localeCompare(b.name));
+        const kept = ranked.filter(network => networkList.includes(network));
+        const fresh = networkList.filter(network => network.name !== "" && !kept.includes(network));
+        fresh.sort((a, b) => b.signalStrength - a.signalStrength || a.name.localeCompare(b.name));
+        ranked = kept.concat(fresh);
+    }
+
+    // Without wireless, or without its device, nothing of the list stays open and nothing is scanned for.
+    function dropNetworkList() {
+        wifiBranch.fold();
+        networksLevel.leave();
     }
 
     function needsPassword(network: var): bool {
@@ -149,7 +159,7 @@ Column {
         case Controls.NoSecrets:
             return "kein passwort";
         case Controls.WifiClientDisconnected:
-            return "getrennt";
+            return "verbindung abgebrochen";
         case Controls.WifiClientFailed:
             return "fehlgeschlagen";
         case Controls.WifiAuthTimeout:
@@ -313,7 +323,7 @@ Column {
                     objectName: "wifiState"
                     anchors.verticalCenter: parent.verticalCenter
                     status: controls.joining ? "warning" : controls.connectedNetwork ? "info" : ""
-                    word: controls.joining ? "verbindet" : controls.connectedNetwork ? "verbunden" : "getrennt"
+                    word: controls.joining ? "wartet" : controls.connectedNetwork ? "verbunden" : "getrennt"
                 }
 
                 Button {
@@ -340,6 +350,23 @@ Column {
                     networksLevel.show(networksOpener);
                 else
                     controls.pressNetwork(row);
+            }
+
+            // What is empty and why (states.md, "Empty").
+            Item {
+                objectName: "noNetworks"
+                visible: controls.ranked.length === 0
+                width: parent.width
+                height: noNetworksHint.implicitHeight + Tokens.spaceS
+                property alias text: noNetworksHint.text
+
+                Hint {
+                    id: noNetworksHint
+
+                    x: Tokens.spaceM
+                    width: parent.width - 2 * Tokens.spaceM
+                    text: "keine netze gefunden, die suche läuft"
+                }
             }
 
             Repeater {
@@ -560,6 +587,7 @@ Column {
         }
 
         function onListingChanged() {
+            controls.ranked = [];
             if (controls.listing)
                 controls.rank();
             else
@@ -573,16 +601,18 @@ Column {
                 controls.rank();
             else
                 controls.ranked = [];
+            if (!controls.networkList.includes(passwordSheet.network))
+                passwordSheet.close("gone");
         }
 
         function onWifiOnChanged() {
             if (!controls.wifiOn)
-                wifiBranch.fold();
+                controls.dropNetworkList();
         }
 
         function onWifiDeviceChanged() {
             if (!controls.wifiDevice)
-                wifiBranch.fold();
+                controls.dropNetworkList();
         }
     }
 
@@ -692,7 +722,7 @@ Column {
 
         text: network.name
         activeFocusOnTab: true
-        Accessible.name: [text, cause, waits ? "verbindet" : "", network.connected ? "verbunden" : kinds, `signal ${strength}`].filter(part => part !== "").join(", ")
+        Accessible.name: [text, cause, waits ? "wartet" : "", network.connected ? "verbunden" : kinds, `signal ${strength}`].filter(part => part !== "").join(", ")
 
         StatusTag {
             objectName: "failure"
@@ -707,7 +737,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
             visible: networkItem.waits
             status: "warning"
-            word: "verbindet"
+            word: "wartet"
         }
 
         Meta {

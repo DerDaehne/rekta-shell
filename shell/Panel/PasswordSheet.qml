@@ -9,7 +9,6 @@ Sheet {
 
     // What the question is about, kept to hand back with the password.
     property var network: null
-    readonly property alias password: field.text
 
     signal submitted(var network, string password)
 
@@ -22,6 +21,10 @@ Sheet {
     }
 
     function submit() {
+        if (!network) {
+            close("gone");
+            return;
+        }
         if (field.text === "") {
             field.error = "passwort fehlt";
             return;
@@ -30,6 +33,11 @@ Sheet {
     }
 
     kicker: "wlan"
+    dirty: field.text !== ""
+    askKicker: "nicht verbunden"
+    askTitle: "passwort verwerfen?"
+    keepWord: "weiter eingeben"
+    discardWord: "verwerfen"
     title: `passwort für ${network?.name ?? ""}`
     onClosed: answer => {
         if (answer === "connect")

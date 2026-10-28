@@ -218,6 +218,13 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   `audiomute`, `audioplay`, …) but not mic mute or brightness; write those to a
   uinput device in the guest as root (the guest mounts the host's `/nix/store`,
   so a tool built on the host, such as python-evdev, runs there).
+
+  The VM runs NetworkManager, and its user may control it. The wired card shows as
+  the cable. Wireless needs virtual radios, all inside the guest: `modprobe
+  mac80211_hwsim radios=3` as root, then `hostapd` and `dnsmasq` from the host's
+  store (build them on the host; the guest mounts it) as test access points on two of
+  the radios, with the guest's firewall stopped for DHCP. Use public dummy SSIDs and
+  passphrases only. Never scan, switch or connect on the host.
 - `nix run .#fedora-vm` boots a pinned Fedora cloud image (`nix/fedora-vm.nix`; the F45 Beta
   image, because Plasma 6.8 is in no stable Fedora yet; it stays on the mirror until F45 is
   released, then the file moves to `releases/45/` and the pin needs the new name and hash;
