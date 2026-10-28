@@ -1017,19 +1017,65 @@ TestCase {
         verify(top() >= 0);
     }
 
-    function test_revealing_a_place_scrolls_it_to_the_top_of_the_view_and_nothing_scrolls_back() {
+    function atTopOfView(item: var, scroller: var): bool {
+        return Math.abs(item.mapToItem(scroller, 0, 0).y) < 0.5 || scroller.contentY + scroller.height >= scroller.contentHeight - 0.5;
+    }
+
+    function test_revealing_a_place_from_a_closed_panel_scrolls_to_it_once_the_facet_has_laid_out() {
+        giveSound(controls);
+        scene.height = 360;
+        const row = controls.places.doNotDisturb;
+        side.show(0);
+        side.reveal(row);
+        const scroller = findChild(side, "scroller");
+        tryVerify(() => atTopOfView(row, scroller));
+        verify(scroller.contentY > 0);
+        wait(200);
+        verify(atTopOfView(row, scroller), "and stays there");
+    }
+
+    function test_revealing_nothing_scrolls_back_to_the_top_and_a_hand_on_the_view_lets_the_place_go() {
         giveSound(controls);
         scene.height = 360;
         side.show(0);
         waitForRendering(side);
         const scroller = findChild(side, "scroller");
-        const row = controls.places.doNotDisturb;
-        verify(row.mapToItem(scroller, 0, 0).y > scroller.height / 2, "below the middle of the view to begin with");
-        side.reveal(row);
-        tryVerify(() => Math.abs(row.mapToItem(scroller, 0, 0).y) < 0.5 || scroller.contentY + scroller.height >= scroller.contentHeight - 0.5);
-        verify(scroller.contentY > 0);
+        side.reveal(controls.places.doNotDisturb);
+        tryVerify(() => scroller.contentY > 0);
         side.reveal(null);
-        tryCompare(scroller, "contentY", 0);
+        compare(scroller.contentY, 0);
+        side.reveal(controls.places.doNotDisturb);
+        mouseWheel(scroller, 10, 10, 0, 120);
+        verify(side.revealed === null, "the wheel takes the view");
+    }
+
+    function test_a_word_leads_to_its_place_in_the_controls() {
+        giveBluetooth(controls);
+        compare(controls.places.sound, findChild(side, "sound"));
+        compare(controls.places.connections, findChild(side, "connections"));
+        compare(controls.places.doNotDisturb.label, "nicht stören");
+        compare(controls.places.power.label, "energieprofil");
+        controls.hasPowerProfiles = false;
+        compare(controls.places.power, findChild(side, "session"), "without profiles the group it would stand in");
+    }
+
+    function test_revealing_a_place_puts_the_focus_on_its_first_control() {
+        giveSound(controls);
+        giveBluetooth(controls);
+        scene.height = 360;
+        side.show(0);
+        side.reveal(controls.places.connections);
+        const first = findChild(side, "bluetooth");
+        tryVerify(() => first.activeFocus);
+        side.reveal(controls.places.sound);
+        tryVerify(() => findChild(side, "outputDevice").activeFocus || side.within(controls.places.sound, scene.Window.activeFocusItem));
+    }
+
+    function test_revealing_a_place_that_is_not_there_leaves_the_view_at_the_top() {
+        side.show(0);
+        side.reveal(controls.places.connections);
+        compare(findChild(side, "scroller").contentY, 0);
+        compare(side.revealed, null);
     }
 
     function test_a_long_device_name_is_cut_in_its_select_and_in_its_row() {

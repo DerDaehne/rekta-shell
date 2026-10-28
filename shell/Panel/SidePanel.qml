@@ -16,6 +16,8 @@ FocusScope {
     readonly property alias currentIndex: pivot.currentIndex
     // From show() until it has gone; a host shows its surface while this holds.
     property bool open: false
+    // The item of the facet that stays at the top of the view, until a hand moves it.
+    property Item revealed: null
     // Runs from 0 to 1 as it comes in, and back to 0 as it leaves.
     property real entry: 1
     readonly property real contentWidth: 2.5 * Tokens.tileUnit + Tokens.spaceS
@@ -43,12 +45,35 @@ FocusScope {
         focusFirst();
     }
 
-    // Scrolls the facet so an item of it stands at the top, or to the top without one. The facet lays itself out at its
-    // next polish, so the place is taken again once that has run.
+    // Scrolls the facet so an item of it stands at the top, or to the top without one, and puts the focus on the item's
+    // first control. The facet lays itself out when it first shows, which moves the item and grows the content: the item
+    // is kept at the top until a hand moves the view or the panel goes. An item that does not show leaves the view at the top.
     function reveal(item: Item) {
-        const scroll = () => scroller.contentY = item ? Math.max(0, Math.min(item.mapToItem(scroller.contentItem, 0, 0).y, scroller.contentHeight - scroller.height)) : 0;
-        scroll();
-        Qt.callLater(scroll);
+        revealed = item?.visible ? item : null;
+        keepRevealed();
+        if (revealed)
+            focusIn(revealed);
+    }
+
+    function keepRevealedIfAny() {
+        if (revealed)
+            keepRevealed();
+    }
+
+    function keepRevealed() {
+        if (!revealed) {
+            scroller.contentY = 0;
+            return;
+        }
+        const top = revealed.mapToItem(scroller.contentItem, 0, 0).y;
+        scroller.contentY = Math.max(0, Math.min(top, scroller.contentHeight - scroller.height));
+    }
+
+    // The first control inside an item, if it has one.
+    function focusIn(item: Item) {
+        const first = item.nextItemInFocusChain(true);
+        if (first && within(item, first))
+            first.forceActiveFocus(Qt.TabFocusReason);
     }
 
     function close() {
@@ -89,6 +114,7 @@ FocusScope {
 
     function gone() {
         open = false;
+        revealed = null;
         // The focus goes back only to something that still shows (rekta.js:2424).
         if (memo.focused?.visible)
             memo.focused.forceActiveFocus();
@@ -96,8 +122,12 @@ FocusScope {
     }
 
     function holds(item: Item): bool {
+        return within(panel, item);
+    }
+
+    function within(ancestor: Item, item: Item): bool {
         for (let inside = item; inside; inside = inside.parent) {
-            if (inside === panel)
+            if (inside === ancestor)
                 return true;
         }
         return false;
@@ -203,6 +233,8 @@ FocusScope {
                 contentHeight: facetHolder.height
                 interactive: contentHeight > height
                 boundsBehavior: Flickable.StopAtBounds
+                onContentHeightChanged: sidePanel.keepRevealedIfAny()
+                onMovementStarted: sidePanel.revealed = null
                 clip: true
 
                 Facets {

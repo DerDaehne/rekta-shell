@@ -16,7 +16,7 @@ import QtQuick
 // where they are.
 //
 // The status words (`AppBarStatus`) never move into "more", as the live state never does in Rekta (navigation.md,
-// "When the bar is full"); the other controls give way to them.
+// "When the bar is full"); the other controls give way to them first, then the words give up places, down to a single "+N".
 Rectangle {
     id: bar
 
@@ -77,17 +77,21 @@ Rectangle {
         return !moved.includes(item);
     }
 
-    // The room an item needs at least: the middle gives all of it up, unless pinned.
-    function least(item: Item): real {
+    // The room an item needs at least: the middle gives all of it up, unless pinned; the status words take what their limit
+    // lets them.
+    function least(item: Item, statusLimit: int): real {
+        const status = item as AppBarStatus;
+        if (status)
+            return status.widthAt(statusLimit);
         const middle = item as AppBarMiddle;
         if (!middle)
             return item.implicitWidth;
         return middle.pinned ? Math.min(middle.implicitWidth, Geometry.appBarPinnedShare * width) : 0;
     }
 
-    function fits(region: var, moved: var, moreShown: bool): bool {
+    function fits(region: var, moved: var, moreShown: bool, statusLimit: int): bool {
         const shown = region.items.filter(item => shows(item, moved, moreShown));
-        const widths = shown.map(item => least(item));
+        const widths = shown.map(item => least(item, statusLimit));
         if (moreShown && region.more)
             widths.push(moreButton.implicitWidth);
         const needed = widths.reduce((sum, w) => sum + w, 0) + gap * Math.max(0, widths.length - 1);
@@ -101,21 +105,30 @@ Rectangle {
         return controls.map((control, i) => ({ control, i })).sort((a, b) => a.control.priority - b.control.priority || b.i - a.i).map(entry => entry.control);
     }
 
-    // Which controls move into "more", and whether it shows; a control moves only from a side that does not fit.
+    // Which controls move into "more", and whether it shows; a control moves only from a side that does not fit. When the
+    // controls have all gone and the status words still do not fit, they give up words, down to one count of them.
     function layoutPlan(): var {
         const sides = regions();
-        const fitAll = (moved, moreShown) => sides.every(region => fits(region, moved, moreShown));
-        if (fitAll([], false))
-            return { sides, moved: [], more: false };
+        const most = statusWords()?.most ?? 0;
+        const fitAll = (moved, moreShown, limit) => sides.every(region => fits(region, moved, moreShown, limit));
+        if (fitAll([], false, most))
+            return { sides, moved: [], more: false, statusLimit: most };
         const moved = [];
         for (const control of candidates()) {
-            if (fitAll(moved, true))
+            if (fitAll(moved, true, most))
                 break;
-            if (!fits(sides.find(region => region.items.includes(control)), moved, true))
+            if (!fits(sides.find(region => region.items.includes(control)), moved, true, most))
                 moved.push(control);
         }
+        let limit = most;
+        while (limit > 0 && !fitAll(moved, true, limit))
+            limit--;
         const order = Array.from(strip.children);
-        return { sides, moved: moved.sort((a, b) => order.indexOf(a) - order.indexOf(b)), more: true };
+        return { sides, moved: moved.sort((a, b) => order.indexOf(a) - order.indexOf(b)), more: true, statusLimit: limit };
+    }
+
+    function statusWords(): AppBarStatus {
+        return Array.from(strip.children).map(item => item as AppBarStatus).find(item => item !== null) ?? null;
     }
 
     // Before the middle the items pack from the start, after it to the end, also while it has given way; the middle
@@ -163,6 +176,9 @@ Rectangle {
             if (middle)
                 middle.visible = shows(middle, plan.moved, plan.more);
         }
+        const words = statusWords();
+        if (words)
+            words.limit = plan.statusLimit;
         moreButton.overflowed = !plan.more;
         if (centre)
             put(centre, (width - centre.implicitWidth) / 2);

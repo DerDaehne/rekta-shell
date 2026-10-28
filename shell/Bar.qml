@@ -116,7 +116,8 @@ PanelWindow {
 
         AppBarStatus {
             keys: panel.status.keys
-            words: panel.status.words
+            words: panel.status.deviations
+            more: panel.status.more
 
             onActivated: word => panel.controlPanel.openAt(panel.modelData, word.opens)
         }

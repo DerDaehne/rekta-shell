@@ -35,6 +35,7 @@ PanelWindow {
     // The screen it opens on, null once that one has gone; the panel hides meanwhile.
     property ShellScreen shownOn: primaryScreen
     readonly property alias doNotDisturb: controls.doNotDisturb
+    readonly property alias hasPowerProfiles: controls.hasPowerProfiles
     // Untyped, as qmllint sees Pipewire's own opaque copy of the model type, which lacks `values`.
     readonly property var nodes: Pipewire.nodes
     // The sound cards and other audio devices, not the programs playing or recording.

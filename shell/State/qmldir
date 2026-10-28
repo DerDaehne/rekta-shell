@@ -1,2 +1,3 @@
 module State
 StatusWords 1.0 StatusWords.qml
+Sources 1.0 Sources.js

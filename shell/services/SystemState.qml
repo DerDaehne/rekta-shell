@@ -14,18 +14,15 @@ Scope {
     // The default audio output, bound by its tracker (ReadoutSources).
     required property PwNode sink
     required property bool doNotDisturb
+    // Whether the energy profile can be chosen in the panel, so the battery word names the place it opens.
+    required property bool powerProfiles
     readonly property StatusWords words: model
+    // NetworkManager is asked only once it runs: Quickshell picks its network backend when the singleton is first read.
+    readonly property alias networkManagerRunning: networkManager.registered
 
     // Untyped, as qmllint sees Pipewire's own opaque copy of the model type, which lacks `values`.
     readonly property var nodes: Pipewire.nodes
     readonly property list<PwNode> streams: nodes.values.filter(node => node.isStream)
-    // ponytail: a capture stream counts while it is connected, also when it is paused; PwNode has no state to tell.
-    readonly property bool capturing: streams.some(node => node.properties["media.class"] === "Stream/Input/Audio" && node.properties["stream.capture.sink"] !== "true")
-    // UPower's WarningLevel: 3 low, 4 critical, 5 action.
-    readonly property int lowWarning: 3
-    // ponytail: with NetworkManager's connectivity check off it reports Unknown and never "offline"; count the connected
-    // devices then.
-    readonly property bool offline: Networking.connectivity === NetworkConnectivity.None
 
     PwObjectTracker {
         objects: system.streams
@@ -40,14 +37,22 @@ Scope {
         iface: "org.freedesktop.UPower.Device"
     }
 
+    DBus.DBusServiceWatcher {
+        id: networkManager
+
+        busType: DBus.BusType.System
+        watchedService: "org.freedesktop.NetworkManager"
+    }
+
     StatusWords {
         id: model
 
         muted: system.sink?.audio?.muted ?? false
         doNotDisturb: system.doNotDisturb
-        microphoneInUse: system.capturing
-        batteryLow: (battery.properties.WarningLevel ?? 0) >= system.lowWarning
+        microphoneInUse: Sources.microphoneInUse(system.streams, Quickshell.processId)
+        batteryLow: Sources.batteryLow(battery.properties.WarningLevel)
         batteryPercent: Math.round(battery.properties.Percentage ?? 0)
-        offline: system.offline
+        offline: system.networkManagerRunning && Sources.offline(Networking.connectivity, NetworkConnectivity.None)
+        powerProfiles: system.powerProfiles
     }
 }
