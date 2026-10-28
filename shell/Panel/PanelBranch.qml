@@ -4,14 +4,16 @@ import Rekta
 // Rows that unfold below the row that opened them and push what stands below down; nothing floats. It unfolds and folds
 // as a tree branch does (motion.md, "Tree branch"; rekta.js:2776, :2779): the height grows with a fade, in
 // duration-short on ease-in, and closes in 0.7 of that on ease-out. Its rows are MenuItems; pressing one, or Enter or
-// Space on it, says so in `activated`. Escape folds it and the focus goes back to what opened it. It keeps itself in view
-// in the scroller it stands in.
+// Space on it, says so in `activated`. Escape folds it and the focus goes back to what opened it. While it unfolds it
+// keeps itself in view in the scroller it stands in; once open it leaves the view alone.
 Item {
     id: branch
 
     property bool expanded: false
     // Runs from 0 to 1 as it unfolds, and back as it folds.
     property real unfolded: 0
+    // From the start of an unfold until the column has placed it.
+    property bool revealing: false
     // What opened it; the focus goes back there.
     property Item opener
     default property alias rows: list.data
@@ -20,12 +22,15 @@ Item {
 
     function expand() {
         expanded = true;
+        revealing = true;
+        settle.stop();
         folding.stop();
         unfolding.start();
     }
 
     function collapse() {
         expanded = false;
+        revealing = false;
         unfolding.stop();
         folding.start();
     }
@@ -60,7 +65,7 @@ Item {
     }
 
     function reveal() {
-        if (expanded)
+        if (revealing)
             Reveal.intoView(branch, height);
     }
 
@@ -89,6 +94,16 @@ Item {
         duration: Tokens.durationShort
         easing.type: Easing.Bezier
         easing.bezierCurve: Tokens.easeIn
+        onStopped: settle.restart()
+    }
+
+    // The column places a row that just appeared on its next layout, which can come after the animation has ended.
+    // ponytail: a fixed wait for that layout; track the column's own polish if a slow frame ever outlasts it.
+    Timer {
+        id: settle
+
+        interval: 100
+        onTriggered: branch.revealing = false
     }
 
     NumberAnimation {

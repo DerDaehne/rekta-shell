@@ -85,7 +85,7 @@ Column {
 
     // A device connects or disconnects; one on its way has the system's answer to wait for.
     function pressBluetooth(row: MenuItem) {
-        if ((row as PairItem)?.pairs) {
+        if (row instanceof PairItem) {
             pairingAsked();
             return;
         }
@@ -429,8 +429,6 @@ Column {
     }
 
     component PairItem: MenuItem {
-        readonly property bool pairs: true
-
         text: "neues gerät koppeln"
         activeFocusOnTab: true
     }

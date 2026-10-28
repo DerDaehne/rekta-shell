@@ -186,6 +186,8 @@ TestCase {
 
         Flickable {
             property alias branch: lowBranch
+            property alias spacer: above
+            property alias lateRow: late
 
             width: 300
             height: 200
@@ -197,6 +199,8 @@ TestCase {
                 width: parent.width
 
                 Item {
+                    id: above
+
                     width: parent.width
                     height: 400
                 }
@@ -207,6 +211,7 @@ TestCase {
                     MenuItem { text: "one" }
                     MenuItem { text: "two" }
                     MenuItem { text: "three" }
+                    MenuItem { id: late; text: "late"; visible: false }
                 }
             }
         }
@@ -1340,6 +1345,19 @@ TestCase {
         compare(scroller.contentY, 400 + 3 * Tokens.rowHeight - scroller.height, "its bottom in sight");
     }
 
+    function test_an_open_branch_leaves_the_view_alone_when_something_moves() {
+        const scroller = createTemporaryObject(scrolledBranchComponent, testCase);
+        scroller.branch.expand();
+        tryVerify(() => scroller.contentY > 0);
+        wait(300);
+        scroller.contentY = 0;
+        scroller.lateRow.visible = true;
+        scroller.spacer.height = 500;
+        waitForRendering(scroller);
+        wait(50);
+        compare(scroller.contentY, 0, "a new row or a move above does not pull the view");
+    }
+
     function test_the_devices_come_back_folded_after_the_panel_was_away() {
         giveBluetooth(controls);
         side.show(0);
@@ -1570,7 +1588,6 @@ TestCase {
                 panel.controls.input = null;
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-display-sheet-${theme}-${density}.png`);
-                grabImage(contact).save(`panel-bluetooth-collapsed-sheet-${theme}-${density}.png`);
                 findChild(contact, "chooseBluetoothDevice").forceActiveFocus();
                 keyClick(Qt.Key_Return);
                 waitForRendering(contact);
