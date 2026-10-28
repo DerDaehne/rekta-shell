@@ -120,6 +120,12 @@ FocusScope {
         buttonFor(takeCounting().name).forceActiveFocus(Qt.TabFocusReason);
     }
 
+    // A held Enter acts once: the repeats of the press that chose the action must not skip the window.
+    function acceptEnter(event: var) {
+        if (!event.isAutoRepeat)
+            actNow(takeCounting());
+    }
+
     // What Escape, Back and a press on the shading do: take back a countdown, else send the banner away.
     function dismiss() {
         if (counting)
@@ -155,11 +161,13 @@ FocusScope {
     visible: open
 
     // The buttons take Enter and Space first; the rest come here.
-    Keys.onPressed: event => {
+    Keys.onPressed: event => keyPressed(event)
+
+    function keyPressed(event: var) {
         if (!open)
             return;
         if (counting && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter))
-            actNow(takeCounting());
+            acceptEnter(event);
         else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Back)
             dismiss();
         else if (!counting && (event.key === Qt.Key_Left || event.key === Qt.Key_Right))

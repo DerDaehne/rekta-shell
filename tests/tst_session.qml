@@ -630,6 +630,20 @@ TestCase {
         }
     }
 
+    function test_a_held_enter_does_not_skip_the_window_its_repeats_do_nothing() {
+        startCountdown("shutdown");
+        for (let repeat = 0; repeat < 5; repeat++)
+            sessionBanner.keyPressed({
+                key: repeat % 2 === 0 ? Qt.Key_Return : Qt.Key_Enter,
+                isAutoRepeat: true,
+                accepted: false
+            });
+        compare(asked, [], "nothing called");
+        verify(sessionBanner.open && sessionBanner.counting !== null, "the countdown keeps running");
+        at(5000);
+        compare(asked, [shutdownCall], "and ends when its time is up");
+    }
+
     function test_enter_again_acts_at_once() {
         startCountdown("shutdown");
         at(1000);
