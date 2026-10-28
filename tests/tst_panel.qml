@@ -180,6 +180,38 @@ TestCase {
         }
     }
 
+    // A branch below the fold of a scroller.
+    Component {
+        id: scrolledBranchComponent
+
+        Flickable {
+            property alias branch: lowBranch
+
+            width: 300
+            height: 200
+            contentHeight: column.height
+
+            Column {
+                id: column
+
+                width: parent.width
+
+                Item {
+                    width: parent.width
+                    height: 400
+                }
+
+                PanelBranch {
+                    id: lowBranch
+
+                    MenuItem { text: "one" }
+                    MenuItem { text: "two" }
+                    MenuItem { text: "three" }
+                }
+            }
+        }
+    }
+
     Component {
         id: bluetoothDeviceComponent
 
@@ -1298,6 +1330,14 @@ TestCase {
         verify(!branch.expanded);
         verify(opener.activeFocus, "the focus goes back to geräte");
         verify(side.open);
+    }
+
+    function test_an_unfolding_branch_scrolls_itself_whole_into_view() {
+        const scroller = createTemporaryObject(scrolledBranchComponent, testCase);
+        compare(scroller.contentY, 0);
+        scroller.branch.expand();
+        tryVerify(() => scroller.contentY > 0);
+        compare(scroller.contentY, 400 + 3 * Tokens.rowHeight - scroller.height, "its bottom in sight");
     }
 
     function test_the_devices_come_back_folded_after_the_panel_was_away() {

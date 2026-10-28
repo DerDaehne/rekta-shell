@@ -6,7 +6,8 @@ import Rekta
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
 // tiles (tiles.md: a tile never changes data). The groups stand in a fixed order, ton, verbindungen, anzeige, sitzung;
 // one without rows falls away. The host runs what the rows ask for and feeds back the state they show. In ton a select
-// chooses the default device of each kind; in verbindungen the paired Bluetooth devices unfold below their row, up to five, and a level lists them all.
+// chooses the default device of each kind; in verbindungen the paired Bluetooth devices unfold below their row, up to
+// five, and a level lists them all.
 Column {
     id: controls
 
@@ -48,8 +49,7 @@ Column {
     property var bluetoothDevices: []
     readonly property bool bluetoothOn: bluetooth?.enabled ?? false
     readonly property int inlineDeviceLimit: 5
-    // Connected ones first, so the few that show are the ones in use.
-    readonly property var devicesInline: bluetoothDevices.filter(device => device.connected).concat(bluetoothDevices.filter(device => !device.connected)).slice(0, inlineDeviceLimit)
+    readonly property var devicesInline: connectedFirst(bluetoothDevices).slice(0, inlineDeviceLimit)
 
     // The density as the shell has it: auto, comfortable or compact.
     property string density: "auto"
@@ -68,6 +68,11 @@ Column {
     signal connectionChosen(var device, bool connect)
     // System Settings is to pair a new device: the shell has no BlueZ agent to answer a pairing.
     signal pairingAsked
+
+    // So the few that show are the ones in use; each group keeps its order.
+    function connectedFirst(devices: var): var {
+        return devices.filter(device => device.connected).concat(devices.filter(device => !device.connected));
+    }
 
     function deviceName(node: var): string {
         return node?.description || node?.name || "";

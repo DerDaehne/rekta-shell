@@ -4,7 +4,8 @@ import Rekta
 // Rows that unfold below the row that opened them and push what stands below down; nothing floats. It unfolds and folds
 // as a tree branch does (motion.md, "Tree branch"; rekta.js:2776, :2779): the height grows with a fade, in
 // duration-short on ease-in, and closes in 0.7 of that on ease-out. Its rows are MenuItems; pressing one, or Enter or
-// Space on it, says so in `activated`. Escape folds it and the focus goes back to what opened it.
+// Space on it, says so in `activated`. Escape folds it and the focus goes back to what opened it. It keeps itself in view
+// in the scroller it stands in.
 Item {
     id: branch
 
@@ -58,6 +59,11 @@ Item {
         return true;
     }
 
+    function reveal() {
+        if (expanded)
+            Reveal.intoView(branch, height);
+    }
+
     function press(row: Item) {
         if (row instanceof MenuItem && !(row as MenuItem).disabled)
             activated(row as MenuItem);
@@ -65,6 +71,9 @@ Item {
 
     width: parent ? parent.width : 0
     height: unfolded * list.implicitHeight
+    onHeightChanged: reveal()
+    // A column places a row that just appeared only on its next layout.
+    onYChanged: reveal()
     visible: unfolded > 0
     opacity: unfolded
     clip: true

@@ -87,18 +87,6 @@ Item {
         return true;
     }
 
-    // Whole in the scroller it stands in, its top first, as focus does on the web.
-    function reveal() {
-        let around = parent;
-        while (around && !(around instanceof Flickable))
-            around = around.parent;
-        const view = around as Flickable;
-        if (!view)
-            return;
-        const top = mapToItem(view.contentItem, 0, 0).y;
-        view.contentY = Math.min(top, Math.max(view.contentY, top + box.height - view.height));
-    }
-
     implicitHeight: disabled ? why.y + why.height : box.height
     activeFocusOnTab: true
     Accessible.role: Accessible.ComboBox
@@ -162,7 +150,7 @@ Item {
 
         onHeightChanged: {
             if (select.expanded)
-                select.reveal();
+                Reveal.intoView(select, box.height);
         }
 
         Behavior on border.color {
