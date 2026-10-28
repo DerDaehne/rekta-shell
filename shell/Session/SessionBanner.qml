@@ -11,10 +11,14 @@ import Rekta
 // "Sheets"). An action that clears the shading takes the shading away at once as it is chosen, and the banner leaves
 // alone. Escape, Back and a press on the shading send it away; ← → and Tab go from button to button, Enter or Space
 // acts. Once it has gone the focus goes back.
+// An action that ends the session (endsSession) first counts down duration-toast in whole seconds in the buttons' place,
+// "ausschalten in 5 · abbrechen", under Rekta's undo line (behaviour.md, "Undo"; rekta.css:919–927). Enter acts at once;
+// Escape, Back, "abbrechen" and a press on the shading take it back to the actions with nothing done. Rekta asks a
+// confirm sheet for what cannot be undone (live.md:69–71); this window replaces it.
 FocusScope {
     id: sessionBanner
 
-    // { name, text, primary, disabledReason, run }, in their order.
+    // { name, text, group, primary, endsSession, disabledReason, run }, in their order.
     property var actions: []
     // From show() until it has gone; a host shows its surface while this holds.
     property bool open: false
@@ -23,6 +27,13 @@ FocusScope {
     property real shade: 1
     // The screen behind lies shaded, and blurred by the host, until an action that clears the shading is chosen.
     property bool shaded: true
+    // The action counting down, null while none. Wall-clock time in ms: a late timer never stretches the window.
+    property var counting: null
+    property var clock: () => Date.now()
+    property double deadline: 0
+    property double shownLeft: 0
+    readonly property int countdownMs: (Math.round(Tokens.durationToast / 1000) || 5) * 1000
+    readonly property int seconds: Math.ceil(shownLeft / 1000)
     readonly property real padX: Tokens.spaceXl
     readonly property real padY: Tokens.spaceM
     readonly property real headWidth: Math.max(Tokens.tileUnit, word.implicitWidth)
@@ -43,6 +54,7 @@ FocusScope {
             entry = 0;
             shade = 0;
         }
+        stopCounting();
         shaded = true;
         going.stop();
         comingIn.restart();
@@ -52,15 +64,68 @@ FocusScope {
     function close() {
         if (!open || going.running)
             return;
+        stopCounting();
         comingIn.stop();
         going.start();
     }
 
-    // It goes, and the action acts.
+    // It goes, and the action acts; one that ends the session counts down first.
     function choose(action: var) {
+        if (action.endsSession)
+            countDown(action);
+        else
+            actNow(action);
+    }
+
+    function actNow(action: var) {
         shaded = !action.clearsShading;
         close();
         action.run();
+    }
+
+    function countDown(action: var) {
+        counting = action;
+        deadline = clock() + countdownMs;
+        shownLeft = countdownMs;
+        tick.interval = 1000;
+        tick.restart();
+        countdownKeys.forceActiveFocus(Qt.TabFocusReason);
+        Accessible.announce(`${action.text} in ${seconds} seconds`, Accessible.Polite);
+    }
+
+    // Each step reads the clock, so a late one catches up at once.
+    function advance() {
+        if (!counting)
+            return;
+        shownLeft = Math.max(0, deadline - clock());
+        if (shownLeft <= 0)
+            actNow(takeCounting());
+        else
+            tick.restart();
+    }
+
+    function takeCounting(): var {
+        const action = counting;
+        stopCounting();
+        return action;
+    }
+
+    function stopCounting() {
+        counting = null;
+        tick.stop();
+    }
+
+    // Nothing is done; the actions are back with the focus on the one that was chosen.
+    function cancelCountdown() {
+        buttonFor(takeCounting().name).forceActiveFocus(Qt.TabFocusReason);
+    }
+
+    // What Escape, Back and a press on the shading do: take back a countdown, else send the banner away.
+    function dismiss() {
+        if (counting)
+            cancelCountdown();
+        else
+            close();
     }
 
     function buttonFor(name: string): Item {
@@ -93,13 +158,27 @@ FocusScope {
     Keys.onPressed: event => {
         if (!open)
             return;
-        if (event.key === Qt.Key_Escape || event.key === Qt.Key_Back)
-            close();
-        else if (event.key === Qt.Key_Left || event.key === Qt.Key_Right)
+        if (counting && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter))
+            actNow(takeCounting());
+        else if (event.key === Qt.Key_Escape || event.key === Qt.Key_Back)
+            dismiss();
+        else if (!counting && (event.key === Qt.Key_Left || event.key === Qt.Key_Right))
             step(event.key === Qt.Key_Right ? 1 : -1);
         else
             return;
         event.accepted = true;
+    }
+
+    // Holds the keys while the buttons are away, so Enter reaches the banner and not a button.
+    Item {
+        id: countdownKeys
+    }
+
+    Timer {
+        id: tick
+
+        objectName: "tick"
+        onTriggered: sessionBanner.advance()
     }
 
     QtObject {
@@ -172,7 +251,7 @@ FocusScope {
             acceptedButtons: Qt.LeftButton | Qt.BackButton
             onClicked: mouse => {
                 if (mouse.button === Qt.BackButton || !banner.contains(shadingArea.mapToItem(banner, mouse.x, mouse.y)))
-                    sessionBanner.close();
+                    sessionBanner.dismiss();
             }
             onWheel: {}
         }
@@ -217,6 +296,8 @@ FocusScope {
             x: sessionBanner.padX + sessionBanner.headWidth + Tokens.spaceS
             y: sessionBanner.padY + sessionBanner.firstBaseline - sessionBanner.buttonBaseline
             width: sessionBanner.width - x - sessionBanner.padX
+            opacity: sessionBanner.counting ? 0 : 1
+            enabled: !sessionBanner.counting
 
             Repeater {
                 id: buttons
@@ -225,12 +306,71 @@ FocusScope {
 
                 Button {
                     required property var modelData
+                    required property int index
 
                     objectName: modelData.name
                     text: modelData.text
-                    variant: modelData.primary ? "primary" : "quiet"
+                    // The ones that end the session are framed in the error colour, never filled (forms.md:134–140).
+                    variant: modelData.primary ? "primary" : modelData.endsSession ? "destructive" : "quiet"
+                    // A group stands space-l from the one before it; the flow adds space-s.
+                    leftPadding: index > 0 && sessionBanner.actions[index - 1].group !== modelData.group ? Tokens.spaceL - Tokens.spaceS : 0
                     disabledReason: modelData.disabledReason ?? ""
                     onClicked: sessionBanner.choose(modelData)
+                }
+            }
+        }
+
+        Row {
+            id: countdown
+
+            objectName: "countdown"
+            x: row.x
+            y: row.y
+            visible: sessionBanner.counting !== null
+            spacing: Tokens.spaceS
+
+            Text {
+                objectName: "countdownText"
+                y: undo.baselineOffset - baselineOffset
+                text: `${sessionBanner.counting?.text ?? ""} in ${sessionBanner.seconds} ·`
+                font.family: Tokens.fontSans
+                font.pixelSize: Tokens.fontSizeS
+                font.weight: Tokens.fontWeightSemibold
+                font.features: ({ "tnum": 1 })
+                color: Tokens.color.textPrimary
+            }
+
+            Button {
+                id: undo
+
+                objectName: "cancel"
+                text: "abbrechen"
+                variant: "quiet"
+                onClicked: sessionBanner.cancelCountdown()
+            }
+        }
+
+        // What is left of the window, shrinking toward the cancel side; under reduced motion it stands and the figure counts.
+        Rectangle {
+            id: undoLine
+
+            objectName: "line"
+            x: sessionBanner.padX
+            y: parent.height - Geometry.hairline - Geometry.toastLine
+            width: parent.width - 2 * sessionBanner.padX
+            height: Geometry.toastLine
+            visible: sessionBanner.counting !== null
+            color: Tokens.color.textPrimary
+            transform: Scale {
+                origin.x: undoLine.width
+                xScale: Tokens.reducedMotion ? 1 : sessionBanner.shownLeft / sessionBanner.countdownMs
+
+                Behavior on xScale {
+                    NumberAnimation {
+                        duration: Tokens.durationLong
+                        easing.type: Easing.Bezier
+                        easing.bezierCurve: Tokens.easeIn
+                    }
                 }
             }
         }

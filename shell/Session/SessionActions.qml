@@ -35,18 +35,21 @@ QtObject {
     // An app has started, whose window is to come to the front.
     signal launched
 
-    // { name, text, primary, disabledReason, clearsShading, run }; the primary one takes the focus as the banner opens;
-    // one that clears the shading leaves the screen behind unshaded and unblurred at once as it is chosen.
+    // { name, text, group, primary, endsSession, disabledReason, clearsShading, run }; the primary one takes the focus as
+    // the banner opens; one that clears the shading leaves the screen behind unshaded and unblurred at once as it is
+    // chosen; one that ends the session waits out the banner's undo window first. Groups stand apart in the banner.
     readonly property var actions: [
         {
             name: "lock",
             text: "sperren",
+            group: 0,
             primary: true,
             run: () => session.launcher.run(["loginctl", "lock-session"])
         },
         {
             name: "switchUser",
             text: "benutzer wechseln",
+            group: 0,
             disabledReason: seatPath === "" ? "Der Anmeldemanager bietet keinen Wechsel an." : "",
             clearsShading: true,
             run: () => session.switchUser()
@@ -54,21 +57,28 @@ QtObject {
         {
             name: "logout",
             text: "abmelden",
+            group: 1,
+            endsSession: true,
             run: () => session.leave("logout")
         },
         {
             name: "reboot",
             text: "neu starten",
+            group: 1,
+            endsSession: true,
             run: () => session.leave("logoutAndReboot")
         },
         {
             name: "shutdown",
             text: "ausschalten",
+            group: 1,
+            endsSession: true,
             run: () => session.leave("logoutAndShutdown")
         },
         {
             name: "systemMonitor",
             text: "systemmonitor",
+            group: 2,
             disabledReason: systemMonitor ? "" : "Der Systemmonitor ist nicht installiert.",
             run: () => {
                 session.launcher.launch(session.systemMonitor);

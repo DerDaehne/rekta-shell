@@ -21,6 +21,8 @@ TestCase {
     property var asked: []
     // The replies to a lock and to the question whether the session is locked, which the launcher holds back until the
     // test gives them: reply(error, values).
+    // The wall clock the countdown runs against, in ms.
+    property double time: 1000000
     property var lockReply: null
     property var activeReply: null
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
@@ -105,6 +107,7 @@ TestCase {
                 objectName: "sessionBanner"
                 anchors.fill: parent
                 actions: sessionActions.actions
+                clock: () => testCase.time
             }
         }
     }
@@ -119,6 +122,7 @@ TestCase {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         Prefs.motion = "off";
         asked = [];
+        time = 1000000;
         lockReply = null;
         activeReply = null;
         scene = createTemporaryObject(sceneComponent, testCase);
@@ -144,6 +148,7 @@ TestCase {
         return findChild(sessionBanner, name);
     }
 
+    readonly property var endingNames: ["logout", "reboot", "shutdown"]
     readonly property var actionNames: ["lock", "switchUser", "logout", "reboot", "shutdown", "systemMonitor"]
 
     // The call each action makes, as the recorder writes it down.
@@ -160,8 +165,10 @@ TestCase {
         compare(part("word").text, "sitzung");
         compare(actionNames.map(name => button(name).text), ["sperren", "benutzer wechseln", "abmelden", "neu starten", "ausschalten", "systemmonitor"]);
         compare(button("lock").variant, "primary");
-        for (const name of actionNames.slice(1))
+        for (const name of ["switchUser", "systemMonitor"])
             compare(button(name).variant, "quiet", name);
+        for (const name of endingNames)
+            compare(button(name).variant, "destructive", name);
         verify(button("lock").activeFocus);
         compare(part("banner").Accessible.role, Accessible.Dialog);
         compare(part("banner").Accessible.name, "sitzung");
@@ -355,6 +362,8 @@ TestCase {
             for (let step = 0; step < k; step++)
                 keyClick(Qt.Key_Right);
             keyClick(k % 2 === 0 ? Qt.Key_Return : Qt.Key_Space);
+            if (endingNames.includes(actionNames[k]))
+                keyClick(Qt.Key_Return);
             verify(!sessionBanner.open, actionNames[k]);
         }
         lockReply(null);
@@ -365,9 +374,19 @@ TestCase {
     function test_a_click_acts_and_the_banner_goes() {
         sessionBanner.show("");
         waitForRendering(sessionBanner);
-        mouseClick(button("logout"));
+        mouseClick(button("lock"));
         verify(!sessionBanner.open);
-        compare(asked, [callOf("org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", "logout")]);
+        asked = [];
+        sessionBanner.show("");
+        waitForRendering(sessionBanner);
+        mouseClick(button("logout"));
+        verify(sessionBanner.open, "logging out waits");
+        mouseClick(part("cancel"));
+        verify(sessionBanner.open, "and so does being taken back");
+        compare(asked, []);
+        mouseClick(button("systemMonitor"));
+        verify(!sessionBanner.open);
+        compare(asked, [["launch", "org.kde.plasma-systemmonitor"]]);
     }
 
     function test_each_action_calls_exactly_its_command_or_method() {
@@ -381,6 +400,8 @@ TestCase {
         for (const name of Object.keys(expected)) {
             asked = [];
             button(name).click();
+            if (endingNames.includes(name))
+                runOut();
             compare(asked, expected[name], name);
         }
     }
@@ -425,6 +446,8 @@ TestCase {
             sessionBanner.show("");
             tryCompare(sessionBanner, "entry", 1, Tokens.durationShort * 4);
             button(name).click();
+            if (endingNames.includes(name))
+                runOut();
             verify(part("shading").visible && sessionBanner.shaded, name);
             tryVerify(() => !sessionBanner.open, Tokens.durationShort * 4);
         }
@@ -518,6 +541,129 @@ TestCase {
         compare(asked, []);
         verify(sessionBanner.open);
         compare(part("why").text, "Der Systemmonitor ist nicht installiert.");
+    }
+
+    function at(ms) {
+        time = 1000000 + ms;
+        sessionBanner.advance();
+    }
+
+    // The countdown's window is over.
+    function runOut() {
+        time += 5000;
+        sessionBanner.advance();
+    }
+
+    function startCountdown(name: string) {
+        sessionBanner.show("");
+        waitForRendering(sessionBanner);
+        button(name).click();
+    }
+
+    readonly property var shutdownCall: callOf("org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", "logoutAndShutdown")
+
+    function test_the_actions_stand_in_three_groups_space_l_apart_and_the_ending_ones_are_framed_in_the_error_colour() {
+        scene.width = 1600;
+        sessionBanner.show("");
+        waitForRendering(sessionBanner);
+        const gap = (from, to) => button(to).x + button(to).leftPadding - (button(from).x + button(from).width);
+        compare(gap("lock", "switchUser"), Tokens.spaceS);
+        compare(gap("switchUser", "logout"), Tokens.spaceL);
+        compare(gap("logout", "reboot"), Tokens.spaceS);
+        compare(gap("reboot", "shutdown"), Tokens.spaceS);
+        compare(gap("shutdown", "systemMonitor"), Tokens.spaceL);
+        for (const name of endingNames) {
+            compare(findChild(button(name), "frame").border.color, Tokens.color.statusErrorFull, name);
+            compare(findChild(button(name), "fill").color.a, 0, `${name} is never filled`);
+        }
+    }
+
+    function test_choosing_ausschalten_counts_down_in_whole_seconds_and_acts_only_when_the_five_seconds_are_up() {
+        startCountdown("shutdown");
+        verify(sessionBanner.open, "the banner stays");
+        compare(part("countdownText").text, "ausschalten in 5 ·");
+        compare(part("cancel").text, "abbrechen");
+        compare(part("tick").interval, 1000);
+        verify(part("countdown").visible);
+        compare(part("actions").opacity, 0, "the actions are away");
+        at(1000);
+        compare(part("countdownText").text, "ausschalten in 4 ·");
+        at(4600);
+        compare(part("countdownText").text, "ausschalten in 1 ·");
+        compare(asked, [], "nothing yet");
+        at(5000);
+        compare(asked, [shutdownCall]);
+        verify(!sessionBanner.open);
+    }
+
+    function test_the_line_runs_down_with_the_time_left_under_motion() {
+        Prefs.motion = "on";
+        startCountdown("shutdown");
+        const line = part("line");
+        verify(line.visible);
+        compare(line.height, Geometry.toastLine);
+        compare(line.transform[0].xScale, 1);
+        at(2000);
+        tryCompare(line.transform[0], "xScale", 0.6, 2 * Tokens.durationLong);
+    }
+
+    function test_under_reduced_motion_the_line_stands_while_the_figure_keeps_counting() {
+        startCountdown("shutdown");
+        at(3000);
+        compare(part("line").transform[0].xScale, 1);
+        compare(part("countdownText").text, "ausschalten in 2 ·");
+    }
+
+    function test_escape_cancel_and_a_press_beside_take_it_back_without_acting() {
+        const takeBack = [() => keyClick(Qt.Key_Escape), () => mouseClick(part("cancel")), () => mouseClick(sessionBanner, 5, scene.height - 5)];
+        for (const cancel of takeBack) {
+            startCountdown("reboot");
+            verify(part("countdown").visible);
+            cancel();
+            verify(sessionBanner.open, "back at the actions");
+            verify(!part("countdown").visible);
+            compare(part("actions").opacity, 1);
+            verify(button("reboot").activeFocus, "on the action chosen");
+            at(10000);
+            compare(asked, [], "and the time running out does nothing");
+            sessionBanner.close();
+        }
+    }
+
+    function test_enter_again_acts_at_once() {
+        startCountdown("shutdown");
+        at(1000);
+        keyClick(Qt.Key_Return);
+        compare(asked, [shutdownCall]);
+        verify(!sessionBanner.open);
+    }
+
+    function test_the_banner_shown_again_drops_a_countdown() {
+        startCountdown("shutdown");
+        sessionBanner.show("shutdown");
+        verify(!part("countdown").visible);
+        at(10000);
+        compare(asked, []);
+    }
+
+    function test_lock_switch_user_and_system_monitor_still_act_at_once() {
+        for (const name of ["lock", "systemMonitor", "switchUser"]) {
+            startCountdown(name);
+            verify(!sessionBanner.open, name);
+        }
+        compare(asked.length, 3);
+    }
+
+    function test_contact_sheet_of_the_countdown_in_both_themes() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            Prefs.density = "compact";
+            startCountdown("shutdown");
+            at(1500);
+            waitForRendering(scene);
+            grabImage(scene).save(`session-countdown-sheet-${theme}.png`);
+            sessionBanner.close();
+        }
     }
 
     function test_contact_sheet_of_the_banner_in_both_themes() {
