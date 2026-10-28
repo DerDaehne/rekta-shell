@@ -301,12 +301,16 @@ in
         cp -r ${self} repo && chmod -R u+w repo && cd repo
         git init -q && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -qm t
         echo secret > CLAUDE.local.md && echo secret > .privacy-patterns
-        rekta-fedora-source-iso "$TMPDIR/out.iso"
+        echo stray > stray-untracked.txt
+        echo uncommitted-change >> README.md
         git ls-files | sort > "$TMPDIR/tracked"
+        rekta-fedora-source-iso "$TMPDIR/out.iso"
         xorriso -indev "$TMPDIR/out.iso" -find /src -type f 2>/dev/null \
           | sed "s|^'/src/||; s|'\$||" | sort > "$TMPDIR/listed"
         diff "$TMPDIR/tracked" "$TMPDIR/listed"
-        ! grep -Fx -e CLAUDE.local.md -e .privacy-patterns "$TMPDIR/listed"
+        if grep -Fx -e CLAUDE.local.md -e .privacy-patterns -e stray-untracked.txt "$TMPDIR/listed"; then echo "untracked file in the ISO" >&2; exit 1; fi
+        xorriso -osirrox on -indev "$TMPDIR/out.iso" -extract /src/README.md "$TMPDIR/readme" 2>/dev/null
+        cmp README.md "$TMPDIR/readme"
         touch $out
       '';
 

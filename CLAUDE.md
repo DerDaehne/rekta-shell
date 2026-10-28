@@ -218,8 +218,10 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   `audiomute`, `audioplay`, …) but not mic mute or brightness; write those to a
   uinput device in the guest as root (the guest mounts the host's `/nix/store`,
   so a tool built on the host, such as python-evdev, runs there).
-- `nix run .#fedora-vm` boots a pinned Fedora cloud image (`nix/fedora-vm.nix`; a named F45
-  compose until F45 is released, because Plasma 6.8 is in no stable Fedora yet) headless on
+- `nix run .#fedora-vm` boots a pinned Fedora cloud image (`nix/fedora-vm.nix`; the F45 Beta
+  image, because Plasma 6.8 is in no stable Fedora yet; it stays on the mirror until F45 is
+  released, then the file moves to `releases/45/` and the pin needs the new name and hash;
+  the fetched image has no GC root, so a garbage collection may fetch it again) headless on
   KVM with user-mode networking only and no forwarded ports. Like `.#vm` it keeps the
   overlay in a temporary directory that is deleted on exit, ignores host variables and
   hands arguments after `--` to QEMU; `--window` opens a GTK window. cloud-init creates

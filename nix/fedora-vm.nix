@@ -10,10 +10,11 @@
 }:
 
 let
-  # A named nightly compose until Fedora 45 is released (Plasma 6.8 is not in a stable release yet).
+  # The Fedora 45 Beta image: a pre-release that stays on the mirror until Fedora 45 is released
+  # (then it moves to releases/45/ under another name and hash). Plasma 6.8 is in no stable release yet.
   image = fetchurl {
-    url = "https://dl.fedoraproject.org/pub/fedora/linux/development/45/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-45-20261028.n.0.x86_64.qcow2";
-    sha256 = "8b8d9e68888122a5c17d11939fd39aa75bcc25cb80d8f4b08711f0337090a6bd";
+    url = "https://dl.fedoraproject.org/pub/fedora/linux/releases/test/45_Beta/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-45_Beta-1.3.x86_64.qcow2";
+    sha256 = "06bd4382a3bc5e5f94cd520f9ee15bdfb38d7bb72552b27fe06d581ba9a84292";
   };
 
   userData = builtins.toFile "user-data" ''
