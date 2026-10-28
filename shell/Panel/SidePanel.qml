@@ -8,7 +8,8 @@ import Rekta
 // edge. It slides all the way in from the trailing edge over duration-moderate with ease-out and leaves the way it came
 // in 0.8 × that, as a sheet leaves (motion.md, "Sheets"); nothing beside it is shaded or blocked. Its pivot picks a
 // facet. Escape and close() send it away. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move
-// through the controls, and once the panel has gone the focus goes back.
+// through the controls, and once the panel has gone the focus goes back. A sheet a facet opens lies over the panel's
+// ground (`sheets`); while one is open the panel keeps still.
 FocusScope {
     id: sidePanel
 
@@ -26,6 +27,9 @@ FocusScope {
     readonly property real panelWidth: Geometry.hairline + 2 * Tokens.spaceM + contentWidth
     readonly property real shift: (1 - entry) * panelWidth
     default property alias facets: facetHolder.content
+    // Where a facet's sheets stand: over the whole ground, pivot included.
+    readonly property Item sheets: sheetHolder
+    readonly property bool sheetOpen: Array.from(sheetHolder.children).some(child => child.open === true)
 
     // It has gone.
     signal closed
@@ -154,6 +158,11 @@ FocusScope {
     Keys.onPressed: event => {
         if (!open)
             return;
+        if (sheetOpen) {
+            // The sheet's own keys (Escape) go to the layers; the arrows do not walk the panel behind it, Tab stays its own.
+            event.accepted = KeyLayers.dispatch(event, Window.activeFocusItem) || event.key === Qt.Key_Up || event.key === Qt.Key_Down;
+            return;
+        }
         if (event.key === Qt.Key_Escape)
             close();
         else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up)
@@ -268,6 +277,13 @@ FocusScope {
                     height: (sidePanel.facets[currentIndex] as Item)?.implicitHeight ?? 0
                     currentIndex: pivot.currentIndex
                 }
+            }
+
+            Item {
+                id: sheetHolder
+
+                objectName: "sheets"
+                anchors.fill: parent
             }
         }
     }

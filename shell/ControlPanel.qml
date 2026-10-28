@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Io
+import Quickshell.Networking
 import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import Quickshell.Wayland
@@ -39,6 +40,9 @@ PanelWindow {
     // Untyped, as qmllint sees Pipewire's own opaque copy of the model type, which lacks `values`.
     readonly property var nodes: Pipewire.nodes
     // The sound cards and other audio devices, not the programs playing or recording.
+    // The network cards, only once NetworkManager runs; untyped for the same reason.
+    readonly property var networkModel: networkManager.registered ? Networking.devices : null
+    readonly property var networkDevices: networkModel?.values ?? []
     readonly property list<PwNode> audioDevices: nodes.values.filter(node => node.audio && !node.isStream)
 
     // The panel has gone, and with it the surface.
@@ -135,6 +139,16 @@ PanelWindow {
             bluetoothDevices: (controls.bluetooth?.devices.values ?? []).filter(device => device.paired || device.bonded)
             onBluetoothChosen: on => surface.actOnSystemBus(`switch bluetooth ${on ? "on" : "off"}`, () => controls.bluetooth.enabled = on)
             onConnectionChosen: (device, connect) => surface.actOnSystemBus(`${connect ? "connect" : "disconnect"} ${device.name}`, () => connect ? device.connect() : device.disconnect())
+            sheets: panel.sheets
+            // NetworkManager is asked only once it runs, for the same reason as BlueZ. Quickshell's models are untyped.
+            networking: networkManager.registered ? Networking : null
+            wifiDevice: surface.networkDevices.find(device => device.type === DeviceType.Wifi) ?? null
+            wiredDevice: surface.networkDevices.find(device => device.type === DeviceType.Wired) ?? null
+            onWifiChosen: on => surface.actOnSystemBus(`switch wifi ${on ? "on" : "off"}`, () => Networking.wifiEnabled = on)
+            onScanWanted: on => surface.actOnSystemBus(`${on ? "start" : "stop"} scanning for networks`, () => controls.wifiDevice.scannerEnabled = on)
+            onNetworkChosen: network => surface.actOnSystemBus(`join ${network.name}`, () => network.connect())
+            onPasswordChosen: (network, password) => surface.actOnSystemBus(`join ${network.name} with a password`, () => network.connectWithPsk(password))
+            onDisconnectAsked: network => surface.actOnSystemBus(`leave ${network.name}`, () => network.disconnect())
             onPairingAsked: {
                 panel.close();
                 const settings = DesktopEntries.byId("kcm_bluetooth");
@@ -182,6 +196,13 @@ PanelWindow {
 
         busType: DBus.BusType.System
         watchedService: "org.freedesktop.UPower.PowerProfiles"
+    }
+
+    DBus.DBusServiceWatcher {
+        id: networkManager
+
+        busType: DBus.BusType.System
+        watchedService: "org.freedesktop.NetworkManager"
     }
 
     DBus.DBusServiceWatcher {

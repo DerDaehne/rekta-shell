@@ -6,8 +6,9 @@ import Rekta
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
 // tiles (tiles.md: a tile never changes data). The groups stand in a fixed order, ton, verbindungen, anzeige, sitzung;
 // one without rows falls away. The host runs what the rows ask for and feeds back the state they show. In ton a select
-// chooses the default device of each kind; in verbindungen the paired Bluetooth devices unfold below their row, up to
-// five, and a level lists them all.
+// chooses the default device of each kind; in verbindungen the paired Bluetooth devices and the strongest wireless
+// networks unfold below their rows, up to five, and a level lists them all. A secured network the system does not know
+// asks for its password in a sheet.
 Column {
     id: controls
 
@@ -25,6 +26,20 @@ Column {
         Connected = 1,
         Disconnecting = 2,
         Connecting = 3
+    }
+
+    // Quickshell's WifiSecurityType and ConnectionFailReason, of which only these values matter here.
+    enum Security {
+        Owe = 9,
+        Open = 10
+    }
+
+    enum FailReason {
+        NoSecrets = 1,
+        WifiClientDisconnected = 2,
+        WifiClientFailed = 3,
+        WifiAuthTimeout = 4,
+        WifiNetworkLost = 5
     }
 
     // The text of kdeglobals, which names Plasma's pair of light and dark global themes.
@@ -47,7 +62,26 @@ Column {
     property var bluetooth: null
     // Its paired devices: name, connected, state, pairing, batteryAvailable and battery (0 to 1).
     property var bluetoothDevices: []
+    // The network as Quickshell's Networking has it, or null without NetworkManager: wifiEnabled and wifiHardwareEnabled.
+    property var networking: null
+    // Its wireless device (networks with their values, scannerEnabled) and its wired one (connected), or null.
+    property var wifiDevice: null
+    property var wiredDevice: null
+    // Where sheets stand: the host's surface over the panel.
+    property Item sheets
     readonly property bool bluetoothOn: bluetooth?.enabled ?? false
+    readonly property bool wifiOn: networking?.wifiEnabled ?? false
+    readonly property var networkList: wifiDevice?.networks.values ?? []
+    readonly property var connectedNetwork: networkList.find(network => network.connected) ?? null
+    readonly property bool joining: networkList.some(network => network.stateChanging)
+    // The networks by signal while the list shows (inline or in the level), kept in that order meanwhile: the signal
+    // moves with every scan, and rows that jump under the pointer cannot be pressed. The cause of a failed connection by
+    // network name, until the next attempt.
+    property var ranked: []
+    property var failures: ({})
+    readonly property int inlineNetworkLimit: 5
+    readonly property var networksInline: ranked.slice(0, inlineNetworkLimit)
+    readonly property bool listing: wifiBranch.expanded || networksLevel.open
     readonly property int inlineDeviceLimit: 5
     readonly property var devicesInline: connectedFirst(bluetoothDevices).slice(0, inlineDeviceLimit)
 
@@ -68,6 +102,14 @@ Column {
     signal connectionChosen(var device, bool connect)
     // System Settings is to pair a new device: the shell has no BlueZ agent to answer a pairing.
     signal pairingAsked
+    signal wifiChosen(bool on)
+    // The system is to scan for networks, or to stop: while a list of them shows.
+    signal scanWanted(bool on)
+    // A network to join that needs nothing more, or to leave.
+    signal networkChosen(var network)
+    signal disconnectAsked(var network)
+    // A secured network joins with the password the sheet asked for.
+    signal passwordChosen(var network, string password)
 
     // So the few that show are the ones in use; each group keeps its order.
     function connectedFirst(devices: var): var {
@@ -92,6 +134,54 @@ Column {
         const device = (row as BluetoothDeviceItem)?.device;
         if (device && !waiting(device))
             connectionChosen(device, !device.connected);
+    }
+
+    function rank() {
+        ranked = networkList.filter(network => network.name !== "").sort((a, b) => b.signalStrength - a.signalStrength || a.name.localeCompare(b.name));
+    }
+
+    function needsPassword(network: var): bool {
+        return network.security !== Controls.Open && network.security !== Controls.Owe;
+    }
+
+    function failureWord(reason: int): string {
+        switch (reason) {
+        case Controls.NoSecrets:
+            return "kein passwort";
+        case Controls.WifiClientDisconnected:
+            return "getrennt";
+        case Controls.WifiClientFailed:
+            return "fehlgeschlagen";
+        case Controls.WifiAuthTimeout:
+            return "zeitüberschreitung";
+        case Controls.WifiNetworkLost:
+            return "netz verloren";
+        default:
+            return "unbekannter fehler";
+        }
+    }
+
+    function failed(network: var, reason: int) {
+        failures = Object.assign({}, failures, { [network.name]: failureWord(reason) });
+    }
+
+    function forgetFailure(network: var) {
+        const rest = Object.assign({}, failures);
+        delete rest[network.name];
+        failures = rest;
+    }
+
+    // Open or known, it joins at once; a secured one the system does not know asks for its password first. One on its
+    // way, or already joined, takes no press (leaving is the button in its row).
+    function pressNetwork(row: MenuItem) {
+        const network = (row as NetworkItem)?.network;
+        if (!network || network.connected || network.stateChanging)
+            return;
+        forgetFailure(network);
+        if (network.known || !needsPassword(network))
+            networkChosen(network);
+        else
+            passwordSheet.ask(network, row);
     }
 
     readonly property list<string> densities: ["auto", "comfortable", "compact"]
@@ -157,6 +247,19 @@ Column {
         title: "verbindungen"
         levels: [
             PanelLevel {
+                id: networksLevel
+
+                objectName: "networks"
+                name: "netze"
+                onActivated: row => controls.pressNetwork(row)
+
+                Repeater {
+                    model: controls.ranked
+
+                    NetworkItem {}
+                }
+            },
+            PanelLevel {
                 id: bluetoothLevel
 
                 objectName: "bluetoothDevices"
@@ -174,6 +277,98 @@ Column {
                 }
             }
         ]
+
+        PanelRow {
+            label: "wlan"
+            present: controls.networking !== null && controls.wifiDevice !== null
+
+            Toggle {
+                objectName: "wifi"
+                onWord: "an"
+                offWord: "aus"
+                checked: controls.wifiOn
+                disabledReason: controls.networking?.wifiHardwareEnabled === false ? "funk gesperrt" : ""
+                Accessible.name: "wlan"
+                // It shows what the system has: a switch it did not take springs back.
+                onToggled: {
+                    controls.wifiChosen(checked);
+                    checked = Qt.binding(() => controls.wifiOn);
+                }
+            }
+        }
+
+        PanelRow {
+            label: controls.connectedNetwork ? `netz · ${controls.connectedNetwork.name}` : "netz"
+            present: controls.wifiOn && controls.wifiDevice !== null
+
+            Keys.onPressed: event => event.accepted = wifiBranch.handleKey(event)
+
+            Item {
+                implicitWidth: wifiState.implicitWidth + Tokens.spaceS + networksOpener.implicitWidth
+                implicitHeight: networksOpener.implicitHeight
+
+                StatusTag {
+                    id: wifiState
+
+                    objectName: "wifiState"
+                    anchors.verticalCenter: parent.verticalCenter
+                    status: controls.joining ? "warning" : controls.connectedNetwork ? "info" : ""
+                    word: controls.joining ? "verbindet" : controls.connectedNetwork ? "verbunden" : "getrennt"
+                }
+
+                Button {
+                    id: networksOpener
+
+                    objectName: "chooseNetwork"
+                    x: wifiState.implicitWidth + Tokens.spaceS
+                    text: "wählen"
+                    Accessible.name: "netze wählen"
+                    Accessible.expandable: true
+                    Accessible.expanded: wifiBranch.expanded
+                    onClicked: wifiBranch.toggle()
+                }
+            }
+        }
+
+        PanelBranch {
+            id: wifiBranch
+
+            objectName: "wifiBranch"
+            opener: networksOpener
+            onActivated: row => {
+                if (row === allNetworksRow)
+                    networksLevel.show(networksOpener);
+                else
+                    controls.pressNetwork(row);
+            }
+
+            Repeater {
+                model: controls.networksInline
+
+                NetworkItem {}
+            }
+
+            MenuItem {
+                id: allNetworksRow
+
+                objectName: "allNetworks"
+                visible: controls.ranked.length > controls.inlineNetworkLimit
+                text: "alle netze …"
+                opensLevel: true
+                activeFocusOnTab: true
+            }
+        }
+
+        PanelRow {
+            label: "kabel"
+            present: controls.wiredDevice !== null
+
+            StatusTag {
+                objectName: "wiredState"
+                status: controls.wiredDevice?.connected ? "info" : ""
+                word: controls.wiredDevice?.connected ? "verbunden" : "getrennt"
+            }
+        }
 
         PanelRow {
             label: "bluetooth"
@@ -352,14 +547,52 @@ Column {
 
         // Out of sight, or with no adapter, the devices come back folded.
         function onVisibleChanged() {
-            if (!controls.visible)
-                bluetoothBranch.fold();
+            if (controls.visible)
+                return;
+            bluetoothBranch.fold();
+            wifiBranch.fold();
+            passwordSheet.close("cancel");
         }
 
         function onBluetoothChanged() {
             if (!controls.bluetooth)
                 bluetoothBranch.fold();
         }
+
+        function onListingChanged() {
+            if (controls.listing)
+                controls.rank();
+            else
+                controls.failures = ({});
+            controls.scanWanted(controls.listing);
+        }
+
+        // A network that came or went while the list shows re-ranks it; folded, the rows are dropped with their objects.
+        function onNetworkListChanged() {
+            if (controls.listing)
+                controls.rank();
+            else
+                controls.ranked = [];
+        }
+
+        function onWifiOnChanged() {
+            if (!controls.wifiOn)
+                wifiBranch.fold();
+        }
+
+        function onWifiDeviceChanged() {
+            if (!controls.wifiDevice)
+                wifiBranch.fold();
+        }
+    }
+
+    PasswordSheet {
+        id: passwordSheet
+
+        objectName: "passwordSheet"
+        parent: controls.sheets
+        anchors.fill: parent
+        onSubmitted: (network, password) => controls.passwordChosen(network, password)
     }
 
     // The default device of one kind in a select of the devices of that kind; choosing one asks for it as the default.
@@ -442,6 +675,72 @@ Column {
             checked: muteRow.muted
             Accessible.name: `stumm ${muteRow.name}`
             onToggled: muteRow.node.audio.muted = checked
+        }
+    }
+
+    // A network: its name, what it is (secured, known) and its signal in percent. A joined one has a quiet button to leave;
+    // one that failed to join says why in its row until the next attempt. One on its way says so.
+    component NetworkItem: MenuItem {
+        id: networkItem
+
+        required property var modelData
+        readonly property var network: modelData
+        readonly property string cause: controls.failures[network.name] ?? ""
+        readonly property bool waits: network.stateChanging
+        readonly property string kinds: [network.security !== Controls.Open ? "gesichert" : "", network.known ? "bekannt" : ""].filter(part => part !== "").join(" · ")
+        readonly property string strength: `${Math.round(network.signalStrength * 100)}%`
+
+        text: network.name
+        activeFocusOnTab: true
+        Accessible.name: [text, cause, waits ? "verbindet" : "", network.connected ? "verbunden" : kinds, `signal ${strength}`].filter(part => part !== "").join(", ")
+
+        StatusTag {
+            objectName: "failure"
+            anchors.verticalCenter: parent.verticalCenter
+            visible: networkItem.cause !== "" && !networkItem.waits
+            status: "error"
+            word: networkItem.cause
+        }
+
+        StatusTag {
+            objectName: "joining"
+            anchors.verticalCenter: parent.verticalCenter
+            visible: networkItem.waits
+            status: "warning"
+            word: "verbindet"
+        }
+
+        Meta {
+            objectName: "kinds"
+            anchors.verticalCenter: parent.verticalCenter
+            visible: networkItem.kinds !== "" && !networkItem.network.connected && !networkItem.waits && networkItem.cause === ""
+            text: networkItem.kinds
+        }
+
+        // A number to read as data (typography.md, "Weight and case").
+        Meta {
+            objectName: "signal"
+            anchors.verticalCenter: parent.verticalCenter
+            text: networkItem.strength
+            font.weight: Tokens.fontWeightMedium
+        }
+
+        Button {
+            objectName: "leave"
+            anchors.verticalCenter: parent.verticalCenter
+            visible: networkItem.network.connected
+            variant: "quiet"
+            text: "trennen"
+            Accessible.name: `${networkItem.text} trennen`
+            onClicked: controls.disconnectAsked(networkItem.network)
+        }
+
+        Connections {
+            target: networkItem.network
+
+            function onConnectionFailed(reason: int) {
+                controls.failed(networkItem.network, reason);
+            }
         }
     }
 

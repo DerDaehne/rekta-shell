@@ -29,6 +29,14 @@ TestCase {
     property var bluetoothSwitches: []
     property bool bluetoothTakes: true
     property int pairingAsked: 0
+    // The network switches asked for and whether the system takes them, the scans asked for, the networks joined,
+    // the passwords they were joined with and the networks left, oldest first.
+    property var wifiSwitches: []
+    property bool wifiTakes: true
+    property var scans: []
+    property var joined: []
+    property var passwordsSent: []
+    property var leaves: []
     property Item scene
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var side
@@ -88,6 +96,26 @@ TestCase {
             }
             onConnectionChosen: (device, connect) => connect ? device.connect() : device.disconnect()
             onPairingAsked: testCase.pairingAsked += 1
+            sheets: panel.sheets
+            // As the host has it, with the networks' own calls.
+            onWifiChosen: on => {
+                testCase.wifiSwitches = [...testCase.wifiSwitches, on];
+                if (testCase.wifiTakes)
+                    controlsFacet.networking.wifiEnabled = on;
+            }
+            onScanWanted: on => testCase.scans = [...testCase.scans, on]
+            onNetworkChosen: network => {
+                testCase.joined = [...testCase.joined, network.name];
+                network.connect();
+            }
+            onPasswordChosen: (network, password) => {
+                testCase.passwordsSent = [...testCase.passwordsSent, password];
+                network.connectWithPsk(password);
+            }
+            onDisconnectAsked: network => {
+                testCase.leaves = [...testCase.leaves, network.name];
+                network.disconnect();
+            }
         }
 
         Item {
@@ -180,6 +208,59 @@ TestCase {
         }
     }
 
+    // Quickshell's Networking as the controls read it, and its wireless and wired devices.
+    component FakeNetworking: QtObject {
+        property bool wifiEnabled: true
+        property bool wifiHardwareEnabled: true
+    }
+    Component {
+        id: networkingComponent
+        FakeNetworking {}
+    }
+    component FakeWifiDevice: QtObject {
+        property QtObject networks: QtObject {
+            property var values: []
+        }
+    }
+    Component {
+        id: wifiDeviceComponent
+        FakeWifiDevice {}
+    }
+    component FakeWiredDevice: QtObject {
+        property bool connected: true
+    }
+    Component {
+        id: wiredDeviceComponent
+        FakeWiredDevice {}
+    }
+    // A wireless network as Quickshell has it: connect() and disconnect() set stateChanging at once and record the call;
+    // the answer, a connection or connectionFailed(), is the test's to give.
+    component FakeNetwork: QtObject {
+        property string name
+        property real signalStrength: 0.5
+        property int security: Controls.Open
+        property bool known: false
+        property bool connected: false
+        property bool stateChanging: false
+        property var calls: []
+        signal connectionFailed(int reason)
+        function connect() {
+            calls = [...calls, "connect"];
+            stateChanging = true;
+        }
+        function connectWithPsk(psk: string) {
+            calls = [...calls, `psk ${psk}`];
+            stateChanging = true;
+        }
+        function disconnect() {
+            calls = [...calls, "disconnect"];
+            stateChanging = true;
+        }
+    }
+    Component {
+        id: networkComponent
+        FakeNetwork {}
+    }
     // A branch below the fold of a scroller.
     Component {
         id: scrolledBranchComponent
@@ -336,6 +417,12 @@ TestCase {
         bluetoothSwitches = [];
         bluetoothTakes = true;
         pairingAsked = 0;
+        wifiSwitches = [];
+        wifiTakes = true;
+        scans = [];
+        joined = [];
+        passwordsSent = [];
+        leaves = [];
         scene = createTemporaryObject(sceneComponent, testCase);
         side = findChild(scene, "panel");
         controls = side.controls;
@@ -408,6 +495,38 @@ TestCase {
         target.bluetoothDevices = [...target.bluetoothDevices, ...more];
     }
 
+    // Wireless on, with eight networks in no order: Home (joined, known, secured), Office (known), Guest and Library (open),
+    // Neighbour, Cafe, Shop and Hotel (secured, unknown), by falling signal in that order.
+    function giveNetworks(target: var): var {
+        const network = (name, signalStrength, extra) => createTemporaryObject(networkComponent, testCase, Object.assign({ name, signalStrength, security: 3 }, extra));
+        const networks = {
+            cafe: network("Cafe", 0.35),
+            home: network("Home", 0.9, { connected: true, known: true }),
+            office: network("Office", 0.7, { known: true }),
+            guest: network("Guest", 0.6, { security: Controls.Open }),
+            neighbour: network("Neighbour", 0.5),
+            hotel: network("Hotel", 0.2),
+            library: network("Library", 0.45, { security: Controls.Open }),
+            shop: network("Shop", 0.3)
+        };
+        const device = createTemporaryObject(wifiDeviceComponent, testCase);
+        device.networks.values = Object.values(networks);
+        target.networking = createTemporaryObject(networkingComponent, testCase);
+        target.wifiDevice = device;
+        networks.device = device;
+        return networks;
+    }
+    // The rows that show in a branch of the controls.
+    function rowsOf(branchName: string): var {
+        const list = Array.from(control(branchName).children).find(child => child instanceof Column);
+        return Array.from(list.children).filter(row => row instanceof MenuItem && row.visible);
+    }
+    function typeText(text: string) {
+        Array.from(text).forEach(letter => keyClick(letter));
+    }
+    function sheet(): var {
+        return findChild(side, "passwordSheet");
+    }
     // The rows that show in the unfolded devices.
     function branchRows(): var {
         const list = Array.from(control("bluetoothBranch").children).find(child => child instanceof Column);
@@ -1579,6 +1698,354 @@ TestCase {
         compare(label.x + label.width, findChild(row, "end").x - Tokens.spaceS);
     }
 
+    function test_the_wlan_toggle_switches_wireless_and_shows_what_the_system_has() {
+        giveNetworks(controls);
+        side.show(0);
+        waitForRendering(side);
+        const toggle = control("wifi");
+        verify(toggle.checked);
+        compare(findChild(rowOf(toggle), "words").text, "wlan");
+        mouseClick(toggle);
+        compare(wifiSwitches, [false]);
+        verify(!toggle.checked);
+        verify(!control("chooseNetwork").visible, "without wireless there is no list of networks");
+        wifiTakes = false;
+        mouseClick(toggle);
+        compare(wifiSwitches, [false, true]);
+        verify(!toggle.checked, "a switch the system did not take springs back");
+    }
+
+    function test_a_blocked_radio_greys_the_wlan_toggle_which_says_why() {
+        giveNetworks(controls);
+        controls.networking.wifiHardwareEnabled = false;
+        side.show(0);
+        waitForRendering(side);
+        const toggle = control("wifi");
+        verify(toggle.disabled);
+        compare(toggle.disabledReason, "funk gesperrt");
+        mouseClick(toggle);
+        compare(wifiSwitches, []);
+    }
+
+    function test_netz_names_the_joined_network_with_its_state_as_a_status_word() {
+        const networks = giveNetworks(controls);
+        side.show(0);
+        waitForRendering(side);
+        const words = findChild(rowOf(control("chooseNetwork")), "words");
+        compare(words.text, "netz · Home");
+        compare(control("wifiState").word, "verbunden");
+        networks.office.stateChanging = true;
+        compare(control("wifiState").word, "verbindet");
+        networks.office.stateChanging = false;
+        networks.home.connected = false;
+        compare(words.text, "netz");
+        compare(control("wifiState").word, "getrennt");
+    }
+
+    function test_kabel_shows_the_wired_connection_as_a_status_word() {
+        side.show(0);
+        waitForRendering(side);
+        verify(!control("wiredState").visible, "without a wired device the row is gone");
+        controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
+        compare(findChild(rowOf(control("wiredState")), "words").text, "kabel");
+        compare(control("wiredState").word, "verbunden");
+        compare(control("wiredState").status, "info");
+        controls.wiredDevice.connected = false;
+        compare(control("wiredState").word, "getrennt");
+    }
+
+    function test_without_networkmanager_the_network_rows_are_gone() {
+        side.show(0);
+        waitForRendering(side);
+        verify(!control("wifi").visible);
+        verify(!control("chooseNetwork").visible);
+        verify(!control("wiredState").visible);
+    }
+
+    function test_with_eight_networks_the_five_strongest_unfold_and_alle_netze_opens_all_in_a_level() {
+        giveNetworks(controls);
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        const opener = control("chooseNetwork");
+        const below = findChild(controls, "display");
+        const before = below.y;
+        mouseClick(opener);
+        waitForRendering(side);
+        verify(control("wifi").visible, "the switch stays in sight");
+        compare(rowsOf("wifiBranch").map(row => row.text), ["Home", "Office", "Guest", "Neighbour", "Library", "alle netze …"]);
+        compare(below.y, before + control("wifiBranch").height + Tokens.spaceM, "what stands below moves down");
+        verify(!control("networks").open, "no level yet");
+        mouseClick(control("allNetworks"));
+        const level = control("networks");
+        verify(level.open);
+        compare(levelRows(level).slice(1).map(row => row.text), ["Home", "Office", "Guest", "Neighbour", "Library", "Cafe", "Shop", "Hotel"]);
+        keyClick(Qt.Key_Escape);
+        verify(opener.activeFocus, "back on the row that opened it");
+    }
+
+    function test_up_to_five_networks_have_no_alle_netze_row() {
+        const networks = giveNetworks(controls);
+        networks.device.networks.values = [networks.home, networks.office, networks.guest, networks.neighbour, networks.library];
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        compare(rowsOf("wifiBranch").length, 5);
+    }
+
+    function test_a_network_row_tells_what_it_is_and_its_signal_in_percent() {
+        giveNetworks(controls);
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        const rows = rowsOf("wifiBranch");
+        compare(findChild(rows[0], "signal").text, "90%");
+        verify(findChild(rows[0], "leave").visible, "the joined one can be left");
+        verify(!findChild(rows[0], "kinds").visible, "the joined one needs no more words");
+        compare(findChild(rows[1], "kinds").text, "gesichert · bekannt");
+        compare(findChild(rows[2], "kinds").text, "");
+        compare(findChild(rows[3], "kinds").text, "gesichert");
+        verify(!findChild(rows[1], "leave").visible);
+        compare(rows[1].Accessible.name, "Office, gesichert · bekannt, signal 70%");
+    }
+
+    function test_the_scan_runs_while_the_list_shows_and_stops_with_it() {
+        giveNetworks(controls);
+        side.show(0);
+        waitForRendering(side);
+        compare(scans, []);
+        mouseClick(control("chooseNetwork"));
+        compare(scans, [true]);
+        waitForRendering(side);
+        mouseClick(control("allNetworks"));
+        verify(control("networks").open);
+        compare(scans, [true], "the level goes on with the same scan");
+        keyClick(Qt.Key_Escape);
+        mouseClick(control("chooseNetwork"));
+        compare(scans, [true, false]);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        compare(scans, [true, false, true]);
+        side.close();
+        tryVerify(() => !side.visible);
+        compare(scans, [true, false, true, false], "closing the panel stops it");
+    }
+
+    function test_the_networks_keep_their_order_while_the_list_shows_though_the_signal_moves() {
+        const networks = giveNetworks(controls);
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        networks.shop.signalStrength = 0.95;
+        compare(rowsOf("wifiBranch").map(row => row.text).slice(0, 2), ["Home", "Office"]);
+        compare(findChild(rowsOf("wifiBranch")[0], "signal").text, "90%");
+        mouseClick(control("chooseNetwork"));
+        tryVerify(() => !control("wifiBranch").visible);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        compare(rowsOf("wifiBranch")[0].text, "Shop", "folded and unfolded again it is ranked anew");
+    }
+
+    function test_a_known_or_open_network_joins_at_once() {
+        const networks = giveNetworks(controls);
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        const rows = rowsOf("wifiBranch");
+        mouseClick(rows[1]);
+        compare(networks.office.calls, ["connect"]);
+        compare(findChild(rows[1], "joining").word, "verbindet");
+        mouseClick(rows[1]);
+        compare(networks.office.calls, ["connect"], "one on its way waits for the answer");
+        mouseClick(rows[2]);
+        compare(networks.guest.calls, ["connect"]);
+        compare(joined, ["Office", "Guest"]);
+        verify(!sheet().open);
+    }
+
+    function test_a_secured_unknown_network_asks_for_its_password_in_a_sheet_and_joins_with_it() {
+        const networks = giveNetworks(controls);
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        mouseClick(rowsOf("wifiBranch")[3]);
+        verify(sheet().open);
+        compare(sheet().title, "passwort für Neighbour");
+        compare(networks.neighbour.calls, [], "nothing is joined before the password");
+        const input = findChild(findChild(sheet(), "password"), "input");
+        verify(input.activeFocus);
+        compare(input.echoMode, TextInput.Password);
+        typeText("secret");
+        keyClick(Qt.Key_Return);
+        compare(networks.neighbour.calls, ["psk secret"]);
+        compare(passwordsSent, ["secret"]);
+        verify(!sheet().open);
+        compare(sheet().password, "", "the password is not kept");
+        verify(rowsOf("wifiBranch")[3].activeFocus, "the focus goes back to the row");
+    }
+
+    function test_an_empty_password_is_refused_at_the_field_and_escape_leaves_the_sheet_alone_of_the_panel() {
+        const networks = giveNetworks(controls);
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        mouseClick(rowsOf("wifiBranch")[3]);
+        keyClick(Qt.Key_Return);
+        verify(sheet().open);
+        compare(findChild(sheet(), "password").error, "passwort fehlt");
+        typeText("x");
+        compare(findChild(sheet(), "password").error, "");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Escape);
+        verify(!sheet().open, "Escape leaves the sheet");
+        verify(side.open, "and the panel stays");
+        compare(networks.neighbour.calls, []);
+        compare(passwordsSent, []);
+    }
+
+    function test_the_sheet_goes_with_the_panel() {
+        giveNetworks(controls);
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        mouseClick(rowsOf("wifiBranch")[3]);
+        verify(sheet().open);
+        side.close();
+        tryVerify(() => !side.visible);
+        tryVerify(() => !sheet().open);
+    }
+
+    function test_a_failed_connection_says_why_in_its_row_until_the_next_attempt() {
+        const networks = giveNetworks(controls);
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        mouseClick(rowsOf("wifiBranch")[1]);
+        networks.office.stateChanging = false;
+        networks.office.connectionFailed(Controls.WifiAuthTimeout);
+        const failure = findChild(rowsOf("wifiBranch")[1], "failure");
+        verify(failure.visible);
+        compare(failure.word, "zeitüberschreitung");
+        compare(failure.status, "error");
+        verify(!findChild(rowsOf("wifiBranch")[1], "kinds").visible, "the cause takes the words' place");
+        compare(rowsOf("wifiBranch")[1].Accessible.name, "Office, zeitüberschreitung, gesichert · bekannt, signal 70%");
+        mouseClick(rowsOf("wifiBranch")[1]);
+        verify(!failure.visible, "a new attempt clears it");
+        networks.office.stateChanging = false;
+        networks.office.connectionFailed(Controls.NoSecrets);
+        compare(failure.word, "kein passwort");
+        networks.office.stateChanging = false;
+        networks.office.connectionFailed(99);
+        compare(failure.word, "unbekannter fehler");
+    }
+
+    function test_the_joined_network_is_left_by_its_quiet_button_and_a_press_on_its_row_does_nothing() {
+        const networks = giveNetworks(controls);
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        const home = rowsOf("wifiBranch")[0];
+        const leave = findChild(home, "leave");
+        compare(leave.variant, "quiet");
+        mouseClick(home, 10, home.height / 2);
+        compare(networks.home.calls, []);
+        mouseClick(leave);
+        compare(leaves, ["Home"]);
+        compare(networks.home.calls, ["disconnect"]);
+        compare(joined, []);
+    }
+
+    function test_the_network_list_works_from_the_keyboard() {
+        const networks = giveNetworks(controls);
+        side.show(0);
+        waitForRendering(side);
+        control("chooseNetwork").forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        verify(control("wifiBranch").expanded);
+        waitForRendering(side);
+        keyClick(Qt.Key_Down);
+        verify(rowsOf("wifiBranch")[0].activeFocus);
+        keyClick(Qt.Key_Down);
+        verify(findChild(rowsOf("wifiBranch")[0], "leave").activeFocus, "the joined network's button comes before the next row");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        compare(networks.office.calls, ["connect"], "Enter joins a known network");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        verify(rowsOf("wifiBranch")[4].activeFocus);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        verify(control("networks").open, "alle netze … opens the level");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Space);
+        verify(sheet().open, "a secured unknown network asks for its password");
+        compare(sheet().title, "passwort für Neighbour");
+        typeText("pw");
+        keyClick(Qt.Key_Return);
+        compare(networks.neighbour.calls, ["psk pw"]);
+        keyClick(Qt.Key_Escape);
+        verify(!control("networks").open);
+        verify(control("chooseNetwork").activeFocus, "back where it began");
+    }
+
+    function test_two_open_lists_do_not_fight_over_the_view() {
+        giveNetworks(controls);
+        giveBluetooth(controls);
+        givePairedDevices(controls, 7);
+        scene.height = 420;
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        const scroller = findChild(side, "scroller");
+        mouseClick(control("chooseNetwork"));
+        wait(300);
+        mouseClick(control("chooseBluetoothDevice"));
+        wait(300);
+        verify(scroller.contentHeight > scroller.height + 100, "there is room to scroll");
+        scroller.contentY = 0;
+        controls.wifiDevice.networks.values = controls.wifiDevice.networks.values.slice(0, 5);
+        wait(150);
+        compare(scroller.contentY, 0, "a network gone does not pull the view");
+        controls.bluetoothDevices = controls.bluetoothDevices.slice(0, 5);
+        wait(150);
+        compare(scroller.contentY, 0, "a device gone does not either");
+    }
+
+    function test_the_networks_come_back_folded_after_the_panel_was_away() {
+        giveNetworks(controls);
+        side.show(0);
+       waitForRendering(side);
+        waitForRendering(side);
+        mouseClick(control("chooseNetwork"));
+        side.close();
+        tryVerify(() => !side.visible);
+        side.show(0);
+        waitForRendering(side);
+        verify(!control("wifiBranch").expanded);
+    }
+
     function test_the_groups_stand_in_order_with_headings_and_a_group_without_rows_falls_away() {
         side.show(0);
         const groups = ["sound", "connections", "display", "session"].map(name => findChild(controls, name));
@@ -1686,6 +2153,34 @@ TestCase {
                 panel.controls.input = null;
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-display-sheet-${theme}-${density}.png`);
+                const networks = giveNetworks(panel.controls);
+                panel.controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
+                networks.office.stateChanging = true;
+                waitForRendering(contact);
+                findChild(contact, "chooseNetwork").forceActiveFocus();
+                keyClick(Qt.Key_Return);
+                waitForRendering(contact);
+                networks.office.stateChanging = false;
+                networks.office.connectionFailed(Controls.WifiAuthTimeout);
+                networks.guest.stateChanging = true;
+                waitForRendering(contact);
+                grabImage(contact).save(`panel-wifi-sheet-${theme}-${density}.png`);
+                findChild(contact, "allNetworks").forceActiveFocus();
+                keyClick(Qt.Key_Return);
+                waitForRendering(contact);
+                grabImage(contact).save(`panel-wifi-level-sheet-${theme}-${density}.png`);
+                keyClick(Qt.Key_Down);
+                keyClick(Qt.Key_Down);
+                keyClick(Qt.Key_Down);
+                keyClick(Qt.Key_Down);
+                keyClick(Qt.Key_Return);
+                typeText("pass");
+                waitForRendering(contact);
+                grabImage(contact).save(`panel-wifi-password-sheet-${theme}-${density}.png`);
+                verify(findChild(panel, "passwordSheet").open, `${theme} ${density}`);
+                keyClick(Qt.Key_Escape);
+                keyClick(Qt.Key_Escape);
+                panel.controls.networking.wifiEnabled = false;
                 findChild(contact, "chooseBluetoothDevice").forceActiveFocus();
                 keyClick(Qt.Key_Return);
                 waitForRendering(contact);

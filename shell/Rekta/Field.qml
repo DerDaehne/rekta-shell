@@ -14,6 +14,8 @@ Column {
     property string placeholder
     property string disabledReason
     property alias text: input.text
+    // TextInput.Password hides what is typed, as `type="password"` does.
+    property alias echoMode: input.echoMode
     readonly property bool hasError: error !== ""
     readonly property bool disabled: disabledReason !== ""
 
