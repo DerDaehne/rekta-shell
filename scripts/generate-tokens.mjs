@@ -2,13 +2,15 @@
 // Writes shell/Rekta/Tokens.qml and shell/Rekta/IconData.js from Rekta Design's dist (rekta.tokens.json, rekta.icons.json).
 //   node scripts/generate-tokens.mjs <rekta-design dist dir> <shell dir>          write the files
 //   node scripts/generate-tokens.mjs <rekta-design dist dir> <shell dir> --check  fail if one differs
-// Every value comes from Rekta Design; the only product choice is the typeface.
+// Every value comes from Rekta Design; the product's own choices are the typeface and the tile unit.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const FONT_SANS = 'Atkinson Hyperlegible Next';
 // The tokens list CSS font stacks; on Linux the fontconfig generic picks the monospace face.
 const FONT_MONO = 'monospace';
+// Rekta lets the product choose the tile unit (platforms.md:89); the product uses one value for every width.
+const PRODUCT_SIZES = { 'tile-unit': 170 };
 
 // Documentation, not values: descriptions, and the hooks (runtime custom properties of the web stylesheet).
 const SKIPPED_GROUPS = new Set(['name', 'version', 'units', 'descriptions', 'hooks']);
@@ -85,7 +87,10 @@ function motion(entries) {
 }
 
 function numbers(group, entries) {
-	return Object.entries(entries).map(([name, value]) => property('real', name, number(value, `${group}.${name}`)));
+	return Object.entries(entries).map(([name, value]) => {
+		const own = group === 'size' ? PRODUCT_SIZES[name] : undefined;
+		return property('real', name, own ?? number(value, `${group}.${name}`));
+	});
 }
 
 // The bindings below switch between exactly these modes; a new mode needs a new binding.

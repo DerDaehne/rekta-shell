@@ -35,9 +35,10 @@ TestCase {
     }
 
     function test_between_the_bounds_a_part_weighs_eight_tenths_of_its_area_in_tiles_to_the_power_of_0_35() {
-        // 0.8 × (310 × 150 / 150²)^0.35 and 0.8 × (400 × 24 / 150²)^0.35
-        fuzzyCompare(Turnstile.heft(310, 150), 1.0314, 1e-4);
-        fuzzyCompare(Turnstile.heft(400, 24), 0.5938, 1e-4);
+        const weigh = (width, height) => Geometry.heftAtTile * Math.pow(width * height / (tile * tile), Geometry.heftExponent);
+        fuzzyCompare(Turnstile.heft(310, 150), weigh(310, 150), 1e-9);
+        fuzzyCompare(Turnstile.heft(400, 24), weigh(400, 24), 1e-9);
+        verify(weigh(310, 150) > Geometry.heftMin && weigh(310, 150) < Geometry.heftMax);
     }
 
     function test_light_parts_start_first_and_take_less_time() {

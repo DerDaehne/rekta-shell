@@ -318,7 +318,7 @@ TestCase {
         clippedTurner.go(findChild(clipped, "place"), null);
         clippedTurner.paused = true;
         // The edge's x and the part's top against the edge's y, from the part's top left, and the reach of its row.
-        const expected = [["flush", -20, 0, 170], ["lower", -200, Tokens.tileUnit / 2, 350], ["beside", -480, 0, 630]];
+        const expected = [["flush", -20, 0, 20 + Tokens.tileUnit], ["lower", -200, Tokens.tileUnit / 2, 200 + Tokens.tileUnit], ["beside", -480, 0, 480 + Tokens.tileUnit]];
         for (const [name, x, y, reach] of expected) {
             const rotation = rotationOf(findChild(clipped, name));
             compare(rotation.origin.x, x, name);

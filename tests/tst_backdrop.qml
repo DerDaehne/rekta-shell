@@ -34,31 +34,25 @@ TestCase {
         return findChild(backdrop, "echo");
     }
 
-    function test_cells_are_the_tile_unit_below_2560_logical_px() {
-        const echo = createTemporaryObject(echoComponent, testCase, { screenWidth: 2559 });
+    function test_cells_are_the_tile_unit_at_every_screen_width() {
+        const echo = createTemporaryObject(echoComponent, testCase);
         compare(echo.cell, Tokens.tileUnit);
     }
 
-    function test_cells_are_the_ultrawide_unit_from_2560_logical_px() {
-        const echo = createTemporaryObject(echoComponent, testCase, { screenWidth: 2560 });
-        compare(echo.cell, Tokens.tileUnitUltrawide);
-        compare(echo.width, 4 * Tokens.tileUnitUltrawide + 3 * Tokens.spaceS);
-    }
-
     function test_the_echo_is_four_cells_wide_and_three_high_with_space_s_between() {
-        const echo = createTemporaryObject(echoComponent, testCase, { screenWidth: 1920 });
+        const echo = createTemporaryObject(echoComponent, testCase);
         compare(echo.width, 4 * Tokens.tileUnit + 3 * Tokens.spaceS);
         compare(echo.height, 3 * Tokens.tileUnit + 2 * Tokens.spaceS);
     }
 
     function test_the_pattern_is_six_tiles_wide_one_one_tall_one_wide() {
-        const echo = createTemporaryObject(echoComponent, testCase, { screenWidth: 1920 });
+        const echo = createTemporaryObject(echoComponent, testCase);
         const size = echo.pattern.map(tile => `${tile.columns}x${tile.rows}`);
         compare(size.join(" "), "2x1 1x1 1x1 1x2 1x1 2x1");
     }
 
     function test_no_two_tiles_overlap_and_all_lie_inside_the_echo() {
-        const echo = createTemporaryObject(echoComponent, testCase, { screenWidth: 1920 });
+        const echo = createTemporaryObject(echoComponent, testCase);
         const boxes = echo.pattern.map(tile => echo.tileRect(tile));
         for (let i = 0; i < boxes.length; i++) {
             verify(boxes[i].x + boxes[i].width <= echo.width && boxes[i].y + boxes[i].height <= echo.height);
@@ -68,7 +62,7 @@ TestCase {
     }
 
     function test_a_tile_of_one_cell_is_a_cell_in_size_and_a_tall_one_spans_two_rows_and_the_gap() {
-        const echo = createTemporaryObject(echoComponent, testCase, { screenWidth: 1920 });
+        const echo = createTemporaryObject(echoComponent, testCase);
         const small = echo.tileRect(echo.pattern[1]);
         compare(small.width, Tokens.tileUnit);
         compare(small.height, Tokens.tileUnit);
@@ -78,7 +72,7 @@ TestCase {
     function test_the_tiles_are_surface_mixed_70_percent_into_bg() {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
-            const echo = createTemporaryObject(echoComponent, testCase, { screenWidth: 1920 });
+            const echo = createTemporaryObject(echoComponent, testCase);
             const surface = Tokens.color.surface;
             const bg = Tokens.color.bg;
             fuzzyCompare(echo.tint.r, 0.7 * surface.r + 0.3 * bg.r, 0.005);
@@ -95,12 +89,11 @@ TestCase {
         compare(echo.y + echo.height, backdrop.height - Tokens.appbarHeight - Tokens.spaceXl);
     }
 
-    function test_the_cell_follows_the_backdrop_s_width() {
-        const backdrop = createTemporaryObject(backdropComponent, testCase, { width: 3072, height: 1728 });
-        compare(echoOf(backdrop).cell, Tokens.tileUnitUltrawide);
-        backdrop.width = 1080;
-        backdrop.height = 1920;
-        compare(echoOf(backdrop).cell, Tokens.tileUnit);
+    function test_the_cell_is_the_same_on_a_wide_and_a_narrow_backdrop() {
+        const wide = createTemporaryObject(backdropComponent, testCase, { width: 3072, height: 1728 });
+        const narrow = createTemporaryObject(backdropComponent, testCase, { width: 1080, height: 1920 });
+        compare(echoOf(wide).cell, Tokens.tileUnit);
+        compare(echoOf(narrow).cell, Tokens.tileUnit);
     }
 
     function test_a_solid_backdrop_is_bg_alone_without_an_echo() {

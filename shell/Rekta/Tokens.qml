@@ -149,7 +149,7 @@ QtObject {
     readonly property real radiusM: 8
     readonly property real radiusL: 12
     readonly property real radiusTile: 2
-    readonly property real tileUnit: 150
+    readonly property real tileUnit: 170
     readonly property real tileUnitUltrawide: 170
     readonly property real appbarHeight: 56
     readonly property real touchTarget: 44

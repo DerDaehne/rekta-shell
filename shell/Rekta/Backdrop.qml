@@ -17,7 +17,6 @@ Rectangle {
 
         sourceComponent: Echo {
             objectName: "echo"
-            screenWidth: backdrop.width
             x: backdrop.width - Tokens.spaceXl - width
             y: backdrop.height - Tokens.appbarHeight - Tokens.spaceXl - height
         }

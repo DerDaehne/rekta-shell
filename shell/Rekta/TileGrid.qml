@@ -3,9 +3,8 @@ import QtQuick
 // A grid of tiles (layout.md, "Tile grids"; rekta.css:76–80, :1166): fixed tile-unit cells space-s apart, sideways. Each
 // tile takes the first free cells its size fits, row by row from the top (grid-auto-flow: dense), so a wide tile never
 // leaves a hole that a narrower one after it could fill.
-// ponytail: sideways cells of tile-unit only. Compact stretches them to fill the row, at least two across, and from
-// 2560px the unit is tile-unit-ultrawide (rekta.css:1199–1201) for every tile and banner; add both with the first
-// compact grid and the first ultrawide screen.
+// ponytail: sideways cells of tile-unit only. Compact stretches them to fill the row, at least two across; add that
+// with the first compact grid. The product keeps one tile-unit for every width, ultrawide included.
 Item {
     id: grid
 

@@ -4,16 +4,13 @@ import QtQuick
 import QtQuick.Shapes
 
 // The shell's background mark, a faint print of six tiles whose strength fades out from the bottom right corner. The
-// cells are the real tile unit, wider on an ultrawide screen (layout.md:105, :134), with space-s between them. Rekta
+// cells are the real tile unit (layout.md:105, :134), with space-s between them. Rekta
 // has no ground for a whole workspace; the mix, the pattern and the fade are the shell's own choice,
 // proposed to Rekta Design, and stay here as literals until Rekta names them.
 Item {
     id: echo
 
-    // The logical width of the screen the echo stands on; it picks the cell.
-    required property real screenWidth
-
-    readonly property real cell: screenWidth >= Tokens.bpUltrawide ? Tokens.tileUnitUltrawide : Tokens.tileUnit
+    readonly property real cell: Tokens.tileUnit
     readonly property real gap: Tokens.spaceS
     readonly property int columns: 4
     readonly property int rows: 3

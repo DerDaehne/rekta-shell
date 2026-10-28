@@ -119,3 +119,8 @@ test('a line cap or join the icon cannot draw stops the generator', () => {
 	assertRefused((_, icons) => (icons.lineCap = 'triangle'), /no mapping for line cap triangle/);
 	assertRefused((_, icons) => (icons.lineJoin = 'arcs'), /no mapping for line join arcs/);
 });
+
+test('the tile unit is the product value whatever Rekta gives', () => {
+	const { tokens } = generate((t) => (t.size['tile-unit'] = 99));
+	assert.match(tokens, /property real tileUnit: 170\n/);
+});
