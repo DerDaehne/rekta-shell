@@ -63,8 +63,13 @@ FocusScope {
             "öffnen und schließen": tempoField,
             "suche": escapeField
         })
-    // Why the fields cannot be changed: cause and remedy in one sentence (forms.md, "Disabled controls say why").
+    // Why the fields cannot be changed (forms.md, "Disabled controls say why"): the short cause stands beside each
+    // control, as Rekta's disabled examples do, and the hint below says cause and remedy in one sentence.
     readonly property string disabledReason: ({
+            broken: "datei nicht lesbar",
+            newer: "datei zu neu"
+        })[settings.fault] ?? ""
+    readonly property string problem: ({
             broken: "settings.json ist kein gültiges json. korrigiere oder lösche die datei, dann lässt sich hier wieder etwas ändern.",
             newer: "settings.json stammt von einer neueren rekta-version. aktualisiere rekta, um hier etwas zu ändern."
         })[settings.fault] ?? ""
@@ -146,6 +151,7 @@ FocusScope {
         Setting {
             label: "tempo des start"
             hint: "wie schnell sich der start öffnet und schließt. rekta selbst dreht im vollen tempo."
+            problem: view.problem
             presetWord: view.presetWord("startTempo", view.tempoChoices)
 
             Segments {
@@ -167,6 +173,7 @@ FocusScope {
         Setting {
             label: "escape in der suche"
             hint: "was escape tut, solange du im start suchst."
+            problem: view.problem
             presetWord: view.presetWord("searchEscape", view.escapeChoices)
 
             Select {
@@ -189,6 +196,7 @@ FocusScope {
 
         Setting {
             hint: "ein blasser abdruck der kacheln unten rechts im hintergrund."
+            problem: view.problem
             presetWord: view.settings.differs("background") ? (view.settings.preset("background") === "rekta" ? "an" : "aus") : ""
 
             Toggle {

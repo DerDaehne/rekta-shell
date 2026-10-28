@@ -314,7 +314,8 @@ TestCase {
         host.app.writeRequested.connect(() => writes++);
         for (const name of ["startTempo", "searchEscape", "echo"]) {
             verify(control(name).disabled, name);
-            verify(control(name).disabledReason.includes("kein gültiges json"), name);
+            compare(control(name).disabledReason, "datei nicht lesbar", name);
+            verify(hintOf(name).includes("kein gültiges json") && hintOf(name).includes("korrigiere oder lösche"), name);
         }
         control("startTempo").choose(1);
         verify(findChild(control("startTempo"), "options").children[0].lit, "the chosen word does not flicker");
@@ -329,7 +330,8 @@ TestCase {
         host.app.userText = '{"version":2,"startTempo":"rekta"}';
         compare(control("startTempo").currentIndex, 1, "it is still read");
         verify(control("startTempo").disabled);
-        verify(control("startTempo").disabledReason.includes("neueren rekta-version"));
+        compare(control("startTempo").disabledReason, "datei zu neu");
+        verify(hintOf("startTempo").includes("neueren rekta-version") && hintOf("startTempo").includes("aktualisiere rekta"));
         control("startTempo").choose(0);
         compare(host.app.userText, '{"version":2,"startTempo":"rekta"}');
     }
