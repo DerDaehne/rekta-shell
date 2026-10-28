@@ -10,6 +10,7 @@ let
     root = ../.;
     fileset = lib.fileset.unions [
       ../shell
+      ../settings
       ../tests
     ];
   };
@@ -58,6 +59,26 @@ in
       fi
       touch $out
     '';
+
+  # The settings app is found by its desktop entry in every session, so the entry and the wrapper must be there, and the
+  # entry must not hide itself from Plasma.
+  settings-app =
+    pkgs.runCommand "rekta-shell-settings-app" { nativeBuildInputs = [ pkgs.desktop-file-utils ]; }
+      ''
+        desktop=${rekta-shell}/share/applications/rekta-settings.desktop
+        desktop-file-validate $desktop
+        grep -qx "Exec=rekta-settings" $desktop
+        if grep -qE "^(OnlyShowIn|NotShowIn|NoDisplay|Hidden)=" $desktop; then
+          echo "the settings entry hides itself in some session" >&2
+          exit 1
+        fi
+        test -x ${rekta-shell}/bin/rekta-settings
+        grep -qF "${rekta-shell.quickshell}/bin" ${rekta-shell}/bin/rekta-settings
+        grep -qF "${rekta-shell}/share/rekta-settings" ${rekta-shell}/bin/.rekta-settings-wrapped
+        grep -qx "//@ pragma AppId rekta-settings" ${rekta-shell}/share/rekta-settings/shell.qml
+        grep -q "no-duplicate" ${rekta-shell}/bin/.rekta-settings-wrapped
+        touch $out
+      '';
 
   # The rekta drop-in replaces KWin's command in both sessions, so a Plasma update that changes the command must fail here.
   kwin-drop-in-follows-plasma = pkgs.runCommand "rekta-shell-kwin-drop-in-follows-plasma" { } ''

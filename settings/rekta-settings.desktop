@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=rekta einstellungen
+GenericName=Settings
+Comment=Settings of the rekta shell
+Exec=rekta-settings
+Icon=preferences-desktop
+Categories=Settings;DesktopSettings;
+StartupWMClass=rekta-settings

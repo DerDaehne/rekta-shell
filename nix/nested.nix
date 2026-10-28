@@ -96,7 +96,7 @@ writeShellApplication {
       XDG_CACHE_HOME="$home/.cache"
       XDG_RUNTIME_DIR="$home/runtime"
       XDG_CONFIG_DIRS="$home/rekta-kwin/kwin"
-      XDG_DATA_DIRS="$home/rekta-kwin:${kdePackages.kwin}/share"
+      XDG_DATA_DIRS="$home/rekta-kwin:${kdePackages.kwin}/share:${rekta-shell}/share"
       LANG="''${LANG:-C.UTF-8}"
       # The rekta session's name, which the shell checks before it takes over names of Plasma's.
       XDG_SESSION_DESKTOP=rekta

@@ -50,6 +50,15 @@ stdenvNoCC.mkDerivation {
       "''${defaultsArgs[@]}" \
       --set-default REKTA_SHELL_LAUNCH systemd
 
+    # The settings app is a configuration of its own; the wrapper runs it with the same modules as the shell.
+    install -Dm644 ${../settings/shell.qml} $out/share/rekta-settings/shell.qml
+    install -Dm644 ${../settings/rekta-settings.desktop} $out/share/applications/rekta-settings.desktop
+    install -Dm755 ${../settings/rekta-settings} $out/bin/rekta-settings
+    substituteInPlace $out/bin/rekta-settings --subst-var out
+    wrapProgram $out/bin/rekta-settings \
+      --prefix PATH : ${lib.makeBinPath [ quickshell ]} \
+      --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${plasma-workspace}/lib/qt-6/qml"
+
     install -Dm644 ${../session/rekta.desktop} $out/share/wayland-sessions/rekta.desktop
     install -Dm755 ${../session/rekta-session} $out/libexec/rekta-session
     install -Dm755 ${../session/rekta-kwin} $out/libexec/rekta-kwin
