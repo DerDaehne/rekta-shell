@@ -30,6 +30,21 @@ TestCase {
         compare(Rules.primaryOutput(doctor([{ name: "DP-1", enabled: false, priority: 1 }])), "");
     }
 
+    function test_qts_placeholder_screen_without_an_area_is_no_real_screen() {
+        const placeholder = { name: "", width: 0, height: 0 };
+        const screen = { name: "Virtual-1", width: 1280, height: 800 };
+        compare(Rules.realScreens([placeholder]), []);
+        compare(Rules.realScreens([placeholder, screen]), [screen]);
+    }
+
+    function test_the_primary_screen_is_the_named_one_else_the_first_and_none_without_a_real_screen() {
+        const first = { name: "Virtual-1", width: 1280, height: 800 };
+        const second = { name: "Virtual-2", width: 800, height: 1280 };
+        compare(Rules.primaryScreen([first, second], "Virtual-2"), second);
+        compare(Rules.primaryScreen([first, second], "gone"), first);
+        compare(Rules.primaryScreen(Rules.realScreens([{ name: "", width: 0, height: 0 }]), ""), null);
+    }
+
     function test_an_app_starts_in_a_systemd_scope_of_its_own_named_after_its_desktop_file() {
         compare(Rules.scopeCommand("org.kde.konsole", ["konsole", "--new-tab"], 1234),
             ["systemd-run", "--user", "--scope", "--unit=app-org.kde.konsole-1234", "--", "konsole", "--new-tab"]);

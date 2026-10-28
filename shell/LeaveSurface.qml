@@ -23,7 +23,7 @@ PanelWindow {
     anchors.bottom: true
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
-    visible: leaving
+    visible: primaryScreen !== null && leaving
     WlrLayershell.namespace: "rekta-leave"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: holdsKeyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None

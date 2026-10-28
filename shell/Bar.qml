@@ -57,8 +57,9 @@ PanelWindow {
         id: bar
 
         width: parent.width
-        viewportHeight: panel.modelData.height
-        area: Qt.size(panel.modelData.width, panel.modelData.height)
+        // A screen that has gone is null here until its bar goes too.
+        viewportHeight: panel.modelData?.height ?? 0
+        area: Qt.size(panel.modelData?.width ?? 0, panel.modelData?.height ?? 0)
         centre: clock
         centreReserve: panel.showsReadout ? display.implicitWidth : 0
         away: panel.away

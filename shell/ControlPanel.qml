@@ -29,6 +29,8 @@ PanelWindow {
     required property PwNode sink
     required property PwNode source
     required property NoticeBoard notices
+    // The screen it opens on, null once that one has gone; the panel hides meanwhile.
+    property ShellScreen shownOn: primaryScreen
     readonly property alias doNotDisturb: controls.doNotDisturb
     // Untyped, as qmllint sees Pipewire's own opaque copy of the model type, which lacks `values`.
     readonly property var nodes: Pipewire.nodes
@@ -42,8 +44,8 @@ PanelWindow {
 
     // Opens the panel on a screen with a facet, or closes it when that facet shows there already.
     function toggle(onScreen: ShellScreen, index: int) {
-        if (screen !== onScreen) {
-            screen = onScreen;
+        if (shownOn !== onScreen) {
+            shownOn = onScreen;
             panel.show(index);
             return;
         }
@@ -62,7 +64,7 @@ PanelWindow {
             console.info(`ControlPanel: would ${what}`);
     }
 
-    screen: primaryScreen
+    screen: shownOn
     anchors.right: true
     anchors.top: true
     anchors.bottom: true
@@ -70,10 +72,10 @@ PanelWindow {
     // No zone of its own (Quickshell's Auto would keep its width clear), yet clear of the app bar's.
     exclusionMode: ExclusionMode.Normal
     color: "transparent"
-    visible: panel.open
+    visible: shownOn !== null && panel.open
     // A dock to KWin: a namespace it does not know makes a normal window, which tiling scripts move like an app's.
     WlrLayershell.namespace: "dock"
-    WlrLayershell.layer: startInFront && screen === primaryScreen ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.layer: startInFront && shownOn === primaryScreen ? WlrLayer.Overlay : WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
     SidePanel {

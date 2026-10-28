@@ -45,7 +45,7 @@ ShellRoot {
     }
 
     Variants {
-        model: Quickshell.screens
+        model: primary.screens
 
         Ground {
             settings: settingsFiles
@@ -53,7 +53,7 @@ ShellRoot {
     }
 
     Variants {
-        model: Quickshell.screens
+        model: primary.screens
 
         Bar {
             windows: running
@@ -142,6 +142,6 @@ ShellRoot {
     Toasts {
         id: toasts
 
-        screen: primary.screen
+        primaryScreen: primary.screen
     }
 }

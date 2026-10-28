@@ -46,7 +46,7 @@ PanelWindow {
     anchors.bottom: true
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
-    visible: banner.open
+    visible: primaryScreen !== null && banner.open
     WlrLayershell.namespace: "dock"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive

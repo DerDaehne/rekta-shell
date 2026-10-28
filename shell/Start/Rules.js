@@ -18,6 +18,17 @@ function primaryOutput(json) {
     return enabled.reduce((first, output) => output.priority < first.priority ? output : first).name;
 }
 
+// The screens with an area: while no output is left, Qt lists a placeholder screen without one (qwaylanddisplay.cpp,
+// ensureScreen).
+function realScreens(screens) {
+    return screens.filter(screen => screen.width > 0 && screen.height > 0);
+}
+
+// Of `screens`, the one named `name`, else the first; null when there is none.
+function primaryScreen(screens, name) {
+    return screens.find(screen => screen.name === name) ?? screens[0] ?? null;
+}
+
 // A unit name holds letters, digits, ":", "_" and "."; anything else is written as \xNN, as systemd-escape does.
 // Desktop file IDs are ASCII (desktop-entry spec, "Desktop File ID").
 function escapeUnitName(text) {

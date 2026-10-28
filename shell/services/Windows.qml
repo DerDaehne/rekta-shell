@@ -56,7 +56,7 @@ Scope {
         }
 
         function isOn(shellScreen: ShellScreen): bool {
-            return screen.x === shellScreen.x && screen.y === shellScreen.y;
+            return shellScreen !== null && screen.x === shellScreen.x && screen.y === shellScreen.y;
         }
 
         // Brings it to the front, on its virtual desktop, out of minimised.
