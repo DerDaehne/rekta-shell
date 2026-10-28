@@ -87,6 +87,9 @@ Item {
     onInactiveSizeChanged: rest()
 
     Keys.onPressed: event => {
+        // Alt+Left (back) and Ctrl+Home belong to the place, not to the strip.
+        if (event.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.MetaModifier))
+            return;
         const count = titles.length;
         const moves = {
             [down ? Qt.Key_Down : Qt.Key_Right]: currentIndex + 1,

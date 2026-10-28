@@ -4,9 +4,23 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Rekta
+import Settings
 import SettingsApp
 
 ShellRoot {
+    SystemMotion {}
+
+    // Read only here: the app writes a setting only where a field changes it.
+    SettingsFiles {
+        id: settingsFiles
+    }
+
+    Binding {
+        target: Prefs
+        property: "density"
+        value: settingsFiles.value("density")
+    }
+
     FloatingWindow {
         id: window
 

@@ -23,24 +23,40 @@ TestCase {
         signalName: "closeRequested"
     }
 
+    // The view inside a plain item, as Quickshell's window holds its content: nothing there gives the view the focus.
     Component {
-        id: viewComponent
+        id: hostComponent
 
-        SettingsView {
+        Item {
+            property alias view: inner
+
             width: 900
             height: 600
+
+            SettingsView {
+                id: inner
+
+                anchors.fill: parent
+            }
         }
     }
 
     function init() {
-        view = createTemporaryObject(viewComponent, testCase);
+        view = createTemporaryObject(hostComponent, testCase).view;
         closeSpy.clear();
         waitForRendering(view);
-        pivot().forceActiveFocus();
+    }
+
+    function cleanup() {
+        Prefs.motion = "system";
     }
 
     function pivot(): var {
         return findChild(view, "pivot");
+    }
+
+    function turner(): var {
+        return findChild(view, "turn");
     }
 
     function page(index: int): var {
@@ -67,17 +83,67 @@ TestCase {
         verify(page(0).visible);
         verify(!page(1).visible);
         pivot().select(1);
-        verify(findChild(view, "turn").running);
+        verify(turner().running);
         verify(page(0).visible);
         tryVerify(() => page(1).visible && !page(0).visible);
         compare(view.shownPlace, 1);
     }
 
-    function test_going_back_to_an_earlier_place_turns_back() {
+    function test_choosing_a_later_place_turns_forward_and_an_earlier_one_back() {
         pivot().select(2);
+        verify(!turner().back);
         tryVerify(() => page(2).visible);
         pivot().select(0);
+        verify(turner().back);
         tryVerify(() => page(0).visible && !page(2).visible);
+    }
+
+    function test_under_reduced_motion_a_place_change_lands_at_once() {
+        Prefs.motion = "off";
+        pivot().select(2);
+        verify(!turner().running);
+        verify(page(2).visible);
+        verify(!page(0).visible);
+    }
+
+    function test_the_keys_work_without_the_focus_being_set_by_hand() {
+        keyClick(Qt.Key_Right);
+        compare(pivot().currentIndex, 1);
+    }
+
+    function test_escape_goes_back_one_place_with_the_back_turn_in_the_order_visited() {
+        pivot().select(2);
+        pivot().select(1);
+        tryVerify(() => page(1).visible);
+        keyClick(Qt.Key_Escape);
+        compare(pivot().currentIndex, 2);
+        verify(turner().back);
+        tryVerify(() => page(2).visible && !page(1).visible);
+        keyClick(Qt.Key_Escape);
+        compare(pivot().currentIndex, 0);
+        tryVerify(() => page(0).visible && !page(2).visible);
+    }
+
+    function test_alt_left_and_the_back_key_go_back_too() {
+        pivot().select(2);
+        keyClick(Qt.Key_Left, Qt.AltModifier);
+        compare(pivot().currentIndex, 0);
+        pivot().select(1);
+        keyClick(Qt.Key_Back);
+        compare(pivot().currentIndex, 0);
+    }
+
+    function test_the_mouse_back_button_goes_back() {
+        pivot().select(1);
+        mouseClick(view, 400, 400, Qt.BackButton);
+        compare(pivot().currentIndex, 0);
+    }
+
+    function test_back_at_the_top_place_does_nothing_and_does_not_close() {
+        keyClick(Qt.Key_Escape);
+        keyClick(Qt.Key_Left, Qt.AltModifier);
+        compare(pivot().currentIndex, 0);
+        compare(closeSpy.count, 0);
     }
 
     function test_the_arrow_keys_and_home_and_end_move_between_places() {
@@ -104,7 +170,7 @@ TestCase {
     }
 
     function test_groups_stand_in_one_column_on_a_narrow_window() {
-        view.width = Tokens.bpSidewaysScrollMin - 1;
+        view.parent.width = Tokens.bpSidewaysScrollMin - 1;
         compare(view.columns, 1);
         tryVerify(() => groupAt("fläche").x === 0 && groupAt("fläche").y > groupAt("farben").y);
     }
@@ -113,9 +179,11 @@ TestCase {
         const columnWidth = (view.minimumWidth - 2 * Tokens.spaceXl - Tokens.spaceL) / 2;
         verify(columnWidth >= 2 * Tokens.tileUnit);
         verify(view.minimumWidth >= Tokens.bpSidewaysScrollMin);
+        verify(view.minimumHeight > Tokens.bpShortHeight);
     }
 
     function test_ctrl_w_asks_to_close_and_escape_does_not() {
+        pivot().select(1);
         keyClick(Qt.Key_Escape);
         compare(closeSpy.count, 0);
         keyClick(Qt.Key_W, Qt.ControlModifier);

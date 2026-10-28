@@ -280,6 +280,15 @@ TestCase {
         verify(ring.visible, "the ring is on the active title");
     }
 
+    function test_an_arrow_with_alt_ctrl_or_meta_is_not_the_strips() {
+        const pivot = createTemporaryObject(pivotComponent, testCase);
+        pivot.forceActiveFocus();
+        keyClick(Qt.Key_Right, Qt.AltModifier);
+        keyClick(Qt.Key_Right, Qt.ControlModifier);
+        keyClick(Qt.Key_Right, Qt.MetaModifier);
+        compare(pivot.currentIndex, 0);
+    }
+
     function test_down_the_side_up_and_down_pick() {
         const pivot = createTemporaryObject(pivotComponent, testCase, { side: true });
         pivot.forceActiveFocus();

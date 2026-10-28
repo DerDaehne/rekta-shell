@@ -57,7 +57,8 @@ stdenvNoCC.mkDerivation {
     substituteInPlace $out/bin/rekta-settings --subst-var out
     wrapProgram $out/bin/rekta-settings \
       --prefix PATH : ${lib.makeBinPath [ quickshell ]} \
-      --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${plasma-workspace}/lib/qt-6/qml"
+      --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${plasma-workspace}/lib/qt-6/qml" \
+      "''${defaultsArgs[@]}"
 
     install -Dm644 ${../session/rekta.desktop} $out/share/wayland-sessions/rekta.desktop
     install -Dm755 ${../session/rekta-session} $out/libexec/rekta-session

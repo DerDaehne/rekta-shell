@@ -4,7 +4,8 @@ import QtQuick
 import Rekta
 
 // The settings app's window content: the places as a strip along the top (navigation.md, "Pivot"; rekta.css:148–190),
-// each place a page of groups in two columns, one on a narrow window. A place change turns like Rekta's.
+// each place a page of groups in two columns, one on a narrow window. A place change turns like Rekta's, and back goes
+// one place back through the places visited (navigation.md, "Places, history and back").
 FocusScope {
     id: view
 
@@ -25,31 +26,65 @@ FocusScope {
     readonly property int place: pivot.currentIndex
     // The window's title is the place's, then the app (navigation.md, "Places, history and back").
     readonly property string windowTitle: `${places[place].title} · rekta einstellungen`
-    readonly property int columns: width >= Tokens.bpSidewaysScrollMin ? 2 : 1
+    // The same rule as the pivot's: sideways when wide and tall enough, else compact.
+    readonly property int columns: Prefs.sizeClass(width, height) === "sideways" ? 2 : 1
     // Two columns of two tile units, with the gap between and the pivot's inset on both sides.
     readonly property real minimumWidth: 4 * Tokens.tileUnit + Tokens.spaceL + 2 * Tokens.spaceXl
-    readonly property real minimumHeight: 3 * Tokens.tileUnit
-
-    // The page on show; it lags the pivot while a turn runs.
+    // Taller than Rekta's short viewport, so the window stays in the sideways class (layout.md, size classes).
+    readonly property real minimumHeight: Tokens.bpShortHeight + Tokens.tileUnit / 2
+    // The place whose page shows (or turns in), and the places left behind it, newest last.
     property int shownPlace: 0
+    property var trail: []
 
     signal closeRequested
 
     function showPlace(index: int) {
         if (index === shownPlace)
             return;
+        trail.push(shownPlace);
+        turnTo(index, index < shownPlace);
+    }
+
+    // Back is one place back, in the order visited; at the top place it does nothing and never closes the window.
+    function goBack() {
+        if (trail.length === 0)
+            return;
+        const index = trail.pop();
+        pivot.currentIndex = index;
+        turnTo(index, true);
+    }
+
+    function turnTo(index: int, back: bool) {
         turner.go(pages.itemAt(shownPlace), pages.itemAt(index), {
-            back: index < shownPlace
+            back: back
         });
         shownPlace = index;
     }
 
-    // Escape does not close the window: Rekta has no hidden way out. Ctrl+W and the frame do.
+    function goesBack(event: KeyEvent): bool {
+        return event.key === Qt.Key_Escape || event.key === Qt.Key_Back || (event.key === Qt.Key_Left && (event.modifiers & Qt.AltModifier) !== 0);
+    }
+
+    // The window is a plain item to its content, so the view takes the keys itself.
+    focus: true
+
+    // Before the pivot, which would take Alt+Left as a step left. Escape never closes the window: Rekta has no hidden
+    // way out. Ctrl+W and the frame do.
+    Keys.priority: Keys.BeforeItem
     Keys.onPressed: event => {
-        if (event.key !== Qt.Key_W || !(event.modifiers & Qt.ControlModifier))
+        if (goesBack(event))
+            goBack();
+        else if (event.key === Qt.Key_W && (event.modifiers & Qt.ControlModifier))
+            closeRequested();
+        else
             return;
-        closeRequested();
         event.accepted = true;
+    }
+
+    // The mouse's back button.
+    TapHandler {
+        acceptedButtons: Qt.BackButton
+        onTapped: view.goBack()
     }
 
     PlaceTurn {

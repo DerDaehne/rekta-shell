@@ -2,4 +2,4 @@
 # A second launch asks the open window to come forward; --no-duplicate keeps a lost race from opening two.
 path=@out@/share/rekta-settings
 quickshell --path "$path" ipc call settings raise >/dev/null 2>&1 && exit 0
-exec quickshell --path "$path" --no-duplicate "$@"
+exec quickshell --path "$path" --no-duplicate
