@@ -19,8 +19,11 @@ Item {
     readonly property bool compact: Prefs.sizeClass(placeWidth, viewportHeight) === "compact"
     readonly property bool down: side && !compact
     readonly property bool navSizes: level === "nav" && !compact
-    readonly property real activeSize: Tokens.fluid(navSizes ? Tokens.fontSizeNavActive : Tokens.fontSizePivotActive, placeWidth)
-    readonly property real inactiveSize: Tokens.fluid(navSizes ? Tokens.fontSizeNavInactive : Tokens.fontSizePivotInactive, placeWidth)
+    // The fluid size tokens of the active and the inactive title; a place may set larger ones.
+    property var activeToken: navSizes ? Tokens.fontSizeNavActive : Tokens.fontSizePivotActive
+    property var inactiveToken: navSizes ? Tokens.fontSizeNavInactive : Tokens.fontSizePivotInactive
+    readonly property real activeSize: Tokens.fluid(activeToken, placeWidth)
+    readonly property real inactiveSize: Tokens.fluid(inactiveToken, placeWidth)
 
     signal selected(int index)
 

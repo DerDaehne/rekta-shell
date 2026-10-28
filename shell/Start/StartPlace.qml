@@ -658,7 +658,8 @@ FocusScope {
             onWheel: event => start.wheel(event)
         }
 
-        // A place's strip along the top, the space-xl in from the edge of a sideways place (rekta.css:1180).
+        // A place's strip along the top, the space-xl in from the edge of a sideways place (rekta.css:1180). Its inactive
+        // title is one step up from Rekta's (rekta.css:53), so both titles stay above the section headings.
         Pivot {
             id: pivot
 
@@ -667,6 +668,8 @@ FocusScope {
             width: parent.width - 2 * Tokens.spaceXl
             enabled: start.wanted
             level: "nav"
+            activeToken: Tokens.fontSizeNavActive
+            inactiveToken: Tokens.fontSizeTitle
             titles: ["start", "alle apps"]
             placeWidth: start.width
             viewportHeight: start.height
@@ -687,7 +690,9 @@ FocusScope {
             flickableDirection: Flickable.VerticalFlick
             boundsBehavior: Flickable.StopAtBounds
 
-            // Sections stack down the column, each space-l above and below, a hairline between (rekta.css:854–856).
+            // Sections stack down the column, each space-xl above and below, a hairline between, the heading space-l before
+            // its tiles, the headings one step up from Rekta's: the Start is airier and larger than a compact panorama
+            // (rekta.css:854–856, :53, :50).
             Column {
                 id: sections
 
@@ -697,12 +702,13 @@ FocusScope {
                     objectName: "running"
                     width: parent.width
                     visible: start.running.length > 0
-                    topPadding: Tokens.spaceL
-                    bottomPadding: Tokens.spaceL
-                    spacing: Tokens.spaceM
+                    topPadding: Tokens.spaceXl
+                    bottomPadding: Tokens.spaceXl
+                    spacing: Tokens.spaceL
 
                     GroupHeading {
                         objectName: "heading"
+                        sizeToken: Tokens.fontSizeXl
                         width: parent.width
                         text: "läuft"
                         placeWidth: start.width
@@ -739,12 +745,13 @@ FocusScope {
                 Column {
                     objectName: "pinned"
                     width: parent.width
-                    topPadding: Tokens.spaceL
-                    bottomPadding: Tokens.spaceL
-                    spacing: Tokens.spaceM
+                    topPadding: Tokens.spaceXl
+                    bottomPadding: Tokens.spaceXl
+                    spacing: Tokens.spaceL
 
                     GroupHeading {
                         objectName: "heading"
+                        sizeToken: Tokens.fontSizeXl
                         width: parent.width
                         text: "angeheftet"
                         placeWidth: start.width

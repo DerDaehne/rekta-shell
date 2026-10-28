@@ -133,14 +133,29 @@ TestCase {
         compare(findChild(named("pinned"), "heading").text, "angeheftet");
     }
 
-    function test_a_section_has_space_l_above_and_below_and_space_m_under_its_heading() {
+    function test_a_section_has_space_xl_above_and_below_and_space_l_under_its_heading() {
         openNow();
         const section = named("pinned");
         const heading = findChild(section, "heading");
         const grid = findChild(section, "grid");
-        compare(heading.y, Tokens.spaceL);
-        compare(grid.y, heading.y + heading.height + Tokens.spaceM);
-        compare(section.height, grid.y + grid.height + Tokens.spaceL);
+        compare(heading.y, Tokens.spaceXl);
+        compare(grid.y, heading.y + heading.height + Tokens.spaceL);
+        compare(section.height, grid.y + grid.height + Tokens.spaceXl);
+    }
+
+    function test_the_pivot_is_light_and_larger_than_the_section_headings_which_are_larger_than_the_tile_names() {
+        openNow();
+        const pivot = named("pivot");
+        const active = findChild(pivot, "word");
+        const names = tilesIn("pinned").map(tile => findChild(tile, "name"));
+        const heading = findChild(named("pinned"), "heading");
+        compare(active.font.weight, Tokens.fontWeightLight);
+        compare(heading.font.pixelSize, Math.floor(Tokens.fluid(Tokens.fontSizeXl, start.width)));
+        compare(names[0].font.pixelSize, Tokens.fontSizeS);
+        verify(pivot.inactiveSize > heading.font.pixelSize, "the inactive title above the heading");
+        verify(active.font.pixelSize > pivot.inactiveSize, "the active title above the inactive one");
+        verify(heading.font.pixelSize > names[0].font.pixelSize, "the heading above the tile names");
+        compare(findChild(tilesIn("running")[0], "title").font.pixelSize, Tokens.fontSizeS);
     }
 
     function test_each_window_gets_a_two_unit_tile_the_most_recent_first_with_its_title() {
@@ -988,7 +1003,7 @@ TestCase {
         compare(typed.font.weight, Tokens.fontWeightLight);
         compare(typed.color, Tokens.color.textPrimary);
         compare(suche.text, "suche");
-        compare(suche.font.pixelSize, Math.floor(named("pivot").inactiveSize));
+        compare(suche.font.pixelSize, Math.round(named("pivot").inactiveSize));
         compare(suche.color, Tokens.color.textContrastMedium);
         compare(suche.x, typed.width + Tokens.spaceL);
         compare(suche.y + suche.baselineOffset, typed.y + typed.baselineOffset, "on one baseline");

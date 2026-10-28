@@ -26,8 +26,11 @@ Tile {
     }
 
     // A kicker names a tile (tiles.md, "Message"), in a tile's line height (rekta.css:86); one line, cut at its end.
+    // Size s instead of the kicker's xs (rekta.css:50): the Start is larger than a compact panorama.
     Kicker {
         objectName: "name"
+        font.pixelSize: Tokens.fontSizeS
+        font.letterSpacing: Geometry.kickerLetterSpacing * Tokens.fontSizeS
         width: parent.width
         text: tile.name
         color: Tokens.color.textPrimary
