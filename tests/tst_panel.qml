@@ -943,7 +943,7 @@ TestCase {
 
     function test_a_long_device_name_is_cut_in_its_select_and_in_its_row() {
         const sound = giveSound(controls);
-        sound.speakers.description = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3)";
+        sound.speakers.description = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3)".repeat(Math.ceil(Tokens.tileUnit / 40));
         side.show(0);
         waitForRendering(side);
         const select = control("outputDevice");
