@@ -7,3 +7,4 @@ Controls 1.0 Controls.qml
 LookAndFeel 1.0 LookAndFeel.js
 Messages 1.0 Messages.qml
 MessageRow 1.0 MessageRow.qml
+PanelBranch 1.0 PanelBranch.qml

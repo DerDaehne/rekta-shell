@@ -6,7 +6,7 @@ import Rekta
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
 // tiles (tiles.md: a tile never changes data). The groups stand in a fixed order, ton, verbindungen, anzeige, sitzung;
 // one without rows falls away. The host runs what the rows ask for and feeds back the state they show. In ton a select
-// chooses the default device of each kind; in verbindungen a level lists the paired Bluetooth devices to connect.
+// chooses the default device of each kind; in verbindungen the paired Bluetooth devices unfold below their row, up to five, and a level lists them all.
 Column {
     id: controls
 
@@ -47,6 +47,9 @@ Column {
     // Its paired devices: name, connected, state, pairing, batteryAvailable and battery (0 to 1).
     property var bluetoothDevices: []
     readonly property bool bluetoothOn: bluetooth?.enabled ?? false
+    readonly property int inlineDeviceLimit: 5
+    // Connected ones first, so the few that show are the ones in use.
+    readonly property var devicesInline: bluetoothDevices.filter(device => device.connected).concat(bluetoothDevices.filter(device => !device.connected)).slice(0, inlineDeviceLimit)
 
     // The density as the shell has it: auto, comfortable or compact.
     property string density: "auto"
@@ -77,7 +80,7 @@ Column {
 
     // A device connects or disconnects; one on its way has the system's answer to wait for.
     function pressBluetooth(row: MenuItem) {
-        if (row === pairRow) {
+        if ((row as PairItem)?.pairs) {
             pairingAsked();
             return;
         }
@@ -150,12 +153,8 @@ Column {
                     BluetoothDeviceItem {}
                 }
 
-                MenuItem {
-                    id: pairRow
-
+                PairItem {
                     objectName: "pairDevice"
-                    text: "neues gerät koppeln"
-                    activeFocusOnTab: true
                 }
             }
         ]
@@ -183,13 +182,50 @@ Column {
             label: `geräte · ${controls.bluetoothDevices.filter(device => device.connected).length} verbunden`
             present: controls.bluetooth !== null
 
+            Keys.onPressed: event => event.accepted = bluetoothBranch.handleKey(event)
+
             Button {
                 id: devicesOpener
 
                 objectName: "chooseBluetoothDevice"
                 text: "wählen"
                 Accessible.name: "geräte wählen"
-                onClicked: bluetoothLevel.show(devicesOpener)
+                Accessible.expandable: true
+                Accessible.expanded: bluetoothBranch.expanded
+                onClicked: bluetoothBranch.toggle()
+            }
+        }
+
+        PanelBranch {
+            id: bluetoothBranch
+
+            objectName: "bluetoothBranch"
+            opener: devicesOpener
+            onActivated: row => {
+                if (row === allDevicesRow)
+                    bluetoothLevel.show(devicesOpener);
+                else
+                    controls.pressBluetooth(row);
+            }
+
+            Repeater {
+                model: controls.devicesInline
+
+                BluetoothDeviceItem {}
+            }
+
+            MenuItem {
+                id: allDevicesRow
+
+                objectName: "allDevices"
+                visible: controls.bluetoothDevices.length > controls.inlineDeviceLimit
+                text: "alle geräte …"
+                opensLevel: true
+                activeFocusOnTab: true
+            }
+
+            PairItem {
+                objectName: "pairDeviceInline"
             }
         }
     }
@@ -291,6 +327,17 @@ Column {
         function onPowerProfileChanged() {
             profiles.currentIndex = controls.powerProfile;
         }
+
+        // Out of sight, or with no adapter, the devices come back folded.
+        function onVisibleChanged() {
+            if (!controls.visible)
+                bluetoothBranch.fold();
+        }
+
+        function onBluetoothChanged() {
+            if (!controls.bluetooth)
+                bluetoothBranch.fold();
+        }
     }
 
     // The default device of one kind in a select of the devices of that kind; choosing one asks for it as the default.
@@ -374,6 +421,13 @@ Column {
             Accessible.name: `stumm ${muteRow.name}`
             onToggled: muteRow.node.audio.muted = checked
         }
+    }
+
+    component PairItem: MenuItem {
+        readonly property bool pairs: true
+
+        text: "neues gerät koppeln"
+        activeFocusOnTab: true
     }
 
     // A paired device: its name, its battery where it tells, and its state as a status word of the shell's own, each on

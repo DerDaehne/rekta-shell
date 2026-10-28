@@ -365,11 +365,22 @@ TestCase {
         return bluetooth;
     }
 
-    // The Bluetooth level of the controls, opened by its row's button.
+    // Paired devices after the three of giveBluetooth, up to `total`; the last is connected.
+    function givePairedDevices(target: var, total: int) {
+        const more = Array.from({ length: total - 3 }, (_, index) => createTemporaryObject(bluetoothDeviceComponent, testCase, { name: `Device ${index + 4}`, connected: index === total - 4 }));
+        target.bluetoothDevices = [...target.bluetoothDevices, ...more];
+    }
+
+    // The rows that show in the unfolded devices.
+    function branchRows(): var {
+        const list = Array.from(control("bluetoothBranch").children).find(child => child instanceof Column);
+        return Array.from(list.children).filter(row => row instanceof MenuItem && row.visible);
+    }
+
+    // The Bluetooth level of the controls, which the row "alle geräte …" opens; here opened directly.
     function showBluetoothLevel(): var {
         side.show(0);
-        control("chooseBluetoothDevice").forceActiveFocus();
-        keyClick(Qt.Key_Return);
+        control("bluetoothDevices").show(control("chooseBluetoothDevice"));
         const level = control("bluetoothDevices");
         verify(level.open);
         waitForRendering(side);
@@ -1147,16 +1158,162 @@ TestCase {
         verify(!toggle.checked);
     }
 
-    function test_geräte_opens_a_level_of_the_paired_devices_with_their_state_and_battery() {
+    function test_geräte_unfolds_the_paired_devices_in_place_with_their_state_and_battery() {
         giveBluetooth(controls);
         side.show(0);
         const opener = control("chooseBluetoothDevice");
+        const branch = control("bluetoothBranch");
+        const below = findChild(controls, "display");
         compare(findChild(rowOf(opener), "words").text, "geräte · 1 verbunden");
+        verify(!branch.visible, "folded it takes no room");
         waitForRendering(side);
+        const before = below.y;
         mouseClick(opener);
+        verify(branch.expanded);
+        waitForRendering(side);
+        verify(control("bluetooth").visible, "the switch stays in sight");
+        verify(opener.visible);
+        const rows = branchRows();
+        compare(rows.map(row => row.text), ["Headphones", "Speaker", "Mouse", "neues gerät koppeln"]);
+        verify(!control("bluetoothDevices").open, "no level");
+        compare(below.y, before + branch.height + Tokens.spaceM, "what stands below moves down");
+        compare(rows[0].Accessible.name, "Headphones, verbunden, akku 80%");
+        compare(findChild(rows[1], "state").word, "getrennt");
+        compare(findChild(rows[0], "battery").text, "80%");
+        mouseClick(opener);
+        verify(!branch.expanded);
+        tryCompare(below, "y", before);
+    }
+
+    function test_with_more_than_five_devices_five_unfold_connected_first_and_alle_geräte_opens_all_in_a_level() {
+        giveBluetooth(controls);
+        givePairedDevices(controls, 7);
+        side.show(0);
+        waitForRendering(side);
+        mouseClick(control("chooseBluetoothDevice"));
+        waitForRendering(side);
+        const rows = branchRows();
+        compare(rows.map(row => row.text), ["Headphones", "Device 7", "Speaker", "Mouse", "Device 4", "alle geräte …", "neues gerät koppeln"]);
+        mouseClick(rows[5]);
         const level = control("bluetoothDevices");
         verify(level.open);
-        verify(!findChild(findChild(controls, "connections"), "rows").visible, "in place of the group's rows");
+        compare(levelRows(level).map(row => row.text).slice(1, 8), ["Headphones", "Speaker", "Mouse", "Device 4", "Device 5", "Device 6", "Device 7"]);
+        keyClick(Qt.Key_Escape);
+        verify(control("chooseBluetoothDevice").activeFocus);
+    }
+
+    function test_up_to_five_devices_have_no_alle_geräte_row() {
+        giveBluetooth(controls);
+        givePairedDevices(controls, 5);
+        side.show(0);
+        waitForRendering(side);
+        mouseClick(control("chooseBluetoothDevice"));
+        waitForRendering(side);
+        compare(branchRows().length, 6, "five devices and neues gerät koppeln");
+        verify(!control("allDevices").visible);
+    }
+
+    function test_the_unfolded_devices_connect_and_pair_like_those_of_the_level() {
+        const bluetooth = giveBluetooth(controls);
+        side.show(0);
+        waitForRendering(side);
+        mouseClick(control("chooseBluetoothDevice"));
+        waitForRendering(side);
+        const rows = branchRows();
+        mouseClick(rows[1]);
+        compare(bluetooth.speaker.calls, ["connect"]);
+        compare(findChild(rows[1], "state").word, "wartet");
+        mouseClick(rows[1]);
+        compare(bluetooth.speaker.calls, ["connect"], "one on its way waits for the answer");
+        mouseClick(rows[3]);
+        compare(pairingAsked, 1);
+        verify(control("bluetoothBranch").expanded, "it stays unfolded");
+    }
+
+    function test_the_devices_unfold_over_duration_short_with_ease_in_and_fold_in_0_7_of_that_with_ease_out() {
+        giveBluetooth(controls);
+        side.show(0);
+        waitForRendering(side);
+        Prefs.motion = "on";
+        const branch = control("bluetoothBranch");
+        const unfolding = findChild(branch, "unfolding");
+        compare(unfolding.duration, Tokens.durationShort);
+        compare(unfolding.easing.bezierCurve, Tokens.easeIn);
+        const folding = findChild(branch, "folding");
+        compare(folding.duration, 0.7 * Tokens.durationShort);
+        compare(folding.easing.bezierCurve, Tokens.easeOut);
+        mouseClick(control("chooseBluetoothDevice"));
+        tryVerify(() => branch.unfolded > 0.2 && branch.unfolded < 0.8, Tokens.durationShort);
+        compare(branch.opacity, branch.unfolded, "it fades in as it grows");
+        tryCompare(branch, "unfolded", 1, 4 * Tokens.durationShort);
+        mouseClick(control("chooseBluetoothDevice"));
+        verify(branch.unfolded > 0, "it folds over time, it does not jump");
+        tryCompare(branch, "unfolded", 0, 4 * Tokens.durationShort);
+    }
+
+    function test_with_reduced_motion_the_devices_show_their_end_state_at_once() {
+        giveBluetooth(controls);
+        side.show(0);
+        const branch = control("bluetoothBranch");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        compare(branch.unfolded, 1);
+        keyClick(Qt.Key_Escape);
+        compare(branch.unfolded, 0);
+    }
+
+    function test_geräte_unfolds_from_the_keyboard_and_escape_folds_it() {
+        const bluetooth = giveBluetooth(controls);
+        side.show(0);
+        keyClick(Qt.Key_Down);
+        const opener = control("chooseBluetoothDevice");
+        verify(opener.activeFocus);
+        const branch = control("bluetoothBranch");
+        keyClick(Qt.Key_Escape);
+        verify(!side.open, "folded, Escape leaves the panel");
+        side.show(0);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        verify(branch.expanded, "Enter unfolds");
+        keyClick(Qt.Key_Return);
+        verify(!branch.expanded, "and folds");
+        keyClick(Qt.Key_Space);
+        verify(branch.expanded, "Space too");
+        keyClick(Qt.Key_Down);
+        const rows = branchRows();
+        verify(rows[0].activeFocus, "Down goes into the devices");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        compare(bluetooth.speaker.calls, ["connect"], "Enter connects");
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Space);
+        compare(bluetooth.headphones.calls, ["disconnect"], "Space too");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        verify(rows[3].activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(pairingAsked, 1);
+        keyClick(Qt.Key_Escape);
+        verify(!branch.expanded);
+        verify(opener.activeFocus, "the focus goes back to geräte");
+        verify(side.open);
+    }
+
+    function test_the_devices_come_back_folded_after_the_panel_was_away() {
+        giveBluetooth(controls);
+        side.show(0);
+        waitForRendering(side);
+        mouseClick(control("chooseBluetoothDevice"));
+        side.close();
+        tryVerify(() => !side.visible);
+        side.show(0);
+        verify(!control("bluetoothBranch").expanded);
+    }
+
+    function test_geräte_opens_a_level_of_the_paired_devices_with_their_state_and_battery() {
+        giveBluetooth(controls);
+        const level = showBluetoothLevel();
         const rows = levelRows(level);
         compare(rows.map(row => row.text), ["zurück · geräte", "Headphones", "Speaker", "Mouse", "neues gerät koppeln"]);
         compare(rows.slice(1).map(row => row.kind), ["item", "item", "item", "item"], "no option to choose one of");
@@ -1169,8 +1326,6 @@ TestCase {
         compare(battery.font.features, { "tnum": 1 }, "in tabular figures");
         compare(battery.font.weight, Tokens.fontWeightMedium, "a number to read as data");
         verify(!findChild(rows[2], "battery").visible, "where the device tells none");
-        compare(rows[1].Accessible.name, "Headphones, verbunden, akku 80%");
-        compare(rows[2].Accessible.name, "Speaker, getrennt");
         waitForRendering(side);
         const end = findChild(rows[1], "end");
         compare(end.x + end.width, rows[1].width - Tokens.spaceM, "state and battery at the row's end");
@@ -1235,8 +1390,8 @@ TestCase {
         keyClick(Qt.Key_Down);
         const opener = control("chooseBluetoothDevice");
         verify(opener.activeFocus);
-        keyClick(Qt.Key_Return);
         const level = control("bluetoothDevices");
+        level.show(opener);
         const rows = levelRows(level);
         verify(rows[1].activeFocus, "the focus starts on the first device");
         keyClick(Qt.Key_Down);
@@ -1375,10 +1530,19 @@ TestCase {
                 panel.controls.input = null;
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-display-sheet-${theme}-${density}.png`);
+                grabImage(contact).save(`panel-bluetooth-collapsed-sheet-${theme}-${density}.png`);
                 findChild(contact, "chooseBluetoothDevice").forceActiveFocus();
                 keyClick(Qt.Key_Return);
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-bluetooth-sheet-${theme}-${density}.png`);
+                verify(findChild(contact, "bluetoothBranch").expanded);
+                const more = Array.from({ length: 4 }, (_, index) => createTemporaryObject(bluetoothDeviceComponent, testCase, { name: `Device ${index + 4}` }));
+                panel.controls.bluetoothDevices = [...panel.controls.bluetoothDevices, ...more];
+                waitForRendering(contact);
+                findChild(contact, "allDevices").forceActiveFocus();
+                keyClick(Qt.Key_Return);
+                waitForRendering(contact);
+                grabImage(contact).save(`panel-bluetooth-level-sheet-${theme}-${density}.png`);
                 verify(findChild(contact, "bluetoothDevices").open);
                 verify(panel.open, `${theme} ${density}`);
                 contact.destroy();
