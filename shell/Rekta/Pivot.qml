@@ -87,7 +87,7 @@ Item {
     onInactiveSizeChanged: rest()
 
     Keys.onPressed: event => {
-        // Alt+Left (back) and Ctrl+Home belong to the place, not to the strip.
+        // Alt+Left is back (platforms.md:166–169), so a key with a modifier is not the strip's (rekta.js:902, the panorama's).
         if (event.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.MetaModifier))
             return;
         const count = titles.length;

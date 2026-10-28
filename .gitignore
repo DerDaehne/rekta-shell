@@ -3,3 +3,4 @@ result-*
 .direnv/
 .privacy-patterns
 CLAUDE.local.md
+/*.png

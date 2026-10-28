@@ -30,8 +30,9 @@ FocusScope {
     readonly property int columns: Prefs.sizeClass(width, height) === "sideways" ? 2 : 1
     // Two columns of two tile units, with the gap between and the pivot's inset on both sides.
     readonly property real minimumWidth: 4 * Tokens.tileUnit + Tokens.spaceL + 2 * Tokens.spaceXl
-    // Taller than Rekta's short viewport, so the window stays in the sideways class (layout.md, size classes).
-    readonly property real minimumHeight: Tokens.bpShortHeight + Tokens.tileUnit / 2
+    // Taller than Rekta's short viewport, so the window stays sideways (layout.md, size classes), with a space-xl of
+    // margin.
+    readonly property real minimumHeight: Tokens.bpShortHeight + Tokens.spaceXl
     // The place whose page shows (or turns in), and the places left behind it, newest last.
     property int shownPlace: 0
     property var trail: []
@@ -68,9 +69,7 @@ FocusScope {
     // The window is a plain item to its content, so the view takes the keys itself.
     focus: true
 
-    // Before the pivot, which would take Alt+Left as a step left. Escape never closes the window: Rekta has no hidden
-    // way out. Ctrl+W and the frame do.
-    Keys.priority: Keys.BeforeItem
+    // Escape never closes the window: Rekta has no hidden way out. Ctrl+W and the frame do.
     Keys.onPressed: event => {
         if (goesBack(event))
             goBack();
