@@ -6,12 +6,13 @@ set(CMAKE_AUTOMOC ON)
 # The factory macro declares the plugin's Q_OBJECT class.
 list(APPEND CMAKE_AUTOMOC_MACRO_NAMES KWIN_EFFECT_FACTORY)
 
-find_package(ECM REQUIRED NO_MODULE)
+# KDEInstallDirs picks its Qt version from the Qt that is already found.
+# KWin links these without looking for them itself.
+find_package(Qt6 REQUIRED COMPONENTS DBus Qml Widgets)
+find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 include(KDEInstallDirs)
 
-# KWin links these without looking for them itself.
-find_package(Qt6 REQUIRED COMPONENTS DBus Qml Widgets)
 find_package(KWin REQUIRED)
 
 # The effect uses KWin's internal headers, which change with every Plasma release.

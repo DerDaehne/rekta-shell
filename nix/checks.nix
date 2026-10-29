@@ -32,7 +32,9 @@ in
     pkgs.runCommand "rekta-shell-package-refuses-foreign-qt" { } "touch $out";
 
   # A system or home profile links share/ and etc/xdg of its packages into every session's XDG dirs and lib/qt-6/plugins
-  # into its plugin path, Plasma's too: the package may bring no KWin effects or config defaults there.
+  # into its plugin path, Plasma's too: the package may bring no KWin effects, config defaults or plugins there. Its
+  # DBus module is a QML module in the namespace RektaShell, which nothing of Plasma imports, so lib/qt-6/qml may hold
+  # that alone.
   profile-leaves-plasma-alone =
     let
       profile = pkgs.buildEnv {
@@ -41,11 +43,53 @@ in
       };
     in
     pkgs.runCommand "rekta-shell-profile-leaves-plasma-alone" { } ''
-      for path in share/kwin etc/xdg lib/qt-6/plugins/kwin; do
+      for path in share/kwin etc/xdg lib/qt-6/plugins; do
         if [ -e ${profile}/$path ]; then
           echo "a profile with the rekta package puts $path into every session" >&2
           exit 1
         fi
+      done
+      other=$(ls ${profile}/lib/qt-6/qml | grep -vx RektaShell || true)
+      if [ -n "$other" ]; then
+        echo "a profile with the rekta package puts $other into every session's QML imports" >&2
+        exit 1
+      fi
+      touch $out
+    '';
+
+  # The session files are templates; one that keeps a placeholder or an empty value would only fail in a session.
+  session-files-are-filled = pkgs.runCommand "rekta-shell-session-files-are-filled" { } ''
+    cd ${rekta-shell}
+    if grep -rIE '@[A-Za-z_]+@' bin libexec share/systemd share/wayland-sessions; then
+      echo "a placeholder is left in the package" >&2
+      exit 1
+    fi
+    grep -qF 'QT_PLUGIN_PATH="${rekta-shell}/lib/rekta-kwin/plugins' libexec/rekta-kwin
+    grep -qF 'XDG_DATA_DIRS="${rekta-shell}/share/rekta-kwin:' libexec/rekta-kwin
+    grep -qF 'XDG_CONFIG_DIRS="${rekta-shell}/share/rekta-kwin/kwin:' libexec/rekta-kwin
+    touch $out
+  '';
+
+  # NixOS collects user units from systemd.packages only under etc/systemd/user and lib/systemd/user, so the package
+  # installs them there, and the test VM and an enabled module must carry the unit and its three drop-ins.
+  user-units-reach-nixos =
+    let
+      units = [
+        "rekta-shell.service"
+        "plasma-kwin_wayland.service.d/rekta-session.conf"
+        "plasma-plasmashell.service.d/rekta-session.conf"
+        "plasma-workspace.target.d/rekta-shell.conf"
+      ];
+      vmUnits = self.nixosConfigurations.test-vm.config.environment.etc."systemd/user".source;
+    in
+    pkgs.runCommand "rekta-shell-user-units-reach-nixos" { } ''
+      for unit in ${lib.escapeShellArgs units}; do
+        for dir in ${rekta-shell}/lib/systemd/user ${vmUnits}; do
+          if [ ! -f $dir/$unit ]; then
+            echo "$dir has no $unit" >&2
+            exit 1
+          fi
+        done
       done
       touch $out
     '';
@@ -253,6 +297,11 @@ in
           exit 1
         fi
       }
+      for unit in rekta-shell.service plasma-kwin_wayland.service.d/rekta-session.conf plasma-plasmashell.service.d/rekta-session.conf plasma-workspace.target.d/rekta-shell.conf; do
+        test -f ${
+          enabled.environment.etc."systemd/user".source
+        }/$unit || { echo "the enabled module leaves $unit out of /etc/systemd/user" >&2; exit 1; }
+      done
       names_defaults ${enabled.programs.rekta-shell.package} rekta
       names_defaults ${(withBackground "solid").programs.rekta-shell.package} solid
       if grep -q density ${enabled.programs.rekta-shell.package}/share/rekta-shell/defaults.json; then

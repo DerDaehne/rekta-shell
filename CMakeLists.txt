@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.25)
 project(rekta-shell VERSION 0.1.0 LANGUAGES CXX)
 
-find_package(ECM REQUIRED NO_MODULE)
+# KDEInstallDirs picks its Qt version from the Qt that is already found.
+find_package(Qt6 REQUIRED COMPONENTS Core)
+find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 include(KDEInstallDirs)
 
@@ -20,9 +22,10 @@ set(REKTA_SHELL_DIR ${KDE_INSTALL_FULL_DATADIR}/rekta-shell)
 set(REKTA_SETTINGS_DIR ${KDE_INSTALL_FULL_DATADIR}/rekta-settings)
 set(REKTA_KWIN_DATA_DIR ${KDE_INSTALL_FULL_DATADIR}/rekta-kwin)
 set(REKTA_KWIN_PLUGIN_DIR ${KDE_INSTALL_FULL_LIBDIR}/rekta-kwin/plugins)
+# Starts with a newline and ends a line in the starters, so an unset file leaves no blank line.
 set(REKTA_DEFAULTS_EXPORT "")
 if(REKTA_DEFAULTS_FILE)
-    set(REKTA_DEFAULTS_EXPORT "export REKTA_DEFAULTS=\"${REKTA_DEFAULTS_FILE}\"")
+    set(REKTA_DEFAULTS_EXPORT "\nexport REKTA_DEFAULTS=\"${REKTA_DEFAULTS_FILE}\"")
 endif()
 
 add_subdirectory(plugins/dbus)

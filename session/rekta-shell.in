@@ -1,6 +1,5 @@
 #!/bin/sh
 # Only this starter lets the shell start apps for real; run from a checkout it only logs them.
 export QML_IMPORT_PATH="@REKTA_SHELL_DIR@${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
-export REKTA_SHELL_LAUNCH="${REKTA_SHELL_LAUNCH:-systemd}"
-@REKTA_DEFAULTS_EXPORT@
+export REKTA_SHELL_LAUNCH="${REKTA_SHELL_LAUNCH:-systemd}"@REKTA_DEFAULTS_EXPORT@
 exec @QUICKSHELL@ --path "@REKTA_SHELL_DIR@" "$@"

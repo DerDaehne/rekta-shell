@@ -60,6 +60,11 @@ stdenv.mkDerivation {
   ]
   ++ lib.optional (defaults != { }) "-DREKTA_DEFAULTS_FILE=${defaultsFile}";
 
+  # The ECM hook sets the user units' directory under share, where NixOS does not look for units of systemd.packages.
+  preConfigure = ''
+    appendToVar cmakeFlags "-DKDE_INSTALL_SYSTEMDUSERUNITDIR=${placeholder "out"}/lib/systemd/user"
+  '';
+
   postInstall = ''
     ${lib.optionalString (defaults != { }) ''
       echo ${lib.escapeShellArg (builtins.toJSON defaults)} > ${defaultsFile}

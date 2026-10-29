@@ -107,11 +107,12 @@ People should understand intent and behaviour by reading the code.
   comes from nixpkgs, so it is built against the same Qt as Plasma; the package
   refuses any Quickshell other than 0.3.x.
 - Rekta Design is a flake input pinned to one commit (source only).
-- The build is one CMake project at the repository root (ECM `KDEInstallDirs`): it builds the DBus module and
-  `rekta-fadeback` (only against KWin 6.8.x) and installs the shell, KWin parts, session files and the two starters,
-  filling the `@…@` placeholders with `configure_file(@ONLY)`; other programs' paths are cache variables
-  (`QUICKSHELL`, `KWIN_WAYLAND_WRAPPER`, …). The flake builds through it and adds only wrappers with store paths and
-  `defaults.json`.
+- The build is one CMake project at the repository root (ECM `KDEInstallDirs`): it
+  builds the DBus module and `rekta-fadeback` (only against KWin 6.8.x) and installs
+  the shell, KWin parts, session files and the two starters, filling the `@…@`
+  placeholders with `configure_file(@ONLY)`; other programs' paths are cache
+  variables (`QUICKSHELL`, `KWIN_WAYLAND_WRAPPER`, …). The flake builds through it
+  and adds only wrappers with store paths and `defaults.json`.
 
 ```sh
 nix flake check   # package, qmllint (warnings fail), token drift, QML tests, modules, nixfmt --check
@@ -140,9 +141,10 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   (Qt, Quickshell, the DBus module and plasma-workspace on the import path, warnings fail).
 - `plugins/dbus/` is the shell's DBus module `RektaShell.DBus` (C++, QtDBus and QtQml only):
   one type, `DBusConnection`, with a bus connection of its own per instance, listens to
-  signals, calls methods typed by a full D-Bus signature and owns names. The root CMake project
-  builds it, `nix/package.nix` from the same pkgs as Quickshell, and the package refuses a Quickshell with
-  another Qt; the wrapper, the nested session and `rekta-qmllint` put it on the import path.
+  signals, calls methods typed by a full D-Bus signature and owns names. The root
+  CMake project builds it; `nix/package.nix` builds that project from the same pkgs
+  as Quickshell, and the package refuses a Quickshell with another Qt; the wrapper,
+  the nested session and `rekta-qmllint` put it on the import path.
   The QML tests run on a private bus (`dbus-run-session`) with `tests/counterpart/` (QtDBus
   alone) as the other end.
 - `session/` holds the rekta session's files: its desktop entry, the start script
@@ -150,7 +152,8 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   `rekta-shell.service` and the drop-ins that skip plasmashell and pull the shell into
   `plasma-workspace.target`. A drop-in on `plasma-kwin_wayland.service` runs Plasma's
   KWin command through `libexec/rekta-kwin`, which only in the rekta session puts the
-  `rekta-kwin` directories (`kwin/`: effects, kwinrc defaults, `rekta-fadeback`), the Rekta module and the
+  `rekta-kwin` directories (`kwin/`: effects, kwinrc defaults, `rekta-fadeback`), the
+  Rekta module and the
   `org.kde.desktop` controls style into KWin's environment; the
   `kwin-drop-in-follows-plasma` check fails once Plasma's command changes. The package
   installs them with their paths filled in (`share/wayland-sessions`, `libexec`,
