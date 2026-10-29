@@ -7,7 +7,7 @@ import QtQuick
 // stylesheet's reversed keyframes do (rekta.css:901). `press()` is a key: the first brings the display, every later one
 // only keeps it, and one during the way back waits until it has gone.
 // ponytail: a new layer surface takes some 60ms to its first frame, so the way in starts with that frame; should no frame
-// ever come the display stays at its start until the next key.
+// ever come the display stays at its start until its hold runs out, then goes.
 Item {
     id: alone
 
@@ -51,7 +51,7 @@ Item {
         leaving = false;
         moving.restart();
         hold.restart();
-        if (!fresh || !Window.window)
+        if (!fresh || !Window.window || !moving.running)
             return;
         moving.pause();
         awaitsFrame = true;

@@ -194,6 +194,17 @@ TestCase {
         compare(mappedSpy.count, 2);
     }
 
+    function test_a_newly_mapped_surface_starts_its_way_in_with_its_first_frame() {
+        alone.away = true;
+        alone.press();
+        verify(alone.awaitsFrame);
+        verify(moving.paused);
+        compare(alone.phase, 0);
+        tryCompare(alone, "awaitsFrame", false, 2000);
+        verify(!moving.paused);
+        tryCompare(alone, "settled", true, 2000);
+    }
+
     function test_a_further_key_restarts_the_hold() {
         hold.interval = 800;
         alone.away = true;
@@ -211,9 +222,9 @@ TestCase {
         signalName: "mappedChanged"
     }
 
-
     function test_under_reduced_motion_the_display_comes_and_goes_at_once_but_stays_its_time() {
         Prefs.motion = "off";
+        failOnWarning(/setPaused|TypeError|ReferenceError|Binding loop/);
         compare(moving.duration, 0);
         compare(hold.interval, Geometry.displayHold);
         alone.away = true;
