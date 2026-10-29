@@ -36,6 +36,18 @@ QtObject {
     // body, icon, time, unseen, toast }. Every change hands out a new array.
     property var rows: []
     readonly property int unseen: rows.filter(row => row.unseen).length
+    // The id of the app a notification belongs to, from its desktop-entry hint and its app name.
+    property var appOf: (desktopEntry, appName) => desktopEntry || appName
+    // The unseen ones by app: { appId: count }.
+    readonly property var unseenByApp: {
+        const counts = {};
+        for (const row of rows.filter(row => row.unseen)) {
+            const app = appOf(row.desktopEntry, row.appName);
+            if (app)
+                counts[app] = (counts[app] ?? 0) + 1;
+        }
+        return counts;
+    }
     property var waiting: []
     // The record whose toast shows, or `removal` while the undo toast does.
     property var showing: null

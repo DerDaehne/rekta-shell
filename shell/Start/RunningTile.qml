@@ -14,10 +14,18 @@ Tile {
     property Component preview
     // The window it shows, handed to the preview.
     property var window
+    // How many unseen notifications the window's app has.
+    property int unseen: 0
 
     columns: 2
     opens: true
     Accessible.name: title
+    Accessible.description: count.showing ? count.shown + " ungelesen" : ""
+    held: hover.hovered || activeFocus
+
+    HoverHandler {
+        id: hover
+    }
 
     // ponytail: the preview's top corners stay square under the tile's 2px radius; mask them if that shows.
     Loader {
@@ -59,6 +67,7 @@ Tile {
         // Size s instead of the kicker's xs (rekta.css:50): the Start is larger than a compact panorama.
         Kicker {
             objectName: "title"
+            visible: !count.showing
             font.pixelSize: Tokens.fontSizeS
             font.letterSpacing: Geometry.kickerLetterSpacing * Tokens.fontSizeS
             anchors.verticalCenter: parent.verticalCenter
@@ -69,6 +78,17 @@ Tile {
             maximumLineCount: 1
             wrapMode: Text.NoWrap
             elide: Text.ElideRight
+        }
+
+        // In place of the title, beside the icon.
+        UnseenStat {
+            id: count
+
+            owner: tile
+            app: tile.title
+            count: tile.unseen
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - Geometry.appIconSize - parent.spacing
         }
     }
 }

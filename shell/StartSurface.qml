@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import org.kde.pipewire as PipeWire
 import org.kde.taskmanager as TaskManager
 import Start
+import Notices
 import "services"
 
 // The Start's surface: full screen on the primary screen, above the windows and the app bar. Without windows the Start
@@ -16,6 +17,7 @@ PanelWindow {
 
     required property Windows windows
     required property Launcher launcher
+    required property NoticeBoard notices
     required property ShellScreen primaryScreen
     // What Escape does in a search: "close" or "back" (the setting searchEscape).
     property string searchEscape: "close"
@@ -54,6 +56,7 @@ PanelWindow {
         return Rules.pinnedTiles(listed, id => byId(id) !== null).map(tile => {
             const entry = byId(tile.id);
             return {
+                id: entry.id,
                 name: entry.name,
                 icon: Quickshell.iconPath(entry.icon, true),
                 columns: tile.columns,
@@ -97,6 +100,7 @@ PanelWindow {
         apps: installed.list
         searchEscape: surface.searchEscape
         starts: usage.starts
+        unseen: surface.notices.unseenByApp
         preview: Component {
             WindowPreview {}
         }

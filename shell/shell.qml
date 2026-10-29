@@ -106,6 +106,7 @@ ShellRoot {
         searchEscape: settingsFiles.value("searchEscape")
         windows: running
         launcher: appLauncher
+        notices: notifications.board
         primaryScreen: primary.screen
     }
 

@@ -2,4 +2,5 @@ module Start
 StartPlace 1.0 StartPlace.qml
 RunningTile 1.0 RunningTile.qml
 AppTile 1.0 AppTile.qml
+UnseenStat 1.0 UnseenStat.qml
 Rules 1.0 Rules.js

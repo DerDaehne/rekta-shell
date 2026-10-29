@@ -43,10 +43,17 @@ Item {
         flip.phase = 1;
     }
 
+    // The first visible stat in the content, also one that a row or box inside it holds.
     function firstStat(): Stat {
-        for (const item of content.children) {
-            const stat = item as Stat;
-            if (stat && stat.visible)
+        return statIn(content);
+    }
+
+    function statIn(parent: Item): Stat {
+        for (const item of parent.children) {
+            if (!item.visible)
+                continue;
+            const stat = (item as Stat) ?? statIn(item);
+            if (stat)
                 return stat;
         }
         return null;
@@ -62,8 +69,7 @@ Item {
         ghost.label = stat.label;
         ghost.placeWidth = stat.placeWidth;
         ghost.width = stat.width;
-        ghost.x = content.x + stat.x;
-        ghost.y = content.y + stat.y;
+        peek.at = stat.mapToItem(news, 0, 0);
         change();
         if (stat.value === ghost.value && stat.label === ghost.label)
             return;
@@ -100,6 +106,8 @@ Item {
 
         objectName: "peek"
         property Stat target: null
+        // Where the stat stands in the tile.
+        property point at
         // 0 to 1 over duration-moderate, linear; each part eases its own share of it.
         property real phase: 1
         readonly property real leaving: news.easeOut.valueForProgress(Math.min(1, phase / 0.6))
@@ -124,6 +132,8 @@ Item {
 
         objectName: "ghost"
         visible: news.peeking
+        x: peek.at.x
+        y: peek.at.y
         opacity: 1 - peek.leaving
         Accessible.ignored: true
         transform: Translate {
@@ -137,8 +147,8 @@ Item {
         visible: news.peeking
         sourceItem: peek.target
         hideSource: news.peeking
-        x: news.content.x + (peek.target?.x ?? 0)
-        y: news.content.y + (peek.target?.y ?? 0) + Geometry.peekShift * height * (1 - peek.rising)
+        x: peek.at.x
+        y: peek.at.y + Geometry.peekShift * height * (1 - peek.rising)
         width: peek.target?.width ?? 0
         height: peek.target?.height ?? 0
         opacity: peek.rising

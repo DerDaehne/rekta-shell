@@ -21,6 +21,12 @@ Scope {
     readonly property NoticeBoard board: noticeBoard
     property string soundTheme: "ocean"
 
+    // The desktop file ID of the app a notification comes from: the entry its hint names, else the one its name fits.
+    function appIdOf(desktopEntry: string, appName: string): string {
+        const entry = DesktopEntries.heuristicLookup(desktopEntry || appName);
+        return entry?.id ?? desktopEntry.replace(/\.desktop$/, "");
+    }
+
     function bringForward(desktopEntry: string, appName: string) {
         const entry = DesktopEntries.heuristicLookup(desktopEntry || appName);
         const id = entry?.id ?? desktopEntry;
@@ -53,6 +59,7 @@ Scope {
 
         toaster: notifications.toaster
         quiet: notifications.quiet
+        appOf: (desktopEntry, appName) => notifications.appIdOf(desktopEntry, appName)
         iconUrl: name => name === "" || name.includes("://") ? name : Quickshell.iconPath(name, true)
 
         onAppWanted: (desktopEntry, appName) => notifications.bringForward(desktopEntry, appName)

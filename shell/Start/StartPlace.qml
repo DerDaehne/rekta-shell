@@ -24,6 +24,8 @@ FocusScope {
     property var apps: null
     // How often each app was started from the Start, by id: {id: count}; the more often, the nearer the front of the hits.
     property var starts: ({})
+    // The unseen notifications by app id: {id: count}.
+    property var unseen: ({})
     // Draws a window's preview on its tile (RunningTile.preview); null for none.
     property Component preview: null
     // closed, opening (the glass comes, then the parts turn in), open, or closing (the parts turn out, the glass goes).
@@ -736,6 +738,7 @@ FocusScope {
                                 title: modelData.title
                                 icon: modelData.icon
                                 window: modelData
+                                unseen: start.unseen[modelData.appId] ?? 0
                                 preview: start.preview
                                 onActivated: start.press(runningTile, () => runningTile.modelData.activate())
                             }
@@ -778,6 +781,7 @@ FocusScope {
 
                                 name: modelData.name
                                 icon: modelData.icon
+                                unseen: start.unseen[modelData.id] ?? 0
                                 columns: modelData.columns
                                 rows: modelData.rows
                                 onActivated: start.press(appTile, () => appTile.modelData.launch())
