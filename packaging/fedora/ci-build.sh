@@ -19,5 +19,5 @@ git archive --prefix="rekta-shell-$version/" -o "$top/SOURCES/rekta-shell-$versi
 rpmbuild -ba --define "_topdir $top" "$spec"
 
 mkdir -p "$out"
-cp "$top"/RPMS/*/*.rpm "$top"/SRPMS/*.src.rpm "$out"
+cp "$top"/RPMS/*/rekta-shell-[0-9]*.rpm "$top"/SRPMS/*.src.rpm "$out"
 rpmlint "$out"/*.rpm
