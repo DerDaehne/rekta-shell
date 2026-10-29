@@ -17,7 +17,7 @@ FocusScope {
     readonly property alias currentIndex: pivot.currentIndex
     // From show() until it has gone; a host shows its surface while this holds.
     property bool open: false
-    // Opened by a pointer: no focus ring shows until the focus moves (`:focus-visible`).
+    // Opened by a pointer: no focus ring shows until a key is pressed (`:focus-visible`).
     property bool ringsHidden: false
     // The item of the facet that stays at the top of the view, until a hand moves it.
     property Item revealed: null
@@ -125,8 +125,12 @@ FocusScope {
     // The first control of the facet in sight, else the pivot.
     function focusFirst() {
         const first = pivot.nextItemInFocusChain(true);
-        memo.chosen = first && holds(first) ? first : pivot;
-        memo.chosen.forceActiveFocus(Qt.TabFocusReason);
+        (first && holds(first) ? first : pivot).forceActiveFocus(Qt.TabFocusReason);
+    }
+
+    // The control that holds the focus tells the panel of every key before its own handlers see it, also one it takes.
+    function watchKeysOf(item: Item) {
+        item.Keys.forwardTo = [keyHook];
     }
 
     function moveFocus(forward: bool) {
@@ -163,7 +167,6 @@ FocusScope {
     Keys.onPressed: event => {
         if (!open)
             return;
-        ringsHidden = false;
         if (sheetOpen) {
             // The sheet's own keys (Escape) go to the layers; the arrows do not walk the panel behind it, Tab stays its own.
             event.accepted = KeyLayers.dispatch(event, Window.activeFocusItem) || event.key === Qt.Key_Up || event.key === Qt.Key_Down;
@@ -178,23 +181,23 @@ FocusScope {
         event.accepted = true;
     }
 
-    // Focus that moves to another control is the keyboard's (a pointer press gives none). The window's own activation
-    // hands the focus to the control the panel chose, which is no move.
+    // Whichever control holds the focus is watched for keys, also after the window's activation moves the focus to it.
     Connections {
         target: sidePanel.open ? sidePanel.Window.window : null
 
         function onActiveFocusItemChanged() {
             const now = sidePanel.Window.window.activeFocusItem;
-            if (now && now !== memo.chosen)
-                sidePanel.ringsHidden = false;
+            if (now)
+                sidePanel.watchKeysOf(now);
         }
     }
 
-    Connections {
-        target: pivot
+    Item {
+        id: keyHook
 
-        function onKeyed() {
+        Keys.onPressed: event => {
             sidePanel.ringsHidden = false;
+            event.accepted = false;
         }
     }
 
@@ -210,8 +213,6 @@ FocusScope {
         id: memo
 
         property Item focused
-        // The control the panel put the focus on when it opened.
-        property Item chosen
     }
 
     NumberAnimation {

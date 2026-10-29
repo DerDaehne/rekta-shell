@@ -26,8 +26,6 @@ Item {
     readonly property real inactiveSize: Tokens.fluid(inactiveToken, placeWidth)
 
     signal selected(int index)
-    // An arrow, Home or End moved the selection: the keyboard is in use.
-    signal keyed
 
     function select(index: int) {
         if (index < 0 || index >= titles.length || index === currentIndex)
@@ -102,7 +100,6 @@ Item {
         if (count === 0 || !(event.key in moves))
             return;
         select((moves[event.key] + count) % count);
-        keyed();
         event.accepted = true;
     }
 

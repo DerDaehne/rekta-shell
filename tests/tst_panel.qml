@@ -794,7 +794,7 @@ TestCase {
         return findChild(control(name), "ring");
     }
 
-    function test_opened_by_a_pointer_no_control_shows_a_focus_ring_until_the_focus_moves() {
+    function test_opened_by_a_pointer_no_control_shows_a_focus_ring_until_a_key_is_pressed() {
         side.show(0, true);
         verify(control("dark").activeFocus, "the focus is on the first control all the same");
         verify(!ringOf("dark").visible);
@@ -846,16 +846,14 @@ TestCase {
         }
     }
 
-    function test_the_activation_of_the_window_after_a_pointer_open_keeps_the_rings_away_and_a_move_of_the_focus_brings_them() {
+    function test_the_activation_of_the_window_after_a_pointer_open_keeps_the_rings_away() {
         const window = createTemporaryObject(windowedComponent, testCase);
         window.panel.show(0, true);
         window.show();
         window.requestActivate();
         tryVerify(() => window.active);
         tryVerify(() => window.first.activeFocus, 2000, "the window's activation hands the focus to the first control");
-        compare(ringsShowing(window.contentItem), 0, "that is no move of the focus");
-        window.panel.moveFocus(true);
-        compare(ringsShowing(window.contentItem), 1, "a move of the focus brings the ring");
+        compare(ringsShowing(window.contentItem), 0, "the activation is no key");
     }
 
     function test_a_key_on_the_pivot_after_a_pointer_open_brings_its_ring() {
@@ -865,6 +863,26 @@ TestCase {
         compare(ringsShowing(pivot), 0);
         keyClick(Qt.Key_Right);
         compare(ringsShowing(pivot), 1, "the arrow moved the selection, and the keyboard has a ring");
+    }
+
+    function test_space_on_a_toggle_after_a_pointer_open_brings_the_ring() {
+        side.show(0, true);
+        verify(control("dark").activeFocus);
+        compare(ringsShowing(control("dark")), 0);
+        keyClick(Qt.Key_Space);
+        compare(ringsShowing(control("dark")), 1, "the control took the key itself, and the keyboard has a ring");
+    }
+
+    function test_an_arrow_on_a_slider_after_a_pointer_open_brings_the_ring() {
+        giveSound(controls);
+        side.show(0, true);
+        const slider = control("outputVolume");
+        slider.forceActiveFocus();
+        // The focus move above would bring the ring on its own; the key is what is under test.
+        side.ringsHidden = true;
+        compare(ringsShowing(slider), 0);
+        keyClick(Qt.Key_Right);
+        compare(ringsShowing(slider), 1, "the slider took the key itself, and the keyboard has a ring");
     }
 
     function test_shift_tab_after_a_pointer_open_brings_the_ring() {
