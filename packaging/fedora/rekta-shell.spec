@@ -17,6 +17,8 @@ BuildRequires:  cmake(Qt6DBus)
 BuildRequires:  cmake(Qt6Qml)
 BuildRequires:  cmake(Qt6Widgets)
 BuildRequires:  cmake(KWin)
+BuildRequires:  pkgconfig(epoxy)
+BuildRequires:  pkgconfig(libdrm)
 BuildRequires:  qt6-qtbase-private-devel
 # Plasma's own unit, which %%check compares the session's drop-in with
 BuildRequires:  kwin
@@ -78,7 +80,12 @@ for path in %{_datadir}/kwin %{_qt6_plugindir}/kwin %{_sysconfdir}/xdg; do
     fi
 done
 
-desktop-file-validate %{buildroot}%{_datadir}/wayland-sessions/rekta.desktop
+# The validator does not know DesktopNames, a key of session entries.
+session_errors=$(desktop-file-validate %{buildroot}%{_datadir}/wayland-sessions/rekta.desktop 2>&1 | grep -v 'key "DesktopNames"' || true)
+if [ -n "$session_errors" ]; then
+    echo "$session_errors" >&2
+    exit 1
+fi
 desktop-file-validate %{buildroot}%{_datadir}/applications/rekta-settings.desktop
 
 # The tests of the flake check, against this system's Qt.
@@ -90,6 +97,12 @@ cmake --build qml-tests/counterpart
 cmake --install qml-tests/counterpart
 cd qml-tests
 export HOME=$PWD/home LANG=C.UTF-8 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software
+# Only the typeface, as the flake check has it: the system's other fonts and rules change the text metrics the tests measure.
+cat > fonts.conf <<FONTS
+<?xml version="1.0"?>
+<fontconfig><dir>%{_datadir}/fonts/atkinson-hyperlegible-next-fonts</dir><cachedir>$PWD/fontcache</cachedir></fontconfig>
+FONTS
+export FONTCONFIG_FILE=$PWD/fonts.conf
 export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent/system_bus_socket
 export QML_IMPORT_PATH=%{buildroot}%{_qt6_qmldir}:$src/qml-tests/counterpart-root/lib/qt-6/qml
 QMLTESTRUNNER=%{_qt6_bindir}/qmltestrunner $src/tests/run-qml-tests.sh $src

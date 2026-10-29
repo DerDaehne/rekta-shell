@@ -92,8 +92,6 @@ Item {
     Accessible.role: Accessible.ComboBox
     Accessible.name: `${label} ${currentText}`.trim()
     Accessible.description: disabledReason
-    Accessible.expandable: true
-    Accessible.expanded: expanded
 
     // Out of sight it folds at once, so it comes back collapsed.
     onVisibleChanged: {
