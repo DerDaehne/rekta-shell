@@ -25,7 +25,11 @@ Item {
     readonly property real activeSize: Tokens.fluid(activeToken, placeWidth)
     readonly property real inactiveSize: Tokens.fluid(inactiveToken, placeWidth)
 
+    // A title chosen again or by Enter: a section strip aligns its section and moves the focus into it.
     signal selected(int index)
+    signal activated(int index)
+    // Where Tab leads from the strip, when it is not the next item in the focus chain (a wide pivot: the facet chosen).
+    property Item tabInto
 
     function select(index: int) {
         if (index < 0 || index >= titles.length || index === currentIndex)
@@ -80,17 +84,39 @@ Item {
     activeFocusOnTab: true
     Accessible.role: Accessible.PageTabList
 
+    function stripWheel(wheel: var): bool {
+        const e = WheelLatch.webEvent(wheel, Application.styleHints.wheelScrollLines, Geometry.wheelLinePixels, Qt.ControlModifier, Qt.ShiftModifier);
+        const to = WheelLatch.stripMove(e, strip.contentX, strip.contentWidth - strip.width);
+        if (to === null)
+            return false;
+        glideAnimation.stop();
+        strip.contentX = to;
+        return true;
+    }
+
     onCurrentIndexChanged: glide()
     onWidthChanged: rest()
     onDownChanged: rest()
     onActiveSizeChanged: rest()
     onInactiveSizeChanged: rest()
 
+    Keys.onTabPressed: event => {
+        if (!tabInto)
+            return;
+        tabInto.forceActiveFocus(Qt.TabFocusReason);
+        event.accepted = true;
+    }
+
     Keys.onPressed: event => {
         // Alt+Left is back (platforms.md:166–169), so a key with a modifier is not the strip's (rekta.js:902, the panorama's).
         if (event.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.MetaModifier))
             return;
         const count = titles.length;
+        if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && count > 0) {
+            activated(currentIndex);
+            event.accepted = true;
+            return;
+        }
         const moves = {
             [down ? Qt.Key_Down : Qt.Key_Right]: currentIndex + 1,
             [down ? Qt.Key_Up : Qt.Key_Left]: currentIndex - 1,
@@ -145,6 +171,16 @@ Item {
                 onItemRemoved: pivot.rest()
             }
         }
+    }
+
+    // A plain vertical wheel over the strip moves it sideways, inside its own box; elsewhere the wheel is not its own
+    // (layout.md:68–71; rekta.js stripWheel(), :968).
+    MouseArea {
+        anchors.fill: parent
+        z: 1
+        enabled: !pivot.down
+        acceptedButtons: Qt.NoButton
+        onWheel: wheel => wheel.accepted = pivot.stripWheel(wheel)
     }
 
     component PivotTitleBox: Item {
@@ -219,7 +255,10 @@ Item {
         // Each title's hit area is at least touch-target tall (rekta.css:167–169).
         TapHandler {
             margin: Math.max(0, (Tokens.touchTarget - title.height) / 2)
-            onTapped: pivot.select(title.index)
+            onTapped: {
+                pivot.select(title.index);
+                pivot.activated(title.index);
+            }
         }
 
         FocusRing {

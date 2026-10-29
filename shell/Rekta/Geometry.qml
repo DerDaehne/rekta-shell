@@ -269,4 +269,7 @@ QtObject {
     // `@keyframes rk-from-top { from { opacity: 0; transform: translateY(-16px) } }` (rekta.css:846); a sheet leaves
     // back up the same way (rekta.js:1539)
     readonly property real sheetShift: 16
+
+    // A wheel line counts 16 px (`deltaMode === 1 ? 16`, rekta.js:899, :974)
+    readonly property real wheelLinePixels: 16
 }
