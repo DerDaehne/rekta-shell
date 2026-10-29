@@ -15,7 +15,7 @@ Menu {
 
     property var apps: []
     property Component opener
-    // One frame per level in view: the app, its opener, and the index of the row that opened the level.
+    // One frame per level in view: the app, its opener, the index of the row that opened the level, and that row's words.
     property var levels: []
     readonly property var current: levels.length > 0 ? levels[levels.length - 1].opener.children.values : apps
     // What the rows show: `current` once it has entries, so a level whose entries are still loading changes nothing.
@@ -46,7 +46,7 @@ Menu {
         const byKeys = focusedIndex() >= 0;
         const opener = tray.opener.createObject(tray, { menu: handle });
         focusOnFill = byKeys ? focusLevelStart : null;
-        levels = [...levels, { app, opener, from: items().indexOf(row) }];
+        levels = [...levels, { app, opener, from: items().indexOf(row), name: levels.length === 0 ? app.word : handle.text }];
         if (!byKeys)
             forceActiveFocus();
     }
@@ -91,7 +91,7 @@ Menu {
     }
 
     back: levels.length > 0 ? leave : null
-    backName: levels.length > 0 ? levels[0].app.word : ""
+    backName: levels.length > 0 ? levels[levels.length - 1].name : ""
     backWord: "zurück"
     onCurrentChanged: refill()
     // On opening rather than closing: a choice is told after the menu has closed, and its row must still be its own.

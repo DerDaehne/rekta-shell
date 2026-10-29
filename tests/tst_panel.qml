@@ -789,6 +789,24 @@ TestCase {
         verify(findChild(side, "pivot").activeFocus, "meldungen has none yet");
     }
 
+    function ringOf(name: string): var {
+        return findChild(control(name), "ring");
+    }
+
+    function test_opened_by_a_pointer_no_control_shows_a_focus_ring_until_the_focus_moves() {
+        side.show(0, true);
+        verify(control("dark").activeFocus, "the focus is on the first control all the same");
+        verify(!ringOf("dark").visible);
+        keyClick(Qt.Key_Tab);
+        verify(control("doNotDisturb").activeFocus);
+        verify(ringOf("doNotDisturb").visible, "the keyboard brings the ring");
+    }
+
+    function test_opened_by_the_keyboard_the_first_control_shows_its_focus_ring() {
+        side.show(0, false);
+        verify(ringOf("dark").visible);
+    }
+
     function test_tab_and_the_arrows_reach_every_control_in_order() {
         side.show(0);
         const order = [control("dark"), control("doNotDisturb"), control("density"), control("powerProfile"), control("lock"), control("sessionActions")];

@@ -77,7 +77,7 @@ PanelWindow {
             parts: Middle.firstRunning([panel.musicParts], panel.windowParts)
             figuresPart: panel.playing ? 1 : -1
 
-            onTapped: panel.controlPanel.toggle(panel.modelData, 0)
+            onTapped: panel.controlPanel.toggle(panel.modelData, 0, true)
         }
 
         AppBarClock {
@@ -107,11 +107,13 @@ PanelWindow {
         }
 
         AppBarButton {
+            id: bell
+
             icon: "bell"
             text: "meldungen"
             count: panel.notices.unseen
             priority: 2
-            onClicked: panel.controlPanel.toggle(panel.modelData, 1)
+            onClicked: panel.controlPanel.toggle(panel.modelData, 1, !bell.activeFocus)
         }
 
         AppBarStatus {
@@ -123,10 +125,12 @@ PanelWindow {
         }
 
         AppBarButton {
+            id: tune
+
             icon: "tune"
             text: "steuerung"
             priority: 1
-            onClicked: panel.controlPanel.toggle(panel.modelData, 0)
+            onClicked: panel.controlPanel.toggle(panel.modelData, 0, !tune.activeFocus)
         }
     }
 

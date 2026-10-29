@@ -104,6 +104,7 @@ Item {
             }
 
             FocusRing {
+                objectName: "ring"
                 shown: toggle.activeFocus
             }
         }

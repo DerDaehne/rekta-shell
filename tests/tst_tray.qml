@@ -270,6 +270,26 @@ TestCase {
         compare(pause.checked, false);
     }
 
+    function test_below_the_first_level_the_back_row_names_the_entry_that_was_left_and_on_it_the_app() {
+        const menu = open(threeApps());
+        keyClick(Qt.Key_Right);
+        compare(rowNames(menu)[0], "zurück · Nextcloud");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        compare(rowNames(menu)[0], "zurück · Devices");
+    }
+
+    function test_a_checkbox_entry_starts_its_text_where_the_other_entries_do() {
+        const menu = open(threeApps());
+        keyClick(Qt.Key_Right);
+        const textEdge = row => findChild(row, "label").x;
+        const pause = rowAt(menu, "Pause");
+        compare(pause.kind, "checkbox");
+        compare(textEdge(pause), textEdge(rowAt(menu, "Open folder")));
+        verify(findChild(pause, "check").x + findChild(pause, "check").width <= textEdge(pause), "the box stands before the text");
+    }
+
     function test_a_separator_entry_is_a_hairline_not_a_row() {
         const open_ = open([app("Mail", { menu: menuOf([entry("Open"), entry("", { isSeparator: true }), entry("Quit")]) })]);
         keyClick(Qt.Key_Right);
@@ -284,11 +304,11 @@ TestCase {
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Return);
-        compare(rowNames(menu), ["zurück · Nextcloud", "Pair", "Refresh"]);
+        compare(rowNames(menu), ["zurück · Devices", "Pair", "Refresh"]);
         keyClick(Qt.Key_Return);
-        compare(rowNames(menu), ["zurück · Nextcloud", "Ping", "Send file"], "a third level");
+        compare(rowNames(menu), ["zurück · Pair", "Ping", "Send file"], "a third level");
         keyClick(Qt.Key_Escape);
-        compare(rowNames(menu), ["zurück · Nextcloud", "Pair", "Refresh"]);
+        compare(rowNames(menu), ["zurück · Devices", "Pair", "Refresh"]);
         tryVerify(() => rowAt(menu, "Pair").activeFocus);
         keyClick(Qt.Key_Escape);
         compare(rowNames(menu), ["zurück · Nextcloud", "Open folder", "Pause", "Devices"]);
@@ -448,7 +468,7 @@ TestCase {
         const menu = open(threeApps());
         keyClick(Qt.Key_Right);
         mouseClick(rowAt(menu, "Devices"), undefined, undefined, Qt.RightButton);
-        compare(rowNames(menu), ["zurück · Nextcloud", "Pair", "Refresh"]);
+        compare(rowNames(menu), ["zurück · Devices", "Pair", "Refresh"]);
     }
 
     function test_right_click_on_the_back_row_does_nothing() {
@@ -539,9 +559,7 @@ TestCase {
             for (const level of ["list", "menu"]) {
                 const menu = open(threeApps());
                 if (level === "menu") {
-                    keyClick(Qt.Key_Down);
                     keyClick(Qt.Key_Right);
-                    keyClick(Qt.Key_Down);
                     keyClick(Qt.Key_Down);
                 }
                 waitForRendering(scene);

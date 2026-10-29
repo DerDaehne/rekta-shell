@@ -53,19 +53,19 @@ PanelWindow {
     signal sessionAsked
 
     // Opens the panel on a screen with a facet, or closes it when that facet shows there already.
-    function toggle(onScreen: ShellScreen, index: int) {
+    function toggle(onScreen: ShellScreen, index: int, byPointer: bool) {
         if (shownOn !== onScreen) {
             shownOn = onScreen;
-            panel.show(index);
+            panel.show(index, byPointer);
             return;
         }
-        panel.toggle(index);
+        panel.toggle(index, byPointer);
     }
 
     // Opens "steuerung" on a screen, at a place of it (a name from Controls.places) or at the top.
     function openAt(onScreen: ShellScreen, place: string) {
         shownOn = onScreen;
-        panel.show(0);
+        panel.show(0, false);
         panel.reveal(controls.places[place] ?? null);
     }
 
@@ -174,25 +174,25 @@ PanelWindow {
         name: "controls"
         text: "Open the controls"
         keys: [Qt.MetaModifier | Qt.Key_A]
-        onPressed: surface.toggle(surface.primaryScreen, 0)
+        onPressed: surface.toggle(surface.primaryScreen, 0, false)
     }
 
     GlobalShortcut {
         name: "notifications"
         text: "Open the notifications"
         keys: [Qt.MetaModifier | Qt.Key_N]
-        onPressed: surface.toggle(surface.primaryScreen, 1)
+        onPressed: surface.toggle(surface.primaryScreen, 1, false)
     }
 
     IpcHandler {
         target: "panel"
 
         function toggle(): void {
-            surface.toggle(surface.primaryScreen, 0);
+            surface.toggle(surface.primaryScreen, 0, false);
         }
 
         function notifications(): void {
-            surface.toggle(surface.primaryScreen, 1);
+            surface.toggle(surface.primaryScreen, 1, false);
         }
     }
 

@@ -17,6 +17,8 @@ FocusScope {
     readonly property alias currentIndex: pivot.currentIndex
     // From show() until it has gone; a host shows its surface while this holds.
     property bool open: false
+    // Opened by a pointer: no focus ring shows until the focus moves (`:focus-visible`).
+    property bool ringsHidden: false
     // The item of the facet that stays at the top of the view, until a hand moves it.
     property Item revealed: null
     property real settledHeight: 0
@@ -35,7 +37,7 @@ FocusScope {
     signal closed
 
     // Opens on a facet, or turns to it while open; while it leaves, it comes back.
-    function show(index: int) {
+    function show(index: int, byPointer: bool) {
         if (!open) {
             standOn(index);
             memo.focused = Window.activeFocusItem;
@@ -43,12 +45,14 @@ FocusScope {
             entry = 0;
         } else {
             pivot.select(index);
+            ringsHidden = byPointer;
             if (!going.running)
                 return;
         }
         going.stop();
         comingIn.restart();
         focusFirst();
+        ringsHidden = byPointer;
     }
 
     // Scrolls the facet so an item of it stands at the top, or to the top without one, and puts the focus on the item's
@@ -102,11 +106,11 @@ FocusScope {
     }
 
     // Closes when that facet shows already, else shows it.
-    function toggle(index: int) {
+    function toggle(index: int, byPointer: bool) {
         if (open && !going.running && currentIndex === index)
             close();
         else
-            show(index);
+            show(index, byPointer);
     }
 
     // While the panel is away a new facet is simply there as it comes: the facet does not slide in.
@@ -170,6 +174,15 @@ FocusScope {
         else
             return KeyLayers.dispatch(event, Window.activeFocusItem);
         event.accepted = true;
+    }
+
+    // Focus that moves later is the keyboard's (a pointer press gives none).
+    Connections {
+        target: sidePanel.open ? sidePanel.Window.window : null
+
+        function onActiveFocusItemChanged() {
+            sidePanel.ringsHidden = false;
+        }
     }
 
     Connections {
