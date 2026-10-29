@@ -101,10 +101,10 @@ Item {
     onInactiveSizeChanged: rest()
 
     Keys.onTabPressed: event => {
-        if (!tabInto)
-            return;
-        tabInto.forceActiveFocus(Qt.TabFocusReason);
-        event.accepted = true;
+        // A Keys handler accepts by default; without a target Tab is the focus chain's.
+        event.accepted = tabInto !== null;
+        if (tabInto)
+            tabInto.forceActiveFocus(Qt.TabFocusReason);
     }
 
     Keys.onPressed: event => {
