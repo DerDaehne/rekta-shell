@@ -153,8 +153,7 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   `plasma-workspace.target`. A drop-in on `plasma-kwin_wayland.service` runs Plasma's
   KWin command through `libexec/rekta-kwin`, which only in the rekta session puts the
   `rekta-kwin` directories (`kwin/`: effects, kwinrc defaults, `rekta-fadeback`), the
-  Rekta module and the
-  `org.kde.desktop` controls style into KWin's environment; the
+  Rekta module and the `org.kde.desktop` controls style into KWin's environment; the
   `kwin-drop-in-follows-plasma` check fails once Plasma's command changes. The package
   installs them with their paths filled in (`share/wayland-sessions`, `libexec`,
   `lib/systemd/user`).

@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 project(rekta-shell VERSION 0.1.0 LANGUAGES CXX)
 
-# KDEInstallDirs picks its Qt version from the Qt that is already found.
-find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 include(KDEInstallDirs)

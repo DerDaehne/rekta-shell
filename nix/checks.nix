@@ -16,6 +16,13 @@ let
   dist = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-design-dist;
   qt = pkgs.kdePackages;
   inherit (pkgs) lib;
+  # The unit and drop-ins of the rekta session, relative to a user-unit directory.
+  userUnits = [
+    "rekta-shell.service"
+    "plasma-kwin_wayland.service.d/rekta-session.conf"
+    "plasma-plasmashell.service.d/rekta-session.conf"
+    "plasma-workspace.target.d/rekta-shell.conf"
+  ];
 in
 {
   package = rekta-shell;
@@ -71,28 +78,15 @@ in
   '';
 
   # NixOS collects user units from systemd.packages only under etc/systemd/user and lib/systemd/user, so the package
-  # installs them there, and the test VM and an enabled module must carry the unit and its three drop-ins.
-  user-units-reach-nixos =
-    let
-      units = [
-        "rekta-shell.service"
-        "plasma-kwin_wayland.service.d/rekta-session.conf"
-        "plasma-plasmashell.service.d/rekta-session.conf"
-        "plasma-workspace.target.d/rekta-shell.conf"
-      ];
-      vmUnits = self.nixosConfigurations.test-vm.config.environment.etc."systemd/user".source;
-    in
-    pkgs.runCommand "rekta-shell-user-units-reach-nixos" { } ''
-      for unit in ${lib.escapeShellArgs units}; do
-        for dir in ${rekta-shell}/lib/systemd/user ${vmUnits}; do
-          if [ ! -f $dir/$unit ]; then
-            echo "$dir has no $unit" >&2
-            exit 1
-          fi
+  # installs them there (the nixos-module check proves they reach an enabled system's /etc/systemd/user).
+  user-units-are-where-nixos-looks =
+    pkgs.runCommand "rekta-shell-user-units-are-where-nixos-looks" { }
+      ''
+        for unit in ${lib.escapeShellArgs userUnits}; do
+          test -f ${rekta-shell}/lib/systemd/user/$unit || { echo "lib/systemd/user has no $unit" >&2; exit 1; }
         done
-      done
-      touch $out
-    '';
+        touch $out
+      '';
 
   # The settings app is found by its desktop entry in every session, so the entry and the wrapper must be there, and the
   # entry must not hide itself from Plasma.
@@ -297,7 +291,7 @@ in
           exit 1
         fi
       }
-      for unit in rekta-shell.service plasma-kwin_wayland.service.d/rekta-session.conf plasma-plasmashell.service.d/rekta-session.conf plasma-workspace.target.d/rekta-shell.conf; do
+      for unit in ${lib.escapeShellArgs userUnits}; do
         test -f ${
           enabled.environment.etc."systemd/user".source
         }/$unit || { echo "the enabled module leaves $unit out of /etc/systemd/user" >&2; exit 1; }

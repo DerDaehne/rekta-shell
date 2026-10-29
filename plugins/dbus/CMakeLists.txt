@@ -1,12 +1,11 @@
 cmake_minimum_required(VERSION 3.25)
 project(rekta-shell-dbus LANGUAGES CXX)
 
-# KDEInstallDirs picks its Qt version from the Qt that is already found.
-find_package(Qt6 REQUIRED COMPONENTS DBus Qml)
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 include(KDEInstallDirs)
 
+find_package(Qt6 REQUIRED COMPONENTS DBus Qml)
 qt_standard_project_setup(REQUIRES 6.8)
 
 qt_add_qml_module(rektashelldbus
