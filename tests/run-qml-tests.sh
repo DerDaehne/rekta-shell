@@ -1,7 +1,7 @@
 #!/bin/sh
 # Runs the QML tests in the working directory (they save contact sheets there). The caller sets QML_IMPORT_PATH,
-# QT_QPA_PLATFORM and the rest of the environment, and puts dbus-run-session and qmltestrunner on PATH.
-# DBUS_SESSION_CONFIG names the config of the tests' private bus; TZDIR the zone files for the clock test.
+# QT_QPA_PLATFORM and the rest of the environment, and puts dbus-run-session on PATH. QMLTESTRUNNER names the runner
+# (default: qmltestrunner on PATH), DBUS_SESSION_CONFIG the config of the tests' private bus, TZDIR the zone files for the clock test.
 set -eu
 root=${1:?usage: run-qml-tests.sh <directory holding shell/ and tests/>}
 runner=${QMLTESTRUNNER:-qmltestrunner}

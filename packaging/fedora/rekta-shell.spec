@@ -12,6 +12,7 @@ ExclusiveArch:  x86_64
 BuildRequires:  cmake
 BuildRequires:  gcc-c++
 BuildRequires:  extra-cmake-modules
+BuildRequires:  systemd-rpm-macros
 BuildRequires:  kf6-rpm-macros
 BuildRequires:  cmake(Qt6DBus)
 BuildRequires:  cmake(Qt6Qml)
