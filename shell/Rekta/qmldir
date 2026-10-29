@@ -70,6 +70,8 @@ PlaceTurn 1.0 PlaceTurn.qml
 Presence 1.0 Presence.qml
 AppBarClock 1.0 AppBarClock.qml
 AppBarDisplay 1.0 AppBarDisplay.qml
+ReadoutFace 1.0 ReadoutFace.qml
+ReadoutAlone 1.0 ReadoutAlone.qml
 Month 1.0 Month.qml
 Echo 1.0 Echo.qml
 Backdrop 1.0 Backdrop.qml

@@ -32,9 +32,7 @@ PanelWindow {
     readonly property bool showsReadout: modelData === primaryScreen
     // The active window, when it is on this screen.
     readonly property var front: windows?.active?.isOn(modelData) ? windows.active : null
-    // ponytail: only the active window hides the bar; a full-screen window on this screen that lost the keyboard to
-    // another screen stays above the bar anyway. Follow every screen's front window when that shows wrongly.
-    readonly property bool away: front?.fullScreen ?? false
+    readonly property bool away: windows?.fullScreenOn(modelData) ?? false
     // What the middle says, the first of these that has something: the music that plays, else the window.
     readonly property var musicParts: Middle.musicParts(media?.title ?? "", media?.artist ?? "", media?.position ?? 0, media?.length ?? 0)
     readonly property bool playing: musicParts.length > 0

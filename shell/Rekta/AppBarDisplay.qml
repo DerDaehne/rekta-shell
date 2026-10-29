@@ -125,49 +125,10 @@ Item {
         onRunningChanged: display.swap()
     }
 
-    Meter {
-        id: meter
-
-        objectName: "meter"
-        visible: display.level >= 0
-        anchors.verticalCenter: parent.verticalCenter
-        x: Geometry.appBarControlPadding
-        width: display.width - 2 * Geometry.appBarControlPadding
-        label: display.word
-        value: display.level
+    ReadoutFace {
+        anchors.fill: parent
+        word: display.word
+        level: display.level
         valueText: display.valueText
-    }
-
-    Item {
-        id: plain
-
-        objectName: "plain"
-        visible: display.level < 0
-        x: Geometry.appBarControlPadding
-        y: (display.height - height) / 2
-        width: display.width - 2 * Geometry.appBarControlPadding
-        height: wordLine.height + nameLine.height
-
-        Meta {
-            id: wordLine
-
-            width: plain.width
-            lineHeightFactor: Tokens.lineHeightCompact
-            wrapMode: Text.NoWrap
-            text: display.word
-        }
-
-        TextRole {
-            id: nameLine
-
-            y: wordLine.height
-            width: plain.width
-            lineHeightFactor: Tokens.lineHeightCompact
-            elide: Text.ElideRight
-            text: display.valueText
-            font.pixelSize: Tokens.fontSizeXs
-            font.weight: Tokens.fontWeightSemibold
-            color: Tokens.color.textPrimary
-        }
     }
 }

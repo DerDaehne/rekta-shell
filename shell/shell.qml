@@ -68,7 +68,7 @@ ShellRoot {
         windows: running
         launcher: appLauncher
         // A full-screen window on the primary screen, or "nicht stören": only critical ones toast.
-        quiet: ((running.active?.fullScreen && running.active.isOn(primary.screen)) ?? false) || sidePanel.doNotDisturb
+        quiet: running.fullScreenOn(primary.screen) || sidePanel.doNotDisturb
     }
 
     Variants {
@@ -92,6 +92,12 @@ ShellRoot {
             primaryScreen: primary.screen
             controlPanel: sidePanel
         }
+    }
+
+    ReadoutSurface {
+        readout: keys.readout
+        windows: running
+        primaryScreen: primary.screen
     }
 
     StartSurface {

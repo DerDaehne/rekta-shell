@@ -30,6 +30,14 @@ Scope {
         return found;
     }
 
+    // Whether the window that has the keyboard fills the screen: the bar and the toasts give way to it, the display
+    // stands alone.
+    // ponytail: only the active window counts; a full-screen window on this screen that lost the keyboard to another
+    // screen stays above the bar anyway. Follow every screen's front window when that shows wrongly.
+    function fullScreenOn(shellScreen: ShellScreen): bool {
+        return (active?.fullScreen && active.isOn(shellScreen)) ?? false;
+    }
+
     // One window as the surfaces need it.
     component Entry: QtObject {
         required property var model

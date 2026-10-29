@@ -76,7 +76,7 @@ PanelWindow {
     // Mapped from the start, so the Start shows in the next frame (a new layer surface takes some 60ms to its first);
     // hidden, it lets every input through. Under a full-screen window it goes, so that window has the screen to itself,
     // and while no screen is left.
-    visible: primaryScreen !== null && (place.shown || !(windows.active?.fullScreen && windows.active.isOn(primaryScreen)))
+    visible: primaryScreen !== null && (place.shown || !windows.fullScreenOn(primaryScreen))
     mask: Region {
         item: place.shown ? place : null
     }
