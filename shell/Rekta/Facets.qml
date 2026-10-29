@@ -16,7 +16,7 @@ Item {
     property int previousIndex: 0
     // The first display stands still; only a change of facet slides (motion.md, "Next item, same place").
     property bool shown: false
-    property real sectionWidth: panorama.sectionWidth
+    property alias sectionWidth: panorama.sectionWidth
     readonly property bool wide: facetStrip !== null && facetStrip.level === "facet" && width >= Tokens.pivotWide
     default property alias content: holder.data
 

@@ -958,6 +958,144 @@ TestCase {
         verify(!holder.children[0].visible);
     }
 
+    // A control in a section, to see where Tab and the focus lead.
+    Component {
+        id: controlComponent
+
+        Item {
+            width: 20
+            height: 20
+            activeFocusOnTab: true
+        }
+    }
+
+    function makeWithControls(place) {
+        for (let k = 0; k < 5; k++) {
+            const section = sectionComponent.createObject(place.panorama.sectionParent, {
+                title: `section ${k}`,
+                tall: 100
+            }) as Section;
+            controlComponent.createObject(section.contentItem, {
+                objectName: `control-${k}`,
+                x: 10,
+                y: 100
+            });
+        }
+    }
+
+    function test_after_enter_on_the_strip_tab_goes_on_inside_that_section() {
+        Prefs.motion = "off";
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        makeWithControls(place);
+        place.strip.forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        keyClick(Qt.Key_Right);
+        keyClick(Qt.Key_Return);
+        verify(sectionAt(place.panorama, 2).headingFocused);
+        keyClick(Qt.Key_Tab);
+        verify(findChild(place.panorama, "control-2").activeFocus, "the control of that section, not the first one");
+    }
+
+    function test_a_key_after_a_jump_by_the_strip_lets_the_strip_follow_the_scroll_again() {
+        Prefs.motion = "off";
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        makeWithControls(place);
+        place.strip.select(4);
+        place.panorama.scroller.contentX = 0;
+        compare(place.strip.currentIndex, 4, "a jump wins over the follow until the user does something");
+        place.panorama.forceActiveFocus();
+        keyClick(Qt.Key_A);
+        place.panorama.scroller.contentX = 100;
+        compare(place.strip.currentIndex, 0);
+    }
+
+    function test_a_key_jump_is_followed_as_the_user_scrolls_on() {
+        Prefs.motion = "off";
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        makeWithControls(place);
+        place.panorama.forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        compare(place.strip.currentIndex, 1);
+        place.panorama.scroller.contentX = 0;
+        compare(place.strip.currentIndex, 0, "a key does not hold the mark against the scroll");
+    }
+
+    function test_a_wheel_during_a_jump_takes_the_panorama_over() {
+        Prefs.motion = "on";
+        const panorama = makePanorama(5, 100);
+        panorama.goTo(4, false, false);
+        wait(Tokens.durationPivotGlide / 4);
+        verify(panorama.gliding);
+        panorama.handleWheel(wheelEvent(10), 1000);
+        verify(!panorama.gliding);
+    }
+
+    function test_a_focused_item_beyond_the_edge_scrolls_into_view_with_the_inset_clear() {
+        Prefs.motion = "off";
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        makeWithControls(place);
+        const panorama = place.panorama;
+        const far = findChild(panorama, "control-4");
+        far.forceActiveFocus();
+        const at = far.mapToItem(panorama.scroller, 0, 0).x;
+        verify(at >= Tokens.spaceXl - 1 && at + far.width <= panorama.width, `in sight, at ${at}`);
+        findChild(panorama, "control-0").forceActiveFocus();
+        compare(panorama.scroller.contentX, 10, "back by as little as it takes, the inset clear");
+    }
+
+    function test_a_focus_inside_a_section_already_in_sight_does_not_scroll() {
+        Prefs.motion = "off";
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        makeWithControls(place);
+        findChild(place.panorama, "control-1").forceActiveFocus();
+        compare(place.panorama.scroller.contentX, 0);
+    }
+
+    function test_shift_wheel_moves_the_wide_facet_row_and_a_plain_wheel_does_not() {
+        const place = createTemporaryObject(wideComponent, testCase);
+        const row = findChild(place.facets, "row");
+        verify(!row.handleWheel(wheelEvent(60), 0), "a vertical wheel is left to the facets");
+        compare(row.scroller.contentX, 0);
+        verify(row.handleWheel(wheelEvent(60, {
+            modifiers: Qt.ShiftModifier
+        }), 1000));
+        compare(row.scroller.contentX, 60);
+        verify(row.handleWheel(wheelEvent(-100, {
+            modifiers: Qt.ShiftModifier
+        }), 2000));
+        compare(row.scroller.contentX, 0);
+        verify(!row.handleWheel(wheelEvent(-100, {
+            modifiers: Qt.ShiftModifier
+        }), 3000), "at the start it falls through");
+    }
+
+    function test_the_wide_facet_row_takes_the_wheel_through_the_window_with_shift() {
+        const place = createTemporaryObject(wideComponent, testCase);
+        waitForRendering(place);
+        mouseWheel(place.facets, 300, 200, 0, -120, Qt.NoButton, Qt.ShiftModifier);
+        tryVerify(() => findChild(place.facets, "row").scroller.contentX > 0);
+    }
+
+    function test_a_hidden_section_takes_no_room_and_does_not_count() {
+        const panorama = makePanorama(5, 100);
+        verify(!panorama.fit);
+        for (const k of [2, 3, 4])
+            sectionAt(panorama, k).visible = false;
+        verify(panorama.fit, "two sections fit");
+        compare(panorama.scroller.contentWidth, panorama.width);
+        compare(panorama.sectionItems().length, 2);
+        sectionAt(panorama, 3).visible = true;
+        compare(sectionAt(panorama, 3).x, Tokens.spaceXl + 2 * (sectionWidth + Tokens.spaceXl), "the third visible one follows the second");
+        verify(sectionAt(panorama, 1).separated);
+    }
+
+    function test_the_facet_rows_section_width_reaches_its_places() {
+        const place = createTemporaryObject(wideComponent, testCase);
+        place.facets.sectionWidth = 400;
+        compare(findChild(place.facets, "facet1").parent.width, 400);
+        compare(findChild(place.facets, "facet1").parent.x, 400 + Tokens.spaceXl);
+    }
+
     // Contact sheets
 
     function test_contact_sheets_of_a_panorama_that_fits_and_one_that_overflows_in_both_themes() {
@@ -966,6 +1104,8 @@ TestCase {
             Prefs.theme = theme;
             const sheet = createTemporaryObject(sheetComponent, testCase);
             waitForRendering(sheet);
+            verify(findChild(sheet, "panorama-2").fit, "the upper one fits");
+            verify(!findChild(sheet, "panorama-5").fit, "the lower one overflows");
             grabImage(sheet).save(`panorama-sheet-${theme}.png`);
             verify(sheet.height > 0, theme);
             sheet.destroy();

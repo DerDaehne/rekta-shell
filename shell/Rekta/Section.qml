@@ -48,6 +48,9 @@ Flickable {
             width: parent.width
             text: section.title
             visible: text !== ""
+            // No tab stop of its own (rekta.js:192–198 gives it tabindex -1); once a jump has put the focus on it, Tab goes
+            // on into the section.
+            activeFocusOnTab: activeFocus
             Accessible.role: Accessible.Heading
             Accessible.name: text
 

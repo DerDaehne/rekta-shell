@@ -52,29 +52,38 @@ Item {
             section.focusHeading();
     }
 
-    // One wheel event at wheel.x/wheel.y; true when the panorama took it (rekta.js wheel(), :872).
+    // One wheel event at wheel.x/wheel.y; true when the panorama took it (rekta.js wheel(), :872). The row of a wide
+    // facet pivot takes only Shift+wheel (layout.md:89–91): a vertical wheel over its facets never moves it sideways.
     function handleWheel(wheel: var, now: real): bool {
         userScroll();
-        if (!sideways || facetRow)
+        if (!sideways)
             return false;
+        takeOver();
         reading.pointer = Qt.point(wheel.x, wheel.y);
         const e = WheelLatch.webEvent(wheel, Application.styleHints.wheelScrollLines, Geometry.wheelLinePixels, Qt.ControlModifier, Qt.ShiftModifier);
+        if (facetRow)
+            return shiftSideways(e);
         const routed = WheelLatch.route(reading.gesture, e, now, Tokens.durationWheelLatch, host);
         reading.gesture = routed.gesture;
-        if (routed.fresh)
-            reading.jumped = false;
         if (routed.action === "inner")
             return scrollVertically(routed.gesture.inner, e.dy);
         if (routed.action === "pan")
             return scrollSideways(e.dy);
-        // ponytail: Qt's Flickable does not turn Shift+wheel sideways as a browser does, so it is done here, unlatched.
-        if (e.shift && !e.ctrl)
-            return scrollSideways(Math.abs(e.dx) > Math.abs(e.dy) ? e.dx : e.dy);
-        return routed.action === "swallow";
+        return shiftSideways(e) || routed.action === "swallow";
     }
 
+    // ponytail: Qt's Flickable does not turn Shift+wheel sideways as a browser does, so it is done here, unlatched;
+    // it falls through at the ends like any sideways scroll.
+    function shiftSideways(e: var): bool {
+        if (!e.shift || e.ctrl)
+            return false;
+        return scrollSideways(Math.abs(e.dx) > Math.abs(e.dy) ? e.dx : e.dy);
+    }
+
+    // The sections in sight of the layout: a hidden one takes no room (display: none). While the panorama itself is
+    // hidden every child counts, as nothing says which of them is hidden for itself.
     function sectionItems(): var {
-        return row.children;
+        return [...row.children].filter(child => !row.visible || child.visible);
     }
 
     function fits(): bool {
@@ -109,17 +118,37 @@ Item {
         glide.start();
     }
 
-    // A wheel, a touch or a key is the user's: a running jump stops, and following the scroll is on again (:869).
+    // Anything the user does with the panorama makes the scroll that follows worth following again (rekta.js:869).
     function userScroll() {
         reading.jumped = false;
+    }
+
+    // ponytail: Rekta lets a running jump go on under a wheel; here its animation would write the position every frame
+    // and pull the panorama back from the user's hand, so the user's wheel or drag stops it.
+    function takeOver() {
         glide.stop();
+    }
+
+    // A focused item beyond the edge scrolls into view with space-xl clear, as a browser does with
+    // `scroll-padding-inline` (rekta.css:1169), at once like the wheel.
+    // ponytail: sideways only; a stacked panorama's vertical reveal is the nearest scroller's.
+    function revealFocus() {
+        const focused = Window.activeFocusItem;
+        if (!sideways || fit || glide.running || !focused)
+            return;
+        let item = focused;
+        while (item && item !== row)
+            item = item.parent;
+        if (item)
+            Reveal.alongInto(flick, focused, inset, mostScroll());
     }
 
     function scrollSideways(by: real): bool {
         const to = Math.max(0, Math.min(mostScroll(), flick.contentX + by));
         flick.cancelFlick();
+        const moved = to !== flick.contentX;
         flick.contentX = to;
-        return true;
+        return moved;
     }
 
     function scrollVertically(flickable: var, by: real): bool {
@@ -153,13 +182,15 @@ Item {
 
     // Sections side by side from the inset, or stacked top to bottom (rekta.css:1167–1173, :853–856).
     function relayout() {
+        if (reading.gone)
+            return;
         const sections = sectionItems();
+        row.children.forEach(wire);
         const stacked = !sideways;
         let along = inset;
         let top = 0;
         for (let k = 0; k < sections.length; k++) {
             const section = sections[k];
-            wire(section);
             const own = section instanceof Section && section.sectionWidth > 0 ? section.sectionWidth : sectionWidth;
             if (section instanceof Section) {
                 section.stacked = stacked;
@@ -181,6 +212,7 @@ Item {
             return;
         reading.wired.add(section);
         section.implicitHeightChanged.connect(relayout);
+        section.visibleChanged.connect(relayout);
         if (section instanceof Section)
             section.sectionWidthChanged.connect(relayout);
     }
@@ -230,12 +262,14 @@ Item {
     onHeightChanged: relayout()
     onSectionWidthChanged: relayout()
     onInsetChanged: relayout()
+    Window.onActiveFocusItemChanged: revealFocus()
     // A change of size class keeps the section being read, not an offset (layout.md, "Size classes").
     onSidewaysChanged: {
         relayout();
         goTo(reading.current, false, true);
         reading.jumped = false;
     }
+    Component.onDestruction: reading.gone = true
     Component.onCompleted: {
         relayout();
         mark(reading.current);
@@ -243,6 +277,7 @@ Item {
 
     // ← → PageUp PageDown jump a section, Home End to the ends; only on the panorama itself (rekta.js key(), :901).
     Keys.onPressed: event => {
+        userScroll();
         if (Window.activeFocusItem !== panorama || !sideways || facetRow || (event.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.MetaModifier)))
             return;
         const last = sectionItems().length - 1;
@@ -258,6 +293,8 @@ Item {
         if (!(event.key in moves))
             return;
         goTo(Math.max(0, Math.min(last, moves[event.key])), false, false);
+        // A key is the user's (rekta.js:945, :948): the scroll its jump causes is followed, only a click wins over that.
+        userScroll();
         event.accepted = true;
     }
 
@@ -265,13 +302,15 @@ Item {
         id: reading
 
         property int current: 0
-        // Jumped to a section by key or strip: the scroll that follows is no reason to mark another (rekta.js `clicked`).
+        // Jumped to a section by the strip: the scroll that follows is no reason to mark another (rekta.js `clicked`).
         property bool jumped: false
         property real reach: 0
         property real stackHeight: 0
         property point pointer
         property var gesture: null
         property var wired: new Set()
+        // Items of a panorama that is being destroyed still signal; nothing is laid out then.
+        property bool gone: false
     }
 
     // The host of the wheel latch's questions (WheelLatch.route).
@@ -319,7 +358,10 @@ Item {
             panorama.follow()
         onContentYChanged: if (!panorama.sideways)
             panorama.follow()
-        onMovementStarted: panorama.userScroll()
+        onMovementStarted: {
+            panorama.userScroll();
+            panorama.takeOver();
+        }
         onContentWidthChanged: returnToBounds()
         onContentHeightChanged: returnToBounds()
 
@@ -346,7 +388,7 @@ Item {
     MouseArea {
         anchors.fill: parent
         z: 1
-        enabled: panorama.sideways && !panorama.facetRow
+        enabled: panorama.sideways
         acceptedButtons: Qt.NoButton
         onWheel: wheel => wheel.accepted = panorama.handleWheel(wheel, Date.now())
     }

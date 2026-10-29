@@ -25,8 +25,8 @@ Item {
     readonly property real activeSize: Tokens.fluid(activeToken, placeWidth)
     readonly property real inactiveSize: Tokens.fluid(inactiveToken, placeWidth)
 
-    // A title chosen again or by Enter: a section strip aligns its section and moves the focus into it.
     signal selected(int index)
+    // A title tapped (even the one chosen) or Enter on it: a section strip aligns its section and moves the focus into it.
     signal activated(int index)
     // Where Tab leads from the strip, when it is not the next item in the focus chain (a wide pivot: the facet chosen).
     property Item tabInto
