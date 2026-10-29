@@ -1003,20 +1003,12 @@ FocusScope {
             }
 
             // Without a match, a sentence on the region's first hairline says so (states.md, "Empty"; rekta.css:675).
-            Hairline {
-                objectName: "noHitsLine"
+            Empty {
+                objectName: "noHits"
                 y: Tokens.spaceL
                 width: results.width
                 visible: found.count === 0
-            }
-
-            Body {
-                objectName: "noHits"
-                y: Tokens.spaceL + Geometry.hairline + Tokens.spaceM
-                width: results.width
-                visible: found.count === 0
                 text: `keine app passt zu „${start.query.trim()}“.`
-                color: Tokens.color.textContrastHigh
             }
         }
     }

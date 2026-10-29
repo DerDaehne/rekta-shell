@@ -13,6 +13,7 @@ Title 1.0 Title.qml
 NavTitle 1.0 NavTitle.qml
 PivotTitle 1.0 PivotTitle.qml
 GroupHeading 1.0 GroupHeading.qml
+Empty 1.0 Empty.qml
 Hairline 1.0 Hairline.qml
 FocusRing 1.0 FocusRing.qml
 StatusTag 1.0 StatusTag.qml

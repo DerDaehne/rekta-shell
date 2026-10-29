@@ -352,21 +352,11 @@ Column {
                     controls.pressNetwork(row);
             }
 
-            // What is empty and why (states.md, "Empty").
-            Item {
+            Empty {
                 objectName: "noNetworks"
                 visible: controls.ranked.length === 0
                 width: parent.width
-                height: noNetworksHint.implicitHeight + Tokens.spaceS
-                property alias text: noNetworksHint.text
-
-                Hint {
-                    id: noNetworksHint
-
-                    x: Tokens.spaceM
-                    width: parent.width - 2 * Tokens.spaceM
-                    text: "keine netze gefunden, die suche läuft"
-                }
+                text: "keine netze gefunden, die suche läuft"
             }
 
             Repeater {
@@ -586,12 +576,13 @@ Column {
                 bluetoothBranch.fold();
         }
 
+        // Opening starts the list afresh; folding leaves its rows to fold away with it.
         function onListingChanged() {
-            controls.ranked = [];
-            if (controls.listing)
-                controls.rank();
-            else
+            if (controls.listing) {
+                controls.ranked = [];
                 controls.failures = ({});
+                controls.rank();
+            }
             controls.scanWanted(controls.listing);
         }
 

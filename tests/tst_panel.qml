@@ -1904,8 +1904,9 @@ TestCase {
         keyClick(Qt.Key_Escape);
         verify(sheet().open, "typed input is asked about before it goes");
         verify(sheet().asking);
-        compare(findChild(sheet(), "keep").text, "weiter eingeben");
-        compare(findChild(sheet(), "discard").text, "verwerfen");
+        compare(findChild(sheet(), "keep").text, "weiter bearbeiten");
+        compare(findChild(sheet(), "discard").text, "änderungen verwerfen");
+        compare(sheet().askKicker, "ungespeichert");
         keyClick(Qt.Key_Escape);
         verify(!sheet().asking, "Escape while asking keeps editing");
         keyClick(Qt.Key_Escape);
@@ -2108,6 +2109,7 @@ TestCase {
         const hint = control("noNetworks");
         verify(hint.visible);
         compare(hint.text, "keine netze gefunden, die suche läuft");
+        verify(findChild(hint, "line").visible, "on Rekta's empty hairline");
         verify(control("wifiBranch").height > 0, "the unfolded branch is not empty");
         compare(scans, [true]);
         networks.device.networks.values = [networks.home];
@@ -2128,6 +2130,27 @@ TestCase {
         compare(controls.ranked.map(network => network.name), ["Home", "Office", "Guest", "Neighbour", "Library", "Cafe", "Shop", "Hotel", "Near", "Faraway"]);
         networks.device.networks.values = networks.device.networks.values.filter(network => network !== networks.office);
         compare(controls.ranked.map(network => network.name).slice(0, 3), ["Home", "Guest", "Neighbour"], "a gone network drops out in place");
+    }
+
+    function test_folding_the_list_keeps_its_rows_while_it_folds_and_never_shows_the_empty_sentence() {
+        giveNetworks(controls);
+        side.show(0);
+        waitForRendering(side);
+        Prefs.motion = "on";
+        const branch = control("wifiBranch");
+        mouseClick(control("chooseNetwork"));
+        tryCompare(branch, "unfolded", 1, 4 * Tokens.durationShort);
+        waitForRendering(side);
+        const fullHeight = branch.height;
+        const hint = control("noNetworks");
+        verify(!hint.visible);
+        mouseClick(control("chooseNetwork"));
+        verify(branch.unfolded > 0, "it folds over time");
+        verify(!hint.visible, "the empty sentence does not show while it folds");
+        compare(rowsOf("wifiBranch").length, 6, "the rows stay until it has folded");
+        verify(branch.height <= fullHeight && branch.height > 0);
+        tryCompare(branch, "unfolded", 0, 4 * Tokens.durationShort);
+        verify(!hint.visible);
     }
 
     function test_wlan_off_closes_the_level_and_stops_the_scan() {

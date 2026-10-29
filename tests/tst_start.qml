@@ -1039,12 +1039,13 @@ TestCase {
         openWithApps();
         typeNow("q");
         compare(hitNames(), []);
-        const sentence = named("noHits");
+        const sentence = findChild(named("noHits"), "sentence");
         verify(sentence.visible);
         compare(sentence.text, "keine app passt zu „q“.");
         compare(sentence.color, Tokens.color.textContrastHigh);
-        compare(named("noHitsLine").y, Tokens.spaceL);
-        compare(sentence.y, Tokens.spaceL + Geometry.hairline + Tokens.spaceM);
+        compare(named("noHits").y, Tokens.spaceL);
+        compare(findChild(named("noHits"), "line").y, 0);
+        compare(sentence.y, Geometry.hairline + Tokens.spaceM);
     }
 
     function test_typing_on_or_erasing_changes_the_hits_and_a_digit_or_a_space_types_on() {

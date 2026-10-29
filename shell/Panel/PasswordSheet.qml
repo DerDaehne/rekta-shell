@@ -34,10 +34,10 @@ Sheet {
 
     kicker: "wlan"
     dirty: field.text !== ""
-    askKicker: "nicht verbunden"
-    askTitle: "passwort verwerfen?"
-    keepWord: "weiter eingeben"
-    discardWord: "verwerfen"
+    askKicker: "ungespeichert"
+    askTitle: "eingaben verwerfen?"
+    keepWord: "weiter bearbeiten"
+    discardWord: "änderungen verwerfen"
     title: `passwort für ${network?.name ?? ""}`
     onClosed: answer => {
         if (answer === "connect")
