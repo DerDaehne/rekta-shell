@@ -22,6 +22,9 @@ TestCase {
     readonly property var muted: ({ key: "muted", word: "stumm", status: "", opens: "sound", name: "stumm, öffnet ton" })
     readonly property var quiet: ({ key: "doNotDisturb", word: "nicht stören", status: "", opens: "doNotDisturb", name: "nicht stören, öffnet anzeige" })
     readonly property var everything: [microphone, battery, offline, muted, quiet]
+    // The clock text is the widest on "mo 16. märz" and the narrowest on "fr 3. juli" (tabular figures keep the time as wide as any).
+    readonly property date widestClock: new Date(2026, 2, 16, 20, 8)
+    readonly property date narrowestClock: new Date(2026, 6, 3, 20, 8)
 
     Component {
         id: stateComponent
@@ -41,6 +44,7 @@ TestCase {
             property alias status: words
             property real barWidth: 1600
             property var shown: []
+            property date clockNow: testCase.widestClock
 
             width: 1800
             height: 300
@@ -56,7 +60,7 @@ TestCase {
                 centreReserve: Tokens.tileUnit
 
                 AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects: build the shell and its tests"] }
-                AppBarClock { id: clock; objectName: "clock"; area: appBar.area }
+                AppBarClock { id: clock; objectName: "clock"; area: appBar.area; locale: Qt.locale("de_DE"); now: scene.clockNow }
                 AppBarButton { objectName: "background"; icon: "window"; text: "im hintergrund"; priority: 0 }
                 AppBarButton { objectName: "messages"; icon: "bell"; text: "meldungen"; count: 2; priority: 2 }
                 AppBarStatus {
@@ -233,14 +237,19 @@ TestCase {
     }
 
     function test_at_800_px_and_narrower_the_words_never_move_into_more_and_never_cover_the_clock() {
-        for (const barWidth of [800, 700, 600, 520]) {
-            makeScene({ shown: everything, barWidth });
+        const cases = [];
+        for (const width of [800, 700, 600, 520])
+            cases.push([width, widestClock], [width, narrowestClock]);
+        for (const [barWidth, clockNow] of cases) {
+            makeScene({ shown: everything, barWidth, clockNow });
             tryVerify(() => scene.bar.plan.more, 1000, `${barWidth}: more shows`);
             tryVerify(() => standing().length === scene.status.shown.length, 1000, `${barWidth}`);
             verify(!scene.bar.plan.moved.includes(scene.status), `${barWidth}`);
             verify(scene.status.visible, `${barWidth}`);
             tryVerify(() => scene.status.width === scene.status.widthAt(scene.status.limit));
             tryVerify(() => scene.status.x + scene.status.width <= barWidth - scene.bar.padding + 0.5, 1000, `${barWidth}: placed`);
+            // A word that has left no longer holds its place in the row once the row has laid itself out again.
+            tryVerify(() => standing().every(key => word(key).mapToItem(scene, word(key).width, 0).x <= scene.status.x + scene.status.width + 0.5), 1000, `${barWidth}: row settled`);
             checkWordsOnTheirSide(barWidth);
         }
     }
@@ -300,7 +309,7 @@ TestCase {
                 centreReserve: Tokens.tileUnit
 
                 AppBarMiddle { parts: ["konsole", "~/projects: build the shell"] }
-                AppBarClock { id: slot }
+                AppBarClock { id: slot; locale: Qt.locale("de_DE"); now: testCase.widestClock }
                 AppBarButton { icon: "window"; text: "im hintergrund"; priority: 0 }
                 AppBarButton { icon: "bell"; text: "meldungen"; count: 2; priority: 2 }
                 AppBarStatus { id: status; keys: testCase.keys; words: sheetBar.deviations; more: model.more }
