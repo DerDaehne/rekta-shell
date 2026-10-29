@@ -300,6 +300,9 @@ check "language: German comment in a .cmake file" 1 "German comment or test name
 board_case session/rekta-shell.in "# follow-up of $ticket"
 check "board: ticket id in a template comment" 1 "Board reference in session/rekta-shell.in:1"
 
+board_case packaging/fedora/rekta-shell.spec "# follow-up of $ticket"
+check "board: ticket id in a spec comment" 1 "Board reference in packaging/fedora/rekta-shell.spec:1"
+
 board_case tests/a.test.mjs "it('$ticket: rejects the move', () => {});"
 check "board: ticket id in a test name" 1 "Board reference in tests/a.test.mjs:1"
 

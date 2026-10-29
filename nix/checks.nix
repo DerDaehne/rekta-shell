@@ -166,16 +166,13 @@ in
         QML_IMPORT_PATH = "${qt.qtdeclarative}/lib/qt-6/qml:${rekta-shell}/lib/qt-6/qml:${counterpart}/lib/qt-6/qml";
         # The tests' system-bus instance must find no bus, wherever they run.
         DBUS_SYSTEM_BUS_ADDRESS = "unix:path=/nonexistent/system_bus_socket";
+        DBUS_SESSION_CONFIG = "${pkgs.dbus}/share/dbus-1/session.conf";
+        TZDIR = "${pkgs.tzdata}/share/zoneinfo";
         LANG = "C.UTF-8";
       }
       ''
         export HOME="$TMPDIR"
-        # A bus of its own for the DBus tests, which exists only while the tests run.
-        dbus-run-session --config-file=${pkgs.dbus}/share/dbus-1/session.conf -- \
-          qmltestrunner -import ${qml}/shell -input ${qml}/tests
-        # Week numbers count days across a daylight saving change, which the build zone (UTC) has none of.
-        TZ=Europe/Berlin TZDIR=${pkgs.tzdata}/share/zoneinfo \
-          qmltestrunner -import ${qml}/shell -input ${qml}/tests/tst_clock.qml
+        ${qml}/tests/run-qml-tests.sh ${qml}
         # Tests save contact sheets into the working directory; they end up in the check's result for review.
         mkdir $out
         cp *.png $out/ 2>/dev/null || true
