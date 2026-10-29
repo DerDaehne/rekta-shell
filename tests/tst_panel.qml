@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Window
 import QtTest
 import Notices
 import Panel
@@ -800,6 +801,77 @@ TestCase {
         keyClick(Qt.Key_Tab);
         verify(control("doNotDisturb").activeFocus);
         verify(ringOf("doNotDisturb").visible, "the keyboard brings the ring");
+    }
+
+    // The focus rings that show inside an item.
+    function ringsShowing(item: var): int {
+        let count = item instanceof FocusRing && item.visible ? 1 : 0;
+        for (const child of item.children)
+            count += ringsShowing(child);
+        return count;
+    }
+
+    // A panel in a window of its own, so the window can be inactive when the panel opens, as a layer-shell surface is.
+    Component {
+        id: windowedComponent
+
+        Window {
+            property alias panel: windowedPanel
+            property alias first: firstToggle
+
+            width: 600
+            height: 600
+
+            SidePanel {
+                id: windowedPanel
+
+                anchors.fill: parent
+                titles: ["steuerung"]
+
+                Column {
+                    width: parent ? parent.width : 0
+
+                    Toggle {
+                        id: firstToggle
+
+                        activeFocusOnTab: true
+                    }
+
+                    Toggle {
+                        objectName: "second"
+                        activeFocusOnTab: true
+                    }
+                }
+            }
+        }
+    }
+
+    function test_the_activation_of_the_window_after_a_pointer_open_keeps_the_rings_away_and_a_move_of_the_focus_brings_them() {
+        const window = createTemporaryObject(windowedComponent, testCase);
+        window.panel.show(0, true);
+        window.show();
+        window.requestActivate();
+        tryVerify(() => window.active);
+        tryVerify(() => window.first.activeFocus, 2000, "the window's activation hands the focus to the first control");
+        compare(ringsShowing(window.contentItem), 0, "that is no move of the focus");
+        window.panel.moveFocus(true);
+        compare(ringsShowing(window.contentItem), 1, "a move of the focus brings the ring");
+    }
+
+    function test_a_key_on_the_pivot_after_a_pointer_open_brings_its_ring() {
+        side.show(1, true);
+        const pivot = findChild(side, "pivot");
+        verify(pivot.activeFocus);
+        compare(ringsShowing(pivot), 0);
+        keyClick(Qt.Key_Right);
+        compare(ringsShowing(pivot), 1, "the arrow moved the selection, and the keyboard has a ring");
+    }
+
+    function test_shift_tab_after_a_pointer_open_brings_the_ring() {
+        side.show(0, true);
+        keyClick(Qt.Key_Tab, Qt.ShiftModifier);
+        verify(findChild(side, "pivot").activeFocus);
+        compare(ringsShowing(findChild(side, "pivot")), 1);
     }
 
     function test_opened_by_the_keyboard_the_first_control_shows_its_focus_ring() {

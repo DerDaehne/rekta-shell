@@ -125,7 +125,8 @@ FocusScope {
     // The first control of the facet in sight, else the pivot.
     function focusFirst() {
         const first = pivot.nextItemInFocusChain(true);
-        (first && holds(first) ? first : pivot).forceActiveFocus(Qt.TabFocusReason);
+        memo.chosen = first && holds(first) ? first : pivot;
+        memo.chosen.forceActiveFocus(Qt.TabFocusReason);
     }
 
     function moveFocus(forward: bool) {
@@ -162,6 +163,7 @@ FocusScope {
     Keys.onPressed: event => {
         if (!open)
             return;
+        ringsHidden = false;
         if (sheetOpen) {
             // The sheet's own keys (Escape) go to the layers; the arrows do not walk the panel behind it, Tab stays its own.
             event.accepted = KeyLayers.dispatch(event, Window.activeFocusItem) || event.key === Qt.Key_Up || event.key === Qt.Key_Down;
@@ -176,11 +178,22 @@ FocusScope {
         event.accepted = true;
     }
 
-    // Focus that moves later is the keyboard's (a pointer press gives none).
+    // Focus that moves to another control is the keyboard's (a pointer press gives none). The window's own activation
+    // hands the focus to the control the panel chose, which is no move.
     Connections {
         target: sidePanel.open ? sidePanel.Window.window : null
 
         function onActiveFocusItemChanged() {
+            const now = sidePanel.Window.window.activeFocusItem;
+            if (now && now !== memo.chosen)
+                sidePanel.ringsHidden = false;
+        }
+    }
+
+    Connections {
+        target: pivot
+
+        function onKeyed() {
             sidePanel.ringsHidden = false;
         }
     }
@@ -197,6 +210,8 @@ FocusScope {
         id: memo
 
         property Item focused
+        // The control the panel put the focus on when it opened.
+        property Item chosen
     }
 
     NumberAnimation {
