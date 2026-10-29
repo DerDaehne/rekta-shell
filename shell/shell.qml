@@ -113,6 +113,7 @@ ShellRoot {
         sink: keys.sink
         source: keys.source
         notices: notifications.board
+        networkManagerRunning: systemState.networkManagerRunning
 
         // Under the session banner the Start waits: asked now, KWin would raise the Start over the banner.
         onPanelClosed: {

@@ -33,6 +33,8 @@ PanelWindow {
     required property PwNode sink
     required property PwNode source
     required property NoticeBoard notices
+    // NetworkManager runs; Networking is read only then (SystemState has the one watcher).
+    required property bool networkManagerRunning
     // The screen it opens on, null once that one has gone; the panel hides meanwhile.
     property ShellScreen shownOn: primaryScreen
     readonly property alias doNotDisturb: controls.doNotDisturb
@@ -42,7 +44,7 @@ PanelWindow {
     // The sound cards and other audio devices, not the programs playing or recording.
     readonly property list<PwNode> audioDevices: nodes.values.filter(node => node.audio && !node.isStream)
     // The network cards, only once NetworkManager runs; untyped for the same reason.
-    readonly property var networkModel: networkManager.registered ? Networking.devices : null
+    readonly property var networkModel: networkManagerRunning ? Networking.devices : null
     readonly property var networkDevices: networkModel?.values ?? []
 
     // The panel has gone, and with it the surface.
@@ -141,7 +143,7 @@ PanelWindow {
             onConnectionChosen: (device, connect) => surface.actOnSystemBus(`${connect ? "connect" : "disconnect"} ${device.name}`, () => connect ? device.connect() : device.disconnect())
             sheets: panel.sheets
             // NetworkManager is asked only once it runs, for the same reason as BlueZ. Quickshell's models are untyped.
-            networking: networkManager.registered ? Networking : null
+            networking: surface.networkManagerRunning ? Networking : null
             wifiDevice: surface.networkDevices.find(device => device.type === DeviceType.Wifi) ?? null
             wiredDevice: surface.networkDevices.find(device => device.type === DeviceType.Wired) ?? null
             onWifiChosen: on => surface.actOnSystemBus(`switch wifi ${on ? "on" : "off"}`, () => Networking.wifiEnabled = on)
@@ -199,13 +201,6 @@ PanelWindow {
 
         busType: DBus.BusType.System
         watchedService: "org.freedesktop.UPower.PowerProfiles"
-    }
-
-    DBus.DBusServiceWatcher {
-        id: networkManager
-
-        busType: DBus.BusType.System
-        watchedService: "org.freedesktop.NetworkManager"
     }
 
     DBus.DBusServiceWatcher {
