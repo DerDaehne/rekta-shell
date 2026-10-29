@@ -8,7 +8,7 @@ StartLimitIntervalSec=60s
 StartLimitBurst=3
 
 [Service]
-ExecStart=@out@/bin/rekta-shell
+ExecStart=@REKTA_BIN_DIR@/rekta-shell
 # on-failure takes a plain kill (SIGTERM) for a clean exit and would leave the session without its shell.
 Restart=always
 Slice=session.slice

@@ -57,7 +57,7 @@ HOME_PATH='(^|[^[:alnum:]_.~-])/(home|Users)/[[:alnum:]_]'
 # GitHub's noreply addresses for people and bots, and the identity of commits made on github.com.
 NOREPLY='(@users\.noreply\.github\.com|^noreply@github\.com)$'
 SLASH_CODE=('*.qml' '*.js' '*.mjs' '*.cpp' '*.h')
-HASH_CODE=('*.nix' '*.sh' '*.yml' '*.yaml')
+HASH_CODE=('*.nix' '*.sh' '*.yml' '*.yaml' '*CMakeLists.txt' '*.cmake' '*.in')
 
 status=0
 

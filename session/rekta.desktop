@@ -2,6 +2,6 @@
 Type=Application
 Name=rekta
 Comment=Plasma's services with rekta-shell in place of plasmashell
-Exec=@out@/libexec/rekta-session
-TryExec=@out@/libexec/rekta-session
+Exec=@REKTA_LIBEXEC_DIR@/rekta-session
+TryExec=@REKTA_LIBEXEC_DIR@/rekta-session
 DesktopNames=KDE

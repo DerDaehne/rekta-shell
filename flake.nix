@@ -37,7 +37,6 @@
         rekta-shell = pkgs.callPackage ./nix/package.nix { };
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
         rekta-design-dist = pkgs.callPackage ./nix/rekta-design-dist.nix { src = rekta-design; };
-        rekta-kwin = pkgs.callPackage ./nix/kwin.nix { };
       });
 
       apps = eachSystem (
@@ -58,7 +57,6 @@
           nested = app (
             pkgs.callPackage ./nix/nested.nix {
               inherit rekta-shell;
-              inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) rekta-kwin;
             }
           );
           nested-shot = app (pkgs.callPackage ./nix/nested-shot.nix { });

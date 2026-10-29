@@ -1,8 +1,8 @@
 {
   lib,
-  stdenvNoCC,
+  stdenv,
+  cmake,
   makeWrapper,
-  callPackage,
   quickshell,
   kdePackages,
   libcanberra-gtk3,
@@ -18,62 +18,62 @@ assert lib.assertMsg (
 
 let
   plasma-workspace = kdePackages.plasma-workspace;
-  rekta-kwin = callPackage ./kwin.nix { };
-  dbus = callPackage ./dbus.nix { };
   # Quickshell loads the DBus module into its own process, so both must link the same Qt.
-  sameQt = lib.all (qtLibrary: lib.elem qtLibrary quickshell.buildInputs) dbus.buildInputs;
+  qtLibraries = [
+    kdePackages.qtbase
+    kdePackages.qtdeclarative
+  ];
+  sameQt = lib.all (qtLibrary: lib.elem (lib.getDev qtLibrary) quickshell.buildInputs) qtLibraries;
+  defaultsFile = "${placeholder "out"}/share/rekta-shell/defaults.json";
 in
 assert lib.assertMsg sameQt
   "rekta-shell's DBus module is built against another Qt than Quickshell ${quickshell.version}";
-stdenvNoCC.mkDerivation {
+stdenv.mkDerivation {
   pname = "rekta-shell";
   version = "0.1.0";
 
-  src = ../shell;
+  src = lib.fileset.toSource {
+    root = ../.;
+    fileset = lib.fileset.unions [
+      ../CMakeLists.txt
+      ../shell
+      ../session
+      ../settings
+      ../kwin
+      ../plugins/dbus
+    ];
+  };
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [
+    cmake
+    kdePackages.extra-cmake-modules
+    makeWrapper
+  ];
+  buildInputs = qtLibraries ++ [ kdePackages.kwin ];
+  dontWrapQtApps = true;
 
-  installPhase = ''
-    runHook preInstall
-    mkdir -p $out/share/rekta-shell
-    cp -r . $out/share/rekta-shell
-    defaultsArgs=()
+  cmakeFlags = [
+    "-DQUICKSHELL=${lib.getExe quickshell}"
+    "-DKWIN_WAYLAND_WRAPPER=${kdePackages.kwin}/bin/kwin_wayland_wrapper"
+    "-DSTARTPLASMA_WAYLAND=${plasma-workspace}/bin/startplasma-wayland"
+    "-DPLASMA_DBUS_RUN_SESSION_IF_NEEDED=${plasma-workspace}/libexec/plasma-dbus-run-session-if-needed"
+  ]
+  ++ lib.optional (defaults != { }) "-DREKTA_DEFAULTS_FILE=${defaultsFile}";
+
+  postInstall = ''
     ${lib.optionalString (defaults != { }) ''
-      echo ${lib.escapeShellArg (builtins.toJSON defaults)} > $out/share/rekta-shell/defaults.json
-      defaultsArgs=(--set REKTA_DEFAULTS $out/share/rekta-shell/defaults.json)
+      echo ${lib.escapeShellArg (builtins.toJSON defaults)} > ${defaultsFile}
     ''}
     # Only this wrapper lets the shell start apps for real; run from a checkout it only logs them.
-    makeWrapper ${lib.getExe quickshell} $out/bin/rekta-shell \
-      --add-flags "--path $out/share/rekta-shell" \
-      --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${dbus}/lib/qt-6/qml:${plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" \
-      --prefix PATH : ${kdePackages.libkscreen}/bin:${libcanberra-gtk3}/bin:${gnugrep}/bin \
-      "''${defaultsArgs[@]}" \
-      --set-default REKTA_SHELL_LAUNCH systemd
-
-    # The settings app is a configuration of its own; the wrapper runs it with the same modules as the shell.
-    install -Dm644 ${../settings/shell.qml} $out/share/rekta-settings/shell.qml
-    install -Dm644 ${../settings/rekta-settings.desktop} $out/share/applications/rekta-settings.desktop
-    install -Dm755 ${../settings/rekta-settings} $out/bin/rekta-settings
-    substituteInPlace $out/bin/rekta-settings --subst-var out
+    wrapProgram $out/bin/rekta-shell \
+      --prefix QML_IMPORT_PATH : "$out/lib/qt-6/qml:${plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" \
+      --prefix PATH : ${kdePackages.libkscreen}/bin:${libcanberra-gtk3}/bin:${gnugrep}/bin
     wrapProgram $out/bin/rekta-settings \
-      --prefix PATH : ${lib.makeBinPath [ quickshell ]} \
-      --prefix QML_IMPORT_PATH : "$out/share/rekta-shell:${plasma-workspace}/lib/qt-6/qml" \
-      "''${defaultsArgs[@]}"
-
-    install -Dm644 ${../session/rekta.desktop} $out/share/wayland-sessions/rekta.desktop
-    install -Dm755 ${../session/rekta-session} $out/libexec/rekta-session
-    install -Dm755 ${../session/rekta-kwin} $out/libexec/rekta-kwin
-    mkdir -p $out/lib/systemd
-    cp -r --no-preserve=mode ${../session/systemd} $out/lib/systemd/user
-    substituteInPlace $out/share/wayland-sessions/rekta.desktop $out/libexec/rekta-session $out/libexec/rekta-kwin \
-      $out/lib/systemd/user/rekta-shell.service $out/lib/systemd/user/plasma-kwin_wayland.service.d/rekta-session.conf \
-      --subst-var out --subst-var-by plasmaWorkspace ${plasma-workspace} \
-      --subst-var-by kwin ${kdePackages.kwin} --subst-var-by rektaKwin ${rekta-kwin}
-    runHook postInstall
+      --prefix QML_IMPORT_PATH : "${plasma-workspace}/lib/qt-6/qml"
   '';
 
   passthru = {
-    inherit quickshell dbus;
+    inherit quickshell;
     providedSessions = [ "rekta" ];
   };
 

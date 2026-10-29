@@ -1,0 +1,6 @@
+#!/bin/sh
+# A second launch asks the open window to come forward; --no-duplicate keeps a lost race from opening two.
+export QML_IMPORT_PATH="@REKTA_SHELL_DIR@${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
+@REKTA_DEFAULTS_EXPORT@
+@QUICKSHELL@ --path "@REKTA_SETTINGS_DIR@" ipc call settings raise >/dev/null 2>&1 && exit 0
+exec @QUICKSHELL@ --path "@REKTA_SETTINGS_DIR@" --no-duplicate

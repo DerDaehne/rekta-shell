@@ -2,7 +2,6 @@
 
 let
   rekta-shell = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
-  rekta-kwin = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-kwin;
   rekta-qmllint = pkgs.callPackage ./qmllint.nix { inherit rekta-shell; };
   counterpart = pkgs.callPackage ./dbus-counterpart.nix { };
   # The tests import the shell's directories by relative path, so both stand side by side here.
@@ -33,30 +32,21 @@ in
     pkgs.runCommand "rekta-shell-package-refuses-foreign-qt" { } "touch $out";
 
   # A system or home profile links share/ and etc/xdg of its packages into every session's XDG dirs and lib/qt-6/plugins
-  # into its plugin path, Plasma's too: the rekta packages may bring no KWin effects or config defaults there. The DBus
-  # module brings only a QML module, which nothing of Plasma's imports.
+  # into its plugin path, Plasma's too: the package may bring no KWin effects or config defaults there.
   profile-leaves-plasma-alone =
     let
       profile = pkgs.buildEnv {
         name = "rekta-shell-profile";
-        paths = [
-          rekta-shell
-          rekta-kwin
-        ];
+        paths = [ rekta-shell ];
       };
     in
     pkgs.runCommand "rekta-shell-profile-leaves-plasma-alone" { } ''
       for path in share/kwin etc/xdg lib/qt-6/plugins/kwin; do
         if [ -e ${profile}/$path ]; then
-          echo "a profile with the rekta packages puts $path into every session" >&2
+          echo "a profile with the rekta package puts $path into every session" >&2
           exit 1
         fi
       done
-      outside=$(cd ${rekta-shell.dbus} && find . -not -type d -not -path './lib/qt-6/qml/*')
-      if [ -n "$outside" ]; then
-        echo "the DBus module installs $outside outside lib/qt-6/qml" >&2
-        exit 1
-      fi
       touch $out
     '';
 
@@ -73,7 +63,7 @@ in
           exit 1
         fi
         test -x ${rekta-shell}/bin/rekta-settings
-        grep -qF "${rekta-shell.quickshell}/bin" ${rekta-shell}/bin/rekta-settings
+        grep -qF "${rekta-shell.quickshell}/bin" ${rekta-shell}/bin/.rekta-settings-wrapped
         grep -qF "${rekta-shell}/share/rekta-settings" ${rekta-shell}/bin/.rekta-settings-wrapped
         grep -qx "//@ pragma AppId rekta-settings" ${rekta-shell}/share/rekta-settings/shell.qml
         grep -q "no-duplicate" ${rekta-shell}/bin/.rekta-settings-wrapped
@@ -135,7 +125,7 @@ in
         QT_QUICK_BACKEND = "software";
         FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ pkgs.atkinson-hyperlegible-next ]; };
         QT_PLUGIN_PATH = "${qt.qtbase}/lib/qt-6/plugins";
-        QML_IMPORT_PATH = "${qt.qtdeclarative}/lib/qt-6/qml:${rekta-shell.dbus}/lib/qt-6/qml:${counterpart}/lib/qt-6/qml";
+        QML_IMPORT_PATH = "${qt.qtdeclarative}/lib/qt-6/qml:${rekta-shell}/lib/qt-6/qml:${counterpart}/lib/qt-6/qml";
         # The tests' system-bus instance must find no bus, wherever they run.
         DBUS_SYSTEM_BUS_ADDRESS = "unix:path=/nonexistent/system_bus_socket";
         LANG = "C.UTF-8";
@@ -257,7 +247,7 @@ in
     pkgs.runCommand "rekta-shell-nixos-module" { } ''
       # The wrapper names the package's defaults file, and the option's value stands in it.
       names_defaults() {
-        if ! grep -q "REKTA_DEFAULTS=.$1/share/rekta-shell/defaults.json." "$1/bin/rekta-shell" ||
+        if ! grep -q "REKTA_DEFAULTS=.$1/share/rekta-shell/defaults.json." "$1/bin/.rekta-shell-wrapped" ||
           ! grep -qF "\"background\":\"$2\"" "$1/share/rekta-shell/defaults.json"; then
           echo "the module's package does not carry background $2 as its default" >&2
           exit 1
@@ -288,7 +278,7 @@ in
         echo "the start tempo or search escape option is not in the package defaults" >&2
         exit 1
       }
-      if grep -q REKTA_DEFAULTS ${rekta-shell}/bin/rekta-shell; then
+      if grep -q REKTA_DEFAULTS ${rekta-shell}/bin/.rekta-shell-wrapped; then
         echo "the package without defaults names a defaults file" >&2
         exit 1
       fi

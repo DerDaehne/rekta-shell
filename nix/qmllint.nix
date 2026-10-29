@@ -27,7 +27,7 @@ writeShellApplication {
     exec qmllint --max-warnings 0 --uncreatable-type disable \
       -I ${kdePackages.qtdeclarative}/lib/qt-6/qml \
       -I ${rekta-shell.quickshell}/lib/qt-6/qml \
-      -I ${rekta-shell.dbus}/lib/qt-6/qml \
+      -I ${rekta-shell}/lib/qt-6/qml \
       -I ${counterpart}/lib/qt-6/qml \
       -I ${kdePackages.plasma-workspace}/lib/qt-6/qml \
       -I ${kdePackages.kpipewire}/lib/qt-6/qml \
