@@ -221,7 +221,8 @@ QtObject {
     readonly property int flipDuration: 200
     readonly property int displayHold: 1700
     // A display alone rises 12px from below its glass edge, as the bar's mode change does (`@keyframes rk-ab-in { from {
-    // opacity: 0; transform: translateY(12px); } }`, rekta.css:766) and a compact toast from its edge (rekta.css:929–930)
+    // opacity: 0; transform: translateY(12px); } }`, rekta.css:766) and a compact toast from its edge (rekta.css:929–930,
+    // :1096)
     readonly property real readoutRise: 12
     // `.rk-spark polyline { stroke-width: 2; stroke-linejoin: round }` in the sparkline's 200 × 28 box (rekta.css:140,
     // :143); `[data-rk-live='stale'] .rk-spark { opacity: 0.35 }` (rekta.css:501)

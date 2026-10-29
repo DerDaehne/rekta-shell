@@ -11,7 +11,7 @@ TestCase {
     // Objects created inside an invisible test case are never rendered, so contact sheets would stay empty.
     visible: true
     when: windowShown
-    width: 600
+    width: 700
     height: 300
 
     Component {
@@ -37,7 +37,7 @@ TestCase {
         alone = createTemporaryObject(aloneComponent, testCase);
         hold = findChild(alone, "hold");
         moving = findChild(alone, "moving");
-        restingY = alone.height - Tokens.appbarHeight;
+        restingY = 0;
     }
 
     function cleanup() {
@@ -98,7 +98,7 @@ TestCase {
         compare(alone.glass.width, Tokens.tileUnit + 2 * Tokens.spaceM);
         compare(alone.glass.color, Tokens.color.glass);
         compare(findChild(alone, "hairline").height, Geometry.hairline);
-        compare(alone.height, Tokens.appbarHeight + Geometry.readoutRise);
+        compare(alone.height, Tokens.appbarHeight);
         compare(Geometry.readoutRise, 12);
     }
 
@@ -164,15 +164,53 @@ TestCase {
         compare(alone.glass.opacity, 1);
     }
 
-    function test_the_way_out_is_the_way_in_backwards() {
+    function test_the_way_out_runs_the_curve_backwards_not_its_complement() {
         showAlone();
         expire();
-        stopAt(0.4);
-        const eased = alone.ease.valueForProgress(0.4);
-        fuzzyCompare(alone.glass.opacity, 1 - eased, 1e-9);
-        fuzzyCompare(alone.glass.y, restingY + eased * Geometry.readoutRise, 1e-9);
+        compare(moving.from, 1);
+        compare(moving.to, 0);
+        // A fifth of the way out in time: the eased value of the way in at four fifths, as a reversed animation shows it.
+        stopAt(0.8);
+        const eased = alone.ease.valueForProgress(0.8);
+        verify(eased > 0.9);
+        fuzzyCompare(alone.glass.opacity, eased, 1e-9);
+        fuzzyCompare(alone.glass.y, restingY + (1 - eased) * Geometry.readoutRise, 1e-9);
         verify(!alone.settled);
     }
+
+    function test_the_surface_stays_mapped_from_the_first_key_through_the_way_out_and_a_key_during_it() {
+        mappedSpy.target = alone;
+        mappedSpy.clear();
+        showAlone();
+        compare(mappedSpy.count, 1);
+        expire();
+        stopAt(0.5);
+        alone.press();
+        moving.resume();
+        tryCompare(alone, "settled", true, 2000);
+        compare(mappedSpy.count, 1);
+        expire();
+        tryCompare(alone, "mapped", false, 2000);
+        compare(mappedSpy.count, 2);
+    }
+
+    function test_a_further_key_restarts_the_hold() {
+        hold.interval = 800;
+        alone.away = true;
+        alone.press();
+        wait(500);
+        alone.press();
+        wait(500);
+        verify(alone.shown);
+        tryCompare(alone, "mapped", false, 3000);
+    }
+
+    SignalSpy {
+        id: mappedSpy
+
+        signalName: "mappedChanged"
+    }
+
 
     function test_under_reduced_motion_the_display_comes_and_goes_at_once_but_stays_its_time() {
         Prefs.motion = "off";
@@ -216,7 +254,7 @@ TestCase {
             required property var shown
 
             width: 3 * (Tokens.tileUnit + 2 * Tokens.spaceM) + 80
-            height: Tokens.appbarHeight + Geometry.readoutRise + 40
+            height: Tokens.appbarHeight + 40
             color: Tokens.color.bg
 
             Repeater {

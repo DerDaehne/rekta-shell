@@ -2,9 +2,12 @@ import QtQuick
 
 // A short display with no bar to stand in, in a glass of its own along the bottom edge: the word over Rekta's meter
 // with its value (ReadoutFace). It comes only while `away` holds, the bar being out of sight. It rises from below the
-// glass edge with a fade, as a compact toast does (rekta.css:896–901, :929–930; motion.md:29) and the bar's mode change
-// (rekta.css:765–766; motion.md:23), and after the last key and its hold runs the same way back. `press()` is a key: the
-// first brings the display, every later one only keeps it, and one during the way back waits until it has gone.
+// glass edge with a fade, as a compact toast does (rekta.css:896–901, :929–930, :1096; motion.md:29) and the bar's mode
+// change (rekta.css:765–766; motion.md:23), and after the last key and its hold runs the same curve backwards, as the
+// stylesheet's reversed keyframes do (rekta.css:901). `press()` is a key: the first brings the display, every later one
+// only keeps it, and one during the way back waits until it has gone.
+// ponytail: a new layer surface takes some 60ms to its first frame, so the way in starts with that frame; should no frame
+// ever come the display stays at its start until the next key.
 Item {
     id: alone
 
@@ -23,11 +26,12 @@ Item {
     property bool leaving: false
     // A key came while the display was leaving.
     property bool again: false
-    // The time of the way in or out, 0 to 1 and linear; `progress` is what the eye sees.
-    property real phase: 1
+    // The way in runs `phase` from 0 to 1 and the way out from 1 to 0, linear in time; the curve sits in `progress`.
+    property real phase: 0
+    // A new surface has no frame yet; the way in waits for its first.
+    property bool awaitsFrame: false
     readonly property easingCurve ease: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
-    readonly property real eased: ease.valueForProgress(phase)
-    readonly property real progress: leaving ? 1 - eased : (shown ? eased : 0)
+    readonly property real progress: ease.valueForProgress(phase)
 
     function press() {
         if (!away)
@@ -40,35 +44,54 @@ Item {
             arrive();
     }
 
+    // `mapped` stays true across every change of state: the one that ends is left last.
     function arrive() {
+        const fresh = !mapped;
         shown = true;
         leaving = false;
         moving.restart();
         hold.restart();
+        if (!fresh || !Window.window)
+            return;
+        moving.pause();
+        awaitsFrame = true;
     }
 
     function depart() {
-        shown = false;
         leaving = true;
+        shown = false;
         moving.restart();
     }
 
     function vanish() {
         hold.stop();
         moving.stop();
+        awaitsFrame = false;
         again = false;
+        phase = 0;
         shown = false;
         leaving = false;
     }
 
     implicitWidth: Tokens.tileUnit + 2 * Tokens.spaceM
-    implicitHeight: Tokens.appbarHeight + Geometry.readoutRise
+    implicitHeight: Tokens.appbarHeight
     Accessible.role: Accessible.StaticText
     Accessible.name: `${word} ${valueText}`
 
     onAwayChanged: {
         if (!away)
             vanish();
+    }
+
+    Connections {
+        target: alone.Window.window
+
+        function onFrameSwapped() {
+            if (!alone.awaitsFrame)
+                return;
+            alone.awaitsFrame = false;
+            moving.resume();
+        }
     }
 
     Timer {
@@ -86,18 +109,19 @@ Item {
         objectName: "moving"
         target: alone
         property: "phase"
-        from: 0
-        to: 1
+        from: alone.shown ? 0 : 1
+        to: alone.shown ? 1 : 0
         duration: Tokens.durationShort
 
         onFinished: {
             if (!alone.leaving)
                 return;
-            alone.leaving = false;
-            if (!alone.again)
+            if (alone.again) {
+                alone.again = false;
+                alone.arrive();
                 return;
-            alone.again = false;
-            alone.press();
+            }
+            alone.leaving = false;
         }
     }
 
@@ -108,7 +132,7 @@ Item {
         visible: alone.mapped
         width: parent.width
         height: Tokens.appbarHeight
-        y: parent.height - height + (1 - alone.progress) * Geometry.readoutRise
+        y: (1 - alone.progress) * Geometry.readoutRise
         opacity: alone.progress
         color: Tokens.color.glass
 
