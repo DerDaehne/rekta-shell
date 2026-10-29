@@ -1,0 +1,90 @@
+name: rpm
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  privacy:
+    uses: ./.github/workflows/privacy.yml
+
+  build:
+    needs: privacy
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora: ['45']
+    container: registry.fedoraproject.org/fedora:${{ matrix.fedora }}
+    steps:
+      # git before the checkout: the source tarball comes from git archive
+      - run: dnf -y install git
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sh packaging/fedora/ci-build.sh out
+      - name: Name the artifact
+        id: name
+        run: |
+          version=$(sed -n 's/^Version:[[:space:]]*//p' packaging/fedora/rekta-shell.spec)
+          echo "value=rekta-shell-${version}-fc${{ matrix.fedora }}-$(echo "$GITHUB_SHA" | cut -c1-7)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.name.outputs.value }}
+          path: out/*.rpm
+          if-no-files-found: error
+          retention-days: ${{ github.event_name == 'pull_request' && 7 || 30 }}
+
+  install-test:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora: ['45']
+    container: registry.fedoraproject.org/fedora:${{ matrix.fedora }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: rekta-shell-*-fc${{ matrix.fedora }}-*
+          path: rpms
+          merge-multiple: true
+      - run: sh packaging/fedora/ci-install-test.sh rpms
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [privacy, build, install-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sh packaging/fedora/ci-check-tag.sh "$GITHUB_REF_NAME"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: rekta-shell-*
+          path: rpms
+          merge-multiple: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          cd rpms
+          srpms=(*.src.rpm)
+          srpm=${srpms[-1]} # the newest Fedora release sorts last
+          binaries=()
+          for f in *.rpm; do [[ $f == *.src.rpm ]] || binaries+=("$f"); done
+          sha256sum "${binaries[@]}" "$srpm" > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$GITHUB_REF_NAME" --generate-notes "${binaries[@]}" "$srpm" SHA256SUMS
