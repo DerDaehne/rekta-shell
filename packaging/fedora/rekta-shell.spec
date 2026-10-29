@@ -35,8 +35,9 @@ Requires:       (kwin-libs%{?_isa} >= 6.8 with kwin-libs%{?_isa} < 6.9)
 Requires:       kwin
 Requires:       plasma-workspace >= 6.8
 Requires:       kpipewire
-Requires:       libkscreen
-Requires:       libcanberra-gtk3
+# The programs the shell runs, by path: rpmlint rejects the library packages that carry them by name
+Requires:       /usr/bin/kscreen-doctor
+Requires:       /usr/bin/canberra-gtk-play
 Requires:       kf6-kirigami
 Requires:       kf6-qqc2-desktop-style
 Requires:       atkinson-hyperlegible-next-fonts
@@ -44,10 +45,10 @@ Requires:       qt6-qtdeclarative
 
 %description
 rekta-shell is a desktop shell for KDE Plasma 6 on Wayland, built with
-Quickshell on KWin, that follows Rekta Design. It runs as the session "rekta"
-next to the regular Plasma session: Plasma's services without plasmashell, with
-the shell in its place. KWin's effects for the shell are loaded only in that
-session.
+Quickshell, that follows Rekta Design. It runs as the session "rekta" next to
+the regular Plasma session: Plasma services without the Plasma shell, with
+rekta-shell in its place. The window manager effects of the shell are loaded
+only in that session.
 
 %prep
 %autosetup
