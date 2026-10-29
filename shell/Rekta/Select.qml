@@ -93,6 +93,11 @@ Item {
     Accessible.name: `${label} ${currentText}`.trim()
     Accessible.description: disabledReason
 
+    ExpandedState {
+        target: select
+        expanded: select.expanded
+    }
+
     // Out of sight it folds at once, so it comes back collapsed.
     onVisibleChanged: {
         if (visible)

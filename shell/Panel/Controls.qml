@@ -333,6 +333,11 @@ Column {
                     x: wifiState.implicitWidth + Tokens.spaceS
                     text: "wählen"
                     Accessible.name: "netze wählen"
+
+                    ExpandedState {
+                        target: networksOpener
+                        expanded: wifiBranch.expanded
+                    }
                     onClicked: wifiBranch.toggle()
                 }
             }
@@ -416,6 +421,11 @@ Column {
                 objectName: "chooseBluetoothDevice"
                 text: "wählen"
                 Accessible.name: "geräte wählen"
+
+                ExpandedState {
+                    target: devicesOpener
+                    expanded: bluetoothBranch.expanded
+                }
                 onClicked: bluetoothBranch.toggle()
             }
         }

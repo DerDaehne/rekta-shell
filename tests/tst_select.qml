@@ -481,10 +481,16 @@ TestCase {
         compare(select.Accessible.description, "no other device");
     }
 
-    function test_the_screen_reader_hears_the_role_and_the_choice() {
+    function test_the_screen_reader_hears_what_it_chooses_the_choice_and_whether_it_is_expanded() {
         compare(select.Accessible.role, Accessible.ComboBox);
         compare(select.Accessible.name, "ausgang speakers");
+        if ("expanded" in select.Accessible) {
+            verify(select.Accessible.expandable);
+            verify(!select.Accessible.expanded);
+        }
         mouseClick(box(select));
+        if ("expanded" in select.Accessible)
+            verify(select.Accessible.expanded);
         const options = rows(select);
         compare(options[0].Accessible.role, Accessible.ListItem);
         compare(options.map(row => row.Accessible.name), ["speakers", "headphones", "hdmi"]);
