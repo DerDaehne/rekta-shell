@@ -21,6 +21,7 @@ Scope {
     readonly property NoticeBoard board: noticeBoard
     property string soundTheme: "ocean"
 
+    // ponytail: counted when the notifications change; a change of the desktop entries alone recounts at the next one.
     // The desktop file ID of the app a notification comes from: the entry its hint names, else the one its name fits.
     function appIdOf(desktopEntry: string, appName: string): string {
         const entry = DesktopEntries.heuristicLookup(desktopEntry || appName);

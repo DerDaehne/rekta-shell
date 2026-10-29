@@ -18,7 +18,7 @@ Tile {
     opens: true
     Accessible.name: name
     Accessible.description: best ? "bester treffer" : (count.showing ? count.shown + " ungelesen" : "")
-    held: hover.hovered || activeFocus
+    held: hovered || activeFocus
 
     UnseenStat {
         id: count
@@ -26,10 +26,6 @@ Tile {
         owner: tile
         app: tile.name
         count: tile.unseen
-    }
-
-    HoverHandler {
-        id: hover
     }
 
     Image {

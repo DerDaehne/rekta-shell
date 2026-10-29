@@ -21,11 +21,7 @@ Tile {
     opens: true
     Accessible.name: title
     Accessible.description: count.showing ? count.shown + " ungelesen" : ""
-    held: hover.hovered || activeFocus
-
-    HoverHandler {
-        id: hover
-    }
+    held: hovered || activeFocus
 
     // ponytail: the preview's top corners stay square under the tile's 2px radius; mask them if that shows.
     Loader {

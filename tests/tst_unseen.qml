@@ -40,6 +40,15 @@ TestCase {
     }
 
     Component {
+        id: previewComponent
+
+        Rectangle {
+            property var window
+            color: "steelblue"
+        }
+    }
+
+    Component {
         id: runningComponent
 
         RunningTile {
@@ -208,6 +217,67 @@ TestCase {
         tile.unseen = 3;
         compare(part(tile, "number").text, "2", "it waits");
         tile.focus = false;
+        tile.parent.forceActiveFocus();
+        compare(part(tile, "number").text, "3");
+    }
+
+    function test_a_count_that_goes_to_zero_shows_the_name_at_once_without_a_peek() {
+        const tile = createTemporaryObject(tileComponent, testCase, { unseen: 2 });
+        waitForRendering(tile);
+        tile.unseen = 0;
+        verify(part(tile, "name").visible);
+        verify(!part(tile, "ghost").visible, "no leaving number over the name");
+        verify(!tile.clip);
+    }
+
+    function test_a_count_that_comes_from_zero_shows_at_once_without_a_peek() {
+        const tile = createTemporaryObject(tileComponent, testCase, { unseen: 0 });
+        tile.unseen = 2;
+        compare(part(tile, "number").text, "2");
+        verify(!part(tile, "ghost").visible);
+        verify(!part(tile, "name").visible);
+    }
+
+    function test_a_count_that_goes_to_zero_during_a_peek_ends_the_peek() {
+        const tile = createTemporaryObject(tileComponent, testCase, { unseen: 2 });
+        waitForRendering(tile);
+        tile.unseen = 3;
+        verify(part(tile, "ghost").visible);
+        tile.unseen = 0;
+        verify(!part(tile, "ghost").visible);
+        verify(part(tile, "name").visible);
+    }
+
+    function test_a_pointer_over_the_icon_of_an_app_tile_holds_the_count() {
+        const tile = createTemporaryObject(tileComponent, testCase, { x: 300, y: 100, unseen: 2 });
+        waitForRendering(tile);
+        mouseMove(testCase, 5, 5);
+        mouseMove(tile, Geometry.tilePadding + 5, Geometry.tilePadding + 5);
+        tryVerify(() => tile.hovered);
+        tile.unseen = 3;
+        compare(part(tile, "number").text, "2", "it waits");
+        mouseMove(testCase, 5, 5);
+        tryCompare(part(tile, "number"), "text", "3");
+    }
+
+    function test_a_pointer_over_the_preview_of_a_running_tile_holds_the_count() {
+        const tile = createTemporaryObject(runningComponent, testCase, { x: 300, y: 100, unseen: 2, preview: previewComponent });
+        waitForRendering(tile);
+        mouseMove(testCase, 5, 5);
+        mouseMove(tile, tile.width / 2, 20);
+        tryVerify(() => tile.hovered);
+        tile.unseen = 3;
+        compare(part(tile, "number").text, "2", "it waits");
+        mouseMove(testCase, 5, 5);
+        tryCompare(part(tile, "number"), "text", "3");
+    }
+
+    function test_the_focus_on_a_running_tile_holds_the_count() {
+        const tile = createTemporaryObject(runningComponent, testCase, { unseen: 2 });
+        tile.forceActiveFocus();
+        verify(tile.activeFocus);
+        tile.unseen = 3;
+        compare(part(tile, "number").text, "2", "it waits");
         tile.parent.forceActiveFocus();
         compare(part(tile, "number").text, "3");
     }

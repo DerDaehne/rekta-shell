@@ -28,6 +28,8 @@ Item {
     // A place turn keeps the tile that opened the next place pressed until it turns away (rekta.js turn.leave()).
     property bool kept: false
     readonly property bool pressed: press.held || kept
+    // The pointer is over the tile, over any part of it.
+    readonly property bool hovered: hover.hovered
     // Where it was pressed, -1 to 1 from the centre; 0 0 for the keyboard.
     readonly property real pressX: press.x
     readonly property real pressY: press.y

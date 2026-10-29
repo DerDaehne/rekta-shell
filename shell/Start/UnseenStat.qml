@@ -13,18 +13,13 @@ Stat {
     // The count the tile shows, which follows `count` through the tile's news.
     property int shown: 0
     readonly property bool showing: shown > 0
-    property bool ready: false
 
     visible: showing
     value: String(shown)
     label: `ungelesen · ${app}`
 
-    onCountChanged: {
-        if (ready)
-            owner.news("peek", () => stat.shown = stat.count);
-    }
-    Component.onCompleted: {
-        shown = count;
-        ready = true;
-    }
+    // Only a number replacing a number peeks; one that comes or goes has no old or new number to move, and ends a peek
+    // still running.
+    onCountChanged: owner.news(count > 0 && shown > 0 ? "peek" : "", () => stat.shown = stat.count)
+    Component.onCompleted: shown = count
 }
