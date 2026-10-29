@@ -26,6 +26,8 @@ PanelWindow {
     readonly property alias inFront: place.holdsKeyboard
     // From the moment it opens until it starts to close.
     readonly property alias opened: place.wanted
+    // The shell's commands, see StartPlace.commands.
+    property var commands: []
     // The list in start.json, null without a usable one.
     property var listedPins: null
     // KWin gives the keyboard to the next window when a surface goes, also when the side panel over the open Start goes;
@@ -99,6 +101,8 @@ PanelWindow {
         windows: Array.from(surface.windows.all)
         pinned: surface.pinnedApps(Array.from(DesktopEntries.applications.values), surface.listedPins)
         apps: installed.list
+        settings: installed.settings
+        commands: surface.commands
         searchEscape: surface.searchEscape
         starts: usage.starts
         unseen: surface.notices.unseenByApp

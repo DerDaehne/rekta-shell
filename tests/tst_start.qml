@@ -980,6 +980,7 @@ TestCase {
         for (const character of text)
             keyClick(character);
         Prefs.motion = "system";
+        waitForRendering(start);
     }
 
     function hitNames(): var {
@@ -1041,7 +1042,7 @@ TestCase {
         compare(hitNames(), []);
         const sentence = findChild(named("noHits"), "sentence");
         verify(sentence.visible);
-        compare(sentence.text, "keine app passt zu „q“.");
+        compare(sentence.text, "nichts passt zu „q“.");
         compare(sentence.color, Tokens.color.textContrastHigh);
         compare(named("noHits").y, Tokens.spaceL);
         compare(findChild(named("noHits"), "line").y, 0);
@@ -1853,6 +1854,291 @@ TestCase {
                 height: parent.height
                 color: "black"
             }
+        }
+    }
+
+    // Pages of System Settings, as the app model shapes them.
+    function settingsPages(): var {
+        return [
+            Object.assign(installedApp("Bluetooth"), { id: "kcm_bluetooth" }),
+            Object.assign(installedApp("Datum und Zeit"), { id: "kcm_clock" }),
+            Object.assign(installedApp("Tastatur"), { id: "kcm_keyboard" })
+        ];
+    }
+
+    function fakeCommands(): var {
+        const say = (text, keywords) => ({
+                text: text,
+                keywords: keywords,
+                run: () => testCase.calls = [...testCase.calls, `command ${text}`]
+            });
+        return [
+            say("sperren", ["lock"]),
+            say("dunkel an", ["dark"]),
+            say("dateien schließen", []),
+            say("zeit anzeigen", []),
+            {
+                word: "ton",
+                at: percent => say(`ton auf ${percent} %`, [])
+            }
+        ];
+    }
+
+    // The Start open with every kind of thing to find.
+    function openWithEverything() {
+        start.windows = [fakeWindow("konsole: build", 10), fakeWindow("Dateien — home", 30)];
+        start.settings = settingsPages();
+        start.commands = fakeCommands();
+        openWithApps();
+    }
+
+    function rowTexts(group: string): var {
+        return start.searchRows().filter(row => row.parent.objectName === group).map(row => row.text);
+    }
+
+    function groupNames(): var {
+        return start.rowGroups.map(group => group.name);
+    }
+
+    function test_every_kind_is_found_by_the_first_letters_of_a_word() {
+        openWithEverything();
+        typeNow("sp");
+        compare(rowTexts("befehle"), ["sperren"]);
+        start.query = "";
+        typeNow("dun");
+        compare(rowTexts("befehle"), ["dunkel an"]);
+        start.query = "";
+        typeNow("blue");
+        compare(rowTexts("einstellungen"), ["Bluetooth"]);
+        start.query = "";
+        typeNow("build");
+        compare(rowTexts("fenster"), ["konsole: build"]);
+    }
+
+    function test_apps_stand_as_tiles_and_the_other_kinds_as_rows_below_under_their_headings_in_order() {
+        openWithEverything();
+        typeNow("da");
+        compare(hitNames(), ["Dateien"]);
+        compare(groupNames(), ["fenster", "einstellungen", "befehle"]);
+        compare(rowTexts("fenster"), ["Dateien — home"]);
+        compare(rowTexts("einstellungen"), ["Datum und Zeit"]);
+        compare(rowTexts("befehle"), ["dateien schließen", "dunkel an"]);
+        const tile = start.hitTiles()[0];
+        let above = tile.mapToItem(named("results").contentItem, 0, tile.height).y;
+        for (const name of groupNames()) {
+            const heading = findChild(findChild(named("rows"), name), "heading");
+            verify(heading.visible);
+            compare(heading.text, name);
+            const top = heading.mapToItem(named("results").contentItem, 0, 0).y;
+            verify(top > above, `${name} below the one before`);
+            above = top;
+        }
+    }
+
+    function test_a_group_without_a_hit_has_no_heading() {
+        openWithEverything();
+        typeNow("blue");
+        compare(groupNames(), ["einstellungen"]);
+        compare(findChild(named("rows"), "fenster"), null);
+        compare(findChild(named("rows"), "befehle"), null);
+        compare(hitNames(), []);
+    }
+
+    function test_without_an_app_the_first_row_is_the_best_hit_with_enter_and_enter_acts_on_it() {
+        openWithEverything();
+        typeNow("sp");
+        const rows = start.searchRows();
+        verify(rows[0].best);
+        verify(findChild(rows[0], "enterKey").visible);
+        compare(findChild(rows[0], "enterKey").text, "enter");
+        compare(findChild(rows[0], "bestWord").text, "bester treffer");
+        keyClick(Qt.Key_Return);
+        compare(calls, ["command sperren"]);
+        verify(!turner.back, "forward");
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
+    function test_with_an_app_the_best_hit_is_the_app_and_the_rows_carry_no_enter() {
+        openWithEverything();
+        typeNow("da");
+        verify(start.hitTiles()[0].best);
+        for (const row of start.searchRows())
+            verify(!row.best && !findChild(row, "enterKey").visible, row.text);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Dateien"]);
+    }
+
+    function test_the_best_row_is_the_first_of_the_first_group_that_has_one() {
+        openWithEverything();
+        typeNow("zeit");
+        compare(groupNames(), ["einstellungen", "befehle"]);
+        verify(start.searchRows()[0].best);
+        compare(start.searchRows()[0].text, "Datum und Zeit");
+        compare(start.searchRows().filter(row => row.best).length, 1);
+    }
+
+    function test_a_window_hit_brings_the_window_forward_and_the_start_turns_out_forward() {
+        openWithEverything();
+        typeNow("build");
+        keyClick(Qt.Key_Return);
+        compare(calls, ["activate konsole: build"]);
+        verify(turner.running);
+        verify(!turner.back, "forward");
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(calls, ["activate konsole: build"], "the window that had the keyboard is not activated");
+    }
+
+    function test_ton_and_a_number_is_a_command_that_says_what_it_sets() {
+        openWithEverything();
+        typeNow("ton 30");
+        compare(rowTexts("befehle"), ["ton auf 30 %"]);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["command ton auf 30 %"]);
+    }
+
+    function test_settings_pages_start_through_the_model_and_the_start_closes() {
+        openWithEverything();
+        typeNow("blue");
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Bluetooth"]);
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
+    function test_arrows_go_from_the_line_into_the_tiles_and_on_into_the_rows_and_back() {
+        openWithEverything();
+        typeNow("da");
+        const tile = start.hitTiles()[0];
+        const rows = start.searchRows();
+        keyClick(Qt.Key_Down);
+        verify(tile.activeFocus);
+        keyClick(Qt.Key_Down);
+        verify(rows[0].activeFocus, "from the tiles into the first row");
+        keyClick(Qt.Key_Down);
+        verify(rows[1].activeFocus);
+        keyClick(Qt.Key_Down);
+        verify(rows[2].activeFocus);
+        keyClick(Qt.Key_Down);
+        verify(rows[3].activeFocus);
+        keyClick(Qt.Key_Down);
+        verify(rows[3].activeFocus, "the last row stays");
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Up);
+        verify(tile.activeFocus, "up through the rows back to the tiles");
+        keyClick(Qt.Key_Up);
+        verify(named("typed").activeFocus, "and on to the line");
+    }
+
+    function test_without_an_app_up_from_the_first_row_goes_to_the_line_and_enter_or_space_acts_on_the_row_in_focus() {
+        openWithEverything();
+        typeNow("zeit");
+        const rows = start.searchRows();
+        keyClick(Qt.Key_Down);
+        verify(rows[0].activeFocus);
+        keyClick(Qt.Key_Up);
+        verify(named("typed").activeFocus);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        verify(rows[1].activeFocus);
+        keyClick(Qt.Key_Space);
+        compare(calls, ["command zeit anzeigen"]);
+        compare(start.query, "zeit", "the space acted and typed nothing");
+    }
+
+    function test_typing_from_a_row_goes_on_in_the_line_and_escape_closes() {
+        openWithEverything();
+        typeNow("zeit");
+        keyClick(Qt.Key_Down);
+        verify(start.searchRows()[0].activeFocus);
+        typeNow("x");
+        compare(start.query, "zeitx");
+        verify(named("typed").activeFocus);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Escape);
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
+    function test_a_click_on_a_row_acts_on_it() {
+        openWithEverything();
+        typeNow("blue");
+        mouseClick(start.searchRows()[0]);
+        compare(calls, ["launch Bluetooth"]);
+    }
+
+    function test_with_nothing_found_of_any_kind_rekta_s_empty_sentence_stands_and_with_a_row_it_does_not() {
+        openWithEverything();
+        typeNow("q");
+        verify(named("noHits").visible);
+        compare(findChild(named("noHits"), "sentence").text, "nichts passt zu „q“.");
+        compare(start.searchRows().length, 0);
+        start.query = "";
+        typeNow("blue");
+        verify(!named("noHits").visible, "a settings page is something");
+    }
+
+    function test_erasing_the_text_takes_the_rows_with_it() {
+        openWithEverything();
+        typeNow("sp");
+        verify(start.searchRows().length > 0);
+        Prefs.motion = "off";
+        start.query = "";
+        Prefs.motion = "system";
+        compare(start.searchRows().length, 0);
+        compare(groupNames(), []);
+    }
+
+    function test_a_row_that_takes_the_focus_scrolls_into_view() {
+        start.windows = Array.from({ length: 40 }, (_, i) => fakeWindow(`fenster ${i}`, i));
+        openWithApps();
+        typeNow("fenster");
+        const results = named("results");
+        for (let i = 0; i < 30; i++)
+            keyClick(Qt.Key_Down);
+        const row = start.searchRows().find(candidate => candidate.activeFocus);
+        verify(row);
+        const top = row.mapToItem(results, 0, 0).y;
+        verify(top >= 0 && top + row.height <= results.height, `whole in view at ${top}`);
+    }
+
+    function test_contact_sheet_of_the_search_with_every_kind() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const backdrop = createTemporaryObject(backdropComponent, testCase);
+            const sheet = createTemporaryObject(startComponent, backdrop);
+            sheet.windows = [fakeWindow("konsole: build", 10), fakeWindow("Dateien — home", 30)];
+            sheet.settings = settingsPages();
+            sheet.commands = fakeCommands();
+            sheet.apps = searchableApps();
+            Prefs.motion = "off";
+            sheet.open();
+            keyClick("d");
+            keyClick("a");
+            Prefs.motion = "system";
+            waitForRendering(backdrop);
+            grabImage(backdrop).save(`start-search-everything-${theme}.png`);
+            compare(sheet.query, "da", theme);
+        }
+    }
+
+    function test_contact_sheet_of_the_search_with_a_row_as_the_best_hit() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const backdrop = createTemporaryObject(backdropComponent, testCase);
+            const sheet = createTemporaryObject(startComponent, backdrop);
+            sheet.windows = [fakeWindow("konsole: build", 10), fakeWindow("Dateien — home", 30)];
+            sheet.settings = settingsPages();
+            sheet.commands = fakeCommands();
+            sheet.apps = searchableApps();
+            Prefs.motion = "off";
+            sheet.open();
+            for (const letter of "zeit")
+                keyClick(letter);
+            keyClick(Qt.Key_Down);
+            Prefs.motion = "system";
+            waitForRendering(backdrop);
+            grabImage(backdrop).save(`start-search-row-best-${theme}.png`);
+            compare(sheet.query, "zeit", theme);
         }
     }
 }

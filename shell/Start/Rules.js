@@ -253,3 +253,47 @@ function neighbour(from, rects, direction) {
     });
     return best;
 }
+
+// The System Settings pages: the desktop entries named kcm_<page>, which carry NoDisplay and so are no apps.
+function isSettingsPage(id) {
+    return id.startsWith("kcm_");
+}
+
+// The shell's commands that match what was typed, as the palette filters them (navigation.md, "Go to"): every word
+// must start a word of the command's text or its keywords. {text, keywords, run}, or {word, at(n)} for one that takes
+// an amount: "ton 30" says the one whose word starts with "ton" at 30 (up to 100), and comes first.
+function commandHits(commands, text) {
+    const typed = text.trim();
+    const amount = /^(\S+)\s+(\d{1,3})\s*%?$/.exec(typed);
+    const said = commands.filter(command => command.at !== undefined && amount !== null && command.word.startsWith(amount[1].toLowerCase())).map(command => command.at(Math.min(100, Number(amount[2]))));
+    const plain = commands.filter(command => command.at === undefined);
+    return [...said, ...Rekta.Match.ranked(plain, command => Rekta.Match.score(command.text, (command.keywords ?? []).join(" "), typed))];
+}
+
+// The windows whose title or app matches, the most recent first among equals.
+function windowHits(windows, text) {
+    const typed = text.trim();
+    return Rekta.Match.ranked(recentFirst(windows), entry => Rekta.Match.score(entry.title, entry.app ?? "", typed));
+}
+
+// What the search finds besides apps, in the palette's groups, empty ones left out: windows, settings pages and
+// commands as rows {text, lead, icon, run, best}. The first row is the best hit when no app matches (`noApp`).
+function rowGroups(sources, text, starts, noApp) {
+    const groups = [
+        {
+            name: "fenster",
+            rows: windowHits(sources.windows, text).map(entry => ({ text: entry.title, lead: entry.app ?? "", icon: entry.icon, run: () => entry.activate() }))
+        },
+        {
+            name: "einstellungen",
+            rows: hits(sources.settings, text, starts).map(page => ({ text: page.name, lead: "", icon: page.icon, run: () => page.launch() }))
+        },
+        {
+            name: "befehle",
+            rows: commandHits(sources.commands, text).map(command => ({ text: command.text, lead: "", icon: "", run: () => command.run() }))
+        }
+    ].filter(group => group.rows.length > 0);
+    if (noApp && groups.length > 0)
+        groups[0].rows[0].best = true;
+    return groups;
+}

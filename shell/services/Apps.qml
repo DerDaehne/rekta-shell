@@ -13,22 +13,32 @@ Scope {
     required property Usage usage
     // {id, name, genericName, keywords, exec, icon, launch()}; null until the files have been read once.
     property var list: null
+    // The System Settings pages, shaped alike; they have no place in `list`, their entries carry NoDisplay.
+    property var settings: []
     readonly property var dirs: Rules.applicationDirs(Quickshell.env("XDG_DATA_HOME"), Quickshell.env("HOME"), Quickshell.env("XDG_DATA_DIRS"))
 
+    function describe(entry: DesktopEntry, exec: string): var {
+        return {
+            id: entry.id,
+            name: entry.name,
+            genericName: entry.genericName,
+            keywords: Array.from(entry.keywords),
+            exec: exec,
+            icon: Quickshell.iconPath(entry.icon, true),
+            launch: () => {
+                apps.launcher.launch(entry);
+                apps.usage.count(entry.id);
+            }
+        };
+    }
+
+    // `files` holds every desktop file the grep read, hidden ones too: the pages are looked up by their IDs.
     function read(files: var) {
-        const entries = Rules.listedApps(Array.from(DesktopEntries.applications.values), files, Quickshell.env("XDG_CURRENT_DESKTOP"));
-        list = entries.map(entry => ({
-                    id: entry.id,
-                    name: entry.name,
-                    genericName: entry.genericName,
-                    keywords: Array.from(entry.keywords),
-                    exec: Rules.programName(entry.command),
-                    icon: Quickshell.iconPath(entry.icon, true),
-                    launch: () => {
-                        apps.launcher.launch(entry);
-                        apps.usage.count(entry.id);
-                    }
-                }));
+        const desktop = Quickshell.env("XDG_CURRENT_DESKTOP");
+        const entries = Rules.listedApps(Array.from(DesktopEntries.applications.values), files, desktop);
+        list = entries.map(entry => describe(entry, Rules.programName(entry.command)));
+        const pages = Object.keys(files).filter(Rules.isSettingsPage).map(id => DesktopEntries.byId(id)).filter(entry => entry !== null);
+        settings = Rules.listedApps(pages, files, desktop).map(entry => describe(entry, ""));
     }
 
     Process {

@@ -284,4 +284,51 @@ TestCase {
         compare(Rules.neighbour(rects[0], rects, "up"), -1);
         compare(Rules.neighbour(rects[4], rects, "down"), -1);
     }
+
+    function test_only_desktop_entries_named_kcm_are_settings_pages() {
+        verify(Rules.isSettingsPage("kcm_bluetooth"));
+        verify(!Rules.isSettingsPage("org.kde.kate"));
+    }
+
+    function test_windows_match_by_title_or_app_the_most_recent_first_among_equals() {
+        const windows = [
+            { title: "notes", app: "Kate", lastActivated: 5, stackingOrder: 0 },
+            { title: "build log", app: "Konsole", lastActivated: 9, stackingOrder: 0 },
+            { title: "kate help", app: "Okular", lastActivated: 7, stackingOrder: 0 }
+        ];
+        compare(Rules.windowHits(windows, "kate").map(entry => entry.title), ["kate help", "notes"]);
+        compare(Rules.windowHits(windows, "log").map(entry => entry.title), ["build log"]);
+    }
+
+    function test_the_rows_come_in_the_order_windows_settings_commands_and_empty_groups_are_left_out() {
+        const noop = () => {};
+        const sources = {
+            windows: [{ title: "Dateien", app: "", lastActivated: 1, stackingOrder: 0, activate: noop }],
+            settings: [{ id: "kcm_x", name: "Datum", genericName: "", keywords: [], exec: "", icon: "", launch: noop }],
+            commands: [{ text: "dateien zu", keywords: [], run: noop }]
+        };
+        compare(Rules.rowGroups(sources, "da", {}, true).map(group => group.name), ["fenster", "einstellungen", "befehle"]);
+        compare(Rules.rowGroups(sources, "dat", {}, true).map(group => group.name), ["fenster", "einstellungen", "befehle"]);
+        compare(Rules.rowGroups(sources, "datu", {}, true).map(group => group.name), ["einstellungen"]);
+        compare(Rules.rowGroups(sources, "zzz", {}, true), []);
+    }
+
+    function test_only_the_very_first_row_is_the_best_hit_and_only_when_no_app_matches() {
+        const noop = () => {};
+        const sources = { windows: [], settings: [], commands: [{ text: "sperren", keywords: [], run: noop }, { text: "stumm an", keywords: [], run: noop }] };
+        const without = Rules.rowGroups(sources, "s", {}, true);
+        compare(without[0].rows.map(row => row.best === true), [true, false]);
+        const with_ = Rules.rowGroups(sources, "s", {}, false);
+        compare(with_[0].rows.map(row => row.best === true), [false, false]);
+    }
+
+    function test_a_command_that_takes_an_amount_is_said_with_it_and_comes_first() {
+        const commands = [
+            { text: "stumm an", keywords: ["ton"], run: () => {} },
+            { word: "ton", at: percent => ({ text: `ton auf ${percent} %`, run: () => {} }) }
+        ];
+        compare(Rules.commandHits(commands, "ton 30").map(command => command.text), ["ton auf 30 %"]);
+        compare(Rules.commandHits(commands, "to 500").map(command => command.text), ["ton auf 100 %"]);
+        compare(Rules.commandHits(commands, "ton").map(command => command.text), ["stumm an"]);
+    }
 }

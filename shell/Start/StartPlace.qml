@@ -26,6 +26,10 @@ FocusScope {
     property var starts: ({})
     // The unseen notifications by app id: {id: count}.
     property var unseen: ({})
+    // The System Settings pages, shaped as `apps` are; they are found, not listed.
+    property var settings: []
+    // The shell's commands: {text, keywords, run}, or {word, at(n)} for one that takes an amount (Rules.commandHits).
+    property var commands: []
     // Draws a window's preview on its tile (RunningTile.preview); null for none.
     property Component preview: null
     // closed, opening (the glass comes, then the parts turn in), open, or closing (the parts turn out, the glass goes).
@@ -49,6 +53,8 @@ FocusScope {
     property alias query: line.text
     // The search shows, or is on its way, in place of the pivot and the places.
     property bool searching: false
+    // What the search finds besides apps: [{name, rows: [{text, lead, icon, run, best}]}] (Rules.rowGroups).
+    property var rowGroups: []
     // What Escape does in a search: "close" closes the Start at once, "back" clears the search first like the other ways
     // back.
     property string searchEscape: "close"
@@ -188,6 +194,7 @@ FocusScope {
         query = "";
         showSearchView(false);
         found.clear();
+        rowGroups = [];
     }
 
     // The search is a view of the place, not a place (collections.md, "Search and filters"): it comes and goes without a
@@ -233,10 +240,11 @@ FocusScope {
     function showSearch() {
         searching = true;
         const shown = matching();
+        const rows = matchingRows(shown);
         swap(() => {
             showSearchView(true);
-            showHits(shown);
-        }, shown.length);
+            showHits(shown, rows);
+        }, shown.length + countRows(rows));
     }
 
     // ponytail: the parts the place brings back are counted only once it shows, so past sixty the hits still leave in
@@ -246,6 +254,7 @@ FocusScope {
         swap(() => {
             showSearchView(false);
             found.clear();
+            rowGroups = [];
         }, 0);
     }
 
@@ -254,21 +263,39 @@ FocusScope {
         return query === "" ? [] : Rules.hits(apps ?? [], query, starts);
     }
 
+    // The rows below the tiles, read fresh like the apps; the first is the best hit when no app matches.
+    function matchingRows(appHits: var): var {
+        if (query === "")
+            return [];
+        return Rules.rowGroups({
+            windows: windows,
+            settings: settings,
+            commands: commands
+        }, query, starts, appHits.length === 0);
+    }
+
+    function countRows(groups: var): int {
+        return groups.reduce((count, group) => count + group.rows.length, 0);
+    }
+
     // Going on typing or erasing: the hits that no longer match go, the new ones come, and the rest close up.
     function filter() {
         presence.finish();
         const shown = matching();
+        const rows = matchingRows(shown);
         const kept = new Set(shown.map(app => app.id));
         const tiles = hitTiles();
         const before = new Set(tiles.map(tile => tile.appId));
         const coming = shown.filter(app => !before.has(app.id)).map(app => app.id);
         const going = tiles.filter(tile => !kept.has(tile.appId));
         const staying = tiles.filter(tile => kept.has(tile.appId));
-        presence.change(going, staying, () => showHits(shown), () => hitTiles().filter(tile => coming.includes(tile.appId)), coming.length);
+        presence.change(going, staying, () => showHits(shown, rows), () => hitTiles().filter(tile => coming.includes(tile.appId)), coming.length);
     }
 
-    // Brings the hit tiles in line with `shown`, step by step, so that a tile that stays is the same tile.
-    function showHits(shown: var) {
+    // Brings the hit tiles in line with `shown`, step by step, so that a tile that stays is the same tile. The rows are
+    // made anew; ponytail: they change without motion while typing on, give them Presence like the tiles if that shows.
+    function showHits(shown: var, rows: var) {
+        rowGroups = rows;
         const byId = new Map(shown.map(app => [app.id, app]));
         for (const step of Rules.steps(hitTiles().map(tile => tile.appId), shown.map(app => app.id))) {
             if (step.remove !== undefined)
@@ -292,10 +319,31 @@ FocusScope {
         (apps ?? []).find(app => app.id === appId)?.launch();
     }
 
-    // Enter without a tile in focus presses the first hit, in its centre.
+    // Enter without a tile or row in focus acts on the best hit: the first tile, pressed in its centre, else the first row.
     function pressFirstHit() {
         presence.finish();
-        hitTiles()[0]?.activated();
+        (hitTiles()[0] ?? searchRows()[0])?.activated();
+    }
+
+    // A row of the search was chosen: it acts and the Start turns out forward, with no tile pressed.
+    function chooseRow(row: var) {
+        row.run();
+        leave({
+            back: false,
+            pressed: null
+        });
+    }
+
+    // The search's rows in reading order, under their headings.
+    function searchRows(): var {
+        const rows = [];
+        for (const group of rowsColumn.children) {
+            for (const item of group.children) {
+                if ((item as SearchRow) !== null)
+                    rows.push(item);
+            }
+        }
+        return rows;
     }
 
     function press(tile: Tile, act: var) {
@@ -327,13 +375,13 @@ FocusScope {
 
     // The tiles a key can reach, in reading order of their sections; those of a hidden view are not visible.
     function reachableTiles(): var {
-        return allTiles().filter(tile => tile.opens && tile.visible);
+        return [...allTiles(), ...searchRows()].filter(tile => tile.opens && tile.visible);
     }
 
     // A tile, or the list, keeps its focus in the Start's scope while hidden or disabled and takes keys again once
     // shown, so the Start opens, and goes to another place or view, with nothing in focus.
     function forgetTileFocus() {
-        for (const tile of allTiles())
+        for (const tile of [...allTiles(), ...searchRows()])
             tile.focus = false;
         if (!pivot.activeFocus)
             forceActiveFocus();
@@ -973,7 +1021,7 @@ FocusScope {
             visible: false
             enabled: !start.turning
             clip: true
-            contentHeight: hitsGrid.y + hitsGrid.height + Tokens.spaceL
+            contentHeight: rowsColumn.y + rowsColumn.height + Tokens.spaceL
             flickableDirection: Flickable.VerticalFlick
             boundsBehavior: Flickable.StopAtBounds
 
@@ -1006,13 +1054,57 @@ FocusScope {
                 }
             }
 
+            // Below the tiles, the other kinds of hit as rows (palette entries) under their heading, space-l apart; a group
+            // without a hit has no heading.
+            Column {
+                id: rowsColumn
+
+                objectName: "rows"
+                y: hitsGrid.y + hitsGrid.height + (found.count > 0 ? Tokens.spaceL : 0)
+                width: results.width
+
+                Repeater {
+                    model: start.rowGroups
+
+                    delegate: Column {
+                        id: group
+
+                        required property var modelData
+
+                        objectName: group.modelData.name
+                        width: rowsColumn.width
+
+                        MenuLabel {
+                            objectName: "heading"
+                            text: group.modelData.name
+                        }
+
+                        Repeater {
+                            model: group.modelData.rows
+
+                            delegate: SearchRow {
+                                id: searchRow
+
+                                required property var modelData
+
+                                text: searchRow.modelData.text
+                                lead: searchRow.modelData.lead
+                                icon: searchRow.modelData.icon
+                                best: searchRow.modelData.best === true
+                                onActivated: start.chooseRow(searchRow.modelData)
+                            }
+                        }
+                    }
+                }
+            }
+
             // Without a match, a sentence on the region's first hairline says so (states.md, "Empty"; rekta.css:675).
             Empty {
                 objectName: "noHits"
                 y: Tokens.spaceL
                 width: results.width
-                visible: found.count === 0
-                text: `keine app passt zu „${start.query.trim()}“.`
+                visible: found.count === 0 && start.rowGroups.length === 0
+                text: `nichts passt zu „${start.query.trim()}“.`
             }
         }
     }

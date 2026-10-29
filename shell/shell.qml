@@ -61,6 +61,15 @@ ShellRoot {
         id: primary
     }
 
+    Commands {
+        id: shellCommands
+
+        launcher: appLauncher
+        panel: sidePanel
+        session: sessionBanner
+        sink: keys.sink
+    }
+
     Notifications {
         id: notifications
 
@@ -104,6 +113,7 @@ ShellRoot {
         id: start
 
         searchEscape: settingsFiles.value("searchEscape")
+        commands: shellCommands.list
         windows: running
         launcher: appLauncher
         notices: notifications.board
@@ -124,14 +134,14 @@ ShellRoot {
 
         // Under the session banner the Start waits: asked now, KWin would raise the Start over the banner.
         onPanelClosed: {
-            if (!session.visible)
+            if (!sessionBanner.visible)
                 start.takeKeyboardBack();
         }
-        onSessionAsked: session.show("")
+        onSessionAsked: sessionBanner.show("")
     }
 
     SessionSurface {
-        id: session
+        id: sessionBanner
 
         launcher: appLauncher
         primaryScreen: primary.screen
@@ -139,7 +149,7 @@ ShellRoot {
 
         // While the session is left, the surface leaving holds the keyboard; the Start asks again once that one goes.
         onGone: {
-            if (!session.leaving)
+            if (!sessionBanner.leaving)
                 start.takeKeyboardBack();
         }
         onLaunched: start.stepAside()
@@ -147,8 +157,8 @@ ShellRoot {
 
     LeaveSurface {
         primaryScreen: primary.screen
-        leaving: session.leaving
-        holdsKeyboard: session.windowsBack
+        leaving: sessionBanner.leaving
+        holdsKeyboard: sessionBanner.windowsBack
 
         onVisibleChanged: {
             if (!visible)
@@ -173,7 +183,7 @@ ShellRoot {
 
         onRequested: kind => {
             sidePanel.close();
-            session.show(kind);
+            sessionBanner.show(kind);
         }
     }
 

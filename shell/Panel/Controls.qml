@@ -112,6 +112,15 @@ Column {
     signal passwordChosen(var network, string password)
 
     // So the few that show are the ones in use; each group keeps its order.
+    // What the toggles do, for the Start's commands.
+    function setDark(on: bool) {
+        run(LookAndFeel.command(on, kdeglobals));
+    }
+
+    function setDoNotDisturb(on: bool) {
+        quietToggle.checked = on;
+    }
+
     function connectedFirst(devices: var): var {
         return devices.filter(device => device.connected).concat(devices.filter(device => !device.connected));
     }
