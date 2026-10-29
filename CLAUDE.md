@@ -264,3 +264,14 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   branch.
 - The commit identity comes from the repository configuration (noreply address)
   — never change it.
+
+## Release and RPM artifacts
+
+- `.github/workflows/rpm.yml` runs the privacy scan, builds the RPM and SRPM in a Fedora container,
+  and installs the RPM with Quickshell from its COPR. The steps live in `packaging/fedora/ci-*.sh`,
+  so the Fedora VM runs the same commands.
+- Every push to `main` leaves the RPM and SRPM as a workflow artifact named
+  `rekta-shell-<version>-fc<release>-<sha7>` (30 days; pull requests 7 days):
+  `gh run download <run-id> -n <artifact name>`.
+- Tags `v<version>` are set by the maintainer only; the tag must equal `v` plus the spec's `Version`.
+  A tag publishes the GitHub release with RPMs, SRPM and `SHA256SUMS`.
