@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Settings
 import Start
 
 // How often each app was started from the Start, by desktop file ID, kept in the state directory so it outlives the
@@ -18,13 +19,12 @@ Scope {
 
     // Blocking, so the counts are there before the first search; blocking writes, so a start right after another
     // counts on top of it. The directory comes with the first write.
-    FileView {
+    UserFile {
         id: file
 
         path: `${Rules.stateDir(Quickshell.env("XDG_STATE_HOME"), Quickshell.env("HOME"))}/usage.json`
         blockLoading: true
         blockWrites: true
         atomicWrites: true
-        printErrors: false
     }
 }

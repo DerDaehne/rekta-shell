@@ -2,3 +2,4 @@ module Settings
 Layers 1.0 Layers.qml
 SettingsFiles 1.0 SettingsFiles.qml
 SystemMotion 1.0 SystemMotion.qml
+UserFile 1.0 UserFile.qml

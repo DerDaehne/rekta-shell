@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import org.kde.pipewire as PipeWire
 import org.kde.taskmanager as TaskManager
+import Settings
 import Start
 import Notices
 import "services"
@@ -166,11 +167,8 @@ PanelWindow {
         }
     }
 
-    FileView {
+    UserFile {
         path: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/rekta-shell/start.json`
-        watchChanges: true
-        printErrors: false
-        onFileChanged: reload()
         onLoaded: surface.listedPins = Rules.listedPins(text())
         onLoadFailed: surface.listedPins = null
     }

@@ -15,24 +15,12 @@ Layers {
         blockLoading: true
         printErrors: false
     }
-    property FileView userFile: FileView {
+    property FileView userFile: UserFile {
         path: `${files.userDirectory}/settings.json`
         blockLoading: true
         // Each write lands before the next set() reads the file, so quick changes build on each other.
         blockWrites: true
         atomicWrites: true
-        watchChanges: true
-        printErrors: false
-        onFileChanged: reload()
-    }
-    // FileView watches a file's directory only if it exists when the watch starts. Until the file is there, this one
-    // watches the directory's parent and starts the file's watch anew once the directory appears.
-    property FileView directoryWatch: FileView {
-        path: files.userFile.loaded ? "" : files.userDirectory
-        preload: false
-        watchChanges: true
-        printErrors: false
-        onFileChanged: files.userFile.reload()
     }
 
     defaultsText: defaultsFile.text()
