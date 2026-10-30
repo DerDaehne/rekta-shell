@@ -9,6 +9,11 @@ Flickable {
     property string title
     // 0: the panorama's section width.
     property real sectionWidth: 0
+    // Rekta's values are the defaults; a place may set larger ones (the Start does: ADR-034, point 3).
+    property real verticalInset: Tokens.spaceL
+    property real headingSpacing: Tokens.spaceM
+    property var headingToken: Tokens.fontSizeGroup
+    property real placeWidth: Window.width
     // Set by the panorama: stacked top to bottom (compact), and not the first one.
     property bool stacked: false
     property bool separated: false
@@ -20,7 +25,7 @@ Flickable {
         headline.forceActiveFocus(Qt.TabFocusReason);
     }
 
-    implicitHeight: column.height + 2 * Tokens.spaceL
+    implicitHeight: column.height + 2 * section.verticalInset
     contentWidth: width
     contentHeight: implicitHeight
     interactive: !stacked
@@ -36,16 +41,18 @@ Flickable {
     Column {
         id: column
 
-        y: Tokens.spaceL
+        y: section.verticalInset
         // Sideways a section keeps space-s clear on the right for its scrollbar (rekta.css:1173).
         width: section.width - (section.stacked ? 0 : Tokens.spaceS)
-        spacing: Tokens.spaceM
+        spacing: section.headingSpacing
 
         GroupHeading {
             id: headline
 
             objectName: "heading"
             width: parent.width
+            sizeToken: section.headingToken
+            placeWidth: section.placeWidth
             text: section.title
             visible: text !== ""
             // No tab stop of its own (rekta.js:192–198 gives it tabindex -1); once a jump has put the focus on it, Tab goes

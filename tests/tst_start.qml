@@ -114,22 +114,29 @@ TestCase {
         waitForRendering(start);
     }
 
-    function test_the_start_is_one_column_at_the_leading_edge_six_tile_units_wide() {
+    function test_the_start_place_is_a_panorama_as_wide_as_the_surface_under_the_pivots() {
         openNow();
-        const column = named("column");
-        compare(column.mapToItem(start, 0, 0).x, Tokens.spaceXl);
-        compare(column.width, 6 * Tokens.tileUnit + 5 * Tokens.spaceS);
+        const panorama = named("panorama");
+        compare(panorama.mapToItem(start, 0, 0).x, 0);
+        compare(panorama.width, start.width);
         compare(named("pivot").x, Tokens.spaceXl);
+        compare(named("sectionStrip").x, Tokens.spaceXl);
+        compare(named("sectionStrip").y, named("pivot").height);
+        compare(panorama.y, named("sectionStrip").y + named("sectionStrip").height);
     }
 
-    function test_the_pivot_leads_then_running_then_pinned_down_the_column() {
+    function test_the_pivot_leads_then_the_strip_then_running_beside_pinned_in_the_panorama() {
         openNow();
         compare(named("pivot").titles, ["start", "alle apps"]);
         compare(named("pivot").currentIndex, 0);
-        const running = named("running").mapToItem(start, 0, 0).y;
-        const pinned = named("pinned").mapToItem(start, 0, 0).y;
-        verify(named("pivot").height <= running, "below the pivot");
-        verify(running < pinned, "running first");
+        compare(named("sectionStrip").titles, ["läuft", "angeheftet"]);
+        compare(named("sectionStrip").level, "facet");
+        const running = named("running").mapToItem(start, 0, 0);
+        const pinned = named("pinned").mapToItem(start, 0, 0);
+        verify(named("panorama").y <= running.y, "below the strip");
+        compare(running.y, pinned.y);
+        compare(running.x, Tokens.spaceXl);
+        compare(pinned.x, running.x + named("running").width + Tokens.spaceXl, "running first, a space-xl apart");
         compare(findChild(named("running"), "heading").text, "läuft");
         compare(findChild(named("pinned"), "heading").text, "angeheftet");
     }
@@ -139,9 +146,9 @@ TestCase {
         const section = named("pinned");
         const heading = findChild(section, "heading");
         const grid = findChild(section, "grid");
-        compare(heading.y, Tokens.spaceXl);
+        compare(heading.mapToItem(section, 0, 0).y, Tokens.spaceXl);
         compare(grid.y, heading.y + heading.height + Tokens.spaceL);
-        compare(section.height, grid.y + grid.height + Tokens.spaceXl);
+        compare(section.implicitHeight, grid.mapToItem(section, 0, 0).y + grid.height + Tokens.spaceXl);
     }
 
     function test_the_pivot_is_light_and_larger_than_the_section_headings_which_are_larger_than_the_tile_names() {
@@ -177,7 +184,8 @@ TestCase {
         openNow();
         start.windows = [];
         verify(!named("running").visible);
-        tryCompare(named("pinned"), "y", 0);
+        compare(named("sectionStrip").titles, ["angeheftet"], "its title leaves the strip too");
+        tryCompare(named("pinned"), "x", Tokens.spaceXl);
     }
 
     function test_without_a_preview_the_upper_part_shows_the_tile_surface() {
@@ -285,14 +293,16 @@ TestCase {
         compare(findChild(dolphin, "name").color, Tokens.color.textPrimary);
     }
 
-    function test_the_column_scrolls_down_when_its_tiles_are_longer_than_the_screen() {
-        start.pinned = Array.from({ length: 40 }, (_, i) => fakeApp(`app ${i}`, 1));
+    function test_a_section_scrolls_down_when_its_tiles_are_longer_than_the_screen() {
+        start.pinned = Array.from({
+            length: 40
+        }, (_, i) => fakeApp(`app ${i}`, 1));
         openNow();
-        const column = named("column");
-        verify(column.contentHeight > column.height);
-        mouseWheel(column, 100, 100, 0, -480);
-        tryVerify(() => column.contentY > 0);
-        compare(named("pivot").currentIndex, 0, "an upright wheel never changes the place");
+        const section = named("pinned");
+        verify(section.contentHeight > section.height);
+        mouseWheel(section, 100, 100, 0, -480);
+        tryVerify(() => section.contentY > 0);
+        compare(named("pivot").currentIndex, 0, "an upright wheel with room inside changes no place");
     }
 
     function test_clicking_alle_apps_turns_to_that_place() {
@@ -300,7 +310,7 @@ TestCase {
         const pivot = named("pivot");
         mouseClick(findChild(pivot, "title-1"));
         compare(pivot.currentIndex, 1);
-        tryVerify(() => named("apps").visible && !named("column").visible, 3000);
+        tryVerify(() => named("apps").visible && !named("startPlace").visible, 3000);
     }
 
     function test_the_right_arrow_goes_to_alle_apps_and_back_returns() {
@@ -320,7 +330,7 @@ TestCase {
         start.toggle();
         start.toggle();
         compare(named("pivot").currentIndex, 0);
-        verify(named("column").visible);
+        verify(named("startPlace").visible);
         verify(!named("apps").visible);
     }
 
@@ -333,12 +343,12 @@ TestCase {
 
     function test_a_sideways_wheel_goes_to_alle_apps_once_per_gesture() {
         openNow();
-        mouseWheel(named("column"), 100, 100, -120, 0);
+        mouseWheel(named("panorama"), 100, 100, -120, 0);
         compare(named("pivot").currentIndex, 1);
-        mouseWheel(named("column"), 100, 100, 120, 0);
+        mouseWheel(named("panorama"), 100, 100, 120, 0);
         compare(named("pivot").currentIndex, 1, "within wheel-latch it is still the same gesture");
         wait(Tokens.durationWheelLatch + 50);
-        mouseWheel(named("column"), 100, 100, 120, 0);
+        mouseWheel(named("panorama"), 100, 100, 120, 0);
         compare(named("pivot").currentIndex, 0);
     }
 
@@ -488,7 +498,7 @@ TestCase {
         keyClick(Qt.Key_Right);
         verify(start.turning);
         keyClick(Qt.Key_Left);
-        tryVerify(() => named("column").visible);
+        tryVerify(() => named("startPlace").visible);
         verify(start.turning);
         mouseClick(tilesIn("pinned")[0]);
         compare(calls, []);
@@ -552,43 +562,54 @@ TestCase {
         start.open();
         keyClick(Qt.Key_Down);
         verify(running[0].activeFocus);
-        keyClick(Qt.Key_Right);
-        verify(running[1].activeFocus);
         keyClick(Qt.Key_Down);
-        verify(pinned[1].activeFocus, "the first pinned tile under the second window");
+        verify(running[1].activeFocus, "down the section's own tiles");
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Right);
+        verify(pinned[0].activeFocus, "across the sections, to the tile in line");
+        keyClick(Qt.Key_Right);
+        verify(pinned[1].activeFocus);
         keyClick(Qt.Key_Right);
         verify(pinned[2].activeFocus);
         keyClick(Qt.Key_Left);
         verify(pinned[1].activeFocus);
+        keyClick(Qt.Key_Left);
+        keyClick(Qt.Key_Left);
+        verify(running[0].activeFocus, "back across the sections");
         keyClick(Qt.Key_Up);
-        verify(running[0].activeFocus, "of the two windows above, the one in line with its start");
+        verify(named("sectionStrip").activeFocus, "up from the first row reaches the strip");
         keyClick(Qt.Key_Up);
-        verify(named("pivot").activeFocus, "up from the first row reaches the pivot");
+        verify(named("pivot").activeFocus, "up from the strip reaches the pivot");
     }
 
     function test_right_past_the_last_tile_of_a_row_goes_to_alle_apps() {
         openNow();
         keyClick(Qt.Key_Down);
-        keyClick(Qt.Key_Right);
-        verify(tilesIn("running")[1].activeFocus);
+        for (let i = 0; i < 3; i++)
+            keyClick(Qt.Key_Right);
+        verify(tilesIn("pinned")[2].activeFocus);
         keyClick(Qt.Key_Right);
         compare(named("pivot").currentIndex, 1);
     }
 
     function test_a_tile_that_takes_the_focus_scrolls_into_view() {
-        start.pinned = Array.from({ length: 40 }, (_, i) => fakeApp(`app ${i}`, 1));
+        start.pinned = Array.from({
+            length: 40
+        }, (_, i) => fakeApp(`app ${i}`, 1));
         openNow();
-        const column = named("column");
-        // The first tile of the seventh row, below the screen.
+        const section = named("pinned");
+        // The first tile of the tenth row, below the screen.
         const last = tilesIn("pinned")[36];
-        for (let i = 0; i < 8; i++)
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Right);
+        for (let i = 0; i < 9; i++)
             keyClick(Qt.Key_Down);
         verify(last.activeFocus);
-        const top = last.mapToItem(column, 0, 0).y;
-        verify(top >= 0 && top + last.height <= column.height, `whole in view at ${top}`);
+        const top = last.mapToItem(section, 0, 0).y;
+        verify(top >= 0 && top + last.height <= section.height, `whole in view at ${top}`);
     }
 
-        function test_the_start_opens_again_with_no_tile_in_focus() {
+    function test_the_start_opens_again_with_no_tile_in_focus() {
         openNow();
         keyClick(Qt.Key_Down);
         verify(tilesIn("running")[0].activeFocus);
@@ -604,8 +625,8 @@ TestCase {
         start.open();
         waitForRendering(start);
         keyClick(Qt.Key_Down);
-        keyClick(Qt.Key_Right);
-        keyClick(Qt.Key_Right);
+        for (let i = 0; i < 4; i++)
+            keyClick(Qt.Key_Right);
         compare(named("pivot").currentIndex, 1);
         keyClick(Qt.Key_Return);
         compare(calls, []);
@@ -647,7 +668,9 @@ TestCase {
     }
 
     function appNames(count: int): var {
-        return Array.from({ length: count }, (_, i) => `app ${String(i).padStart(2, "0")}`);
+        return Array.from({
+            length: count
+        }, (_, i) => `app ${String(i).padStart(2, "0")}`);
     }
 
     readonly property real step: Tokens.tileUnit + Tokens.spaceS
@@ -659,7 +682,7 @@ TestCase {
         compare(Qt.size(tiles[0].width, tiles[0].height), Qt.size(Tokens.tileUnit, Tokens.tileUnit));
         compare(tiles[0].mapToItem(start, 0, 0), Qt.point(Tokens.spaceXl, named("pivot").height + Tokens.spaceL));
         compare(findChild(tiles[0], "icon").source.toString(), pinkIcon);
-        compare(named("appRow").width, named("column").width, "six units, as the start place");
+        compare(named("appRow").width, start.sixUnits, "six units, as the start place");
         verify(tiles.every(tile => tile.opens));
     }
 
@@ -938,13 +961,15 @@ TestCase {
         compare(calls, []);
     }
 
-    function test_an_upright_drag_over_the_tiles_scrolls_the_column() {
-        start.pinned = Array.from({ length: 40 }, (_, i) => fakeApp(`app ${i}`, 1));
+    function test_an_upright_drag_over_the_tiles_scrolls_their_section() {
+        start.pinned = Array.from({
+            length: 40
+        }, (_, i) => fakeApp(`app ${i}`, 1));
         openNow();
-        const column = named("column");
-        mouseDrag(column, 60, column.height - 60, 0, -300);
-        tryVerify(() => !column.moving, 3000);
-        verify(column.contentY > 0, `scrolled to ${column.contentY}`);
+        const section = named("pinned");
+        mouseDrag(section, 60, section.height - 60, 0, -300);
+        tryVerify(() => !section.moving, 3000);
+        verify(section.contentY > 0, `scrolled to ${section.contentY}`);
         compare(calls, []);
         compare(named("pivot").currentIndex, 0);
     }
@@ -958,14 +983,7 @@ TestCase {
 
     // A–Z, as the app model gives them.
     function searchableApps(): var {
-        return [
-            searchableApp("Dateien", "Dateiverwaltung", ["files"]),
-            searchableApp("Filelight", "Disk Usage", ["disk"]),
-            searchableApp("Firefox", "Web Browser", ["internet", "web"]),
-            searchableApp("Kate", "Text Editor", ["text"]),
-            searchableApp("Konsole", "Terminal", ["terminal", "shell"]),
-            searchableApp("KWrite", "Text Editor", ["text"])
-        ];
+        return [searchableApp("Dateien", "Dateiverwaltung", ["files"]), searchableApp("Filelight", "Disk Usage", ["disk"]), searchableApp("Firefox", "Web Browser", ["internet", "web"]), searchableApp("Kate", "Text Editor", ["text"]), searchableApp("Konsole", "Terminal", ["terminal", "shell"]), searchableApp("KWrite", "Text Editor", ["text"])];
     }
 
     // The Start open on its start place with the searchable apps, at once.
@@ -995,7 +1013,7 @@ TestCase {
         openWithApps();
         typeNow("fi");
         verify(!named("pivot").visible);
-        verify(!named("column").visible);
+        verify(!named("startPlace").visible);
         const title = named("searchTitle");
         const typed = named("typed");
         const suche = named("suche");
@@ -1014,13 +1032,13 @@ TestCase {
         compare(baselineOf(typed), baselineOf(word), "the pivot's");
     }
 
-    function test_a_title_too_long_for_the_column_keeps_its_size_and_is_cut_at_the_column_s_edge() {
+    function test_a_title_too_long_for_six_units_keeps_its_size_and_is_cut_at_their_edge() {
         openWithApps();
         typeNow("firefox firefox firefox firefox firefox firefox");
         const title = named("searchTitle");
         compare(named("typed").font.pixelSize, findChild(named("pivot"), "word").font.pixelSize);
         verify(named("typed").width > title.width);
-        compare(title.width, named("column").width);
+        compare(title.width, start.sixUnits);
         verify(title.clip);
     }
 
@@ -1167,7 +1185,10 @@ TestCase {
     }
 
     function test_an_app_started_more_often_stands_first_and_wide_among_equal_hits() {
-        start.starts = { "org.example.KWrite": 2, "org.example.Konsole": 1 };
+        start.starts = {
+            "org.example.KWrite": 2,
+            "org.example.Konsole": 1
+        };
         openWithApps();
         typeNow("k");
         compare(hitNames(), ["KWrite", "Konsole", "Kate"]);
@@ -1188,7 +1209,9 @@ TestCase {
     }
 
     function test_a_hit_that_takes_the_focus_scrolls_into_view() {
-        start.apps = Array.from({ length: 40 }, (_, i) => installedApp(`app ${i}`));
+        start.apps = Array.from({
+            length: 40
+        }, (_, i) => installedApp(`app ${i}`));
         openNow();
         typeNow("app");
         const results = named("results");
@@ -1211,7 +1234,7 @@ TestCase {
         openNow();
         compare(start.query, "");
         verify(named("pivot").visible);
-        verify(named("column").visible);
+        verify(named("startPlace").visible);
         verify(!named("results").visible);
     }
 
@@ -1260,7 +1283,7 @@ TestCase {
         keyClick(Qt.Key_Back);
         compare(start.query, "");
         verify(named("pivot").visible);
-        verify(named("column").visible);
+        verify(named("startPlace").visible);
         verify(!named("results").visible);
         verify(start.wanted);
         keyClick(Qt.Key_Back);
@@ -1286,7 +1309,7 @@ TestCase {
         keyClick(Qt.Key_Backspace);
         keyClick(Qt.Key_Backspace);
         verify(named("pivot").visible);
-        verify(named("column").visible);
+        verify(named("startPlace").visible);
         verify(start.wanted);
     }
 
@@ -1574,11 +1597,13 @@ TestCase {
         tryVerify(() => start.hitTiles().some(tile => tile.opacity > 0 && tile.opacity < 1), 1000);
         keyClick(Qt.Key_Backspace);
         verify(named("presence").moving.every(motion => motion.item !== null));
-        tryVerify(() => named("column").visible && !named("presence").running, 2000);
+        tryVerify(() => named("startPlace").visible && !named("presence").running, 2000);
     }
 
     function test_more_than_sixty_changes_apply_at_once() {
-        start.apps = Array.from({ length: 61 }, (_, i) => installedApp(`app ${i}`));
+        start.apps = Array.from({
+            length: 61
+        }, (_, i) => installedApp(`app ${i}`));
         openNow();
         keyClick("a");
         verify(!named("presence").running);
@@ -1594,7 +1619,7 @@ TestCase {
         verify(!named("presence").running);
         verify(start.hitTiles().every(tile => tile.opacity === 1));
         keyClick(Qt.Key_Back);
-        verify(named("column").visible);
+        verify(named("startPlace").visible);
         verify(tilesIn("pinned").every(tile => tile.opacity === 1));
     }
 
@@ -1614,7 +1639,7 @@ TestCase {
         start.toggle();
         compare(start.query, "");
         verify(named("pivot").visible);
-        verify(named("column").visible);
+        verify(named("startPlace").visible);
         compare(start.hitTiles().length, 0);
     }
 
@@ -1676,7 +1701,6 @@ TestCase {
             compare(sheet.query, "fi", theme);
         }
     }
-
 
     function test_contact_sheet_of_the_search_with_the_best_hit() {
         for (const theme of ["light", "dark"]) {
@@ -1742,14 +1766,7 @@ TestCase {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const sheet = createTemporaryObject(framesComponent, testCase);
-            const turners = [
-                openingFrame(sheet, 1, 0.25),
-                openingFrame(sheet, 2, 0.5),
-                openingFrame(sheet, 3, 1),
-                closingFrame(sheet, 4, 0),
-                closingFrame(sheet, 5, 0.5),
-                openingFrame(sheet, 0, -1)
-            ];
+            const turners = [openingFrame(sheet, 1, 0.25), openingFrame(sheet, 2, 0.5), openingFrame(sheet, 3, 1), closingFrame(sheet, 4, 0), closingFrame(sheet, 5, 0.5), openingFrame(sheet, 0, -1)];
             waitForRendering(sheet);
             grabImage(sheet).save(`start-turn-sheet-${theme}.png`);
             turners.forEach(turner => turner.paused = false);
@@ -1859,24 +1876,24 @@ TestCase {
 
     // Pages of System Settings, as the app model shapes them.
     function settingsPages(): var {
-        return [
-            Object.assign(installedApp("Bluetooth"), { id: "kcm_bluetooth" }),
-            Object.assign(installedApp("Datum und Zeit"), { id: "kcm_clock" }),
-            Object.assign(installedApp("Tastatur"), { id: "kcm_keyboard" })
-        ];
+        return [Object.assign(installedApp("Bluetooth"), {
+                id: "kcm_bluetooth"
+            }), Object.assign(installedApp("Datum und Zeit"), {
+                id: "kcm_clock"
+            }), Object.assign(installedApp("Tastatur"), {
+                id: "kcm_keyboard"
+            })];
     }
 
     function fakeCommands(): var {
         const say = (text, keywords) => ({
-                text: text,
-                keywords: keywords,
-                run: () => testCase.calls = [...testCase.calls, `command ${text}`]
-            });
-        return [
-            Object.assign(say("sperren", ["lock"]), { key: "Meta L" }),
-            say("dunkel an", ["dark"]),
-            say("dateien schließen", []),
-            say("zeit anzeigen", []),
+                    text: text,
+                    keywords: keywords,
+                    run: () => testCase.calls = [...testCase.calls, `command ${text}`]
+                });
+        return [Object.assign(say("sperren", ["lock"]), {
+                key: "Meta L"
+            }), say("dunkel an", ["dark"]), say("dateien schließen", []), say("zeit anzeigen", []),
             {
                 word: "ton",
                 at: percent => say(`ton auf ${percent} %`, [])
@@ -2089,7 +2106,9 @@ TestCase {
     }
 
     function test_a_row_that_takes_the_focus_scrolls_into_view() {
-        start.windows = Array.from({ length: 40 }, (_, i) => fakeWindow(`fenster ${i}`, i));
+        start.windows = Array.from({
+            length: 40
+        }, (_, i) => fakeWindow(`fenster ${i}`, i));
         openWithApps();
         typeNow("fenster");
         const results = named("results");
@@ -2224,7 +2243,9 @@ TestCase {
     }
 
     function test_a_row_scrolled_to_the_list_s_edge_keeps_its_whole_ring_in_view() {
-        start.windows = Array.from({ length: 40 }, (_, i) => fakeWindow(`fenster ${i}`, i));
+        start.windows = Array.from({
+            length: 40
+        }, (_, i) => fakeWindow(`fenster ${i}`, i));
         openWithApps();
         typeNow("fenster");
         const results = named("results");

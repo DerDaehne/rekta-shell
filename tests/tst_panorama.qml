@@ -282,6 +282,12 @@ TestCase {
         }, props);
     }
 
+    Component {
+        id: spyComponent
+
+        SignalSpy {}
+    }
+
     function makePanorama(count, tall) {
         const panorama = createTemporaryObject(panoramaComponent, testCase);
         for (let k = 0; k < count; k++)
@@ -349,6 +355,40 @@ TestCase {
         panorama.goTo(1, false, false);
         compare(panorama.currentIndex, 1);
         compare(panorama.scroller.contentX, 0);
+    }
+
+    function test_a_gesture_that_begins_at_an_end_says_so_once_and_one_with_room_does_not() {
+        const panorama = makePanorama(2, 100);
+        const spy = createTemporaryObject(spyComponent, testCase, {
+            target: panorama,
+            signalName: "pastEnd"
+        });
+        panorama.handleWheel(wheelEvent(300), 0);
+        compare(spy.count, 1, "a panorama that fits has both ends");
+        compare(spy.signalArguments[0][0], true);
+        panorama.handleWheel(wheelEvent(300), 50);
+        compare(spy.count, 1, "the same gesture");
+        panorama.handleWheel(wheelEvent(-300), 1000);
+        compare(spy.count, 2);
+        compare(spy.signalArguments[1][0], false);
+        const wide = makePanorama(5, 100);
+        spy.target = wide;
+        spy.clear();
+        wide.handleWheel(wheelEvent(100), 0);
+        compare(spy.count, 0, "it scrolls instead");
+    }
+
+    function test_a_section_takes_its_spaces_and_heading_size_from_its_place_with_rektas_as_the_default() {
+        const panorama = makePanorama(1, 100);
+        const section = sectionAt(panorama, 0);
+        compare(section.verticalInset, Tokens.spaceL);
+        compare(section.headingSpacing, Tokens.spaceM);
+        compare(findChild(section, "heading").sizeToken, Tokens.fontSizeGroup);
+        const before = section.implicitHeight;
+        section.verticalInset = Tokens.spaceXl;
+        compare(section.implicitHeight, before + 2 * (Tokens.spaceXl - Tokens.spaceL));
+        section.headingToken = Tokens.fontSizeXl;
+        compare(findChild(section, "heading").sizeToken, Tokens.fontSizeXl);
     }
 
     function test_a_jump_aligns_a_section_flush_left_or_as_far_as_the_panorama_scrolls() {

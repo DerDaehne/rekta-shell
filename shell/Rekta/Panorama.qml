@@ -20,6 +20,8 @@ Item {
     property real placeWidth: width
     property real viewportHeight: Window.height
     property bool facetRow: false
+    // A place turns the parts of the sections, not the panorama as one (PlaceTurn.turnsWhole; rekta.js turnUnits() opens boxes).
+    property bool turnsWhole: false
     // The section strip: it follows the scroll, and choosing a title jumps to that section.
     property Pivot sectionStrip
     readonly property bool sideways: facetRow || Prefs.sizeClass(placeWidth, viewportHeight) === "sideways"
@@ -31,6 +33,10 @@ Item {
     readonly property alias scroller: flick
     readonly property alias sectionParent: row
     readonly property alias gliding: glide.running
+
+    // A gesture that began at an end of the panorama and goes on that way: a host may take it for its own (a wheel gesture
+    // once, a swipe when it ends), forward being right and down. A panorama that fits has both ends under every gesture.
+    signal pastEnd(bool forward)
 
     // The nearest section's start: flush left, or as far as the panorama scrolls (rekta.js startOf(), :833).
     function startOf(index: int): real {
@@ -64,11 +70,26 @@ Item {
             return shiftSideways(e);
         const routed = WheelLatch.route(reading.gesture, e, now, Tokens.durationWheelLatch, host);
         reading.gesture = routed.gesture;
+        if (routed.fresh && routed.action === "pass")
+            fallThrough(e);
         if (routed.action === "inner")
             return scrollVertically(routed.gesture.inner, e.dy);
         if (routed.action === "pan")
             return scrollSideways(e.dy);
         return shiftSideways(e) || routed.action === "swallow";
+    }
+
+    // The first event of a gesture that the panorama cannot move its way, and no one's native scroll does: it is the host's.
+    function fallThrough(e: var) {
+        if (e.ctrl)
+            return;
+        const along = Math.abs(e.dx) > Math.abs(e.dy) ? e.dx : e.dy;
+        if (along !== 0 && !panRoom(along > 0))
+            pastEnd(along > 0);
+    }
+
+    function panRoom(forward: bool): bool {
+        return forward ? flick.contentX < mostScroll() - 1 : flick.contentX > 0;
     }
 
     // ponytail: Qt's Flickable does not turn Shift+wheel sideways as a browser does, so it is done here, unlatched;
@@ -141,6 +162,20 @@ Item {
             item = item.parent;
         if (item)
             Reveal.alongInto(flick, focused, inset, mostScroll());
+    }
+
+    // A swipe that began at an end and ends having gone on past it (the flick stops at its ends but tells how far).
+    function swiped(dragging: bool) {
+        if (dragging) {
+            reading.dragFrom = {
+                start: flick.atXBeginning,
+                end: flick.atXEnd
+            };
+        } else if (sideways && !facetRow && flick.horizontalOvershoot > 0 && reading.dragFrom.end) {
+            pastEnd(true);
+        } else if (sideways && !facetRow && flick.horizontalOvershoot < 0 && reading.dragFrom.start) {
+            pastEnd(false);
+        }
     }
 
     function scrollSideways(by: real): bool {
@@ -310,6 +345,7 @@ Item {
         property real stackHeight: 0
         property point pointer
         property var gesture: null
+        property var dragFrom: ({})
         property var wired: new Set()
         // Items of a panorama that is being destroyed still signal; nothing is laid out then.
         property bool gone: false
@@ -328,7 +364,7 @@ Item {
         }
 
         function panRoom(down: bool): bool {
-            return down ? panorama.scroller.contentX < panorama.mostScroll() - 1 : panorama.scroller.contentX > 0;
+            return panorama.panRoom(down);
         }
     }
 
@@ -352,7 +388,8 @@ Item {
         clip: true
         interactive: !panorama.fit
         flickableDirection: panorama.sideways ? Flickable.HorizontalFlick : Flickable.VerticalFlick
-        boundsBehavior: Flickable.StopAtBounds
+        boundsBehavior: Flickable.DragOverBounds
+        boundsMovement: Flickable.StopAtBounds
         contentWidth: panorama.extent().width
         contentHeight: panorama.extent().height
 
@@ -360,6 +397,7 @@ Item {
             panorama.follow()
         onContentYChanged: if (!panorama.sideways)
             panorama.follow()
+        onDraggingChanged: panorama.swiped(dragging)
         onMovementStarted: {
             panorama.userScroll();
             panorama.takeOver();

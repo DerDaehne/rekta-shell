@@ -3,10 +3,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 
-// The Start, after the shell's decision for it: one column at the leading edge, six tile units wide, scrolling down,
-// on glass over the windows. Its pivot "start · alle apps" picks the place; the start place shows "läuft", a tile for
-// each open window, the most recent first, then the pinned apps; "alle apps" shows the installed apps A–Z as one row of
-// tiles that scrolls sideways, where a typed letter jumps to the next app it starts. It opens once the windows are
+// The Start, after the shell's decision for it: glass over the windows, across the whole surface. Its pivot
+// "start · alle apps" picks the place; the start place is a panorama of sections under a strip of their titles:
+// "läuft", a tile for each open window, the most recent first, then "angeheftet", the pinned apps; "alle apps" shows
+// the installed apps A–Z as one row of tiles that scrolls sideways, where a typed letter jumps to the next app it starts. It opens once the windows are
 // three quarters back (Rekta's hand-over between places), its parts turning in as a place arrives, and closes turning
 // them out: back the way they came, or forward after a press, the pressed tile last. While it turns its places take no
 // input. A letter typed in the start place searches the apps: what is typed becomes the title, "suche" beside it, and
@@ -49,6 +49,14 @@ FocusScope {
     // The wheel gesture over the apps' row started at the row's end its way, and goes on to the place beside.
     property bool wheelPastTheRow: false
     readonly property Item focusItem: Window.activeFocusItem
+    // A tile unit and the space after it: a section is as wide as its units (site/site.css:81).
+    readonly property real unitStep: Tokens.tileUnit + Tokens.spaceS
+    // What stands under the place pivot: "alle apps" and the search keep to the leading edge, six units wide.
+    readonly property real sixUnits: 6 * Tokens.tileUnit + 5 * Tokens.spaceS
+    readonly property real placeTop: pivot.height
+    readonly property real placeHeight: height - placeTop
+    // Whether "läuft" stands in the panorama, the first of its sections.
+    readonly property bool anyRunning: running.length > 0
     // What was typed: the text of the search's line.
     property alias query: line.text
     // The search shows, or is on its way, in place of the pivot and the places.
@@ -67,6 +75,7 @@ FocusScope {
         quietly(() => turner.finish());
         endSearch();
         returnTo = windows.find(window => window.active) ?? null;
+        panorama.goTo(0, false, true);
         phase = "opening";
         glassOut.stop();
         pivot.focus = false;
@@ -169,13 +178,13 @@ FocusScope {
     }
 
     function showPlace(index: int) {
-        column.visible = index === 0;
+        startPlace.visible = index === 0;
         appsPlace.visible = index !== 0;
     }
 
     function goToPlace(index: int) {
         forgetTileFocus();
-        turn(index === 0 ? appsPlace : column, index === 0 ? column : appsPlace, {
+        turn(index === 0 ? appsPlace : startPlace, index === 0 ? startPlace : appsPlace, {
             back: index === 0
         });
     }
@@ -217,7 +226,7 @@ FocusScope {
         results.visible = shown;
         line.focus = shown;
         if (shown) {
-            column.visible = false;
+            startPlace.visible = false;
             appsPlace.visible = false;
             results.contentY = 0;
         } else {
@@ -351,6 +360,12 @@ FocusScope {
         return [...runningGrid.children, ...pinnedGrid.children, ...hitsGrid.children, ...appTiles.children].filter(item => (item as Tile) !== null);
     }
 
+    // The tiles of the section being read, in reading order.
+    function readTiles(): var {
+        const section = panorama.sectionItems()[panorama.currentIndex];
+        return reachableTiles().filter(tile => isIn(tile, section));
+    }
+
     // The apps' row, in the app model's order.
     function rowTiles(): var {
         return appTiles.children.filter(item => (item as Tile) !== null);
@@ -374,17 +389,26 @@ FocusScope {
         return [...allTiles(), ...searchRows()].filter(tile => tile.opens && tile.visible);
     }
 
+    // The strip, the panorama and a heading keep it too.
+    function loseFocusIn(box: Item) {
+        for (const child of box.children) {
+            child.focus = false;
+            loseFocusIn(child);
+        }
+    }
+
     // A tile, or the list, keeps its focus in the Start's scope while hidden or disabled and takes keys again once
     // shown, so the Start opens, and goes to another place or view, with nothing in focus.
     function forgetTileFocus() {
         for (const tile of [...allTiles(), ...searchRows()])
             tile.focus = false;
+        loseFocusIn(startPlace);
         if (!pivot.activeFocus)
             forceActiveFocus();
     }
 
-    // Past the tiles, right goes to "alle apps", left back to "start" and up to the pivot; a search has none of them,
-    // and up goes to its line.
+    // Past the tiles, right goes to "alle apps", left back to "start" and up to the strip; a search has none of them, and up
+    // goes to its line.
     function pastTheTiles(direction: string) {
         if (searching && direction === "up")
             line.forceActiveFocus();
@@ -394,20 +418,42 @@ FocusScope {
             pivot.select(1);
         else if (direction === "left")
             pivot.select(0);
+        else if (direction === "up" && inTheStartPlace())
+            strip.forceActiveFocus();
         else if (direction === "up")
             pivot.forceActiveFocus();
     }
 
-    // Arrows move the focus to the nearest tile that way: in the apps' row up and down a column, left and right to the
-    // column beside, an interim rule while Rekta has none for a tile grid.
+    function inTheStartPlace(): bool {
+        return !searching && pivot.currentIndex === 0;
+    }
+
+    // Up and down between the pivot, the strip and the tiles, when no tile has the focus: down goes the way into the place
+    // (pivot, strip, first tile of the section being read), up the way back; with nothing in focus, down goes to the
+    // first tile.
+    function moveBetweenRows(direction: string): bool {
+        const onStrip = strip.activeFocus;
+        const inPanorama = panorama.activeFocus || headingFocused();
+        if (direction === "down" && pivot.activeFocus && inTheStartPlace())
+            strip.forceActiveFocus();
+        else if (direction === "down" && (onStrip || inPanorama))
+            readTiles()[0]?.forceActiveFocus();
+        else if (direction === "up" && onStrip)
+            pivot.forceActiveFocus();
+        else if (direction === "up" && inPanorama)
+            strip.forceActiveFocus();
+        else
+            return false;
+        return true;
+    }
+
+    // Arrows move the focus to the nearest tile that way, across the sections: an interim rule while Rekta has none for a
+    // tile grid. In the apps' row it goes up and down a column, left and right to the column beside.
     function moveFocus(direction: string) {
         const tiles = reachableTiles();
         const from = tiles.find(tile => tile.activeFocus);
         if (!from) {
-            if (direction === "down" && tiles.length > 0)
-                tiles[0].forceActiveFocus();
-            else if (direction !== "up")
-                pastTheTiles(direction);
+            moveFromNoTile(direction, tiles);
             return;
         }
         const rects = tiles.map(tile => tile.mapToItem(start, 0, 0, tile.width, tile.height));
@@ -418,6 +464,19 @@ FocusScope {
             pastTheTiles(direction);
     }
 
+    function moveFromNoTile(direction: string, tiles: var) {
+        if (moveBetweenRows(direction))
+            return;
+        if (direction === "down" && tiles.length > 0)
+            tiles[0].forceActiveFocus();
+        else if (direction !== "up" && direction !== "down" && !headingFocused())
+            pastTheTiles(direction);
+    }
+
+    function headingFocused(): bool {
+        return runningSection.headingFocused || pinnedSection.headingFocused;
+    }
+
     function isIn(item: Item, box: Item): bool {
         for (let at = item; at; at = at.parent) {
             if (at === box)
@@ -426,10 +485,10 @@ FocusScope {
         return false;
     }
 
-    // Scrolls the column, the hits or the apps' row just far enough that what takes the focus there is whole in view, by
+    // Scrolls a section, the hits or the apps' row just far enough that what takes the focus there is whole in view, by
     // arrow, by Tab or by a typed letter. A row's ring stands outside it, so the hits keep its room too.
     function reveal(item: Item) {
-        const view = item ? [column, results, appRow].find(scroller => isIn(item, scroller.contentItem)) : undefined;
+        const view = item ? [runningSection, pinnedSection, results, appRow].find(scroller => isIn(item, scroller.contentItem)) : undefined;
         if (!view)
             return;
         const at = item.mapToItem(view.contentItem, 0, 0);
@@ -447,8 +506,8 @@ FocusScope {
         return scrolled;
     }
 
-    // One wheel gesture is one step: events less than wheel-latch apart belong together (layout.md). Only a sideways
-    // wheel changes the place; an upright one scrolls the column.
+    // In "alle apps", one wheel gesture is one step: events less than wheel-latch apart belong together (layout.md). Only a
+    // sideways wheel changes the place.
     function wheel(event: WheelEvent) {
         const now = Date.now();
         const fresh = now - lastWheel > Tokens.durationWheelLatch;
@@ -616,6 +675,8 @@ FocusScope {
 
     onFocusItemChanged: reveal(focusItem)
     onQueryChanged: refresh()
+    // The section being read stays the one read when "läuft" comes before it or goes.
+    onAnyRunningChanged: panorama.mark(Math.max(0, panorama.currentIndex + (anyRunning ? 1 : -1)))
     onAppsChanged: refresh()
 
     Keys.onPressed: event => {
@@ -683,16 +744,18 @@ FocusScope {
         anchors.fill: parent
         visible: false
 
-        // A sideways wheel or a swipe goes to the place beside, a navigation like any other, also while a turn runs; a
-        // search stays where it is. In "alle apps" it takes no swipe over from what was pressed, so one that starts on
-        // the apps' row is the row's.
+        // A sideways wheel or a swipe over the pivots, or in "alle apps", goes to the place beside, a navigation like any
+        // other, also while a turn runs; a search stays where it is. In "alle apps" it takes no swipe over from what was
+        // pressed, so one that starts on the apps' row is the row's. A panorama that scrolls flicks itself and says when a
+        // swipe goes past its end (Panorama.pastEnd), so nothing is taken from it; one that fits has nothing to flick, and
+        // a swipe over its sections is the Start's.
         DragHandler {
             property real dx: 0
 
             target: null
             enabled: start.wanted && !start.searching
             yAxis.enabled: false
-            grabPermissions: (pivot.currentIndex === 1 ? 0 : PointerHandler.CanTakeOverFromItems) | PointerHandler.CanTakeOverFromHandlersOfDifferentType | PointerHandler.ApprovesTakeOverByAnything
+            grabPermissions: (pivot.currentIndex === 0 && panorama.fit ? PointerHandler.CanTakeOverFromItems : 0) | PointerHandler.CanTakeOverFromHandlersOfDifferentType | PointerHandler.ApprovesTakeOverByAnything
             onActiveTranslationChanged: {
                 if (active)
                     dx = activeTranslation.x;
@@ -705,12 +768,12 @@ FocusScope {
         }
 
         WheelHandler {
-            enabled: start.wanted && !start.searching
+            enabled: start.wanted && !start.searching && pivot.currentIndex === 1
             orientation: Qt.Horizontal
             onWheel: event => start.wheel(event)
         }
 
-        // A place's strip along the top, the space-xl in from the edge of a sideways place (rekta.css:1180). Its inactive
+        // The place's strip along the top, the space-xl in from the edge of a sideways place (rekta.css:1180). Its inactive
         // title is one step up from Rekta's (rekta.css:53), so both titles stay above the section headings.
         Pivot {
             id: pivot
@@ -728,49 +791,62 @@ FocusScope {
             onSelected: index => start.goToPlace(index)
         }
 
-        Flickable {
-            id: column
+        // The start place: the strip of its sections' titles and the panorama of the sections below it, as wide as the
+        // surface (layout.md:19–40). The sections stand in a fixed order, "läuft" only while a window is open.
+        Item {
+            id: startPlace
 
-            objectName: "column"
-            x: Tokens.spaceXl
-            y: pivot.height
-            width: runningGrid.implicitWidth
-            height: parent.height - y
-            enabled: !start.turning
-            clip: true
-            contentHeight: sections.height
-            flickableDirection: Flickable.VerticalFlick
-            boundsBehavior: Flickable.StopAtBounds
+            objectName: "startPlace"
+            anchors.fill: parent
 
-            // Sections stack down the column, each space-xl above and below, a hairline between, the heading space-l before
-            // its tiles, the headings one step up from Rekta's: the Start is airier and larger than a compact panorama
-            // (rekta.css:854–856, :53, :50).
-            Column {
-                id: sections
+            Pivot {
+                id: strip
 
-                width: column.width
+                objectName: "sectionStrip"
+                x: Tokens.spaceXl
+                y: start.placeTop
+                width: parent.width - 2 * Tokens.spaceXl
+                enabled: start.wanted
+                titles: start.running.length > 0 ? ["läuft", "angeheftet"] : ["angeheftet"]
+                placeWidth: start.width
+                viewportHeight: start.height
+            }
 
-                Column {
+            Panorama {
+                id: panorama
+
+                objectName: "panorama"
+                y: strip.y + strip.height
+                width: parent.width
+                height: parent.height - y
+                placeWidth: start.width
+                viewportHeight: start.height
+                sectionStrip: strip
+                onPastEnd: forward => {
+                    if (forward)
+                        pivot.select(1);
+                }
+
+                // The sections stand space-xl above and below, the heading space-l before the tiles, the headings one step
+                // up from Rekta's: the Start is airier and larger than a compact panorama (rekta.css:854–856, :53, :50).
+                Section {
+                    id: runningSection
+
                     objectName: "running"
-                    width: parent.width
+                    title: "läuft"
+                    sectionWidth: 2 * start.unitStep
+                    verticalInset: Tokens.spaceXl
+                    headingSpacing: Tokens.spaceL
+                    headingToken: Tokens.fontSizeXl
+                    placeWidth: start.width
                     visible: start.running.length > 0
-                    topPadding: Tokens.spaceXl
-                    bottomPadding: Tokens.spaceXl
-                    spacing: Tokens.spaceL
-
-                    GroupHeading {
-                        objectName: "heading"
-                        sizeToken: Tokens.fontSizeXl
-                        width: parent.width
-                        text: "läuft"
-                        placeWidth: start.width
-                    }
+                    enabled: !start.turning
 
                     TileGrid {
                         id: runningGrid
 
                         objectName: "grid"
-                        columns: 6
+                        columns: 2
 
                         Repeater {
                             model: start.running
@@ -791,30 +867,23 @@ FocusScope {
                     }
                 }
 
-                Hairline {
-                    visible: start.running.length > 0
-                }
+                Section {
+                    id: pinnedSection
 
-                Column {
                     objectName: "pinned"
-                    width: parent.width
-                    topPadding: Tokens.spaceXl
-                    bottomPadding: Tokens.spaceXl
-                    spacing: Tokens.spaceL
-
-                    GroupHeading {
-                        objectName: "heading"
-                        sizeToken: Tokens.fontSizeXl
-                        width: parent.width
-                        text: "angeheftet"
-                        placeWidth: start.width
-                    }
+                    title: "angeheftet"
+                    sectionWidth: 4 * start.unitStep
+                    verticalInset: Tokens.spaceXl
+                    headingSpacing: Tokens.spaceL
+                    headingToken: Tokens.fontSizeXl
+                    placeWidth: start.width
+                    enabled: !start.turning
 
                     TileGrid {
                         id: pinnedGrid
 
                         objectName: "grid"
-                        columns: 6
+                        columns: 4
 
                         Repeater {
                             model: start.pinned
@@ -839,18 +908,18 @@ FocusScope {
 
         // "alle apps": its own place beside the start place, the place's one section, space-l above and below
         // (rekta.css:852). Every installed app A–Z is a tile one unit square, space-s apart (layout.md, "Tile grids"),
-        // in one row that fills each column top down, as many tiles as the column's height holds, and scrolls sideways
-        // within the column.
+        // in one row that fills each column top down, as many tiles as the place's height holds, and scrolls sideways
+        // within its six units.
         // ponytail: a tile for every app, made once the apps are known; a view that makes only the tiles in sight if
         // hundreds of apps make the Start slow.
         Item {
             id: appsPlace
 
             objectName: "apps"
-            x: column.x
-            y: column.y
-            width: column.width
-            height: column.height
+            x: Tokens.spaceXl
+            y: start.placeTop
+            width: start.sixUnits
+            height: start.placeHeight
             visible: false
             enabled: !start.turning
 
@@ -952,13 +1021,13 @@ FocusScope {
 
         // The search's title where the pivot stands, as a place's strip is its title (navigation.md, "Pivot"): what was
         // typed, light, and "suche" beside it as an inactive title, on one baseline, space-l apart (rekta.css:152). A
-        // title never shrinks (typography.md); one too long for the column is cut at its edge, as the strip is.
+        // title never shrinks (typography.md); one too long for the six units is cut at its edge, as the strip is.
         Item {
             id: searchTitle
 
             objectName: "searchTitle"
             x: pivot.x
-            width: column.width
+            width: start.sixUnits
             height: pivot.height
             visible: false
             clip: true
@@ -977,7 +1046,7 @@ FocusScope {
             // (`caret-color: auto` on `.rk-input`, rekta.css:267; rekta-core field.c:472, :503), as high and blinking as
             // the platform draws it, as on the web. Its selection takes the accent with on-accent text, as any selection
             // does (rekta.css:722; field.c:497–498).
-            // ponytail: past the column's edge the caret goes out of sight with the text; cap the width at the column
+            // ponytail: past the six units' edge the caret goes out of sight with the text; cap the width at them
             // and let the line scroll if queries get that long.
             TextInput {
                 id: line
@@ -1005,20 +1074,20 @@ FocusScope {
             }
         }
 
-        // The apps that match, as tiles one unit square in the column's grid, space-l above and below as a section
+        // The apps that match, as tiles one unit square in the six units' grid, space-l above and below as a section
         // (rekta.css:852).
         Flickable {
             id: results
 
             readonly property real ringRoom: Geometry.focusRingOffset + Geometry.focusRingWidth
             objectName: "results"
-            x: column.x - ringRoom
-            y: column.y
-            width: column.width + 2 * ringRoom
-            height: column.height
+            x: Tokens.spaceXl - ringRoom
+            y: start.placeTop
+            width: start.sixUnits + 2 * ringRoom
+            height: start.placeHeight
             visible: false
             enabled: !start.turning
-            // The focus ring of a row, outside it, is not clipped at the column's edge.
+            // The focus ring of a row, outside it, is not clipped at the six units' edge.
             leftMargin: ringRoom
             rightMargin: ringRoom
             clip: true
@@ -1062,7 +1131,7 @@ FocusScope {
 
                 objectName: "rows"
                 y: hitsGrid.y + hitsGrid.height + (found.count > 0 ? Tokens.spaceL : 0)
-                width: column.width
+                width: start.sixUnits
 
                 Repeater {
                     model: start.rowGroups
@@ -1106,7 +1175,7 @@ FocusScope {
             Empty {
                 objectName: "noHits"
                 y: Tokens.spaceL
-                width: column.width
+                width: start.sixUnits
                 visible: found.count === 0 && start.rowGroups.length === 0
                 text: `nichts zum hingehen oder ausführen passt zu „${start.query.trim()}“.`
             }
