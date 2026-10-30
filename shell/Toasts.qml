@@ -24,7 +24,7 @@ PanelWindow {
     anchors.right: true
     anchors.top: true
     implicitHeight: region.implicitHeight
-    exclusionMode: ExclusionMode.Ignore
+    exclusionMode: ExclusionMode.Normal
     focusable: false
     color: "transparent"
     mask: Region {

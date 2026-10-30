@@ -58,6 +58,8 @@ ShellRoot {
         doNotDisturb: sidePanel.doNotDisturb
         powerProfiles: sidePanel.hasPowerProfiles
         previewNodes: start.previewNodes
+        storageFull: notifications.board.storageFull
+        storageText: notifications.board.storageText
     }
 
     PrimaryScreen {
@@ -191,6 +193,16 @@ ShellRoot {
             sidePanel.close();
             sessionBanner.show(kind);
         }
+    }
+
+    SystemBanner {
+        states: systemState.banners
+        primaryScreen: primary.screen
+        fullScreen: running.fullScreenOn(primary.screen)
+        controlPanel: sidePanel
+        toaster: toasts.toaster
+
+        onCleanUp: notifications.board.cleanUp()
     }
 
     // After the Start, so a toast stands above it.

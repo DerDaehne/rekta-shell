@@ -85,4 +85,21 @@ TestCase {
         const none = 1;
         compare([0, 1, 2, 3, 4].map(connectivity => Sources.offline(connectivity, none)), [false, true, false, false, false]);
     }
+
+    function test_the_battery_is_critical_from_the_warning_level_critical_on() {
+        compare([undefined, 0, 1, 2, 3, 4, 5].map(level => Sources.batteryCritical(level)), [false, false, false, false, false, true, true]);
+    }
+
+    function test_freespacenotifiers_notice_is_known_by_the_app_and_event_it_names() {
+        verify(Sources.freeSpaceNotice({ "x-kde-appname": "freespacenotifier", "x-kde-eventId": "freespacenotif" }));
+        verify(!Sources.freeSpaceNotice({ "x-kde-appname": "freespacenotifier", "x-kde-eventId": "other" }));
+        verify(!Sources.freeSpaceNotice({ "x-kde-appname": "chat", "x-kde-eventId": "freespacenotif" }));
+        verify(!Sources.freeSpaceNotice({}));
+    }
+
+    function test_powerdevils_low_battery_notice_is_known_but_its_critical_one_is_not() {
+        verify(Sources.lowBatteryNotice({ "x-kde-appname": "powerdevil", "x-kde-eventId": "lowbattery" }));
+        verify(!Sources.lowBatteryNotice({ "x-kde-appname": "powerdevil", "x-kde-eventId": "criticalbattery" }));
+        verify(!Sources.lowBatteryNotice({ "x-kde-appname": "chat", "x-kde-eventId": "lowbattery" }));
+    }
 }

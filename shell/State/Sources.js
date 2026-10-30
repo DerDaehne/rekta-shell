@@ -6,6 +6,7 @@ const microphoneClass = "Stream/Input/Audio";
 const screencastPrefix = "kwin-screencast-";
 // UPower's WarningLevel: 3 is low, 4 critical, 5 action.
 const lowWarning = 3;
+const criticalWarning = 4;
 
 // Whether a program records from a microphone: a capture stream that does not listen to an output's monitor and is not
 // the shell's own, so a level meter of the shell can never show it. `nodes` are PipeWire nodes: `isStream`, `properties`.
@@ -44,4 +45,24 @@ function batteryLow(warningLevel) {
 // devices then.
 function offline(connectivity, none) {
     return connectivity === none;
+}
+
+function batteryCritical(warningLevel) {
+    return (warningLevel ?? 0) >= criticalWarning;
+}
+
+// A KDE program names itself and its event in the hints it sends (knotifications, notifybypopup.cpp).
+function fromKdeEvent(hints, appName, eventId) {
+    return hints["x-kde-appname"] === appName && hints["x-kde-eventId"] === eventId;
+}
+
+// freespacenotifier's notice stays open until a disk has room again.
+function freeSpaceNotice(hints) {
+    return fromKdeEvent(hints, "freespacenotifier", "freespacenotif");
+}
+
+// powerdevil's persistent notice for a low battery, which the status word already says. Its "criticalbattery" is
+// another event: it announces the action in 60 seconds.
+function lowBatteryNotice(hints) {
+    return fromKdeEvent(hints, "powerdevil", "lowbattery");
 }

@@ -19,7 +19,12 @@ Scope {
     required property list<int> previewNodes
     // Whether the energy profile can be chosen in the panel, so the battery word names the place it opens.
     required property bool powerProfiles
+    // freespacenotifier's notice is open, and what it says (NoticeBoard).
+    required property bool storageFull
+    required property string storageText
     readonly property StatusWords words: model
+    readonly property SystemBanners banners: bannerModel
+    readonly property bool offline: networkManagerRunning && Sources.offline(Networking.connectivity, NetworkConnectivity.None)
     // NetworkManager is asked only once it runs: Quickshell picks its network backend when the singleton is first read.
     readonly property alias networkManagerRunning: networkManager.registered
 
@@ -79,7 +84,17 @@ Scope {
         screenShared: Sources.screenShared(system.linkGroups.values, system.ownScreencasts)
         batteryLow: Sources.batteryLow(battery.properties.WarningLevel)
         batteryPercent: Math.round(battery.properties.Percentage ?? 0)
-        offline: system.networkManagerRunning && Sources.offline(Networking.connectivity, NetworkConnectivity.None)
+        offline: system.offline
         powerProfiles: system.powerProfiles
+    }
+
+    SystemBanners {
+        id: bannerModel
+
+        batteryCritical: Sources.batteryCritical(battery.properties.WarningLevel)
+        batteryPercent: Math.round(battery.properties.Percentage ?? 0)
+        offline: system.offline
+        storageFull: system.storageFull
+        storageText: system.storageText
     }
 }

@@ -1,5 +1,6 @@
 import QtQuick
 import Rekta
+import State
 
 // Where the notifications the server receives go: one toast at a time, each after the one before has gone
 // (platforms.md, "Behaviours to rebuild"), and the list of the notification centre, newest first. A toast runs
@@ -54,6 +55,12 @@ QtObject {
     // Removed rows whose undo window is still open.
     property var pending: []
     property int arrivals: 0
+    // freespacenotifier's open notice: it is a state the system banner shows, so it is neither toast nor row. It ends
+    // when the program closes it, and its words are rewritten every minute.
+    // ponytail: one such notice at a time; a second one replaces the first.
+    property var storageNotice: null
+    property string storageText: ""
+    readonly property bool storageFull: storageNotice !== null
     readonly property var removal: ({})
 
     // A notification without a default action was pressed, or a row that ran out: its app should come forward.
@@ -62,6 +69,13 @@ QtObject {
     signal sounding(var notification)
 
     function arrive(notification: var) {
+        const hints = notification.hints ?? {};
+        if (Sources.lowBatteryNotice(hints))
+            return;
+        if (Sources.freeSpaceNotice(hints)) {
+            holdStorage(notification);
+            return;
+        }
         const record = {
             notification,
             order: ++arrivals,
@@ -82,6 +96,26 @@ QtObject {
             return;
         waiting = [...waiting, record];
         next();
+    }
+
+    function holdStorage(notification: var) {
+        storageNotice = notification;
+        storageText = notification.body || notification.summary;
+        notification.closed.connect(() => {
+            if (storageNotice === notification)
+                storageNotice = null;
+        });
+        const reword = () => {
+            if (storageNotice === notification)
+                storageText = notification.body || notification.summary;
+        };
+        notification.summaryChanged.connect(reword);
+        notification.bodyChanged.connect(reword);
+    }
+
+    // The remedy of the storage state: the notice's first action, which opens the program that clears space.
+    function cleanUp() {
+        storageNotice?.actions.find(action => action.identifier !== "default")?.invoke();
     }
 
     // What a row shows of its notification: its words as its toast has them, and the picture or else the app's icon.

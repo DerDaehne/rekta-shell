@@ -22,6 +22,9 @@ Item {
     property Toaster toaster: null
     // remedy(name) runs the shown state's remedy; without it, the remedy turns the state off.
     property var remedy: null
+    // The words around the states, replaceable like the toaster's undoWord (Rekta's strings.de.js: since, bannerStill).
+    property string sinceWord: "since"
+    property var stillText: (event, word) => `${event}. The banner keeps showing “${word}” until that ends.`
     // The width of the place it spans; the word's fluid size follows it.
     property real placeWidth: Window.width
 
@@ -138,7 +141,7 @@ Item {
     // "since 14:05", with the day when it started on another day; `until` in place of the start for a known end.
     function timeLineOf(name: string): string {
         const s = bannerStates[name];
-        const since = s.since || "since";
+        const since = s.since || sinceWord;
         if (s.until)
             return `${since} ${s.until}`;
         const start = started[name];
@@ -152,7 +155,7 @@ Item {
         const name = order.find(n => turnedOn[n]) ?? "";
         if (name === shown) {
             if (toaster)
-                toaster.show(`${eventOf(changed)}. The banner keeps showing “${wordOf(name)}” until that ends.`, { key: "state" });
+                toaster.show(stillText(eventOf(changed), wordOf(name)), { key: "state" });
             return;
         }
         const before = shown;
