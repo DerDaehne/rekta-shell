@@ -132,13 +132,18 @@ Item {
     Flickable {
         id: strip
 
+        // The focus ring stands outside the title (rekta.css:42): the clipped view reaches that far past the pivot
+        // on every side, and the titles sit inside it, so only titles further away are cut at the pivot's edges.
+        readonly property real ringRoom: Geometry.focusRingOffset + Geometry.focusRingWidth
+
         objectName: "strip"
         anchors.fill: parent
+        anchors.margins: -ringRoom
         clip: !pivot.down
         interactive: !pivot.down && contentWidth > width
         boundsBehavior: Flickable.StopAtBounds
-        contentWidth: titlesGrid.width
-        contentHeight: titlesGrid.height
+        contentWidth: titlesGrid.width + 2 * ringRoom
+        contentHeight: titlesGrid.height + 2 * ringRoom
 
         NumberAnimation {
             id: glideAnimation
@@ -154,7 +159,8 @@ Item {
         Grid {
             id: titlesGrid
 
-            anchors.bottom: parent.bottom
+            x: strip.ringRoom
+            y: strip.ringRoom
             columns: pivot.down ? 1 : Math.max(1, repeater.count)
             columnSpacing: Tokens.spaceL
             rowSpacing: Tokens.spaceXs

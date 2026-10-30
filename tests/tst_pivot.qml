@@ -92,6 +92,119 @@ TestCase {
         }
     }
 
+    Component {
+        id: ringGroundComponent
+
+        // A pivot with room around it, on the ground, so a grab shows what the strip cuts off.
+        Rectangle {
+            property alias pivot: ringed
+
+            width: 480
+            height: ringed.height + 2 * Tokens.spaceL
+            color: Tokens.color.bg
+
+            Pivot {
+                id: ringed
+
+                x: Tokens.spaceL
+                y: Tokens.spaceL
+                width: 400
+                placeWidth: 1000
+                viewportHeight: 700
+                titles: testCase.manyTitles
+                focus: true
+            }
+        }
+    }
+
+    // The named sides of the title whose ring is cut off: the pixel just outside the title's edge, in the middle of the ring's stroke, lacks the focus colour.
+    function ringSidesCutOff(ground, index, names = ["left", "right", "top", "bottom"]) {
+        const title = titleOf(ground.pivot, index);
+        const box = title.mapToItem(ground, 0, 0);
+        const mid = Geometry.focusRingOffset + Geometry.focusRingWidth / 2;
+        const image = grabImage(ground);
+        const sides = {
+            left: [box.x - mid, box.y + title.height / 2],
+            right: [box.x + title.width + mid, box.y + title.height / 2],
+            top: [box.x + title.width / 2, box.y - mid],
+            bottom: [box.x + title.width / 2, box.y + title.height + mid]
+        };
+        return names.filter(side => !Qt.colorEqual(image.pixel(Math.floor(sides[side][0]), Math.floor(sides[side][1])), Tokens.color.focus));
+    }
+
+    // The same for the top and the bottom only: a gliding title may stand partly outside the view sideways.
+    function ringRowsCutOff(ground, index) {
+        return ringSidesCutOff(ground, index, ["top", "bottom"]);
+    }
+
+    function test_the_focus_ring_of_the_active_title_shows_on_all_four_sides_at_the_start_in_the_middle_and_at_the_end() {
+        Prefs.motion = "off";
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            for (const index of [0, 3, 6]) {
+                const ground = createTemporaryObject(ringGroundComponent, testCase);
+                ground.pivot.currentIndex = index;
+                ground.pivot.forceActiveFocus(Qt.TabFocusReason);
+                waitForRendering(ground);
+                compare(ringSidesCutOff(ground, index), [], `${theme}, title ${index}: sides cut off`);
+                grabImage(ground).save(`pivot-ring-${theme}-${index}.png`);
+                ground.destroy();
+            }
+        }
+    }
+
+    function test_the_focus_ring_shows_whole_on_a_strip_that_is_gliding() {
+        Prefs.motion = "off";
+        const ground = createTemporaryObject(ringGroundComponent, testCase);
+        ground.pivot.currentIndex = 6;
+        ground.pivot.forceActiveFocus(Qt.TabFocusReason);
+        waitForRendering(ground);
+        const strip = findChild(ground.pivot, "strip");
+        tryVerify(() => Math.abs(strip.contentX - (strip.contentWidth - strip.width)) < 1, 500);
+        Prefs.motion = "on";
+        const from = strip.contentX;
+        ground.pivot.select(5);
+        tryVerify(() => strip.contentX !== from, 500, "the strip is under way");
+        verify(findChild(ground.pivot, "glide").running, "the glide is still running");
+        waitForRendering(ground);
+        const rows = ringRowsCutOff(ground, 5);
+        compare(rows, [], "top and bottom of the ring stay whole while the strip glides");
+    }
+
+    function test_a_title_crossing_the_edge_of_the_pivot_is_cut_there() {
+        Prefs.motion = "off";
+        const ground = createTemporaryObject(ringGroundComponent, testCase);
+        ground.pivot.select(3);
+        waitForRendering(ground);
+        const ringRoom = Geometry.focusRingOffset + Geometry.focusRingWidth;
+        const viewRight = ground.pivot.x + ground.pivot.width + ringRoom;
+        const crossing = [0, 1, 2, 3, 4, 5, 6].map(k => titleOf(ground.pivot, k)).find(t => {
+            const box = t.mapToItem(ground, 0, 0);
+            return box.x < viewRight - 8 && box.x + t.width > viewRight + 8;
+        });
+        verify(crossing, "a title reaches across the right edge of the view");
+        const box = crossing.mapToItem(ground, 0, 0);
+        const image = grabImage(ground);
+        let inside = false, outside = false;
+        for (let y = Math.floor(box.y); y < box.y + crossing.height; y++) {
+            for (let x = Math.floor(box.x); x < Math.min(box.x + crossing.width, ground.width); x++) {
+                if (Qt.colorEqual(image.pixel(x, y), Tokens.color.bg))
+                    continue;
+                inside = inside || x < viewRight;
+                outside = outside || x >= viewRight;
+            }
+        }
+        verify(inside, "the title shows inside the view");
+        verify(!outside, "nothing of it shows beyond the view");
+    }
+
+    function test_titles_stay_at_the_top_of_a_pivot_taller_than_they_are() {
+        const pivot = createTemporaryObject(pivotComponent, testCase, {
+            height: 400
+        });
+        compare(pivot.mapFromItem(titleOf(pivot, 0), 0, 0).y, 0);
+    }
+
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
     }
