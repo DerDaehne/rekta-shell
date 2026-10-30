@@ -98,6 +98,8 @@ TestCase {
     }
 
     function cleanup() {
+        // A pointer left over from a test would hover the next tile that appears under it.
+        mouseMove(testCase, width - 1, height - 1);
         Prefs.motion = "system";
         Prefs.theme = "system";
     }

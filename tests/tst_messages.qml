@@ -415,7 +415,8 @@ TestCase {
         openOnMessages();
         const [cleo, ben] = rows();
         const remove = findChild(ben, "remove");
-        verify(!remove.visible, "not on a row at rest");
+        mouseMove(scene, 1, 1);
+        tryVerify(() => !remove.visible, 1000, "not on a row at rest");
         verify(findChild(ben, "time").visible);
         mouseMove(ben, 40, 10);
         verify(remove.visible, "on a row under the pointer");
