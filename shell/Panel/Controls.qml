@@ -703,6 +703,8 @@ Column {
 
     // A display powerdevil can dim, with the same slider as the volume. A change from elsewhere moves it unless the pointer
     // holds it; it then takes what powerdevil last told.
+    // ponytail: a step is 1% of the scale, so a display with fewer than 100 steps snaps to the nearest one; take the display's
+    // own step as the slider's stepSize if that shows. A slider moved by the keyboard takes every echo, as only the pointer holds it.
     component BrightnessRow: PanelRow {
         id: brightnessRow
 

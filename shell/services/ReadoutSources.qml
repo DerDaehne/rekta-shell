@@ -11,8 +11,8 @@ import Readout
 // kglobalaccel's component "kmix", the brightness keys from powerdevil and the layout from KWin. The shell registers none
 // of these keys; kded6 and powerdevil act on them, and this only listens. The side panel shares the bound devices and
 // the displays.
-// ponytail: through plasma-workspace's DBus module, whose fixed names and paths suffice; move it to the shell's own DBus
-// module once there is one.
+// ponytail: the kmix keys go through plasma-workspace's DBus module, whose fixed names and paths suffice; move them to the
+// shell's own DBus module (as the displays do) once that is worth the change.
 Scope {
     id: sources
 
@@ -52,10 +52,7 @@ Scope {
     ScreenBrightness {
         id: screenBrightness
 
-        onChanged: (display, brightness, source, context) => {
-            model.brightnessMax = screenBrightness.maxOf(display);
-            model.brightnessReported(display, brightness, source, context);
-        }
+        onChanged: (display, brightness, source, context) => model.brightnessReported(brightness, screenBrightness.maxOf(display), context)
     }
 
     KeyboardLayout {

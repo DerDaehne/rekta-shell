@@ -14,8 +14,6 @@ QtObject {
     property bool micMuted: false
     property real brightness: 0
     property real brightnessMax: 0
-    // The display of the last brightness key, whose range the sources read.
-    property string brightnessDisplay
     property string layoutName
 
     // volume | mic | brightness | layout
@@ -69,11 +67,12 @@ QtObject {
             show(shownKind);
     }
 
-    // powerdevil tells every change of brightness; only a key's carries the context "brightness_key".
-    function brightnessReported(display: string, value: int, source: string, context: string) {
+    // powerdevil tells every change of brightness; only a key's carries the context "brightness_key". The range is that of
+    // the display it changed, so other changes and other displays leave what the readout shows alone.
+    function brightnessReported(value: int, max: int, context: string) {
         if (context !== "brightness_key")
             return;
-        brightnessDisplay = display;
+        brightnessMax = max;
         brightness = value;
         show("brightness");
     }

@@ -1182,12 +1182,15 @@ TestCase {
     function test_a_brightness_slider_follows_a_change_from_elsewhere() {
         const displays = giveDisplays(controls);
         side.show(0);
+        control("display0Brightness").forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        compare(control("display0Brightness").value, 0.21, "a step ends the slider's binding");
         displays.setProperty(0, "brightness", 102);
         compare(control("display0Brightness").value, 0.4);
         compare(findChild(control("display0Brightness"), "output").text, "40%");
         displays.setProperty(1, "max", 200);
         compare(control("display1Brightness").value, 0.15, "a new range moves it too");
-        compare(brightnessSets, [], "following asks for nothing");
+        compare(brightnessSets, [["display0", 54]], "following asks for nothing more than the step");
     }
 
     function test_a_brightness_slider_held_by_the_pointer_ignores_changes_until_released() {

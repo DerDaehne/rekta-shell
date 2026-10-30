@@ -17,7 +17,7 @@ QtObject {
     // Rows of name (the D-Bus name), title (powerdevil's label), brightness and max, in powerdevil's order; updated in place.
     readonly property ListModel displays: ListModel {}
 
-    // Every change powerdevil tells, with the client and context that asked for it; the display is listed already.
+    // Every change powerdevil tells, with the client and context that asked for it; the display may not be listed.
     signal changed(string display, int brightness, string source, string context)
 
     // Display names as powerdevil lists them: what a late answer is checked against.

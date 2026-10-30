@@ -85,26 +85,33 @@ TestCase {
     }
 
     function test_a_brightness_change_by_a_key_shows_the_percent_of_the_range() {
-        readout.brightnessReported("display0", 51, "powerdevil", "brightness_key");
+        readout.brightnessReported(51, 255, "brightness_key");
         compare(pressed.count, 1);
         compare(readout.word, "helligkeit");
         compare(readout.valueText, "20%");
         compare(readout.level, 0.2);
-        compare(readout.brightnessDisplay, "display0");
+    }
+
+    function test_a_change_of_another_display_or_by_a_slider_leaves_the_key_s_percent_alone() {
+        readout.brightnessReported(102, 255, "brightness_key");
+        compare(readout.valueText, "40%");
+        readout.brightnessReported(100, 100, "");
+        readout.brightnessReported(100, 100, "slider");
+        compare(readout.valueText, "40%");
+        compare(readout.level, 0.4);
     }
 
     function test_a_brightness_change_by_anything_else_shows_nothing() {
-        readout.brightnessReported("display0", 51, "powerdevil", "slider");
-        readout.brightnessReported("display0", 51, "powerdevil", "");
+        readout.brightnessReported(51, 255, "slider");
+        readout.brightnessReported(51, 255, "");
         compare(pressed.count, 0);
         compare(readout.brightness, 0);
     }
 
     function test_brightness_without_a_known_range_reads_zero_until_the_range_arrives() {
-        readout.brightnessMax = 0;
-        readout.brightnessReported("display0", 51, "powerdevil", "brightness_key");
+        readout.brightnessReported(51, 0, "brightness_key");
         compare(readout.valueText, "0%");
-        readout.brightnessMax = 102;
+        readout.brightnessReported(51, 102, "brightness_key");
         compare(readout.valueText, "50%");
     }
 
