@@ -1873,7 +1873,7 @@ TestCase {
                 run: () => testCase.calls = [...testCase.calls, `command ${text}`]
             });
         return [
-            Object.assign(say("sperren", ["lock"]), { key: "Meta+L" }),
+            Object.assign(say("sperren", ["lock"]), { key: "Meta L" }),
             say("dunkel an", ["dark"]),
             say("dateien schließen", []),
             say("zeit anzeigen", []),
@@ -2196,12 +2196,12 @@ TestCase {
         openWithEverything();
         typeNow("s");
         const keyed = start.searchRows().find(row => row.text === "sperren");
-        verify(findChild(keyed, "commandKey").visible);
-        compare(findChild(keyed, "commandKey").text, "Meta+L");
+        verify(findChild(keyed, "key").visible);
+        compare(findChild(keyed, "key").text, "Meta L");
         const plain = start.searchRows().find(row => row.text === "dunkel an") ?? start.searchRows().find(row => row.text !== "sperren");
-        verify(!findChild(plain, "commandKey").visible);
+        verify(!findChild(plain, "key").visible);
         for (const row of start.searchRows().filter(candidate => candidate.text !== "sperren"))
-            verify(!findChild(row, "commandKey").visible, row.text);
+            verify(!findChild(row, "key").visible, row.text);
     }
 
     function test_contact_sheet_of_a_command_with_its_key_as_the_best_hit() {
@@ -2221,5 +2221,17 @@ TestCase {
             grabImage(backdrop).save(`start-search-command-key-${theme}.png`);
             compare(sheet.query, "sp", theme);
         }
+    }
+
+    function test_a_row_scrolled_to_the_list_s_edge_keeps_its_whole_ring_in_view() {
+        start.windows = Array.from({ length: 40 }, (_, i) => fakeWindow(`fenster ${i}`, i));
+        openWithApps();
+        typeNow("fenster");
+        const results = named("results");
+        for (let i = 0; i < 30; i++)
+            keyClick(Qt.Key_Down);
+        const ring = findChild(start.searchRows().find(row => row.activeFocus), "ring");
+        const top = ring.mapToItem(results, 0, 0).y;
+        verify(top >= 0 && top + ring.height <= results.height, `the ring from ${top} to ${top + ring.height} of ${results.height}`);
     }
 }

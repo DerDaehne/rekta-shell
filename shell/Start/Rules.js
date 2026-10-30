@@ -299,24 +299,26 @@ function rowGroups(sources, text, starts, noApp) {
 }
 
 const keyModifiers = [[0x10000000, "Meta"], [0x04000000, "Ctrl"], [0x08000000, "Alt"], [0x02000000, "Shift"]];
+// Rekta names a key as shortcutText() does (rekta.js:2536–2541): Ctrl, Alt, Shift and Esc as such, the arrows as glyphs, any
+// other in capitals, the keys of a combination apart by a space. Rekta has no word for the Super key off the Mac; Meta here.
 const namedKeys = {
-    0x20: "Space",
+    0x20: "SPACE",
     0x01000000: "Esc",
-    0x01000001: "Tab",
-    0x01000003: "Backspace",
-    0x01000004: "Return",
-    0x01000005: "Enter",
-    0x01000006: "Ins",
-    0x01000007: "Del",
-    0x01000010: "Home",
-    0x01000011: "End",
-    0x01000012: "Left",
-    0x01000013: "Up",
-    0x01000014: "Right",
-    0x01000015: "Down",
-    0x01000016: "PgUp",
-    0x01000017: "PgDown",
-    0x01000009: "Print"
+    0x01000001: "TAB",
+    0x01000003: "BACKSPACE",
+    0x01000004: "ENTER",
+    0x01000005: "ENTER",
+    0x01000006: "INSERT",
+    0x01000007: "DELETE",
+    0x01000010: "HOME",
+    0x01000011: "END",
+    0x01000012: "←",
+    0x01000013: "↑",
+    0x01000014: "→",
+    0x01000015: "↓",
+    0x01000016: "PAGEUP",
+    0x01000017: "PAGEDOWN",
+    0x01000009: "PRINT"
 };
 
 // The whole numbers in nested lists, in order; the reply's struct and array levels do not matter here.
@@ -328,7 +330,7 @@ function numbersIn(value) {
     return Array.from(value).reduce((numbers, item) => numbers.concat(numbersIn(item)), []);
 }
 
-// The text of the first key combination kglobalaccel's `shortcutKeys` replied, such as "Meta+L"; the reply is a list of
+// The text of the first key combination kglobalaccel's `shortcutKeys` replied, such as "Meta L"; the reply is a list of
 // key sequences, each a list of Qt key codes. "" when it holds none (no key is bound) or only a key this does not name.
 function keyText(values) {
     const code = numbersIn(values).find(number => number > 0);
@@ -338,5 +340,5 @@ function keyText(values) {
     const name = namedKeys[key] ?? (key >= 0x01000030 && key <= 0x0100004b ? `F${key - 0x01000030 + 1}` : (key >= 0x21 && key <= 0x7e ? String.fromCharCode(key) : ""));
     if (name === "")
         return "";
-    return [...keyModifiers.filter(([flag]) => (code & flag) !== 0).map(([, word]) => word), name].join("+");
+    return [...keyModifiers.filter(([flag]) => (code & flag) !== 0).map(([, word]) => word), name].join(" ");
 }

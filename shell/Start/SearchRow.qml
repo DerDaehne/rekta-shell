@@ -9,9 +9,6 @@ MenuItem {
 
     // The best hit of the search, which Enter acts on.
     property bool best: false
-    // The keys that do the same from anywhere, as the shell's session has them; none when no key is bound (navigation.md,
-    // "Go to": a command shows its key).
-    property string shortcut: ""
     // As a tile that opens: the arrow keys reach it.
     readonly property bool opens: true
     // A place change turns a row as one part.
@@ -36,12 +33,6 @@ MenuItem {
         parent: row
         anchors.fill: parent
         onClicked: row.activated()
-    }
-
-    KeyHint {
-        objectName: "commandKey"
-        visible: row.shortcut !== ""
-        text: row.shortcut
     }
 
     KeyHint {

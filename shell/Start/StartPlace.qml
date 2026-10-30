@@ -427,13 +427,14 @@ FocusScope {
     }
 
     // Scrolls the column, the hits or the apps' row just far enough that what takes the focus there is whole in view, by
-    // arrow, by Tab or by a typed letter.
+    // arrow, by Tab or by a typed letter. A row's ring stands outside it, so the hits keep its room too.
     function reveal(item: Item) {
         const view = item ? [column, results, appRow].find(scroller => isIn(item, scroller.contentItem)) : undefined;
         if (!view)
             return;
         const at = item.mapToItem(view.contentItem, 0, 0);
-        view.contentY = shownFrom(view.contentY, view.height, view.contentHeight, at.y, item.height);
+        const room = view === results ? results.ringRoom : 0;
+        view.contentY = shownFrom(view.contentY, view.height, view.contentHeight, at.y - room, item.height + 2 * room);
         view.contentX = shownFrom(view.contentX, view.width, view.contentWidth, at.x, item.width);
     }
 
@@ -1093,7 +1094,7 @@ FocusScope {
                                 lead: searchRow.modelData.lead
                                 icon: searchRow.modelData.icon
                                 best: searchRow.modelData.best === true
-                                shortcut: searchRow.modelData.key ?? ""
+                                keyHint: searchRow.modelData.key ?? ""
                                 onActivated: start.chooseRow(searchRow.modelData)
                             }
                         }

@@ -146,15 +146,15 @@ TestCase {
         return Rules.commandHits(commands.list, typed)[0].key ?? "";
     }
 
-    // Meta+L as kglobalaccel replies it: a list of key sequences, each a list of Qt key codes.
+    // Meta L as kglobalaccel replies it: a list of key sequences, each a list of Qt key codes.
     readonly property var metaL: [[0x10000000 | 0x4c, 0, 0, 0]]
 
     function test_a_command_shows_the_key_the_session_binds_to_its_action() {
-        replies = { "Lock Session": metaL, "Log Out": [[0x04000000 | 0x08000000 | 0x01000007, 0, 0, 0]] };
+        replies = { "Lock Session": metaL, "LogOut": [[0x04000000 | 0x08000000 | 0x01000007, 0, 0, 0]] };
         commands.destroy();
         commands = createTemporaryObject(commandsComponent, testCase);
-        compare(keyOf("sperren"), "Meta+L");
-        compare(keyOf("abmelden"), "Ctrl+Alt+Del");
+        compare(keyOf("sperren"), "Meta L");
+        compare(keyOf("abmelden"), "Ctrl Alt DELETE");
         compare(asked[0], `org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel.shortcutKeys [["ksmserver","Lock Session","",""]] as`);
     }
 
@@ -177,6 +177,6 @@ TestCase {
         compare(keyOf("sperren"), "");
         replies = { "Lock Session": metaL };
         commands.readKeys();
-        compare(keyOf("sperren"), "Meta+L");
+        compare(keyOf("sperren"), "Meta L");
     }
 }
