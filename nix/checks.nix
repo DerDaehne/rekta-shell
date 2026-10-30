@@ -23,6 +23,22 @@ let
     "plasma-plasmashell.service.d/rekta-session.conf"
     "plasma-workspace.target.d/rekta-shell.conf"
   ];
+  # The home-manager module evaluated with a stand-in for home.packages, so the checks need no home-manager input.
+  homeConfig =
+    modules:
+    (lib.evalModules {
+      modules = [
+        {
+          options.home.packages = lib.mkOption {
+            type = lib.types.listOf lib.types.package;
+            default = [ ];
+          };
+        }
+        { _module.args.pkgs = pkgs; }
+        self.homeManagerModules.default
+      ]
+      ++ modules;
+    }).config;
 in
 {
   package = rekta-shell;
@@ -318,6 +334,19 @@ in
         echo "the start tempo or search escape option is not in the package defaults" >&2
         exit 1
       }
+      # With both modules on, whichever rekta-settings comes first in PATH names the same defaults.
+      profile=${
+        (homeConfig [
+          { programs.rekta-shell.enable = true; }
+        ]).programs.rekta-shell.package
+      }
+      system=${enabled.programs.rekta-shell.package}
+      for package in $profile $system; do
+        grep -q "REKTA_DEFAULTS=.$system/share/rekta-shell/defaults.json." $package/bin/.rekta-settings-wrapped || {
+          echo "$package/bin/rekta-settings does not name the system's defaults.json" >&2
+          exit 1
+        }
+      done
       if grep -q REKTA_DEFAULTS ${rekta-shell}/bin/.rekta-shell-wrapped; then
         echo "the package without defaults names a defaults file" >&2
         exit 1
@@ -327,29 +356,13 @@ in
 
   home-module =
     let
-      # A stand-in for home-manager's home.packages, so the check needs no home-manager input.
-      packages =
-        modules:
-        (lib.evalModules {
-          modules = [
-            {
-              options.home.packages = lib.mkOption {
-                type = lib.types.listOf lib.types.package;
-                default = [ ];
-              };
-            }
-            { _module.args.pkgs = pkgs; }
-            self.homeManagerModules.default
-          ]
-          ++ modules;
-        }).config.home.packages;
+      enabled = homeConfig [ { programs.rekta-shell.enable = true; } ];
     in
     assert lib.assertMsg (
-      packages [ ] == [ ]
+      (homeConfig [ ]).home.packages == [ ]
     ) "the home-manager module adds packages with its defaults";
-    assert lib.assertMsg (lib.elem rekta-shell (packages [
-      { programs.rekta-shell.enable = true; }
-    ])) "the enabled home-manager module leaves rekta-shell out of home.packages";
+    assert lib.assertMsg (lib.elem enabled.programs.rekta-shell.package enabled.home.packages)
+      "the enabled home-manager module leaves its package out of home.packages";
     pkgs.runCommand "rekta-shell-home-module" { } "touch $out";
 
   # The Fedora VM's source ISO must list exactly the tracked files, whatever else lies in the checkout.
