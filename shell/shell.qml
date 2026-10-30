@@ -29,6 +29,8 @@ ShellRoot {
         value: settingsFiles.value("startTempo")
     }
 
+    FadeBackTempo {}
+
     Windows {
         id: running
     }

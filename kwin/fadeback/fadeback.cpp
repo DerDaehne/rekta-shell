@@ -10,6 +10,7 @@
 #include "window.h"
 #include "workspace.h"
 
+#include <QDBusConnection>
 #include <QPointer>
 #include <QQmlEngine>
 #include <QVector2D>
@@ -65,6 +66,9 @@ struct Look {
 // them forward by handing it over. How far and how fast come from the shell's Rekta module.
 class FadeBackEffect : public Effect
 {
+    Q_OBJECT
+    Q_CLASSINFO("D-Bus Interface", "org.rekta.FadeBack")
+
 public:
     FadeBackEffect();
     ~FadeBackEffect() override;
@@ -75,6 +79,11 @@ public:
     bool paintWindow(const RenderTarget &renderTarget, const RenderViewport &viewport, EffectWindow *w, int mask,
                      const Region &deviceRegion, WindowPaintData &data) override;
     bool isActive() const override;
+
+public Q_SLOTS:
+    // The Start's tempo as the shell has it; the windows take it as they next set off. Only a tempo the Start can
+    // have counts: above 0 and at most Rekta's own.
+    Q_SCRIPTABLE void setStartTempo(double tempo);
 
 private:
     void watch(LayerSurfaceV1Interface *layer);
@@ -99,6 +108,7 @@ private:
     }
 
     QObject *m_rules;
+    double m_startTempo = 0;
     Retreat m_start{"rekta-start", "progress"};
     Retreat m_leave{"rekta-leave", "leaveProgress"};
     Look m_onPrimary;
@@ -112,8 +122,10 @@ FadeBackEffect::FadeBackEffect()
         qWarning("rekta-fadeback: the Rekta module is not on KWin's QML import path");
         return;
     }
-    // ponytail: a surface made before the effect loads goes unseen until the shell makes it anew; the rekta session
-    // loads the effect before the shell starts.
+    m_startTempo = m_rules->property("startTempo").toDouble();
+    // ponytail: a surface made before the effect loads goes unseen until the shell makes it anew, and the Start's tempo
+    // until the shell starts anew or the setting changes; the rekta session loads the effect before the shell starts.
+    QDBusConnection::sessionBus().registerObject(QStringLiteral("/RektaFadeBack"), this, QDBusConnection::ExportScriptableSlots);
     connect(waylandServer()->findChild<LayerShellV1Interface *>(), &LayerShellV1Interface::surfaceCreated,
             this, &FadeBackEffect::watch);
 }
@@ -163,8 +175,19 @@ void FadeBackEffect::committed(Retreat &retreat, bool keyboard)
     }
 }
 
+void FadeBackEffect::setStartTempo(double tempo)
+{
+    if (tempo > 0 && tempo <= 1) {
+        m_startTempo = tempo;
+    }
+}
+
 void FadeBackEffect::head(Retreat &retreat, qreal target)
 {
+    // The Start's windows change their tempo only as they set off, never on the way.
+    if (&retreat == &m_start) {
+        m_rules->setProperty("startTempo", m_startTempo);
+    }
     retreat.from = retreat.progress;
     retreat.to = target;
     retreat.setOffAt.reset();

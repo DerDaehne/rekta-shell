@@ -80,9 +80,17 @@ TestCase {
     }
 
     // KWin's effects share one engine; Prefs there would override the turnstile's Tokens.
-    function test_the_windows_keep_the_fast_tempo_whatever_pace_the_shell_has_set() {
+    function test_fadeback_does_not_follow_the_pace_of_prefs_on_its_own() {
         Prefs.startPace = "rekta";
         compare(FadeBack.duration, Geometry.startTempo * Tokens.durationModerate);
         Prefs.startPace = "fast";
+    }
+
+    function test_at_the_tempo_set_on_it_the_windows_step_back_in_a_whole_duration_moderate() {
+        FadeBack.startTempo = 1;
+        compare(FadeBack.duration, Tokens.durationModerate);
+        verify(FadeBack.progress(0, 1, Tokens.durationModerate / 2) < 1);
+        compare(FadeBack.progress(0, 1, Tokens.durationModerate), 1);
+        FadeBack.startTempo = Geometry.startTempo;
     }
 }
