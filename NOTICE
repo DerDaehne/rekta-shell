@@ -11,7 +11,8 @@ rekta-shell — provenance notice
 2. Typeface
    rekta-shell uses Atkinson Hyperlegible Next by the Braille Institute of
    America, licensed under the SIL Open Font License 1.1. The font is not
-   included in this repository; the Nix package takes it from nixpkgs.
+   included in this repository; the Nix package takes it from nixpkgs, and the
+   Fedora RPM from Fedora's package atkinson-hyperlegible-next-fonts.
 
    Atkinson Hyperlegible Next: https://www.brailleinstitute.org/freefont/
    Licence: SIL Open Font License 1.1 (https://openfontlicense.org)
