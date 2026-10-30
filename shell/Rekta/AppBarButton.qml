@@ -27,6 +27,17 @@ Item {
     property bool overflowed: false
     // False while there is nothing for the control to do: it is gone from the bar, not counted in its layout.
     property bool present: true
+    // Set by the bar once it has laid itself out; before that the control stands and goes at once.
+    property bool animated: false
+    // It is there for the bar: present and not in "more".
+    readonly property bool wanted: present && !overflowed
+    // Kept out of sight by the bar until it has a place there.
+    property bool held: false
+    readonly property bool showing: wanted && !held
+    // While it fades out it stays where it was, and the bar closes the gap after it (motion.md, "Arriving, leaving").
+    property bool fading: false
+    // Asked as the control goes: whether it fades out, or is gone at once.
+    property var fadesOnLeaving: () => true
     readonly property bool disabled: disabledReason !== ""
     readonly property bool hovered: hover.hovered
     readonly property bool pressed: tap.pressed
@@ -40,14 +51,40 @@ Item {
             clicked();
     }
 
-    implicitWidth: box.width
+    implicitWidth: box.implicitWidth
     implicitHeight: box.height
-    visible: !overflowed && present
+    visible: showing || fading
+    opacity: showing ? 1 : 0
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: words
     Accessible.description: disabledReason
     Accessible.onPressAction: click()
+
+    onWantedChanged: {
+        fading = !wanted && !held && animated && Tokens.durationShort > 0 && fadesOnLeaving();
+        if (fading)
+            gone.restart();
+    }
+
+    Behavior on opacity {
+        enabled: control.animated
+
+        NumberAnimation {
+            // The Behavior sets its target before this takes its curve.
+            readonly property bool arriving: control.showing
+            duration: arriving ? Tokens.durationShort : Geometry.leaveShare * Tokens.durationShort
+            easing.type: Easing.Bezier
+            easing.bezierCurve: arriving ? Tokens.easeIn : Tokens.easeOut
+        }
+    }
+
+    Timer {
+        id: gone
+
+        interval: Geometry.leaveShare * Tokens.durationShort
+        onTriggered: control.fading = false
+    }
 
     // The first count is no news.
     Component.onCompleted: {
@@ -94,7 +131,9 @@ Item {
 
         objectName: "box"
         // Whole pixels, so the bar sets its controls on whole pixels.
-        width: Math.ceil(Math.max(Geometry.appBarControl, content + 2 * Geometry.appBarControlPadding))
+        implicitWidth: Math.ceil(Math.max(Geometry.appBarControl, content + 2 * Geometry.appBarControlPadding))
+        // As wide as the control: the bar glides it from the old width to the new while the content stands as it will be.
+        width: control.width
         height: Geometry.appBarControl
 
         Rectangle {

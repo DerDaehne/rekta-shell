@@ -69,6 +69,7 @@ AppBarMiddle 1.0 AppBarMiddle.qml
 AppBarStatus 1.0 AppBarStatus.qml
 PlaceTurn 1.0 PlaceTurn.qml
 Presence 1.0 Presence.qml
+Reflow 1.0 Reflow.qml
 AppBarClock 1.0 AppBarClock.qml
 AppBarDisplay 1.0 AppBarDisplay.qml
 ReadoutFace 1.0 ReadoutFace.qml

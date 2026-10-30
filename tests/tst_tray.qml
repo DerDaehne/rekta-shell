@@ -430,9 +430,9 @@ TestCase {
         verify(control.visible);
         const withControl = messages.x;
         scene.apps = [];
-        verify(!control.visible, "gone, not disabled");
+        tryVerify(() => !control.visible, 1000, "gone, not disabled");
         verify(!control.disabled);
-        verify(messages.x < withControl, "the controls after it close up");
+        tryVerify(() => messages.x < withControl, 1000, "the controls after it close up");
         scene.apps = [app("Steam", {})];
         verify(control.visible, "it comes back with the first app");
         compare(control.text, "im hintergrund 1");

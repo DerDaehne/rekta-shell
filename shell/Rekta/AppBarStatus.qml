@@ -9,8 +9,9 @@ import QtQuick
 // slot's. Like the live state they never move into "more" (AppBar).
 //
 // `words` are all the deviations in order, `limit` how many of them stand; the bar sets it from the room it has. The rest
-// are counted in one more word, "+N". A word comes and goes with a fade over duration-short and ease-base (motion.md,
-// "State changes"); once it has gone the bar lays itself out again.
+// are counted in one more word, "+N". A word arrives with a fade over duration-short and leaves over 0.6 of it (motion.md,
+// "Arriving, leaving"). The bar places the words with its other controls, so they glide with them; one that leaves keeps
+// its place until it has gone.
 Item {
     id: status
 
@@ -24,9 +25,10 @@ Item {
     property int most: 2
     property int limit: most
     readonly property var shown: shownAt(limit)
+    // The words that stand and those still fading out, in order.
+    property var slots: []
     // False while no word stands; the bar then keeps no room for it.
-    readonly property bool present: standing > 0
-    property int standing: 0
+    readonly property bool present: slots.length > 0
 
     // The word that was pressed.
     signal activated(var word)
@@ -56,17 +58,45 @@ Item {
     // The room the words take now: those that stand and those still fading out, which the bar lays out around until
     // they have gone.
     function occupied(): real {
-        const slots = Array.from(row.children).map(child => child as WordControl).filter(slot => slot?.present === true);
         return span(slots.map(slot => wordWidth(slot.shown?.word ?? "")));
     }
 
+    function controls(): var {
+        return Array.from(row.children).filter(child => (child as WordControl) !== null);
+    }
+
+    // Counted after a change has settled: a word that begins to fade is for a moment neither wanted nor fading. A tag is
+    // a Row, which takes its new width only when it is next laid out; the bar needs it now.
     function count() {
-        standing = Array.from(row.children).filter(child => (child as WordControl)?.present === true).length;
+        const all = controls();
+        all.forEach(control => (control.face as StatusTag).forceLayout());
+        slots = all.filter(slot => slot.wanted || slot.fading);
+    }
+
+    // Whether the words that stand are those a limit of `wordLimit` lets stand.
+    function counted(wordLimit: int): bool {
+        const standing = slots.filter(slot => slot.wanted).map(slot => slot.modelData);
+        const due = shownAt(wordLimit).map(word => word.key).filter(key => keys.includes(key));
+        const settled = slots.every(slot => slot.wanted || slot.fading);
+        return settled && standing.length === due.length && due.every(key => standing.includes(key));
+    }
+
+    // Where the words stand, side by side, when the row starts at `start` in the bar; y is in the row.
+    function places(start: real): var {
+        const places = [];
+        let x = start;
+        for (const slot of slots) {
+            places.push({ item: slot, x, width: slot.implicitWidth, y: 0 });
+            x += slot.implicitWidth + Tokens.spaceXs;
+        }
+        return places;
     }
 
     implicitWidth: occupied()
     implicitHeight: Geometry.appBarControl
     visible: present
+
+    Component.onCompleted: count()
 
     FontMetrics {
         id: metrics
@@ -77,10 +107,8 @@ Item {
         font.features: ({ "tnum": 1 })
     }
 
-    Row {
+    Item {
         id: row
-
-        spacing: Tokens.spaceXs
 
         Repeater {
             model: status.keys
@@ -94,15 +122,14 @@ Item {
 
         required property string modelData
         readonly property var current: status.shown.find(word => word.key === modelData)
-        readonly property bool wanted: current !== undefined
         // The word last shown, which stays while it fades.
         property var shown: null
-        property bool fading: false
 
         objectName: `status-${modelData}`
         text: shown?.name ?? ""
-        present: wanted || fading
-        opacity: wanted ? 1 : 0
+        present: current !== undefined
+        // A word dropped for lack of room goes at once: fading, it would stand over the middle.
+        fadesOnLeaving: () => !status.words.some(word => word.key === modelData)
         face: StatusTag {
             x: Geometry.appBarControlPadding
             y: (Geometry.appBarControl - implicitHeight) / 2
@@ -115,33 +142,14 @@ Item {
             if (current)
                 shown = current;
         }
-        onWantedChanged: {
-            if (wanted)
-                return;
-            fading = true;
-            fade.restart();
-        }
-        onPresentChanged: status.count()
+        onWantedChanged: Qt.callLater(status.count)
+        onFadingChanged: Qt.callLater(status.count)
+        onImplicitWidthChanged: Qt.callLater(status.count)
         onClicked: status.activated(shown)
         Component.onCompleted: {
             if (current)
                 shown = current;
-            status.count();
-        }
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Tokens.durationShort
-                easing.type: Easing.Bezier
-                easing.bezierCurve: Tokens.easeBase
-            }
-        }
-
-        Timer {
-            id: fade
-
-            interval: Tokens.durationShort
-            onTriggered: control.fading = false
+            Qt.callLater(status.count);
         }
     }
 }

@@ -25,6 +25,7 @@ TestCase {
             property real barWidth: 1200
             property real viewportHeight: 600
             property bool withCentre: false
+            property bool backgroundShown: true
 
             width: 1200
             height: 600
@@ -43,7 +44,7 @@ TestCase {
                 AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects: build the shell and its tests"] }
                 Rectangle { id: centreSlot; objectName: "centre"; visible: scene.withCentre; implicitWidth: 80; width: implicitWidth; height: 48; color: "transparent" }
                 AppBarButton { objectName: "pause"; icon: "pause"; text: "pause"; priority: 2 }
-                AppBarButton { objectName: "in the background"; icon: "window"; text: "in the background"; priority: 0 }
+                AppBarButton { objectName: "in the background"; icon: "window"; text: "in the background"; priority: 0; present: scene.backgroundShown }
                 AppBarButton { objectName: "messages"; icon: "bell"; text: "messages"; priority: 1; disabledReason: "comes with the panel" }
                 AppBarButton { objectName: "theme"; icon: "theme"; text: "theme and colours"; priority: 1 }
                 AppBarButton { objectName: "controls"; icon: "tune"; text: "controls"; priority: 0 }
@@ -71,6 +72,7 @@ TestCase {
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var scene
     property AppBar bar
+    readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
@@ -100,6 +102,56 @@ TestCase {
 
     function endOf(item: Item): real {
         return item.x + item.width;
+    }
+
+    // Until the bar has laid itself out after a change: nothing fades or glides any more.
+    function settle() {
+        tryVerify(() => !bar.settling && !bar.gliding);
+    }
+
+    // Every item the bar lays out, in its order.
+    function laidOut(): var {
+        return ["back", "middle", "centre", "pause", "in the background", "messages", "theme", "controls"].map(named).concat([bar.more]);
+    }
+
+    function places(items: var): var {
+        return items.map(item => ({ x: item.x, width: item.width }));
+    }
+
+    // Holds the glide of the bar that has begun.
+    function holdGlide() {
+        tryVerify(() => bar.gliding, 1000, "it glides");
+        bar.reflow.run.pause();
+    }
+
+    // Where an item shows halfway through the glide: half the time along ease-base.
+    function halfway(from: real, to: real): real {
+        return from + (to - from) * easeBase.valueForProgress(0.5);
+    }
+
+    // Makes `change` and checks that no two shown items overlap while what goes fades out, and at every tenth of the glide
+    // that follows. What comes stands where it rests from the start, so the others may still be leaving its place; once
+    // they have, nothing overlaps at all.
+    function checkClearAllAlong(what: string, change: var) {
+        const before = laidOut().filter(item => item.visible);
+        change();
+        const coming = () => laidOut().filter(item => item.visible && !before.includes(item));
+        checkClear(`${what}, as it changes`, coming());
+        holdGlide();
+        const arriving = coming();
+        const resting = arriving.map(item => item.x);
+        for (let step = 0; step <= 10; step++) {
+            bar.reflow.progress = step / 10;
+            checkClear(`${what} at ${step / 10}`, step === 10 ? [] : arriving);
+            arriving.forEach((item, i) => compare(item.x, resting[i], `${what} at ${step / 10}: ${item.objectName} stands where it rests`));
+        }
+        bar.reflow.run.complete();
+    }
+
+    function checkClear(what: string, except = []) {
+        const shown = laidOut().filter(item => item.visible && !except.includes(item)).sort((a, b) => a.x - b.x);
+        for (let i = 1; i < shown.length; i++)
+            verify(endOf(shown[i - 1]) <= shown[i].x, `${what}: ${shown[i - 1].objectName} runs into ${shown[i].objectName}`);
     }
 
     // The widths of the controls left in the bar, "more" and the gaps between them.
@@ -445,6 +497,7 @@ TestCase {
         verify(!bar.more.visible, "unpinned, the middle gives way");
         middle.pinned = true;
         verify(middle.implicitWidth > 410);
+        settle();
         compare(middle.width, 410);
         verify(bar.more.visible, "the controls make room");
         verify(middle.visible, "a pinned middle stays while more shows");
@@ -453,8 +506,10 @@ TestCase {
         const lastMoved = controls().filter(control => control.overflowed).reduce((most, control) => control.priority > most.priority ? control : most);
         verify(rowWidth(staying.concat(lastMoved, middle, bar.more)) > bar.width - 2 * bar.padding, "only as many move as half the bar needs");
         middle.parts = ["g", "then a place"];
+        settle();
         compare(middle.width, middle.implicitWidth, "shorter words keep their own width");
         middle.pinned = false;
+        settle();
         verify(controls().every(control => control.visible), "the controls come back");
     }
 
@@ -493,6 +548,7 @@ TestCase {
         const middle = named("middle");
         middle.pinned = true;
         middle.parts = ["konsole", "a title much longer than the room the leading side of the bar has to give it, longer still than that"];
+        settle();
         verify(middle.width < middle.implicitWidth, "the leading side is full");
         compare(endOf(middle), named("centre").x - bar.gap);
         verify(named("back").overflowed, "the leading control makes room for it");
@@ -512,6 +568,7 @@ TestCase {
         const first = named("in the background");
         const last = named("controls");
         first.text = last.text;
+        settle();
         compare(first.width, last.width);
         const others = controls().filter(control => control !== first && control !== last);
         scene.barWidth = rowWidth(others.concat(first, bar.more)) + bar.gap + 2 * bar.padding;
@@ -524,8 +581,10 @@ TestCase {
         const pause = named("pause");
         verify(!bar.more.visible);
         pause.text = "pause every build of every branch, every pull request and every nightly run of the shell and its tests";
+        settle();
         verify(bar.more.visible);
         pause.text = "pause";
+        settle();
         verify(!bar.more.visible);
     }
 
@@ -585,6 +644,136 @@ TestCase {
         verify(controls().every(control => control.visible));
         verify(middle.width < middle.implicitWidth);
         compare(findChild(middle, "part 0").width, findChild(middle, "part 0").implicitWidth, "the first part keeps its words");
+    }
+
+    function test_when_a_control_widens_the_others_glide_to_their_new_places_over_duration_moderate_and_ease_base() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        const messages = named("messages");
+        messages.count = 9;
+        settle();
+        const items = laidOut();
+        const from = places(items);
+        messages.count = 10;
+        compare(bar.reflow.run.duration, Tokens.durationModerate);
+        compare(bar.reflow.run.easing.type, Easing.Bezier);
+        compare(bar.reflow.run.easing.bezierCurve, Tokens.easeBase);
+        holdGlide();
+        bar.reflow.progress = easeBase.valueForProgress(0.5);
+        const half = places(items);
+        compare(findChild(messages, "box").width, messages.width, "its box widens with it, its words stand as they are");
+        bar.reflow.run.complete();
+        const to = places(items);
+        verify(to[3].x < from[3].x, "the controls before it make room");
+        compare(to[6].x, from[6].x, "the ones after it stay");
+        for (let i = 0; i < items.length; i++) {
+            verify(Math.abs(half[i].x - halfway(from[i].x, to[i].x)) <= 1, `${items[i].objectName} halfway: ${half[i].x}`);
+            verify(Math.abs(half[i].width - halfway(from[i].width, to[i].width)) <= 1, `${items[i].objectName} halfway: ${half[i].width} wide`);
+        }
+        verify(half[5].width > from[5].width && half[5].width < to[5].width, "it widens along");
+    }
+
+    function test_while_a_control_widens_nothing_overlaps() {
+        for (const withCentre of [false, true]) {
+            Prefs.motion = "on";
+            makeScene({ viewportHeight: 400, withCentre, barWidth: withCentre ? 1400 : 1200 });
+            settle();
+            checkClearAllAlong(`centre ${withCentre}`, () => (named("messages").count = 10));
+        }
+    }
+
+    function test_a_control_that_goes_fades_out_where_it_stands_and_then_the_others_close_the_gap() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        const background = named("in the background");
+        const pause = named("pause");
+        const at = background.x;
+        const from = pause.x;
+        const started = Date.now();
+        scene.backgroundShown = false;
+        verify(background.visible, "it stays while it fades");
+        verify(bar.settling);
+        verify(!bar.gliding, "the others wait");
+        holdGlide();
+        verify(Date.now() - started >= Geometry.leaveShare * Tokens.durationShort - 2, "after 0.6 × duration-short");
+        verify(!background.visible, "it has gone before the others move");
+        compare(background.x, at, "it faded where it stood");
+        bar.reflow.progress = 0;
+        compare(pause.x, from, "they start where they stood");
+        bar.reflow.run.complete();
+        verify(pause.x > from, "and close the gap");
+        compare(endOf(pause), named("messages").x - bar.gap);
+    }
+
+    function test_while_a_control_goes_nothing_overlaps() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        checkClearAllAlong("going", () => (scene.backgroundShown = false));
+    }
+
+    function test_a_control_that_comes_fades_in_where_it_rests_while_the_others_glide_aside() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400, backgroundShown: false });
+        const background = named("in the background");
+        const pause = named("pause");
+        verify(!background.visible);
+        const from = pause.x;
+        scene.backgroundShown = true;
+        verify(background.visible);
+        verify(background.opacity < 1, "it fades in, also the first time it comes");
+        holdGlide();
+        bar.reflow.progress = 0;
+        const at = background.x;
+        compare(pause.x, from, "the others start where they stood");
+        bar.reflow.run.complete();
+        compare(background.x, at, "it stood where it rests from the start");
+        verify(pause.x < from, "the others made room");
+        compare(endOf(pause), background.x - bar.gap);
+        tryCompare(background, "opacity", 1);
+    }
+
+    function test_while_a_control_comes_nothing_overlaps_but_the_place_it_fades_in_at() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400, backgroundShown: false });
+        checkClearAllAlong("coming", () => (scene.backgroundShown = true));
+    }
+
+    function test_controls_moving_into_more_fade_out_first_then_more_comes_and_the_rest_glide() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        const pause = named("pause");
+        pause.text = "pause every build of every branch, every pull request and every nightly run of the shell and its tests";
+        const moving = controls().filter(control => control.overflowed);
+        verify(moving.length > 0);
+        verify(moving.every(control => control.visible), "they fade out where they stand");
+        verify(!bar.more.visible, "more waits for them");
+        holdGlide();
+        verify(moving.every(control => !control.visible));
+        verify(bar.more.visible);
+        verify(bar.more.opacity < 1, "more fades in");
+        bar.reflow.run.complete();
+        checkClear("full");
+    }
+
+    function test_under_reduced_motion_the_bar_lays_itself_out_at_once() {
+        Prefs.motion = "off";
+        makeScene({ viewportHeight: 400 });
+        const messages = named("messages");
+        messages.count = 10;
+        verify(!bar.gliding);
+        compare(endOf(messages), named("theme").x - bar.gap, "it widened at once");
+        scene.backgroundShown = false;
+        verify(!named("in the background").visible, "gone at once");
+        verify(!bar.settling && !bar.gliding);
+        compare(endOf(named("pause")), messages.x - bar.gap, "the gap closed at once");
+        scene.backgroundShown = true;
+        compare(named("in the background").opacity, 1, "back at once");
+        verify(!bar.gliding);
+        named("pause").text = "pause every build of every branch, every pull request and every nightly run of the shell and its tests";
+        verify(bar.more.visible, "more at once");
+        compare(bar.more.opacity, 1);
+        verify(controls().filter(control => control.overflowed).every(control => !control.visible));
+        checkClear("reduced");
     }
 
     function test_contact_sheet() {

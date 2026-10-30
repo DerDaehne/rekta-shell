@@ -88,6 +88,8 @@ TestCase {
     }
 
     property var scene
+    readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
@@ -109,6 +111,49 @@ TestCase {
 
     function standing(): var {
         return testCase.keys.filter(key => word(key).visible && word(key).opacity > 0);
+    }
+
+    // Where an item shows along the bar.
+    function drawnX(item: Item): real {
+        return item.mapToItem(scene.bar, 0, 0).x;
+    }
+
+    // Until the bar has laid itself out after a change: a word that goes has faded and nothing glides any more.
+    function settle() {
+        wait(Geometry.leaveShare * Tokens.durationShort + 50);
+        tryVerify(() => !scene.bar.settling && !scene.bar.gliding);
+    }
+
+    // Holds the glide of the bar that has begun.
+    function holdGlide() {
+        tryVerify(() => scene.bar.gliding, 1000, "it glides");
+        scene.bar.reflow.run.pause();
+    }
+
+    // Makes `change` and checks that nothing that shows overlaps the clock or another item while what goes fades out, and at
+    // every tenth of the glide that follows. What comes stands where it rests from the start, so the others may still be
+    // leaving its place; once they have, nothing overlaps at all.
+    function checkClearAllAlong(what: string, change: var) {
+        const all = ["middle", "clock", "background", "messages", "controls"].map(name => findChild(scene, name)).concat(testCase.keys.map(word), [scene.bar.more]);
+        const before = all.filter(item => item.visible);
+        change();
+        checkClear(`${what}, as it changes`, all);
+        holdGlide();
+        const coming = all.filter(item => item.visible && !before.includes(item));
+        const resting = coming.map(drawnX);
+        for (let step = 0; step <= 10; step++) {
+            scene.bar.reflow.progress = step / 10;
+            checkClear(`${what} at ${step / 10}`, all.filter(item => step === 10 || !coming.includes(item)));
+            coming.forEach((item, i) => compare(drawnX(item), resting[i], `${what} at ${step / 10}: ${item.objectName} stands where it rests`));
+        }
+        scene.bar.reflow.run.complete();
+    }
+
+    function checkClear(what: string, items: var) {
+        const shown = items.filter(item => item.visible).map(item => ({ name: item.objectName, left: drawnX(item), right: drawnX(item) + item.width })).sort((a, b) => a.left - b.left);
+        verify(shown.length > 1, `${what}: ${shown.map(item => item.name)}`);
+        for (let i = 1; i < shown.length; i++)
+            verify(shown[i - 1].right <= shown[i].left + 0.5, `${what}: ${shown[i - 1].name} runs into ${shown[i].name}`);
     }
 
     function test_without_a_deviation_no_word_and_no_room_stands() {
@@ -174,7 +219,7 @@ TestCase {
         makeScene({});
         const before = findChild(scene, "controls").x;
         scene.shown = [muted];
-        compare(word("muted").visible, true);
+        tryCompare(word("muted"), "visible", true);
         verify(word("muted").opacity < 1, "it comes with a fade");
         tryCompare(word("muted"), "opacity", 1);
         tryVerify(() => findChild(scene, "controls").x === before);
@@ -209,11 +254,95 @@ TestCase {
         tryVerify(() => scene.status.width === scene.status.widthAt(2));
     }
 
+    function test_a_word_that_comes_fades_in_where_it_rests_while_the_others_glide_aside() {
+        Prefs.motion = "on";
+        makeScene({ shown: [muted] });
+        settle();
+        const messages = findChild(scene, "messages");
+        const from = messages.x;
+        scene.shown = [microphone, muted];
+        tryVerify(() => word("microphone").visible && word("microphone").opacity < 1, 1000, "it fades in");
+        holdGlide();
+        scene.bar.reflow.progress = 0;
+        const at = drawnX(word("microphone"));
+        compare(messages.x, from, "the others start where they stood");
+        scene.bar.reflow.progress = easeBase.valueForProgress(0.5);
+        const half = messages.x;
+        scene.bar.reflow.run.complete();
+        compare(drawnX(word("microphone")), at, "it stood where it rests from the start");
+        verify(messages.x < from, "the others made room");
+        verify(Math.abs(half - (from + (messages.x - from) * easeBase.valueForProgress(0.5))) <= 1, `halfway at ${half}`);
+    }
+
+    function test_a_word_that_goes_fades_out_where_it_stands_and_then_the_others_close_the_gap() {
+        Prefs.motion = "on";
+        makeScene({ shown: [microphone, muted] });
+        settle();
+        const microphoneWord = word("microphone");
+        const messages = findChild(scene, "messages");
+        const at = drawnX(microphoneWord);
+        const from = messages.x;
+        const started = Date.now();
+        scene.shown = [muted];
+        verify(microphoneWord.visible, "it stays while it fades");
+        holdGlide();
+        verify(Date.now() - started >= Geometry.leaveShare * Tokens.durationShort - 2, "after 0.6 × duration-short");
+        verify(!microphoneWord.visible, "it has gone before the others move");
+        scene.bar.reflow.progress = 0;
+        compare(drawnX(microphoneWord), at, "it faded where it stood");
+        compare(messages.x, from, "they start where they stood");
+        scene.bar.reflow.run.complete();
+        verify(messages.x > from, "and close the gap");
+    }
+
+    function test_a_word_that_comes_while_another_goes_waits_until_that_one_has_gone() {
+        Prefs.motion = "on";
+        makeScene({ shown: [microphone, muted] });
+        settle();
+        scene.shown = [muted, quiet];
+        verify(word("microphone").visible, "the one that goes fades out");
+        wait(Geometry.leaveShare * Tokens.durationShort / 3);
+        verify(!word("doNotDisturb").visible, "the one that comes waits out of sight");
+        holdGlide();
+        verify(!word("microphone").visible);
+        verify(word("doNotDisturb").visible, "and comes as the others glide");
+        scene.bar.reflow.run.complete();
+    }
+
+    function test_while_words_come_and_go_nothing_runs_into_the_clock_or_another_control() {
+        Prefs.motion = "on";
+        for (const barWidth of [1600, 1200]) {
+            makeScene({ shown: [muted], barWidth });
+            settle();
+            checkClearAllAlong(`${barWidth}, coming`, () => (scene.shown = [microphone, muted]));
+            settle();
+            checkClearAllAlong(`${barWidth}, going`, () => (scene.shown = [muted]));
+            settle();
+            checkClearAllAlong(`${barWidth}, coming with +N`, () => (scene.shown = everything));
+            settle();
+            checkClearAllAlong(`${barWidth}, coming and going at once`, () => (scene.shown = [battery, muted]));
+        }
+    }
+
+    function test_under_reduced_motion_the_others_make_room_at_once() {
+        Prefs.motion = "off";
+        makeScene({ shown: [muted] });
+        const messages = findChild(scene, "messages");
+        tryVerify(() => scene.status.slots.length === 1);
+        const from = messages.x;
+        scene.shown = [microphone, muted];
+        tryVerify(() => messages.x < from);
+        verify(!scene.bar.gliding);
+        compare(word("microphone").opacity, 1);
+        compare(messages.x + messages.width + scene.bar.gap, scene.status.x);
+    }
+
     function test_under_reduced_motion_a_word_stands_and_goes_at_once() {
         Prefs.motion = "off";
         makeScene({});
         scene.shown = [muted];
-        compare(word("muted").opacity, 1);
+        tryVerify(() => word("muted").visible);
+        compare(word("muted").opacity, 1, "it stands without a fade");
         scene.shown = [];
         tryCompare(word("muted"), "visible", false);
     }
@@ -296,6 +425,74 @@ TestCase {
             waitForRendering(sheet);
             wait(Tokens.durationShort + 100);
             grabImage(sheet).save(`appbarstatus-sheet-${theme}.png`);
+        }
+    }
+
+    // The bar before, a quarter and half the way through and after "mikrofon an" comes while "meldungen" counts from 9 to
+    // 10: the word fades in where it rests, the count peeks, the others glide aside.
+    function test_reflow_contact_sheet() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            Prefs.motion = "on";
+            const sheet = createTemporaryObject(reflowSheetComponent, testCase);
+            const bars = ["before", "quarter", "half", "after"].map(name => findChild(sheet, name));
+            wait(Tokens.durationShort + 100);
+            for (const bar of bars.slice(1)) {
+                bar.deviations = [microphone, muted];
+                bar.messages.count = 10;
+            }
+            bars.slice(1, 3).forEach((bar, i) => holdAt(bar, (i + 1) / 4));
+            tryVerify(() => !bars[3].gliding && !bars[3].settling);
+            wait(Tokens.durationModerate);
+            waitForRendering(sheet);
+            grabImage(sheet).save(`appbar-reflow-sheet-${theme}.png`);
+        }
+    }
+
+    // Holds a bar that has begun to glide at `share` of the glide's time, its new word and count as they are then.
+    function holdAt(bar: var, share: real) {
+        tryVerify(() => bar.gliding);
+        bar.reflow.run.pause();
+        bar.reflow.progress = easeBase.valueForProgress(share);
+        const coming = findChild(bar, "status-microphone");
+        coming.animated = false;
+        coming.opacity = easeIn.valueForProgress(Math.min(1, share * Tokens.durationModerate / Tokens.durationShort));
+        findChild(bar.messages, "peekRun").pause();
+        findChild(bar.messages, "peek").phase = share;
+    }
+
+    Component {
+        id: reflowSheetComponent
+
+        Rectangle {
+            width: 1200
+            height: 300
+            color: Tokens.color.bg
+
+            component ReflowBar: AppBar {
+                id: reflowBar
+                property alias messages: bell
+                property var deviations: [testCase.muted]
+
+                width: 1200
+                area: Qt.size(width, 300)
+                centre: slot
+                centreReserve: Tokens.tileUnit
+
+                AppBarMiddle { parts: ["konsole", "~/projects: build the shell"] }
+                AppBarClock { id: slot; locale: Qt.locale("de_DE"); now: testCase.widestClock }
+                AppBarButton { icon: "window"; text: "im hintergrund"; priority: 0 }
+                AppBarButton { id: bell; icon: "bell"; text: "meldungen"; count: 9; priority: 2 }
+                AppBarStatus { keys: testCase.keys; words: reflowBar.deviations; more: model.more }
+                AppBarButton { icon: "tune"; text: "steuerung"; priority: 1 }
+
+                StatusWords { id: model }
+            }
+
+            ReflowBar { objectName: "before"; y: 8 }
+            ReflowBar { objectName: "quarter"; y: 80 }
+            ReflowBar { objectName: "half"; y: 152 }
+            ReflowBar { objectName: "after"; y: 224 }
         }
     }
 

@@ -8,6 +8,9 @@ import QtQuick
 // "more", the least important first, and its menu repeats their words. Pinned, the middle keeps its words up to half
 // the bar and the controls make room. The glass is the bar's; the blur behind it is the host's.
 //
+// When a control widens, comes or goes, the others glide to their new places (motion.md, "Resize and re-flow"); one that
+// goes, into "more" or for good, fades out first, and one that comes fades in (motion.md, "Arriving, leaving").
+//
 // Away (under a full-screen window) it slides down out of sight, and comes back the same way: it leaves with ease-out
 // and arrives with ease-in, as everything that leaves and arrives does (motion.md).
 //
@@ -40,6 +43,15 @@ Rectangle {
     readonly property AppBarStatus statusItem: statusWords()
     readonly property alias more: moreButton
     readonly property alias menu: moreMenu
+    // While a control fades out of the bar: the rest wait with their gliding until it has gone.
+    readonly property bool settling: buttons().some(control => control.fading)
+    // While the controls glide to their new places.
+    readonly property bool gliding: motion.running
+    readonly property alias reflow: motion
+    // True once the bar has laid itself out; before that nothing glides or fades.
+    property bool ready: false
+    // The room the bar last laid itself out in (roomKey()).
+    property string laidOutIn: ""
     // Where the menu rises, in the bar's coordinates: above "more" at the trailing edge (rekta.css:649–653).
     readonly property var menuPlace: floatPlace(moreButton, Qt.size(moreMenu.width, moreMenu.height))
 
@@ -123,8 +135,6 @@ Rectangle {
         }
         // ponytail: with the readout in the centre (centreReserve) below about 520 px not even "+N" fits beside "more" and
         // it overlaps the clock; hide the words then, or let the bar scroll them, once a bar that narrow matters.
-        // ponytail: a word dropped for lack of room still fades for duration-short and counts in the row meanwhile, so on a
-        // bar under about 900 px it runs up to 82 px into the middle for at most 250 ms; let it leave at once then.
         let limit = most;
         while (limit > 0 && !fitAll(moved, true, limit))
             limit--;
@@ -137,8 +147,9 @@ Rectangle {
     }
 
     // Before the middle the items pack from the start, after it to the end, also while it has given way; the middle
-    // takes what is left. A side without one packs to its start, the trailing side to its end.
-    function place(region: var) {
+    // takes what is left. A side without one packs to its start, the trailing side to its end. Adds where each goes to
+    // `targets`.
+    function place(region: var, targets: var) {
         const at = region.items.findIndex(item => (item as AppBarMiddle) !== null);
         const split = at >= 0 ? at : region.packEnd ? 0 : region.items.length;
         const visible = items => items.filter(item => item !== region.items[at] && shows(item, plan.moved, plan.more));
@@ -147,47 +158,80 @@ Rectangle {
             after.push(moreButton);
         let start = region.start;
         for (const item of visible(region.items.slice(0, split))) {
-            put(item, start);
-            start += item.width + gap;
+            put(targets, item, start, item.implicitWidth);
+            start += item.implicitWidth + gap;
         }
         let end = region.end;
         for (const item of after.reverse()) {
-            end -= item.width;
-            put(item, end);
+            end -= item.implicitWidth;
+            put(targets, item, end, item.implicitWidth);
             end -= gap;
         }
         if (at >= 0 && shows(region.items[at], plan.moved, plan.more))
-            fill(region.items[at] as AppBarMiddle, start, end);
+            fill(targets, region.items[at] as AppBarMiddle, start, end);
     }
 
-    function fill(middle: AppBarMiddle, start: real, end: real) {
+    function fill(targets: var, middle: AppBarMiddle, start: real, end: real) {
         const room = Math.max(0, end - start);
-        middle.width = middle.pinned ? Math.min(middle.implicitWidth, Geometry.appBarPinnedShare * width, room) : room;
-        put(middle, start);
+        put(targets, middle, start, middle.pinned ? Math.min(middle.implicitWidth, Geometry.appBarPinnedShare * width, room) : room);
     }
 
-    // Centred across the bar, as `align-items: center` does.
-    function put(item: Item, x: real) {
-        item.x = Math.round(x);
-        item.y = Math.round((height - item.height) / 2);
+    // Centred across the bar, as `align-items: center` does; the status words follow their row.
+    function put(targets: var, item: Item, x: real, itemWidth: real) {
+        targets.push({ item, x, width: itemWidth, y: Math.round((height - item.height) / 2) });
+        const status = item as AppBarStatus;
+        if (status)
+            targets.push(...status.places(x));
     }
 
+    // What the sides have to lay out in; the controls glide only while it stays as it is.
+    function roomKey(): string {
+        return JSON.stringify([height, plan.sides.map(region => [region.start, region.end])]);
+    }
+
+    // Every control but the centre, the status words among them, also those that are not present yet, so that one that
+    // comes later fades in too.
+    function buttons(): var {
+        return Array.from(strip.children).concat([moreButton], statusWords()?.controls() ?? []).filter(item => item !== centre && (item as AppBarButton) !== null);
+    }
+
+    // What changes at once: what goes, into "more" or for good, starts fading out; the middle and the words follow the
+    // plan. Once nothing fades any more, the rest glide to their places while what comes fades in where it rests (rekta.js
+    // presence(), :3430–3446); until then it waits out of sight. A change of the room the sides have, such as the
+    // window's width, lays out at once.
     function apply() {
+        const room = roomKey();
+        const still = ready && room === laidOutIn;
         for (const item of plan.sides.reduce((items, region) => items.concat(region.items), [])) {
-            const control = item as AppBarButton;
-            if (control)
-                control.overflowed = plan.moved.includes(control);
             const middle = item as AppBarMiddle;
             if (middle)
                 middle.visible = shows(middle, plan.moved, plan.more);
         }
+        for (const control of buttons()) {
+            control.animated = still;
+            control.overflowed = control === moreButton ? !plan.more : plan.moved.includes(control);
+        }
         const words = statusWords();
         if (words)
             words.limit = plan.statusLimit;
-        moreButton.overflowed = !plan.more;
-        if (centre)
-            put(centre, (width - centre.implicitWidth) / 2);
-        plan.sides.forEach(region => place(region));
+        // The words are counted a moment after they change, and the bar lays out with them once they are.
+        if (words && !words.counted(plan.statusLimit))
+            return;
+        if (!settling) {
+            layOut(still);
+            laidOutIn = room;
+        }
+        buttons().forEach(control => (control.held = !motion.known.includes(control)));
+    }
+
+    function layOut(glide: bool) {
+        if (centre) {
+            centre.x = Math.round((width - centre.implicitWidth) / 2);
+            centre.y = Math.round((height - centre.height) / 2);
+        }
+        const targets = [];
+        plan.sides.forEach(region => place(region, targets));
+        motion.show(targets, glide);
     }
 
     implicitHeight: Tokens.appbarHeight
@@ -215,16 +259,31 @@ Rectangle {
 
     onPlanChanged: apply()
 
-    // The room the status words take changes without the plan, as a fading word goes.
+    // The status words change without the plan, as a fading word goes; the bar lays them out with the rest.
     Connections {
         target: bar.statusItem
 
-        function onImplicitWidthChanged() {
-            bar.apply();
+        function onSlotsChanged() {
+            Qt.callLater(bar.apply);
         }
     }
     onHeightChanged: apply()
-    Component.onCompleted: apply()
+    onSettlingChanged: {
+        if (!settling)
+            apply();
+    }
+    Component.onCompleted: {
+        apply();
+        ready = true;
+        laidOutIn = roomKey();
+        buttons().forEach(control => (control.animated = true));
+    }
+
+    Reflow {
+        id: motion
+
+        frame: bar
+    }
 
     Hairline {
         objectName: "hairline"
