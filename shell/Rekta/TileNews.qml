@@ -71,7 +71,8 @@ Item {
         ghost.width = stat.width;
         peek.at = stat.mapToItem(news, 0, 0);
         change();
-        if (stat.value === ghost.value && stat.label === ghost.label)
+        // A stat that is gone after the change has no new number to bring in.
+        if (!stat.visible || (stat.value === ghost.value && stat.label === ghost.label))
             return;
         peek.target = stat;
         peekRun.restart();

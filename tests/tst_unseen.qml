@@ -248,6 +248,18 @@ TestCase {
         verify(part(tile, "name").visible);
     }
 
+    function test_a_held_count_that_changed_and_then_went_to_zero_shows_the_name_without_a_peek_when_let_go() {
+        const tile = createTemporaryObject(tileComponent, testCase, { unseen: 2 });
+        tile.forceActiveFocus();
+        tile.unseen = 3;
+        tile.unseen = 0;
+        compare(part(tile, "number").text, "2", "it waits");
+        tile.parent.forceActiveFocus();
+        verify(part(tile, "name").visible);
+        verify(!part(tile, "ghost").visible, "no leaving number over the name");
+        verify(!tile.clip);
+    }
+
     function test_a_pointer_over_the_icon_of_an_app_tile_holds_the_count() {
         const tile = createTemporaryObject(tileComponent, testCase, { x: 300, y: 100, unseen: 2 });
         waitForRendering(tile);
