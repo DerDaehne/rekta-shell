@@ -32,6 +32,8 @@ PanelWindow {
     // The default audio devices, bound by their tracker so their volume and muted are valid.
     required property PwNode sink
     required property PwNode source
+    // The displays powerdevil can dim, shared with the key readout.
+    required property ScreenBrightness brightness
     required property NoticeBoard notices
     // NetworkManager runs; Networking is read only then (SystemState has the one watcher).
     required property bool networkManagerRunning
@@ -123,6 +125,8 @@ PanelWindow {
             onDensityChosen: density => surface.settings.set("density", density)
             output: surface.sink
             input: surface.source
+            displays: surface.brightness.displays
+            onBrightnessChosen: (name, value) => surface.brightness.setBrightness(name, value)
             outputs: surface.audioDevices.filter(node => node.isSink)
             inputs: surface.audioDevices.filter(node => !node.isSink)
             onRun: command => surface.launcher.run(command)

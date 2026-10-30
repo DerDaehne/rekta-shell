@@ -112,3 +112,142 @@ void Counterpart::record(const QDBusMessage &message)
     }
     Q_EMIT echoed();
 }
+
+namespace
+{
+
+const auto rootPath = u"/org/kde/ScreenBrightness"_s;
+const auto rootInterface = u"org.kde.ScreenBrightness"_s;
+const auto displayInterface = u"org.kde.ScreenBrightness.Display"_s;
+
+class ScreenBrightnessObject : public QDBusVirtualObject
+{
+public:
+    explicit ScreenBrightnessObject(FakeScreenBrightness *fake)
+        : QDBusVirtualObject(fake)
+        , m_fake(fake)
+    {
+    }
+
+    QString introspect(const QString &) const override
+    {
+        return {};
+    }
+
+    bool handleMessage(const QDBusMessage &message, const QDBusConnection &connection) override
+    {
+        connection.send(reply(message));
+        return true;
+    }
+
+private:
+    QDBusMessage reply(const QDBusMessage &message) const
+    {
+        const QString name = message.path().mid(rootPath.size() + 1);
+        if (message.member() == u"Get" && message.path() == rootPath)
+            return message.createReply(QVariant::fromValue(QDBusVariant(m_fake->names())));
+        if (message.member() == u"GetAll" && !m_fake->properties(name).isEmpty())
+            return message.createReply(QVariant::fromValue(m_fake->properties(name)));
+        if (message.member() == u"SetBrightness" && !m_fake->properties(name).isEmpty()) {
+            m_fake->recordSet(name, message.arguments().at(0).toInt(), message.arguments().at(1).toUInt());
+            return message.createReply();
+        }
+        return message.createErrorReply(QDBusError::UnknownObject, u"no such display or call: %1 %2"_s.arg(message.path(), message.member()));
+    }
+
+    FakeScreenBrightness *m_fake;
+};
+
+}
+
+FakeScreenBrightness::FakeScreenBrightness(QObject *parent)
+    : QObject(parent)
+    , m_connection(QDBusConnection::connectToBus(QDBusConnection::SessionBus, QUuid::createUuid().toString()))
+{
+    m_connection.registerVirtualObject(rootPath, new ScreenBrightnessObject(this), QDBusConnection::SubPath);
+    setRunning(true);
+}
+
+FakeScreenBrightness::~FakeScreenBrightness()
+{
+    QDBusConnection::disconnectFromBus(m_connection.name());
+}
+
+void FakeScreenBrightness::setRunning(bool running)
+{
+    if (running == m_running)
+        return;
+    m_running = running;
+    if (running)
+        m_connection.interface()->registerService(u"org.kde.ScreenBrightness"_s,
+                                                  QDBusConnectionInterface::ReplaceExistingService,
+                                                  QDBusConnectionInterface::AllowReplacement);
+    else
+        m_connection.interface()->unregisterService(u"org.kde.ScreenBrightness"_s);
+    Q_EMIT runningChanged();
+}
+
+QStringList FakeScreenBrightness::names() const
+{
+    QStringList names;
+    for (const Display &display : m_displays)
+        names.append(display.name);
+    return names;
+}
+
+QVariantMap FakeScreenBrightness::properties(const QString &name) const
+{
+    for (const Display &display : m_displays) {
+        if (display.name == name)
+            return {{u"Label"_s, display.label}, {u"IsInternal"_s, false}, {u"MaxBrightness"_s, display.max}, {u"Brightness"_s, display.brightness}};
+    }
+    return {};
+}
+
+void FakeScreenBrightness::recordSet(const QString &name, int brightness, uint flags)
+{
+    Q_EMIT setBrightnessCalled(name, brightness, flags);
+}
+
+void FakeScreenBrightness::announceSignal(const QString &member, const QVariantList &args)
+{
+    QDBusMessage message = QDBusMessage::createSignal(rootPath, rootInterface, member);
+    message.setArguments(args);
+    m_connection.send(message);
+}
+
+void FakeScreenBrightness::addDisplay(const QString &name, const QString &label, int brightness, int max, bool announce)
+{
+    m_displays.append({name, label, brightness, max});
+    if (announce)
+        announceSignal(u"DisplayAdded"_s, {name});
+}
+
+void FakeScreenBrightness::removeDisplay(const QString &name, bool announce)
+{
+    m_displays.removeIf([&name](const Display &display) {
+        return display.name == name;
+    });
+    if (announce)
+        announceSignal(u"DisplayRemoved"_s, {name});
+}
+
+void FakeScreenBrightness::changeBrightness(const QString &name, int brightness, const QString &context)
+{
+    for (Display &display : m_displays) {
+        if (display.name == name)
+            display.brightness = brightness;
+    }
+    announceSignal(u"BrightnessChanged"_s, {name, brightness, u":1.7"_s, context});
+}
+
+void FakeScreenBrightness::changeRange(const QString &name, int max, int brightness)
+{
+    for (Display &display : m_displays) {
+        if (display.name == name) {
+            display.max = max;
+            display.brightness = brightness;
+        }
+    }
+    announceSignal(u"BrightnessRangeChanged"_s, {name, max, brightness});
+}

@@ -9,7 +9,8 @@ import Readout
 
 // Feeds the key readout from the system: the default audio devices from PipeWire, the volume and microphone keys from
 // kglobalaccel's component "kmix", the brightness keys from powerdevil and the layout from KWin. The shell registers none
-// of these keys; kded6 and powerdevil act on them, and this only listens. The side panel shares the bound devices.
+// of these keys; kded6 and powerdevil act on them, and this only listens. The side panel shares the bound devices and
+// the displays.
 // ponytail: through plasma-workspace's DBus module, whose fixed names and paths suffice; move it to the shell's own DBus
 // module once there is one.
 Scope {
@@ -18,6 +19,7 @@ Scope {
     readonly property KeyReadout readout: model
     readonly property PwNode sink: Pipewire.defaultAudioSink
     readonly property PwNode source: Pipewire.defaultAudioSource
+    readonly property ScreenBrightness brightness: screenBrightness
 
     PwObjectTracker {
         objects: [sources.sink, sources.source]
@@ -30,7 +32,6 @@ Scope {
         muted: sources.sink?.audio?.muted ?? false
         micVolume: sources.source?.audio?.volume ?? 0
         micMuted: sources.source?.audio?.muted ?? false
-        brightnessMax: (range.item as DisplayRange)?.max ?? 0
         layoutName: keyboard.name
     }
 
@@ -48,33 +49,13 @@ Scope {
         }
     }
 
-    DBus.SignalWatcher {
-        service: "org.kde.ScreenBrightness"
-        path: "/org/kde/ScreenBrightness"
-        iface: "org.kde.ScreenBrightness"
+    ScreenBrightness {
+        id: screenBrightness
 
-        function dbusBrightnessChanged(display: string, brightness: int, source: string, context: string) {
+        onChanged: (display, brightness, source, context) => {
+            model.brightnessMax = screenBrightness.maxOf(display);
             model.brightnessReported(display, brightness, source, context);
         }
-    }
-
-    // The range of the display a brightness key last changed; its path is known only at run time.
-    Loader {
-        id: range
-
-        active: model.brightnessDisplay !== ""
-        sourceComponent: DisplayRange {
-            display: model.brightnessDisplay
-        }
-    }
-
-    component DisplayRange: DBus.Properties {
-        required property string display
-        readonly property real max: properties.MaxBrightness ?? 0
-
-        service: "org.kde.ScreenBrightness"
-        path: `/org/kde/ScreenBrightness/${display}`
-        iface: "org.kde.ScreenBrightness.Display"
     }
 
     KeyboardLayout {

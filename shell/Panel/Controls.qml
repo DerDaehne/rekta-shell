@@ -6,9 +6,9 @@ import Rekta
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
 // tiles (tiles.md: a tile never changes data). The groups stand in a fixed order, ton, verbindungen, anzeige, sitzung;
 // one without rows falls away. The host runs what the rows ask for and feeds back the state they show. In ton a select
-// chooses the default device of each kind; in verbindungen the paired Bluetooth devices and the strongest wireless
-// networks unfold below their rows, up to five, and a level lists them all. A secured network the system does not know
-// asks for its password in a sheet.
+// chooses the default device of each kind; in anzeige each display that can be dimmed has a slider; in verbindungen the
+// paired Bluetooth devices and the strongest wireless networks unfold below their rows, up to five, and a level lists
+// them all. A secured network the system does not know asks for its password in a sheet.
 Column {
     id: controls
 
@@ -58,6 +58,8 @@ Column {
     // The devices of each kind to choose from, nodes as above.
     property var outputs: []
     property var inputs: []
+    // The displays that can be dimmed, a ListModel of name, title, brightness and max (in powerdevil's units), or null.
+    property var displays: null
     // The default Bluetooth adapter as Quickshell has it, or null: its enabled and state.
     property var bluetooth: null
     // Its paired devices: name, connected, state, pairing, batteryAvailable and battery (0 to 1).
@@ -94,6 +96,8 @@ Column {
     signal powerProfileChosen(int profile)
     // A device to make the default of its kind.
     signal deviceChosen(var node)
+    // A display to set, by name, to a value of its own scale.
+    signal brightnessChosen(string name, int value)
     // The session's actions, which the host shows in place of the panel.
     signal sessionAsked
     // A density to keep: auto, comfortable or compact.
@@ -478,6 +482,12 @@ Column {
         objectName: "display"
         title: "anzeige"
 
+        Repeater {
+            model: controls.displays
+
+            BrightnessRow {}
+        }
+
         PanelRow {
             label: "dunkel"
 
@@ -688,6 +698,39 @@ Column {
             valueText: `${Math.round(value * 100)}%`
             label: `lautstärke ${volumeRow.name}`
             onMoved: volumeRow.node.audio.volume = value
+        }
+    }
+
+    // A display powerdevil can dim, with the same slider as the volume. A change from elsewhere moves it unless the pointer
+    // holds it; it then takes what powerdevil last told.
+    component BrightnessRow: PanelRow {
+        id: brightnessRow
+
+        required property string name
+        required property string title
+        required property real brightness
+        required property real max
+        readonly property real share: max > 0 ? Math.min(1, brightness / max) : 0
+
+        label: `helligkeit ${title}`
+        onShareChanged: {
+            if (!brightnessSlider.pressed)
+                brightnessSlider.value = share;
+        }
+
+        Slider {
+            id: brightnessSlider
+
+            objectName: `${brightnessRow.name}Brightness`
+            implicitWidth: brightnessRow.width
+            value: brightnessRow.share
+            valueText: `${Math.round(value * 100)}%`
+            label: `helligkeit ${brightnessRow.title}`
+            onMoved: controls.brightnessChosen(brightnessRow.name, Math.round(value * brightnessRow.max))
+            onPressedChanged: {
+                if (!pressed)
+                    value = brightnessRow.share;
+            }
         }
     }
 

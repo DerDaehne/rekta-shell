@@ -129,6 +129,7 @@ ShellRoot {
         startInFront: start.inFront
         sink: keys.sink
         source: keys.source
+        brightness: keys.brightness
         notices: notifications.board
         networkManagerRunning: systemState.networkManagerRunning
 

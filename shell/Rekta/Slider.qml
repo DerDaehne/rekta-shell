@@ -14,6 +14,7 @@ Item {
     property string label
     property string disabledReason
     readonly property bool disabled: disabledReason !== ""
+    readonly property alias pressed: pointer.pressed
     readonly property real position: to > from ? (value - from) / (to - from) : 0
 
     signal moved
@@ -100,6 +101,8 @@ Item {
             }
 
             MouseArea {
+                id: pointer
+
                 anchors.fill: parent
                 enabled: !slider.disabled
 

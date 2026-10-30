@@ -23,6 +23,8 @@ TestCase {
     property var chosenProfiles: []
     property var chosenDensities: []
     property var chosenDevices: []
+    // The brightness the sliders asked for, as [display, value], oldest first.
+    property var brightnessSets: []
     // The options chosen in a level, by index.
     property var chosenOptions: []
     // How often "sitzung …" asked for the session banner.
@@ -90,6 +92,7 @@ TestCase {
             onDensityChosen: density => testCase.chosenDensities = [...testCase.chosenDensities, density]
             onPowerProfileChosen: profile => testCase.chosenProfiles = [...testCase.chosenProfiles, profile]
             onDeviceChosen: node => testCase.chosenDevices = [...testCase.chosenDevices, node]
+            onBrightnessChosen: (name, value) => testCase.brightnessSets = [...testCase.brightnessSets, [name, value]]
             onSessionAsked: testCase.sessionAsked += 1
             // As the host and Quickshell have it: the adapter switches at once, a device goes on its way.
             onBluetoothChosen: on => {
@@ -416,6 +419,7 @@ TestCase {
         chosenProfiles = [];
         chosenDensities = [];
         chosenDevices = [];
+        brightnessSets = [];
         chosenOptions = [];
         sessionAsked = 0;
         bluetoothSwitches = [];
@@ -477,6 +481,21 @@ TestCase {
         target.output = sound.speakers;
         target.input = sound.microphone;
         return sound;
+    }
+
+    Component {
+        id: displayModelComponent
+
+        ListModel {}
+    }
+
+    // A laptop panel at 20% and a monitor at 30%, as the shell's source hands them to the controls.
+    function giveDisplays(target: var): var {
+        const model = createTemporaryObject(displayModelComponent, testCase);
+        model.append({ name: "display0", title: "Built-in Screen", brightness: 51, max: 255 });
+        model.append({ name: "display1", title: "Monitor", brightness: 30, max: 100 });
+        target.displays = model;
+        return model;
     }
 
     // An adapter that is on and three paired devices: headphones connected with their battery, a speaker and a mouse.
@@ -1133,6 +1152,75 @@ TestCase {
         controls.output = sound.headphones;
         compare(control("outputDevice").currentText, "Headphones");
         compare(control("outputVolume").value, 0.3);
+    }
+
+    function test_anzeige_shows_a_slider_for_each_display_with_its_name_and_percent() {
+        giveDisplays(controls);
+        side.show(0);
+        waitForRendering(side);
+        const slider = control("display0Brightness");
+        compare(findChild(rowOf(slider), "words").text, "helligkeit Built-in Screen");
+        compare(slider.value, 0.2);
+        compare(findChild(slider, "output").text, "20%");
+        compare(findChild(slider, "output").font.features, { "tnum": 1 });
+        compare(slider.Accessible.name, "helligkeit Built-in Screen");
+        compare(control("display1Brightness").value, 0.3);
+        compare(slider.width, rowOf(slider).width, "as wide as the row, below its words");
+        verify(rowOf(slider).y < rowOf(control("dark")).y, "above the other rows of anzeige");
+    }
+
+    function test_a_step_of_a_brightness_slider_asks_for_that_display_in_its_own_units() {
+        giveDisplays(controls);
+        side.show(0);
+        control("display1Brightness").forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        control("display0Brightness").forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        compare(brightnessSets, [["display1", 31], ["display0", 54]]);
+    }
+
+    function test_a_brightness_slider_follows_a_change_from_elsewhere() {
+        const displays = giveDisplays(controls);
+        side.show(0);
+        displays.setProperty(0, "brightness", 102);
+        compare(control("display0Brightness").value, 0.4);
+        compare(findChild(control("display0Brightness"), "output").text, "40%");
+        displays.setProperty(1, "max", 200);
+        compare(control("display1Brightness").value, 0.15, "a new range moves it too");
+        compare(brightnessSets, [], "following asks for nothing");
+    }
+
+    function test_a_brightness_slider_held_by_the_pointer_ignores_changes_until_released() {
+        const displays = giveDisplays(controls);
+        side.show(0);
+        const slider = control("display1Brightness");
+        const track = findChild(slider, "track");
+        mousePress(track, track.width / 2, 3);
+        verify(slider.pressed);
+        const held = slider.value;
+        displays.setProperty(1, "brightness", 90);
+        compare(slider.value, held, "an echo of an earlier value does not pull the thumb back");
+        mouseRelease(track, track.width / 2, 3);
+        compare(slider.value, 0.9, "released, it shows what powerdevil last told");
+    }
+
+    function test_a_display_that_comes_and_goes_adds_and_removes_its_slider() {
+        const displays = giveDisplays(controls);
+        side.show(0);
+        displays.append({ name: "display2", title: "Tablet", brightness: 5, max: 10 });
+        compare(control("display2Brightness").value, 0.5);
+        displays.remove(0);
+        verify(!control("display0Brightness"));
+        compare(control("display1Brightness").value, 0.3, "the others keep their place and value");
+    }
+
+    function test_without_a_display_that_can_be_dimmed_anzeige_has_no_brightness_slider_and_keeps_its_other_rows() {
+        side.show(0);
+        verify(!control("display0Brightness"));
+        verify(findChild(controls, "display").visible);
+        giveDisplays(controls).clear();
+        verify(!control("display0Brightness"));
+        verify(rowOf(control("dark")).visible);
     }
 
     function test_without_audio_devices_ton_falls_away_and_without_an_input_only_its_rows_go() {
@@ -2372,6 +2460,7 @@ TestCase {
                 const panel = findChild(contact, "panel");
                 panel.controls.hasPerformanceProfile = true;
                 giveSound(panel.controls).speakers.audio.volume = 0.62;
+                giveDisplays(panel.controls);
                 giveBluetooth(panel.controls).speaker.state = Controls.Connecting;
                 panel.show(0);
                 waitForRendering(contact);

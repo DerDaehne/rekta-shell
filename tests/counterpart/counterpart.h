@@ -52,3 +52,53 @@ private:
     QString m_lastSignature;
     QVariantMap m_variantTypes;
 };
+
+// A stand-in for powerdevil's org.kde.ScreenBrightness, written against QtDBus alone: while running it owns the name,
+// answers property reads on /org/kde/ScreenBrightness and below, records SetBrightness and sends the signals.
+class FakeScreenBrightness : public QObject
+{
+    Q_OBJECT
+    QML_ELEMENT
+
+    // Drops the name when false, as when powerdevil is not running; takes it again when true.
+    Q_PROPERTY(bool running READ running WRITE setRunning NOTIFY runningChanged FINAL)
+
+public:
+    explicit FakeScreenBrightness(QObject *parent = nullptr);
+    ~FakeScreenBrightness() override;
+
+    Q_INVOKABLE void addDisplay(const QString &name, const QString &label, int brightness, int max, bool announce = true);
+    Q_INVOKABLE void removeDisplay(const QString &name, bool announce = true);
+    // A change from elsewhere (a key, another program): the new brightness is read afterwards and the signal sent.
+    Q_INVOKABLE void changeBrightness(const QString &name, int brightness, const QString &context = {});
+    Q_INVOKABLE void changeRange(const QString &name, int max, int brightness);
+
+    bool running() const
+    {
+        return m_running;
+    }
+    void setRunning(bool running);
+
+    // What SetBrightness got, as {name, brightness, flags}.
+    void recordSet(const QString &name, int brightness, uint flags);
+    // The Display interface's properties of a display, empty when there is none of that name.
+    QVariantMap properties(const QString &name) const;
+    QStringList names() const;
+
+Q_SIGNALS:
+    void runningChanged();
+    void setBrightnessCalled(const QString &name, int brightness, uint flags);
+
+private:
+    struct Display {
+        QString name;
+        QString label;
+        int brightness;
+        int max;
+    };
+    void announceSignal(const QString &member, const QVariantList &args);
+
+    QDBusConnection m_connection;
+    QList<Display> m_displays;
+    bool m_running = false;
+};
