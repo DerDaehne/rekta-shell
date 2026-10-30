@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs the RPM from a clean Fedora system with Quickshell from its COPR and verifies it.
+# Installs the RPM on a clean Fedora system with Quickshell from its COPR and verifies it.
 # Usage: ci-install-test.sh <directory holding the RPM>. Needs root.
 set -eu
 dir=${1:?usage: ci-install-test.sh <directory holding the RPM>}

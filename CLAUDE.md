@@ -269,7 +269,8 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
 
 - `.github/workflows/rpm.yml` runs the privacy scan, builds the RPM and SRPM in a Fedora container,
   and installs the RPM with Quickshell from its COPR. The steps live in `packaging/fedora/ci-*.sh`,
-  so the Fedora VM runs the same commands.
+  so the Fedora VM runs the same commands: there, `ci-build.sh` runs in a `git init` copy of the VM's `src/` (a `git archive`
+  without `.git`) after `dnf install git`, as the workflow does before the checkout.
 - Every push to `main` leaves the RPM and SRPM as a workflow artifact named
   `rekta-shell-<version>-fc<release>-<sha7>` (30 days; pull requests 7 days):
   `gh run download <run-id> -n <artifact name>`.

@@ -9,7 +9,7 @@ version=$(sed -n 's/^Version:[[:space:]]*//p' "$spec")
 # Plasma 6.8 is in updates-testing only. Drop --enablerepo=updates-testing once the
 # targeted Fedora release ships Plasma 6.8 as a stable update.
 dnf -y --enablerepo=updates-testing upgrade
-dnf -y --enablerepo=updates-testing install rpm-build rpmlint dnf-plugins-core git
+dnf -y --enablerepo=updates-testing install rpm-build rpmlint dnf5-plugins git
 dnf -y --enablerepo=updates-testing builddep "$spec"
 
 git config --global --add safe.directory "$PWD"

@@ -13,13 +13,22 @@ jobs:
   privacy:
     uses: ./.github/workflows/privacy.yml
 
+  releases:
+    runs-on: ubuntu-latest
+    outputs:
+      fedora: ${{ steps.list.outputs.fedora }}
+    steps:
+      - id: list
+        # Fedora releases with Plasma 6.8; the one place to extend
+        run: echo "fedora=[\"45\"]" >> "$GITHUB_OUTPUT"
+
   build:
-    needs: privacy
+    needs: [privacy, releases]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        fedora: ['45']
+        fedora: ${{ fromJSON(needs.releases.outputs.fedora) }}
     container: registry.fedoraproject.org/fedora:${{ matrix.fedora }}
     steps:
       # git before the checkout: the source tarball comes from git archive
@@ -41,12 +50,12 @@ jobs:
           retention-days: ${{ github.event_name == 'pull_request' && 7 || 30 }}
 
   install-test:
-    needs: build
+    needs: [releases, build]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        fedora: ['45']
+        fedora: ${{ fromJSON(needs.releases.outputs.fedora) }}
     container: registry.fedoraproject.org/fedora:${{ matrix.fedora }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
