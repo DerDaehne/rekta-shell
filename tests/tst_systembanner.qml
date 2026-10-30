@@ -28,7 +28,7 @@ TestCase {
             height: 700
 
             SystemBanners {
-                id: states
+                id: lights
 
                 objectName: "model"
                 batteryPercent: 4
@@ -39,8 +39,8 @@ TestCase {
                 objectName: "banner"
                 width: parent.width
                 toaster: toasts
-                order: states.order
-                bannerStates: states.states
+                order: lights.order
+                bannerStates: lights.states
                 sinceWord: "seit"
                 stillText: (event, word) => `${event}. Das Banner zeigt weiter „${word}“, bis das endet.`
                 remedy: name => testCase.remedied = [...testCase.remedied, name]
@@ -71,8 +71,8 @@ TestCase {
         Prefs.theme = "system";
     }
 
-    function flags(flags) {
-        Object.assign(model, flags);
+    function turn(changes) {
+        Object.assign(model, changes);
         model.apply(banner);
     }
 
@@ -83,64 +83,64 @@ TestCase {
     }
 
     function test_the_battery_comes_before_offline_and_offline_before_storage() {
-        flags({ storageFull: true });
+        turn({ storageFull: true });
         compare(banner.shown, "storage");
-        flags({ offline: true });
+        turn({ offline: true });
         compare(banner.shown, "offline");
-        flags({ batteryCritical: true });
+        turn({ batteryCritical: true });
         compare(banner.shown, "battery");
     }
 
     function test_each_state_speaks_german_in_its_status_colour() {
-        flags({ batteryCritical: true });
+        turn({ batteryCritical: true });
         compare(banner.word, "akku");
         compare(banner.sentence, "Noch 4 %. Schließ das Netzteil an.");
         compare(banner.status, "error");
         compare(banner.actionLabel, "energieprofil");
-        flags({ batteryCritical: false, offline: true });
+        turn({ batteryCritical: false, offline: true });
         compare([banner.word, banner.sentence, banner.status, banner.actionLabel], ["offline", "Keine Verbindung zum Netz.", "error", "verbindungen"]);
-        flags({ offline: false, storageFull: true });
+        turn({ offline: false, storageFull: true });
         compare([banner.word, banner.sentence, banner.status, banner.actionLabel], ["speicher", "Root is running out of space (180 MiB free).", "warning", "aufräumen"]);
     }
 
     function test_the_time_line_says_seit() {
-        flags({ offline: true });
+        turn({ offline: true });
         verify(findChild(banner, "time").text.startsWith("seit "));
     }
 
     function test_a_state_under_a_heavier_one_is_told_in_a_toast_that_says_the_banner_keeps_showing() {
-        flags({ batteryCritical: true });
-        flags({ offline: true });
+        turn({ batteryCritical: true });
+        turn({ offline: true });
         compare(toaster.open.text, "Verbindung verloren. Das Banner zeigt weiter „akku“, bis das endet.");
-        flags({ offline: false });
+        turn({ offline: false });
         compare(toaster.open.text, "Wieder verbunden. Das Banner zeigt weiter „akku“, bis das endet.");
         compare(banner.shown, "battery");
     }
 
     function test_a_state_that_ends_stays_in_the_banner_until_it_ends_and_is_then_told_by_a_toast() {
-        flags({ storageFull: true });
-        flags({ storageFull: false });
+        turn({ storageFull: true });
+        turn({ storageFull: false });
         compare(banner.shown, "");
         compare(toaster.open.text, "Wieder genug Speicher frei.");
     }
 
     function test_the_lighter_state_takes_over_when_the_heavier_one_ends() {
-        flags({ batteryCritical: true, offline: true });
-        flags({ batteryCritical: false });
+        turn({ batteryCritical: true, offline: true });
+        turn({ batteryCritical: false });
         compare(banner.shown, "offline");
         compare(toaster.open.text, "Akku nicht mehr kritisch.");
     }
 
     function test_the_battery_sentence_follows_the_percentage_in_place() {
-        flags({ batteryCritical: true });
+        turn({ batteryCritical: true });
         const started = findChild(banner, "time").text;
-        flags({ batteryPercent: 3 });
+        turn({ batteryPercent: 3 });
         compare(banner.sentence, "Noch 3 %. Schließ das Netzteil an.");
         compare(findChild(banner, "time").text, started, "its start stays");
     }
 
     function test_the_remedy_calls_its_target_and_leaves_the_state_on() {
-        flags({ batteryCritical: true });
+        turn({ batteryCritical: true });
         banner.runRemedy();
         compare(remedied, ["battery"]);
         verify(banner.isOn("battery"));
@@ -152,12 +152,12 @@ TestCase {
     }
 
     function test_over_a_full_screen_window_only_the_battery_shows() {
-        flags({ offline: true });
+        turn({ offline: true });
         verify(!model.mayShow(banner.word, true));
         verify(model.mayShow(banner.word, false));
-        flags({ batteryCritical: true });
+        turn({ batteryCritical: true });
         verify(model.mayShow(banner.word, true));
-        flags({ batteryCritical: false });
+        turn({ batteryCritical: false });
         verify(!model.mayShow(banner.word, true), "offline waits again");
     }
 
@@ -179,10 +179,8 @@ TestCase {
             height: 700
             color: Tokens.color.bg
 
-            readonly property date since: new Date(2026, 9, 30, 14, 5)
-
             SystemBanners {
-                id: sheetStates
+                id: sheetLights
 
                 batteryPercent: 4
                 storageText: "Root is running out of space (180 MiB free)."
@@ -193,16 +191,16 @@ TestCase {
                 spacing: Tokens.spaceXl
 
                 Repeater {
-                    model: sheetStates.order
+                    model: sheetLights.order
 
                     Banner {
                         required property string modelData
 
                         width: parent.width
-                        order: sheetStates.order
-                        bannerStates: sheetStates.states
+                        order: sheetLights.order
+                        bannerStates: sheetLights.states
                         sinceWord: "seit"
-                        Component.onCompleted: set(modelData, true, { since: new Date(2026, 9, 30, 14, 5), text: sheetStates.sentences[modelData] })
+                        Component.onCompleted: set(modelData, true, { since: new Date(2026, 9, 30, 14, 5), text: sheetLights.sentences[modelData] })
                     }
                 }
             }
