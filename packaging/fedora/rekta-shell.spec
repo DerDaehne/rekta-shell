@@ -43,6 +43,11 @@ Requires:       kf6-kirigami
 Requires:       kf6-qqc2-desktop-style
 Requires:       atkinson-hyperlegible-next-fonts
 Requires:       qt6-qtdeclarative
+# The session answers network secrets and Bluetooth pairing through these agents (kded modules);
+# without them rekta runs, but a saved network cannot ask for a password and no pairing is answered.
+# Plasma's desktop group installs both; next to GNOME, whose agents belong to its own shell, they are missing.
+Recommends:     plasma-nm
+Recommends:     bluedevil
 
 %description
 rekta-shell is a desktop shell for KDE Plasma 6 on Wayland, built with
