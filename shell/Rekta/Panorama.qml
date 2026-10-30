@@ -58,7 +58,6 @@ Item {
         userScroll();
         if (!sideways)
             return false;
-        takeOver();
         reading.pointer = Qt.point(wheel.x, wheel.y);
         const e = WheelLatch.webEvent(wheel, Application.styleHints.wheelScrollLines, Geometry.wheelLinePixels, Qt.ControlModifier, Qt.ShiftModifier);
         if (facetRow)
@@ -124,7 +123,8 @@ Item {
     }
 
     // ponytail: Rekta lets a running jump go on under a wheel; here its animation would write the position every frame
-    // and pull the panorama back from the user's hand, so the user's wheel or drag stops it.
+    // and pull the panorama back from the user's hand, so a wheel that moves the panorama, or a drag, stops it. A wheel
+    // that scrolls a section, or one that is not the panorama's, leaves it running.
     function takeOver() {
         glide.stop();
     }
@@ -147,6 +147,8 @@ Item {
         const to = Math.max(0, Math.min(mostScroll(), flick.contentX + by));
         flick.cancelFlick();
         const moved = to !== flick.contentX;
+        if (moved)
+            takeOver();
         flick.contentX = to;
         return moved;
     }

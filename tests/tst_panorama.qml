@@ -1020,6 +1020,53 @@ TestCase {
         compare(place.strip.currentIndex, 0, "a key does not hold the mark against the scroll");
     }
 
+    function test_a_key_jump_glides_and_lands_flush_left_in_the_glide_time() {
+        Prefs.motion = "on";
+        const panorama = makePanorama(5, 100);
+        panorama.forceActiveFocus();
+        keyClick(Qt.Key_End);
+        compare(panorama.currentIndex, 4);
+        verify(panorama.gliding);
+        wait(Tokens.durationPivotGlide / 2);
+        verify(panorama.scroller.contentX > 0 && panorama.scroller.contentX < panorama.startOf(4), "on its way");
+        tryCompare(panorama.scroller, "contentX", panorama.startOf(4), 2 * Tokens.durationPivotGlide);
+        compare(panorama.scroller.contentX, panorama.scroller.contentWidth - panorama.width);
+    }
+
+    function test_another_key_during_a_jump_does_not_cut_it_off() {
+        Prefs.motion = "on";
+        const panorama = makePanorama(5, 100);
+        panorama.forceActiveFocus();
+        keyClick(Qt.Key_End);
+        wait(Tokens.durationPivotGlide / 5);
+        keyClick(Qt.Key_A);
+        verify(panorama.gliding, "a key that is no jump leaves the glide running");
+        tryCompare(panorama.scroller, "contentX", panorama.startOf(4), 2 * Tokens.durationPivotGlide);
+        keyClick(Qt.Key_Home);
+        wait(Tokens.durationPivotGlide / 5);
+        const reading = panorama.currentIndex;
+        keyClick(Qt.Key_Right);
+        compare(panorama.currentIndex, Math.min(4, reading + 1), "the next one from the section the scroll has reached");
+        tryCompare(panorama.scroller, "contentX", panorama.startOf(panorama.currentIndex), 2 * Tokens.durationPivotGlide);
+    }
+
+    function test_a_wheel_that_scrolls_a_section_leaves_a_jump_running() {
+        Prefs.motion = "on";
+        const panorama = makePanorama(5);
+        settled(panorama);
+        panorama.goTo(4, false, false);
+        wait(Tokens.durationPivotGlide / 5);
+        const over = sectionAt(panorama, 0).x - panorama.scroller.contentX + 100;
+        panorama.handleWheel(wheelEvent(30, {
+            x: Math.max(60, over)
+        }), 1000);
+        verify(panorama.gliding);
+        verify(!panorama.handleWheel(wheelEvent(30, {
+            modifiers: Qt.ControlModifier
+        }), 2000));
+        verify(panorama.gliding, "Ctrl+wheel is not the panorama's either");
+    }
+
     function test_a_wheel_during_a_jump_takes_the_panorama_over() {
         Prefs.motion = "on";
         const panorama = makePanorama(5, 100);
