@@ -59,6 +59,15 @@ PanelWindow {
         item: panel.away || bar.sliding ? null : bar
     }
 
+    // A status word opens its place in the controls; the background word opens the menu of the background apps instead.
+    // ponytail: without a background app (a capture without a tray entry) the press does nothing.
+    function openWord(word: var) {
+        if (word.opens !== "background")
+            controlPanel.openAt(modelData, word.opens);
+        else if (background.present)
+            background.menu.openAt(0);
+    }
+
     AppBar {
         id: bar
 
@@ -119,7 +128,7 @@ PanelWindow {
             words: panel.status.deviations
             more: panel.status.more
 
-            onActivated: word => panel.controlPanel.openAt(panel.modelData, word.opens)
+            onActivated: word => panel.openWord(word)
         }
 
         AppBarButton {

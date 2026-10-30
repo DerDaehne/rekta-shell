@@ -15,8 +15,9 @@ TestCase {
     width: 1800
     height: 300
 
-    readonly property var keys: ["microphone", "battery", "offline", "muted", "doNotDisturb", "more"]
+    readonly property var keys: ["microphone", "screen", "battery", "offline", "muted", "doNotDisturb", "more"]
     readonly property var microphone: ({ key: "microphone", word: "mikrofon an", status: "error", opens: "sound", name: "mikrofon an, öffnet ton" })
+    readonly property var screen: ({ key: "screen", word: "bildschirm geteilt", status: "error", opens: "background", name: "bildschirm geteilt, öffnet im hintergrund" })
     readonly property var battery: ({ key: "battery", word: "akku 12 %", status: "error", opens: "power", name: "akku 12 %, öffnet energieprofil" })
     readonly property var offline: ({ key: "offline", word: "offline", status: "error", opens: "connections", name: "offline, öffnet verbindungen" })
     readonly property var muted: ({ key: "muted", word: "stumm", status: "", opens: "sound", name: "stumm, öffnet ton" })
@@ -157,6 +158,16 @@ TestCase {
         compare(spy.signalArguments[0][0].opens, "connections");
         mouseClick(word("more"), 10, 10);
         compare(spy.signalArguments[1][0].opens, "");
+    }
+
+    function test_the_screen_word_stands_in_the_error_colour_and_its_press_names_the_background_menu() {
+        makeScene({ shown: [screen, muted] });
+        const spy = createTemporaryObject(pressSpy, testCase, { target: scene.status });
+        tryVerify(() => standing().length === 2);
+        compare(word("screen").face.mark, Tokens.color.statusErrorFull);
+        compare(word("screen").Accessible.name, "bildschirm geteilt, öffnet im hintergrund");
+        mouseClick(word("screen"), 10, 10);
+        compare(spy.signalArguments[0][0].opens, "background");
     }
 
     function test_a_word_fades_in_and_the_bar_makes_room() {
@@ -320,7 +331,7 @@ TestCase {
 
             Bar { y: 10; deviations: testCase.everything }
             Bar { y: 110; width: 800; deviations: testCase.everything }
-            Bar { y: 210; deviations: [testCase.muted, testCase.battery] }
+            Bar { y: 210; deviations: [testCase.screen, testCase.muted] }
         }
     }
 }

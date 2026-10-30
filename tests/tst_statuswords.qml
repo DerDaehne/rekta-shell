@@ -42,6 +42,19 @@ TestCase {
         compare(texts(model), ["mikrofon an", "akku 9 %"]);
     }
 
+    function test_the_shared_screen_stands_second_in_the_error_colour_and_names_the_background_menu() {
+        const model = make({ muted: true, batteryLow: true, batteryPercent: 9, microphoneInUse: true, screenShared: true });
+        compare(texts(model), ["mikrofon an", "bildschirm geteilt", "akku 9 %", "stumm"]);
+        compare(model.deviations[1].status, "error");
+        compare(model.deviations[1].opens, "background");
+        compare(model.deviations[1].name, "bildschirm geteilt, öffnet im hintergrund");
+    }
+
+    function test_the_count_has_the_error_square_when_the_hidden_word_is_the_shared_screen() {
+        const model = make({ screenShared: true, muted: true });
+        compare(model.more(model.deviations.slice(0, 1)).status, "error");
+    }
+
     function test_a_word_opens_the_place_where_it_can_be_changed() {
         const model = make({ microphoneInUse: true, offline: true, muted: true, doNotDisturb: true, batteryLow: true });
         compare(model.deviations.map(word => word.opens), ["sound", "power", "connections", "sound", "doNotDisturb"]);
@@ -74,7 +87,7 @@ TestCase {
     }
 
     function test_the_keys_cover_every_word_that_can_stand() {
-        const model = make({ microphoneInUse: true, batteryLow: true, offline: true, muted: true, doNotDisturb: true });
+        const model = make({ microphoneInUse: true, screenShared: true, batteryLow: true, offline: true, muted: true, doNotDisturb: true });
         for (const word of model.deviations.concat([model.more(model.deviations)]))
             verify(model.keys.includes(word.key), word.key);
     }

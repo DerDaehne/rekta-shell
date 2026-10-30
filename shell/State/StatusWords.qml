@@ -10,6 +10,7 @@ QtObject {
     property bool muted: false
     property bool doNotDisturb: false
     property bool microphoneInUse: false
+    property bool screenShared: false
     property bool batteryLow: false
     property int batteryPercent: 0
     property bool offline: false
@@ -17,10 +18,11 @@ QtObject {
     property bool powerProfiles: false
 
     // Every word there can be, in the order they stand.
-    readonly property var keys: ["microphone", "battery", "offline", "muted", "doNotDisturb", "more"]
+    readonly property var keys: ["microphone", "screen", "battery", "offline", "muted", "doNotDisturb", "more"]
     // The deviations in order of weight: errors, then choices; each names the part of the controls panel it opens.
     readonly property var deviations: [
         microphoneInUse ? word("microphone", "mikrofon an", "error", "sound", "ton") : null,
+        screenShared ? word("screen", "bildschirm geteilt", "error", "background", "im hintergrund") : null,
         batteryLow ? word("battery", `akku ${batteryPercent} %`, "error", "power", powerProfiles ? "energieprofil" : "sitzung") : null,
         offline ? word("offline", "offline", "error", "connections", "verbindungen") : null,
         muted ? word("muted", "stumm", "", "sound", "ton") : null,
@@ -35,7 +37,7 @@ QtObject {
         return word("more", text, status, "", "steuerung");
     }
 
-    // `opens` names the place in the controls, `place` what it is called; the name reads both.
+    // `opens` names the place in the controls ("background" is the bar's own menu of the background apps), `place` what it is called; the name reads both.
     function word(key: string, text: string, status: string, opens: string, place: string): var {
         return { key, word: text, status, opens, name: `${text}, öffnet ${place}` };
     }

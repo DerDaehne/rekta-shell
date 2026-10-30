@@ -36,6 +36,32 @@ TestCase {
         verify(Sources.microphoneInUse([stream({ "application.process.id": String(shell) }), stream({ "application.process.id": "7" })], shell), "another program still does");
     }
 
+    function link(sourceName, targetProperties) {
+        return { source: { name: sourceName }, target: { properties: targetProperties } };
+    }
+
+    function test_a_program_receiving_a_screencast_of_kwin_shares_the_screen() {
+        verify(Sources.screenShared([link("kwin-screencast-org.kde.dolphin", { "application.process.id": "100" })], shell));
+    }
+
+    function test_the_shells_own_preview_never_counts() {
+        verify(!Sources.screenShared([link("kwin-screencast-org.kde.konsole", { "application.process.id": String(shell) })], shell));
+        verify(Sources.screenShared([link("kwin-screencast-DP-1", { "application.process.id": String(shell) }), link("kwin-screencast-DP-1", { "application.process.id": "7" })], shell), "another receiver still does");
+    }
+
+    function test_a_camera_or_an_audio_link_is_not_a_shared_screen() {
+        verify(!Sources.screenShared([link("v4l2_input.pci-0000", { "application.process.id": "100" })], shell));
+        verify(!Sources.screenShared([link("alsa_output.pci-0000", { "application.process.id": "100" })], shell));
+    }
+
+    function test_without_a_link_the_screen_is_not_shared() {
+        verify(!Sources.screenShared([], shell));
+    }
+
+    function test_the_portal_choosers_previews_count_while_it_is_open() {
+        verify(Sources.screenShared([link("kwin-screencast-DP-1", { "application.process.id": "900" })], shell));
+    }
+
     function test_the_battery_is_low_from_the_warning_level_low_on() {
         compare([undefined, 0, 1, 2, 3, 4, 5].map(level => Sources.batteryLow(level)), [false, false, false, false, true, true, true]);
     }

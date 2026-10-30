@@ -28,6 +28,15 @@ Scope {
         objects: system.streams
     }
 
+    // The receivers of KWin's screencast nodes; their properties stay empty until tracked.
+    readonly property var screencastLinks: Pipewire.linkGroups
+    readonly property var screencastReceivers: screencastLinks.values
+        .filter(group => group.source.name.startsWith("kwin-screencast-")).map(group => group.target)
+
+    PwObjectTracker {
+        objects: system.screencastReceivers
+    }
+
     DBus.Properties {
         id: battery
 
@@ -50,6 +59,7 @@ Scope {
         muted: system.sink?.audio?.muted ?? false
         doNotDisturb: system.doNotDisturb
         microphoneInUse: Sources.microphoneInUse(system.streams, Quickshell.processId)
+        screenShared: Sources.screenShared(system.screencastLinks.values, Quickshell.processId)
         batteryLow: Sources.batteryLow(battery.properties.WarningLevel)
         batteryPercent: Math.round(battery.properties.Percentage ?? 0)
         offline: system.networkManagerRunning && Sources.offline(Networking.connectivity, NetworkConnectivity.None)
