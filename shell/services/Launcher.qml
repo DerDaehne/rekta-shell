@@ -42,6 +42,17 @@ Scope {
         run(["loginctl", "lock-session"]);
     }
 
+    // Asks the session bus a read-only question; done(values) follows its reply, and nothing follows an error. Where the
+    // shell does not act, the nested session, it asks nothing: that bus is the host's.
+    function ask(service: string, path: string, iface: string, method: string, args: var, signature: string, done: var) {
+        if (!starts)
+            return;
+        sessionBus.call(service, path, iface, method, args, signature, (error, values) => {
+            if (!error)
+                done(values);
+        });
+    }
+
     // A method without arguments on the session's or the system's bus; done(error, values), if given, follows its reply,
     // with error null on success and values the reply's. Where the shell does not act, it follows at once as if the call
     // had succeeded without values.

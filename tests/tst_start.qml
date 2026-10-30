@@ -1873,7 +1873,7 @@ TestCase {
                 run: () => testCase.calls = [...testCase.calls, `command ${text}`]
             });
         return [
-            say("sperren", ["lock"]),
+            Object.assign(say("sperren", ["lock"]), { key: "Meta+L" }),
             say("dunkel an", ["dark"]),
             say("dateien schließen", []),
             say("zeit anzeigen", []),
@@ -2160,5 +2160,66 @@ TestCase {
         verify(edges.length >= 4, `${edges.length} rows`);
         verify(edges.every(x => x === edges[0]), `${edges}`);
         compare(findChild(start.searchRows()[0], "icon").mapToItem(start, 0, 0).x, named("typed").mapToItem(start, 0, 0).x, "the icon at the edge");
+    }
+
+    function test_the_empty_sentence_stands_only_when_no_kind_has_a_hit() {
+        openWithEverything();
+        for (const text of ["fi", "build", "blue", "sp", "da"]) {
+            Prefs.motion = "off";
+            start.query = "";
+            Prefs.motion = "system";
+            typeNow(text);
+            verify(!named("noHits").visible, `"${text}" finds something and shows no sentence`);
+        }
+        Prefs.motion = "off";
+        start.query = "";
+        Prefs.motion = "system";
+        typeNow("qq");
+        verify(named("noHits").visible);
+    }
+
+    function test_the_focus_ring_of_a_row_stands_outside_it_clear_of_the_icon_and_whole_in_view() {
+        openWithEverything();
+        typeNow("zeit");
+        keyClick(Qt.Key_Down);
+        const row = start.searchRows()[0];
+        verify(row.activeFocus);
+        const ring = findChild(row, "ring");
+        verify(ring.visible);
+        const icon = findChild(row, "icon");
+        const outer = ring.mapToItem(start, 0, 0).x;
+        verify(outer + ring.border.width <= icon.mapToItem(start, 0, 0).x, "the ring's inner edge is left of the icon");
+        verify(outer >= named("results").mapToItem(start, 0, 0).x, "not clipped at the left");
+    }
+
+    function test_a_command_with_a_key_shows_it_as_a_key_hint_and_one_without_shows_none() {
+        openWithEverything();
+        typeNow("s");
+        const keyed = start.searchRows().find(row => row.text === "sperren");
+        verify(findChild(keyed, "commandKey").visible);
+        compare(findChild(keyed, "commandKey").text, "Meta+L");
+        const plain = start.searchRows().find(row => row.text === "dunkel an") ?? start.searchRows().find(row => row.text !== "sperren");
+        verify(!findChild(plain, "commandKey").visible);
+        for (const row of start.searchRows().filter(candidate => candidate.text !== "sperren"))
+            verify(!findChild(row, "commandKey").visible, row.text);
+    }
+
+    function test_contact_sheet_of_a_command_with_its_key_as_the_best_hit() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const backdrop = createTemporaryObject(backdropComponent, testCase);
+            const sheet = createTemporaryObject(startComponent, backdrop);
+            sheet.commands = fakeCommands();
+            sheet.apps = searchableApps();
+            Prefs.motion = "off";
+            sheet.open();
+            keyClick("s");
+            keyClick("p");
+            keyClick(Qt.Key_Down);
+            Prefs.motion = "system";
+            waitForRendering(backdrop);
+            grabImage(backdrop).save(`start-search-command-key-${theme}.png`);
+            compare(sheet.query, "sp", theme);
+        }
     }
 }

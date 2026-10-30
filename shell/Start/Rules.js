@@ -290,10 +290,53 @@ function rowGroups(sources, text, starts, noApp) {
         },
         {
             name: "befehle",
-            rows: commandHits(sources.commands, text).map(command => ({ text: command.text, lead: "", icon: "", run: () => command.run() }))
+            rows: commandHits(sources.commands, text).map(command => ({ text: command.text, lead: "", icon: "", key: command.key ?? "", run: () => command.run() }))
         }
     ].filter(group => group.rows.length > 0);
     if (noApp && groups.length > 0)
         groups[0].rows[0].best = true;
     return groups;
+}
+
+const keyModifiers = [[0x10000000, "Meta"], [0x04000000, "Ctrl"], [0x08000000, "Alt"], [0x02000000, "Shift"]];
+const namedKeys = {
+    0x20: "Space",
+    0x01000000: "Esc",
+    0x01000001: "Tab",
+    0x01000003: "Backspace",
+    0x01000004: "Return",
+    0x01000005: "Enter",
+    0x01000006: "Ins",
+    0x01000007: "Del",
+    0x01000010: "Home",
+    0x01000011: "End",
+    0x01000012: "Left",
+    0x01000013: "Up",
+    0x01000014: "Right",
+    0x01000015: "Down",
+    0x01000016: "PgUp",
+    0x01000017: "PgDown",
+    0x01000009: "Print"
+};
+
+// The whole numbers in nested lists, in order; the reply's struct and array levels do not matter here.
+function numbersIn(value) {
+    if (Number.isInteger(value))
+        return [value];
+    if (value === null || typeof value !== "object")
+        return [];
+    return Array.from(value).reduce((numbers, item) => numbers.concat(numbersIn(item)), []);
+}
+
+// The text of the first key combination kglobalaccel's `shortcutKeys` replied, such as "Meta+L"; the reply is a list of
+// key sequences, each a list of Qt key codes. "" when it holds none (no key is bound) or only a key this does not name.
+function keyText(values) {
+    const code = numbersIn(values).find(number => number > 0);
+    if (code === undefined)
+        return "";
+    const key = code & 0x01ffffff;
+    const name = namedKeys[key] ?? (key >= 0x01000030 && key <= 0x0100004b ? `F${key - 0x01000030 + 1}` : (key >= 0x21 && key <= 0x7e ? String.fromCharCode(key) : ""));
+    if (name === "")
+        return "";
+    return [...keyModifiers.filter(([flag]) => (code & flag) !== 0).map(([, word]) => word), name].join("+");
 }

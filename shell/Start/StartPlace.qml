@@ -53,7 +53,7 @@ FocusScope {
     property alias query: line.text
     // The search shows, or is on its way, in place of the pivot and the places.
     property bool searching: false
-    // What the search finds besides apps: [{name, rows: [{text, lead, icon, run, best}]}] (Rules.rowGroups).
+    // What the search finds besides apps: [{name, rows: [{text, lead, icon, key, run, best}]}] (Rules.rowGroups).
     property var rowGroups: []
     // What Escape does in a search: "close" closes the Start at once, "back" clears the search first like the other ways
     // back.
@@ -1009,13 +1009,17 @@ FocusScope {
         Flickable {
             id: results
 
+            readonly property real ringRoom: Geometry.focusRingOffset + Geometry.focusRingWidth
             objectName: "results"
-            x: column.x
+            x: column.x - ringRoom
             y: column.y
-            width: column.width
+            width: column.width + 2 * ringRoom
             height: column.height
             visible: false
             enabled: !start.turning
+            // The focus ring of a row, outside it, is not clipped at the column's edge.
+            leftMargin: ringRoom
+            rightMargin: ringRoom
             clip: true
             contentHeight: rowsColumn.y + rowsColumn.height + Tokens.spaceL
             flickableDirection: Flickable.VerticalFlick
@@ -1057,7 +1061,7 @@ FocusScope {
 
                 objectName: "rows"
                 y: hitsGrid.y + hitsGrid.height + (found.count > 0 ? Tokens.spaceL : 0)
-                width: results.width
+                width: column.width
 
                 Repeater {
                     model: start.rowGroups
@@ -1089,6 +1093,7 @@ FocusScope {
                                 lead: searchRow.modelData.lead
                                 icon: searchRow.modelData.icon
                                 best: searchRow.modelData.best === true
+                                shortcut: searchRow.modelData.key ?? ""
                                 onActivated: start.chooseRow(searchRow.modelData)
                             }
                         }
@@ -1100,7 +1105,7 @@ FocusScope {
             Empty {
                 objectName: "noHits"
                 y: Tokens.spaceL
-                width: results.width
+                width: column.width
                 visible: found.count === 0 && start.rowGroups.length === 0
                 text: `nichts zum hingehen oder ausführen passt zu „${start.query.trim()}“.`
             }

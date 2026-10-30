@@ -331,4 +331,24 @@ TestCase {
         compare(Rules.commandHits(commands, "to 500").map(command => command.text), ["ton auf 100 %"]);
         compare(Rules.commandHits(commands, "ton").map(command => command.text), ["stumm an"]);
     }
+
+    function test_a_key_reply_reads_as_the_first_combination_in_rekta_s_words() {
+        compare(Rules.keyText([[[0x10000000 | 0x4c, 0, 0, 0]]]), "Meta+L");
+        compare(Rules.keyText([[0x10000000 | 0x4c]]), "Meta+L");
+        compare(Rules.keyText([[0x04000000 | 0x08000000 | 0x01000007]]), "Ctrl+Alt+Del");
+        compare(Rules.keyText([[0x02000000 | 0x01000030]]), "Shift+F1");
+        compare(Rules.keyText([[0x20]]), "Space");
+    }
+
+    function test_no_key_bound_reads_as_no_text() {
+        compare(Rules.keyText([]), "");
+        compare(Rules.keyText([[0, 0, 0, 0]]), "");
+        compare(Rules.keyText(undefined), "");
+        compare(Rules.keyText([[0x01000099]]), "");
+    }
+
+    function test_a_command_row_carries_the_key_of_its_command() {
+        const sources = { windows: [], settings: [], commands: [{ text: "sperren", keywords: [], key: "Meta+L", run: () => {} }, { text: "stumm an", keywords: [], run: () => {} }] };
+        compare(Rules.rowGroups(sources, "s", {}, true)[0].rows.map(row => row.key), ["Meta+L", ""]);
+    }
 }

@@ -171,8 +171,10 @@ ShellRoot {
         target: start
 
         function onOpenedChanged() {
-            if (start.opened)
-                sidePanel.close();
+            if (!start.opened)
+                return;
+            shellCommands.readKeys();
+            sidePanel.close();
         }
     }
 

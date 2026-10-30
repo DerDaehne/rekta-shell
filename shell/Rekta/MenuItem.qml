@@ -151,8 +151,10 @@ Item {
         color: Tokens.color.textContrastHigh
     }
 
+    // Inside a row with room of its own, outside one that has none (rekta.css:42, :323).
     FocusRing {
-        offset: -Geometry.focusRingInsetInRow
+        objectName: "ring"
+        offset: item.inset > 0 ? -Geometry.focusRingInsetInRow : Geometry.focusRingOffset
     }
 
     HoverHandler {

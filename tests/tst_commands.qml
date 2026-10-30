@@ -11,6 +11,9 @@ TestCase {
     name: "Commands"
 
     property var calls: []
+    // What kglobalaccel replies by action name; an action not in it is not asked at all, as in a session without it.
+    property var replies: ({})
+    property var asked: []
 
     Component {
         id: commandsComponent
@@ -23,6 +26,13 @@ TestCase {
 
                 function lock() {
                     testCase.calls = [...testCase.calls, "lock"];
+                }
+
+                function ask(service: string, path: string, iface: string, method: string, args: var, signature: string, done: var) {
+                    testCase.asked = [...testCase.asked, `${service} ${path} ${iface}.${method} ${JSON.stringify(args)} ${signature}`];
+                    const reply = testCase.replies[args[0][1]];
+                    if (reply !== undefined)
+                        done([reply]);
                 }
             }
             panel: QtObject {
@@ -55,6 +65,8 @@ TestCase {
 
     function init() {
         calls = [];
+        asked = [];
+        replies = {};
         commands = createTemporaryObject(commandsComponent, testCase);
     }
 
@@ -128,5 +140,43 @@ TestCase {
         compare(texts("sp"), ["sperren"]);
         commands.sink = {};
         compare(texts("stu"), []);
+    }
+
+    function keyOf(typed: string): string {
+        return Rules.commandHits(commands.list, typed)[0].key ?? "";
+    }
+
+    // Meta+L as kglobalaccel replies it: a list of key sequences, each a list of Qt key codes.
+    readonly property var metaL: [[0x10000000 | 0x4c, 0, 0, 0]]
+
+    function test_a_command_shows_the_key_the_session_binds_to_its_action() {
+        replies = { "Lock Session": metaL, "Log Out": [[0x04000000 | 0x08000000 | 0x01000007, 0, 0, 0]] };
+        commands.destroy();
+        commands = createTemporaryObject(commandsComponent, testCase);
+        compare(keyOf("sperren"), "Meta+L");
+        compare(keyOf("abmelden"), "Ctrl+Alt+Del");
+        compare(asked[0], `org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel.shortcutKeys [["ksmserver","Lock Session","",""]] as`);
+    }
+
+    function test_a_command_whose_action_has_no_key_shows_none() {
+        replies = { "Lock Session": [[0, 0, 0, 0]], "Reboot": [] };
+        commands.destroy();
+        commands = createTemporaryObject(commandsComponent, testCase);
+        compare(keyOf("sperren"), "");
+        compare(keyOf("neu starten"), "");
+        compare(keyOf("dunkel"), "", "a command with no action of the session");
+    }
+
+    function test_without_kglobalaccel_no_command_shows_a_key_and_nothing_fails() {
+        failOnWarning(/TypeError|ReferenceError/);
+        compare(commands.shortcuts, {});
+        compare(keyOf("sperren"), "");
+    }
+
+    function test_the_keys_are_read_again_on_request() {
+        compare(keyOf("sperren"), "");
+        replies = { "Lock Session": metaL };
+        commands.readKeys();
+        compare(keyOf("sperren"), "Meta+L");
     }
 }

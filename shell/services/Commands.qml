@@ -1,9 +1,11 @@
 import QtQuick
+import Start
 
 // The shell's own commands, defined once for the Start's search: what the session offers, the looks, quiet and sound. A
 // command says what it will do now ("dunkel an" while light). Ending the session goes through the banner, which gives
-// the time to take it back. None has a key of the shell's own, so none shows one (a command shows its key where it
-// has one: navigation.md:239). The sound commands are there only while there is an output to set.
+// the time to take it back. A command shows its key (navigation.md:239) where the session binds one, as kglobalaccel
+// tells it, read only; with no key bound, or no kglobalaccel, it shows none. The sound commands are there only while
+// there is an output to set.
 QtObject {
     id: commands
 
@@ -12,6 +14,28 @@ QtObject {
     required property var session
     // The default output as PipeWire has it, or null.
     required property var sink
+
+    // The keys of the session's own actions, by command: "Meta+L". The session registers them with kglobalaccel under
+    // the component ksmserver (kscreenlocker's "Lock Session", plasma-workspace's logout actions).
+    property var shortcuts: ({})
+    readonly property var actions: ({
+            lock: "Lock Session",
+            logout: "Log Out",
+            reboot: "Reboot",
+            shutdown: "Shut Down"
+        })
+
+    function readKeys() {
+        for (const [command, action] of Object.entries(actions)) {
+            launcher.ask("org.kde.kglobalaccel", "/kglobalaccel", "org.kde.KGlobalAccel", "shortcutKeys", [["ksmserver", action, "", ""]], "as", values => {
+                shortcuts = Object.assign({}, shortcuts, {
+                    [command]: Rules.keyText(values)
+                });
+            });
+        }
+    }
+
+    Component.onCompleted: readKeys()
 
     readonly property var audio: sink?.audio ?? null
     readonly property bool muted: audio?.muted ?? false
@@ -34,6 +58,7 @@ QtObject {
         {
             text: "sperren",
             keywords: ["lock"],
+            key: shortcuts.lock ?? "",
             run: () => commands.launcher.lock()
         },
         {
@@ -44,16 +69,19 @@ QtObject {
         {
             text: "abmelden",
             keywords: ["logout"],
+            key: shortcuts.logout ?? "",
             run: () => commands.session.show("logout")
         },
         {
             text: "neu starten",
             keywords: ["reboot", "restart"],
+            key: shortcuts.reboot ?? "",
             run: () => commands.session.show("reboot")
         },
         {
             text: "ausschalten",
             keywords: ["shutdown", "power", "off"],
+            key: shortcuts.shutdown ?? "",
             run: () => commands.session.show("shutdown")
         },
         {
