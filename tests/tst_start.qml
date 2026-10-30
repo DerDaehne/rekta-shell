@@ -1042,7 +1042,7 @@ TestCase {
         compare(hitNames(), []);
         const sentence = findChild(named("noHits"), "sentence");
         verify(sentence.visible);
-        compare(sentence.text, "nichts passt zu „q“.");
+        compare(sentence.text, "nichts zum hingehen oder ausführen passt zu „q“.");
         compare(sentence.color, Tokens.color.textContrastHigh);
         compare(named("noHits").y, Tokens.spaceL);
         compare(findChild(named("noHits"), "line").y, 0);
@@ -2070,7 +2070,7 @@ TestCase {
         openWithEverything();
         typeNow("q");
         verify(named("noHits").visible);
-        compare(findChild(named("noHits"), "sentence").text, "nichts passt zu „q“.");
+        compare(findChild(named("noHits"), "sentence").text, "nichts zum hingehen oder ausführen passt zu „q“.");
         compare(start.searchRows().length, 0);
         start.query = "";
         typeNow("blue");
@@ -2140,5 +2140,25 @@ TestCase {
             grabImage(backdrop).save(`start-search-row-best-${theme}.png`);
             compare(sheet.query, "zeit", theme);
         }
+    }
+
+    function test_the_rows_and_their_headings_stand_at_the_edge_of_the_line_and_the_tiles_without_an_indent() {
+        openWithEverything();
+        typeNow("da");
+        const edge = named("typed").mapToItem(start, 0, 0).x;
+        compare(start.hitTiles()[0].mapToItem(start, 0, 0).x, edge, "the tile");
+        for (const name of groupNames())
+            compare(findChild(findChild(named("rows"), name), "heading").mapToItem(start, 0, 0).x, edge, `heading ${name}`);
+        for (const row of start.searchRows())
+            compare(row.mapToItem(start, 0, 0).x, edge, `row ${row.text}`);
+    }
+
+    function test_every_text_of_the_rows_starts_at_one_edge_with_an_icon_or_without() {
+        openWithEverything();
+        typeNow("da");
+        const edges = start.searchRows().map(row => findChild(row, "label").mapToItem(start, 0, 0).x);
+        verify(edges.length >= 4, `${edges.length} rows`);
+        verify(edges.every(x => x === edges[0]), `${edges}`);
+        compare(findChild(start.searchRows()[0], "icon").mapToItem(start, 0, 0).x, named("typed").mapToItem(start, 0, 0).x, "the icon at the edge");
     }
 }

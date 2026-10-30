@@ -27,6 +27,11 @@ Item {
     property string disabledReason
     // Off with no reason to give: a foreign menu's entry that the app has turned off.
     property bool dimmed: false
+    // The room before and after the row's content: space-m inside a bordered menu (rekta.css:790), none for rows that
+    // stand on a surface (`.rk-rows`, rekta.css:68–69).
+    property real inset: Tokens.spaceM
+    // Keeps the icon's room also for a row without one, so every text of a list starts at one edge.
+    property bool iconSlot: false
     // Choosing it opens a deeper level the host swaps in, so the menu stays open.
     property bool opensLevel: false
     readonly property bool disabled: disabledReason !== "" || dimmed
@@ -38,16 +43,16 @@ Item {
     readonly property bool menuHasIcons: Array.from(parent?.children ?? []).some(row => row.hasIcon === true && (row.visible || !item.visible))
     // In a menu with icons a row without one has its box where the icons stand, so every text starts at one edge.
     readonly property bool checkInIconSlot: checkable && menuHasIcons && !hasIcon
-    readonly property real iconSpace: menuHasIcons ? Geometry.iconSize + Tokens.spaceS : 0
+    readonly property real iconSpace: menuHasIcons || iconSlot ? Geometry.iconSize + Tokens.spaceS : 0
     readonly property real leadSpace: lead !== "" ? leadWords.implicitWidth + Tokens.spaceS : 0
-    readonly property real textEdge: Tokens.spaceM + checkSpace + iconSpace + leadSpace
+    readonly property real textEdge: inset + checkSpace + iconSpace + leadSpace
     readonly property string spoken: lead !== "" ? `${lead} ${label}` : label
     // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:790, :797)
     readonly property real keySpace: keyHint !== "" ? Tokens.spaceS + Tokens.spaceL + key.implicitWidth : 0
     readonly property real endSpace: end.implicitWidth > 0 ? Tokens.spaceS + end.implicitWidth : 0
 
     width: parent ? parent.width : implicitWidth
-    implicitWidth: 2 * Tokens.spaceM + checkSpace + iconSpace + leadSpace + words.implicitWidth + endSpace + keySpace
+    implicitWidth: 2 * inset + checkSpace + iconSpace + leadSpace + words.implicitWidth + endSpace + keySpace
     implicitHeight: Tokens.rowHeight
     Accessible.role: Accessible.MenuItem
     Accessible.name: spoken
@@ -63,7 +68,7 @@ Item {
 
     Rectangle {
         objectName: "check"
-        x: Tokens.spaceM + (item.checkInIconSlot ? (Geometry.iconSize - Geometry.menuCheck) / 2 : 0)
+        x: item.inset + (item.checkInIconSlot ? (Geometry.iconSize - Geometry.menuCheck) / 2 : 0)
         anchors.verticalCenter: parent.verticalCenter
         width: Geometry.menuCheck
         height: Geometry.menuCheck
@@ -75,7 +80,7 @@ Item {
 
     Image {
         objectName: "icon"
-        x: Tokens.spaceM + item.checkSpace
+        x: item.inset + item.checkSpace
         anchors.verticalCenter: parent.verticalCenter
         width: Geometry.iconSize
         height: Geometry.iconSize
@@ -86,7 +91,7 @@ Item {
 
     Icon {
         objectName: "glyph"
-        x: Tokens.spaceM + item.checkSpace
+        x: item.inset + item.checkSpace
         anchors.verticalCenter: parent.verticalCenter
         size: Geometry.iconSize
         name: item.glyph
@@ -98,7 +103,7 @@ Item {
         id: leadWords
 
         objectName: "lead"
-        x: Tokens.spaceM + item.checkSpace + item.iconSpace
+        x: item.inset + item.checkSpace + item.iconSpace
         anchors.verticalCenter: parent.verticalCenter
         visible: item.lead !== ""
         text: item.lead
@@ -114,7 +119,7 @@ Item {
         objectName: "label"
         x: item.textEdge
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.max(0, item.width - item.textEdge - item.endSpace - item.keySpace - Tokens.spaceM)
+        width: Math.max(0, item.width - item.textEdge - item.endSpace - item.keySpace - item.inset)
         text: item.label
         elide: Text.ElideRight
         font.family: Tokens.fontSans
@@ -127,7 +132,7 @@ Item {
 
         objectName: "end"
         anchors.right: parent.right
-        anchors.rightMargin: Tokens.spaceM + item.keySpace
+        anchors.rightMargin: item.inset + item.keySpace
         anchors.verticalCenter: parent.verticalCenter
         spacing: Tokens.spaceS
     }
@@ -137,7 +142,7 @@ Item {
 
         objectName: "key"
         anchors.right: parent.right
-        anchors.rightMargin: Tokens.spaceM
+        anchors.rightMargin: item.inset
         anchors.verticalCenter: parent.verticalCenter
         visible: item.keyHint !== ""
         text: item.keyHint

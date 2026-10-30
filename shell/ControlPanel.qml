@@ -126,6 +126,7 @@ PanelWindow {
             outputs: surface.audioDevices.filter(node => node.isSink)
             inputs: surface.audioDevices.filter(node => !node.isSink)
             onRun: command => surface.launcher.run(command)
+            onLockAsked: surface.launcher.lock()
             // The nested session reaches the host's system bus: only the session's own shell sets the profile.
             onPowerProfileChosen: profile => {
                 if (surface.launcher.starts)

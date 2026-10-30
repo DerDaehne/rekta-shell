@@ -90,6 +90,7 @@ Column {
 
     // A command for the host to run on the session.
     signal run(var command)
+    signal lockAsked
     signal powerProfileChosen(int profile)
     // A device to make the default of its kind.
     signal deviceChosen(var node)
@@ -111,8 +112,7 @@ Column {
     // A secured network joins with the password the sheet asked for.
     signal passwordChosen(var network, string password)
 
-    // So the few that show are the ones in use; each group keeps its order.
-    // What the toggles do, for the Start's commands.
+    // The dark and the quiet toggles do this; the Start's commands too.
     function setDark(on: bool) {
         run(LookAndFeel.command(on, kdeglobals));
     }
@@ -121,6 +121,7 @@ Column {
         quietToggle.checked = on;
     }
 
+    // So the few that show are the ones in use; each group keeps its order.
     function connectedFirst(devices: var): var {
         return devices.filter(device => device.connected).concat(devices.filter(device => !device.connected));
     }
@@ -488,7 +489,7 @@ Column {
                 offWord: "aus"
                 checked: controls.dark
                 Accessible.name: "dunkel"
-                onToggled: controls.run(LookAndFeel.command(checked, controls.kdeglobals))
+                onToggled: controls.setDark(checked)
             }
         }
 
@@ -550,7 +551,7 @@ Column {
             Button {
                 objectName: "lock"
                 text: "sperren"
-                onClicked: controls.run(["loginctl", "lock-session"])
+                onClicked: controls.lockAsked()
             }
         }
 

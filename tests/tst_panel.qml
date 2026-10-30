@@ -19,6 +19,7 @@ TestCase {
 
     // What the panel asked the host to run, and the power profiles chosen in it, oldest first.
     property var commands: []
+    property int locksAsked: 0
     property var chosenProfiles: []
     property var chosenDensities: []
     property var chosenDevices: []
@@ -85,6 +86,7 @@ TestCase {
             objectName: "controls"
             hasPowerProfiles: true
             onRun: command => testCase.commands = [...testCase.commands, command]
+            onLockAsked: testCase.locksAsked++
             onDensityChosen: density => testCase.chosenDensities = [...testCase.chosenDensities, density]
             onPowerProfileChosen: profile => testCase.chosenProfiles = [...testCase.chosenProfiles, profile]
             onDeviceChosen: node => testCase.chosenDevices = [...testCase.chosenDevices, node]
@@ -410,6 +412,7 @@ TestCase {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         Prefs.motion = "off";
         commands = [];
+        locksAsked = 0;
         chosenProfiles = [];
         chosenDensities = [];
         chosenDevices = [];
@@ -940,7 +943,7 @@ TestCase {
         compare(chosenProfiles, [2], "energieprofil, where the arrows choose");
         keyClick(Qt.Key_Tab);
         keyClick(Qt.Key_Return);
-        compare(commands[1], ["loginctl", "lock-session"], "sperren");
+        compare(locksAsked, 1, "sperren");
         keyClick(Qt.Key_Tab);
         keyClick(Qt.Key_Return);
         compare(sessionAsked, 1, "sitzung …");
@@ -1047,7 +1050,8 @@ TestCase {
         side.show(0);
         waitForRendering(side);
         mouseClick(control("lock"));
-        compare(commands, [["loginctl", "lock-session"]]);
+        compare(locksAsked, 1);
+        compare(commands, []);
     }
 
     function test_sitzung_asks_for_the_session_banner_below_sperren() {

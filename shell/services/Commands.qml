@@ -2,23 +2,39 @@ import QtQuick
 
 // The shell's own commands, defined once for the Start's search: what the session offers, the looks, quiet and sound. A
 // command says what it will do now ("dunkel an" while light). Ending the session goes through the banner, which gives
-// the time to take it back.
+// the time to take it back. None has a key of the shell's own, so none shows one (a command shows its key where it
+// has one: navigation.md:239). The sound commands are there only while there is an output to set.
 QtObject {
     id: commands
 
     required property var launcher
     required property var panel
     required property var session
-    // The default output as PipeWire has it (volume 0 to 1, muted), or null.
+    // The default output as PipeWire has it, or null.
     required property var sink
 
-    readonly property bool muted: sink?.audio?.muted ?? false
+    readonly property var audio: sink?.audio ?? null
+    readonly property bool muted: audio?.muted ?? false
+    readonly property var soundCommands: audio === null ? [] : [
+        {
+            text: muted ? "stumm aus" : "stumm an",
+            keywords: ["mute", "ton"],
+            run: () => commands.audio.muted = !commands.muted
+        },
+        {
+            word: "ton",
+            at: percent => ({
+                    text: `ton auf ${percent} %`,
+                    run: () => commands.audio.volume = percent / 100
+                })
+        }
+    ]
     // {text, keywords, run}, or {word, at(n)} for one that takes an amount: "ton 30" (Rules.commandHits).
     readonly property var list: [
         {
             text: "sperren",
             keywords: ["lock"],
-            run: () => commands.launcher.run(["loginctl", "lock-session"])
+            run: () => commands.launcher.lock()
         },
         {
             text: "benutzer wechseln",
@@ -50,17 +66,6 @@ QtObject {
             keywords: ["quiet", "dnd"],
             run: () => commands.panel.setDoNotDisturb(!commands.panel.doNotDisturb)
         },
-        {
-            text: muted ? "stumm aus" : "stumm an",
-            keywords: ["mute", "ton"],
-            run: () => commands.sink.audio.muted = !commands.muted
-        },
-        {
-            word: "ton",
-            at: percent => ({
-                    text: `ton auf ${percent} %`,
-                    run: () => commands.sink.audio.volume = percent / 100
-                })
-        }
+        ...soundCommands
     ]
 }

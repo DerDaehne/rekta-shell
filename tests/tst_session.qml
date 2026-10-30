@@ -35,6 +35,10 @@ TestCase {
             testCase.asked = [...testCase.asked, ["run", command]];
         }
 
+        function lock() {
+            run(["loginctl", "lock-session"]);
+        }
+
         function launch(entry) {
             testCase.asked = [...testCase.asked, ["launch", entry.id]];
         }

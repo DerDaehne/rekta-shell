@@ -337,12 +337,8 @@ FocusScope {
     // The search's rows in reading order, under their headings.
     function searchRows(): var {
         const rows = [];
-        for (const group of rowsColumn.children) {
-            for (const item of group.children) {
-                if ((item as SearchRow) !== null)
-                    rows.push(item);
-            }
-        }
+        for (const group of rowsColumn.children)
+            rows.push(...group.children.filter(item => (item as SearchRow) !== null));
         return rows;
     }
 
@@ -1076,6 +1072,8 @@ FocusScope {
 
                         MenuLabel {
                             objectName: "heading"
+                            leftPadding: 0
+                            rightPadding: 0
                             text: group.modelData.name
                         }
 
@@ -1104,7 +1102,7 @@ FocusScope {
                 y: Tokens.spaceL
                 width: results.width
                 visible: found.count === 0 && start.rowGroups.length === 0
-                text: `nichts passt zu „${start.query.trim()}“.`
+                text: `nichts zum hingehen oder ausführen passt zu „${start.query.trim()}“.`
             }
         }
     }

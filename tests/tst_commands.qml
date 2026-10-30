@@ -20,6 +20,10 @@ TestCase {
                 function run(command: var) {
                     testCase.calls = [...testCase.calls, `run ${command.join(" ")}`];
                 }
+
+                function lock() {
+                    testCase.calls = [...testCase.calls, "lock"];
+                }
             }
             panel: QtObject {
                 property bool dark: false
@@ -72,7 +76,7 @@ TestCase {
         Rules.commandHits(commands.list, "neu starten")[0].run();
         Rules.commandHits(commands.list, "ausschalten")[0].run();
         Rules.commandHits(commands.list, "benutzer wechseln")[0].run();
-        compare(calls, ["run loginctl lock-session", "banner logout", "banner reboot", "banner shutdown", "banner switchUser"]);
+        compare(calls, ["lock", "banner logout", "banner reboot", "banner shutdown", "banner switchUser"]);
     }
 
     function test_a_command_says_what_it_will_do_now() {
@@ -115,5 +119,14 @@ TestCase {
 
     function test_nothing_is_found_for_text_that_names_no_command() {
         compare(texts("xyz"), []);
+    }
+
+    function test_without_an_audio_output_there_is_no_stumm_and_no_ton_and_the_rest_stays() {
+        commands.sink = null;
+        compare(texts("stu"), []);
+        compare(Rules.commandHits(commands.list, "ton 30"), []);
+        compare(texts("sp"), ["sperren"]);
+        commands.sink = {};
+        compare(texts("stu"), []);
     }
 }

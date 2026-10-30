@@ -38,6 +38,10 @@ Scope {
         Quickshell.execDetached(command);
     }
 
+    function lock() {
+        run(["loginctl", "lock-session"]);
+    }
+
     // A method without arguments on the session's or the system's bus; done(error, values), if given, follows its reply,
     // with error null on success and values the reply's. Where the shell does not act, it follows at once as if the call
     // had succeeded without values.

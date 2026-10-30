@@ -44,7 +44,7 @@ QtObject {
             text: "sperren",
             group: 0,
             primary: true,
-            run: () => session.launcher.run(["loginctl", "lock-session"])
+            run: () => session.launcher.lock()
         },
         {
             name: "switchUser",
