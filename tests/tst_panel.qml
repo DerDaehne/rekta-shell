@@ -566,6 +566,13 @@ TestCase {
         return level;
     }
 
+    // The side panel open on a facet once its slide has ended, so that clicks land where the controls stand.
+    function showSettled(index: int) {
+        side.show(index);
+        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        waitForRendering(side);
+    }
+
     // The level panel, open and drawn.
     function showLevelPanel(): var {
         const panel = createTemporaryObject(levelPanelComponent, testCase);
@@ -970,7 +977,7 @@ TestCase {
 
     function test_dunkel_applies_the_dark_theme_of_plasmas_pair_and_the_light_one_back() {
         controls.kdeglobals = "[General]\nColorScheme=RektaLight\n\n[KDE]\nDefaultDarkLookAndFeel=org.example.night\nDefaultLightLookAndFeel=org.example.day\nLookAndFeelPackage=org.example.day\n";
-        side.show(0);
+        showSettled(0);
         verify(!control("dark").checked, "light now");
         mouseClick(control("dark"));
         compare(commands, [["plasma-apply-lookandfeel", "--apply", "org.example.night"]]);
@@ -993,7 +1000,7 @@ TestCase {
         verify(findChild(darkScene, "dark").checked, "dark from the start");
         darkScene.destroy();
         Prefs.theme = "light";
-        side.show(0);
+        showSettled(0);
         Prefs.theme = "dark";
         verify(control("dark").checked);
         compare(findChild(control("dark"), "word").text, "an");
@@ -1008,7 +1015,7 @@ TestCase {
     }
 
     function test_with_nicht_stoeren_only_critical_notifications_toast_and_the_others_go_quietly_into_the_list() {
-        side.show(0);
+        showSettled(0);
         mouseClick(control("doNotDisturb"));
         verify(controls.doNotDisturb);
         notify({ summary: "anna" });
@@ -1066,16 +1073,14 @@ TestCase {
     }
 
     function test_sperren_locks_the_session() {
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("lock"));
         compare(locksAsked, 1);
         compare(commands, []);
     }
 
     function test_sitzung_asks_for_the_session_banner_below_sperren() {
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         const sessionActions = control("sessionActions");
         compare(sessionActions.text, "sitzung …");
         verify(rowOf(sessionActions).y > rowOf(control("lock")).y, "in the group sitzung, below sperren");
@@ -1124,7 +1129,7 @@ TestCase {
 
     function test_the_slider_and_stumm_set_the_device_and_follow_changes_from_elsewhere() {
         const sound = giveSound(controls);
-        side.show(0);
+        showSettled(0);
         const slider = control("outputVolume");
         slider.forceActiveFocus();
         keyClick(Qt.Key_Right);
