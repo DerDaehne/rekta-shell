@@ -9,8 +9,8 @@
 let
   counterpart = callPackage ./dbus-counterpart.nix { };
 in
-# One lint command for the dev shell and the flake check, with the modules the shell and its tests import on the import
-# path.
+# One lint command for the dev shell and the flake check, with the modules the shell, the lock screen and the tests
+# import on the import path.
 writeShellApplication {
   name = "rekta-qmllint";
   runtimeInputs = [
@@ -31,6 +31,8 @@ writeShellApplication {
       -I ${counterpart}/lib/qt-6/qml \
       -I ${kdePackages.plasma-workspace}/lib/qt-6/qml \
       -I ${kdePackages.kpipewire}/lib/qt-6/qml \
+      -I ${kdePackages.kscreenlocker}/lib/qt-6/qml \
+      -I ${kdePackages.kirigami.unwrapped}/lib/qt-6/qml \
       "''${args[@]}"
   '';
 }

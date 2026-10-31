@@ -10,9 +10,9 @@ full-screen start with live tiles, a command palette, a side panel,
 notifications and a lock screen in Rekta's language.
 
 **Status:** early beta. The session has the app bar with clock and calendar,
-the background, notifications, background apps ("im hintergrund") and the
-Start on Meta. Still missing: the command palette, the side panel, the volume
-display, the clipboard history and Rekta's own lock screen.
+the background, notifications, background apps ("im hintergrund"), the
+Start on Meta and Rekta's own lock screen. Still missing: the command palette,
+the side panel, the volume display and the clipboard history.
 
 ## Installation on NixOS
 

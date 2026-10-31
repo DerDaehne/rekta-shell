@@ -41,6 +41,14 @@ function dateWords(date, locale) {
     return monthAt >= 0 && monthAt < dayAt ? `${weekday} ${month} ${day}` : `${weekday} ${day} ${month}`;
 }
 
+// Weekday, day and month in full, lowercase, in the order and with the punctuation of the locale's long date but
+// without its year: "donnerstag, 30. oktober", "thursday, october 30".
+// ponytail: drops the year with the separators before it; a locale that writes words after the year keeps them.
+function longDateWords(date, locale) {
+    const pattern = locale.dateFormat(QtQml.Locale.LongFormat).replace(/[\s,]*y+/, "").trim();
+    return date.toLocaleDateString(locale, pattern).toLowerCase();
+}
+
 // The month's name and year as a lowercase heading: "oktober 2026".
 function monthTitle(date, locale) {
     return `${locale.standaloneMonthName(date.getMonth(), QtQml.Locale.LongFormat).toLowerCase()} ${date.getFullYear()}`;

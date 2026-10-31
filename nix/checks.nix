@@ -10,6 +10,7 @@ let
     fileset = lib.fileset.unions [
       ../shell
       ../settings
+      ../lockscreen
       ../tests
     ];
   };
@@ -55,9 +56,9 @@ in
     pkgs.runCommand "rekta-shell-package-refuses-foreign-qt" { } "touch $out";
 
   # A system or home profile links share/ and etc/xdg of its packages into every session's XDG dirs and lib/qt-6/plugins
-  # into its plugin path, Plasma's too: the package may bring no KWin effects, config defaults or plugins there. Its
-  # DBus module is a QML module in the namespace RektaShell, which nothing of Plasma imports, so lib/qt-6/qml may hold
-  # that alone.
+  # into its plugin path, Plasma's too: the package may bring no KWin effects, config defaults, plugins or shell
+  # packages (a lock screen) there. Its DBus module is a QML module in the namespace RektaShell, which nothing of Plasma
+  # imports, so lib/qt-6/qml may hold that alone.
   profile-leaves-plasma-alone =
     let
       profile = pkgs.buildEnv {
@@ -66,7 +67,7 @@ in
       };
     in
     pkgs.runCommand "rekta-shell-profile-leaves-plasma-alone" { } ''
-      for path in share/kwin etc/xdg lib/qt-6/plugins; do
+      for path in share/kwin share/plasma etc/xdg lib/qt-6/plugins; do
         if [ -e ${profile}/$path ]; then
           echo "a profile with the rekta package puts $path into every session" >&2
           exit 1
@@ -90,6 +91,14 @@ in
     grep -qF 'QT_PLUGIN_PATH="${rekta-shell}/lib/rekta-kwin/plugins' libexec/rekta-kwin
     grep -qF 'XDG_DATA_DIRS="${rekta-shell}/share/rekta-kwin:' libexec/rekta-kwin
     grep -qF 'XDG_CONFIG_DIRS="${rekta-shell}/share/rekta-kwin/kwin:' libexec/rekta-kwin
+    # The greeter KWin starts finds the lock screen's package by this name, under KWin's data dirs alone.
+    grep -qx '  export PLASMA_DEFAULT_SHELL=rekta-lockscreen' libexec/rekta-kwin
+    grep -qF '"Id": "rekta-lockscreen"' share/rekta-kwin/plasma/shells/rekta-lockscreen/metadata.json
+    test -f share/rekta-kwin/plasma/shells/rekta-lockscreen/contents/lockscreen/LockScreen.qml
+    if grep -q PLASMA_DEFAULT_SHELL libexec/rekta-session; then
+      echo "the start script hands the lock screen's package to the user manager, where the logout greeter misses it" >&2
+      exit 1
+    fi
     touch $out
   '';
 

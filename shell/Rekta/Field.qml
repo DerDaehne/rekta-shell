@@ -16,10 +16,21 @@ Column {
     property alias text: input.text
     // TextInput.Password hides what is typed, as `type="password"` does.
     property alias echoMode: input.echoMode
+    // Takes no typing for a while (`readonly`), looking as it does; what it holds stays.
+    property bool readOnly: false
     readonly property bool hasError: error !== ""
     readonly property bool disabled: disabledReason !== ""
+    // Where the input's frame starts, for a control beside the field to line up with it.
+    readonly property alias inputY: box.y
 
     signal accepted
+
+    // Focus in the input with all it holds selected, so typing replaces it and nothing is thrown away (forms.md, "When
+    // the server says no").
+    function selectAll() {
+        input.forceActiveFocus();
+        input.selectAll();
+    }
 
     spacing: Tokens.spaceXs
 
@@ -81,7 +92,7 @@ Column {
             rightPadding: leftPadding
             verticalAlignment: TextInput.AlignVCenter
             clip: true
-            readOnly: field.disabled
+            readOnly: field.disabled || field.readOnly
             activeFocusOnTab: true
             font.family: Tokens.fontSans
             font.pixelSize: Tokens.fontSizeS

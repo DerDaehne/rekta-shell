@@ -11,13 +11,16 @@ Item {
     // What is happening; said beside the dots when they stand still, and to assistive technology always.
     property string text
     property color ink: Tokens.color.textPrimary
+    // Set false, the dots are gone but keep their room; set again, they fly in from the start.
+    property bool running: true
 
-    implicitHeight: Math.max(Geometry.dotSize, words.implicitHeight)
+    // As tall as a dot while they fly (`.rk-dots { height: 4px }`, rekta.css:568), as the words when they stand.
+    implicitHeight: Tokens.reducedMotion ? Math.max(Geometry.dotSize, words.implicitHeight) : Geometry.dotSize
     Accessible.role: Accessible.ProgressBar
     Accessible.name: text
 
     Repeater {
-        model: Geometry.dotCount
+        model: dots.running ? Geometry.dotCount : 0
 
         delegate: Rectangle {
             id: dot
@@ -111,7 +114,7 @@ Item {
 
         x: dots.width / 2 + Geometry.dotRestOffset + Tokens.spaceS
         anchors.verticalCenter: parent.verticalCenter
-        visible: Tokens.reducedMotion && text !== ""
+        visible: dots.running && Tokens.reducedMotion && text !== ""
         text: dots.text
     }
 }

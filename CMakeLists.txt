@@ -44,6 +44,7 @@ configure_file(session/systemd/plasma-kwin_wayland.service.d/rekta-session.conf
 install(DIRECTORY shell/ DESTINATION ${KDE_INSTALL_DATADIR}/rekta-shell)
 install(DIRECTORY kwin/effects DESTINATION ${KDE_INSTALL_DATADIR}/rekta-kwin/kwin)
 install(FILES kwin/kwinrc DESTINATION ${KDE_INSTALL_DATADIR}/rekta-kwin/kwin)
+install(DIRECTORY lockscreen/ DESTINATION ${KDE_INSTALL_DATADIR}/rekta-kwin/plasma/shells/rekta-lockscreen)
 
 install(PROGRAMS ${generated}/rekta-shell ${generated}/rekta-settings DESTINATION ${KDE_INSTALL_BINDIR})
 install(FILES settings/shell.qml DESTINATION ${KDE_INSTALL_DATADIR}/rekta-settings)

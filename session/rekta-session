@@ -1,7 +1,4 @@
 #!/bin/sh
 # The display manager sets KDE here, from DesktopNames; the user units tell the two sessions apart by this value.
 export XDG_SESSION_DESKTOP=rekta
-# kscreenlocker_greet takes its lock screen from this shell package.
-# ponytail: Breeze's package, so the lock screen stays Breeze's until rekta-shell ships its own.
-export PLASMA_DEFAULT_SHELL=org.kde.plasma.desktop
 exec @PLASMA_DBUS_RUN_SESSION_IF_NEEDED@ @STARTPLASMA_WAYLAND@

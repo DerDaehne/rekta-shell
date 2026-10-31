@@ -148,15 +148,23 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   The QML tests run on a private bus (`dbus-run-session`) with `tests/counterpart/` (QtDBus
   alone) as the other end.
 - `session/` holds the rekta session's files: its desktop entry, the start script
-  (`XDG_SESSION_DESKTOP=rekta`, `PLASMA_DEFAULT_SHELL`, then `startplasma-wayland`),
+  (`XDG_SESSION_DESKTOP=rekta`, then `startplasma-wayland`),
   `rekta-shell.service` and the drop-ins that skip plasmashell and pull the shell into
   `plasma-workspace.target`. A drop-in on `plasma-kwin_wayland.service` runs Plasma's
   KWin command through `libexec/rekta-kwin`, which only in the rekta session puts the
   `rekta-kwin` directories (`kwin/`: effects, kwinrc defaults, `rekta-fadeback`), the
-  Rekta module and the `org.kde.desktop` controls style into KWin's environment; the
+  Rekta module, the `org.kde.desktop` controls style and
+  `PLASMA_DEFAULT_SHELL=rekta-lockscreen` into KWin's environment; the
   `kwin-drop-in-follows-plasma` check fails once Plasma's command changes. The package
   installs them with their paths filled in (`share/wayland-sessions`, `libexec`,
   `lib/systemd/user`).
+- `lockscreen/` is the Plasma shell package `rekta-lockscreen` with only
+  `contents/lockscreen/`: Rekta's lock screen, which `kscreenlocker_greet` loads from
+  `share/rekta-kwin/plasma/shells/`. The greeter inherits KWin's environment, so it finds
+  the package (and `import Rekta`) only in the rekta session; Plasma keeps Breeze's.
+  `LockScreen.qml` only adapts the greeter's context; `LockFace` and `Unlock` beside it
+  are tested in `tests/tst_lockscreen.qml` with a stand-in authenticator. Try it only in
+  the VM: lock with `loginctl lock-session <id>` of the graphical session, inside the guest.
 - `nixosModules.default` (`nix/nixos-module.nix`) registers that package as session
   and systemd package once `programs.rekta-shell.enable` is set;
   `homeManagerModules.default` (`nix/home-module.nix`) is the per-user counterpart.

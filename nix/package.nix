@@ -40,6 +40,7 @@ stdenv.mkDerivation {
       ../session
       ../settings
       ../kwin
+      ../lockscreen
       ../plugins/dbus
     ];
   };

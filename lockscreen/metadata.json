@@ -1,0 +1,11 @@
+{
+    "KPackageStructure": "Plasma/Shell",
+    "KPlugin": {
+        "Description": "Rekta's lock screen for the rekta session; everything else falls back to Plasma's desktop shell",
+        "Id": "rekta-lockscreen",
+        "License": "MIT",
+        "Name": "rekta lock screen"
+    },
+    "X-Plasma-APIVersion": "2",
+    "X-Plasma-FallbackPackage": "org.kde.plasma.desktop"
+}
