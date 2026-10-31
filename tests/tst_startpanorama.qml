@@ -348,6 +348,30 @@ TestCase {
         compare(named("pivot").currentIndex, 0);
     }
 
+    function test_a_sideways_wheel_over_the_place_pivot_goes_to_alle_apps() {
+        openAt(1000, 900);
+        mouseWheel(named("pivot"), 300, 10, -120, 0);
+        compare(named("pivot").currentIndex, 1);
+    }
+
+    function test_a_sideways_wheel_over_the_strip_goes_to_alle_apps() {
+        openAt(1000, 900);
+        mouseWheel(named("sectionStrip"), 300, 10, -120, 0);
+        compare(named("pivot").currentIndex, 1);
+    }
+
+    function test_a_sideways_wheel_gesture_that_reaches_the_end_of_the_panorama_on_its_way_changes_no_place() {
+        openAt(1000, 900);
+        const panorama = named("panorama");
+        panorama.scroller.contentX = panorama.mostScroll() - 50;
+        mouseWheel(panorama, 300, 300, -120, 0);
+        panorama.scroller.cancelFlick();
+        panorama.scroller.contentX = panorama.mostScroll();
+        mouseWheel(panorama, 300, 300, -120, 0);
+        compare(named("pivot").currentIndex, 0);
+        compare(pastEndSpy.count, 0);
+    }
+
     // The swipe
 
     function test_a_swipe_moves_the_panorama_and_past_its_end_goes_to_alle_apps() {

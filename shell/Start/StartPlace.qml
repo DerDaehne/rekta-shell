@@ -6,11 +6,12 @@ import Rekta
 // The Start, after the shell's decision for it: glass over the windows, across the whole surface. Its pivot
 // "start · alle apps" picks the place; the start place is a panorama of sections under a strip of their titles:
 // "läuft", a tile for each open window, the most recent first, then "angeheftet", the pinned apps; "alle apps" shows
-// the installed apps A–Z as one row of tiles that scrolls sideways, where a typed letter jumps to the next app it starts. It opens once the windows are
-// three quarters back (Rekta's hand-over between places), its parts turning in as a place arrives, and closes turning
-// them out: back the way they came, or forward after a press, the pressed tile last. While it turns its places take no
-// input. A letter typed in the start place searches the apps: what is typed becomes the title, "suche" beside it, and
-// the apps that match stand below as tiles. The title is a line edited as a field is; Escape there closes the Start.
+// the installed apps A–Z as one row of tiles that scrolls sideways, where a typed letter jumps to the next app it
+// starts. It opens once the windows are three quarters back (Rekta's hand-over between places), its parts turning in
+// as a place arrives, and closes turning them out: back the way they came, or forward after a press, the pressed tile
+// last. While it turns its places take no input. A letter typed in the start place searches the apps: what is typed
+// becomes the title, "suche" beside it, and the apps that match stand below as tiles. The title is a line edited as a
+// field is; Escape there closes the Start.
 FocusScope {
     id: start
 
@@ -506,9 +507,12 @@ FocusScope {
         return scrolled;
     }
 
-    // In "alle apps", one wheel gesture is one step: events less than wheel-latch apart belong together (layout.md). Only a
-    // sideways wheel changes the place.
+    // One wheel gesture is one step: events less than wheel-latch apart belong together (layout.md). Only a sideways wheel
+    // changes the place; over the start place's panorama only the panorama's pastEnd does, so a gesture that reaches the
+    // end on its way stops there.
     function wheel(event: WheelEvent) {
+        if (inTheStartPlace() && panorama.contains(panorama.mapFromItem(body, event.x, event.y)))
+            return;
         const now = Date.now();
         const fresh = now - lastWheel > Tokens.durationWheelLatch;
         lastWheel = now;
@@ -744,11 +748,11 @@ FocusScope {
         anchors.fill: parent
         visible: false
 
-        // A sideways wheel or a swipe over the pivots, or in "alle apps", goes to the place beside, a navigation like any
-        // other, also while a turn runs; a search stays where it is. In "alle apps" it takes no swipe over from what was
-        // pressed, so one that starts on the apps' row is the row's. A panorama that scrolls flicks itself and says when a
-        // swipe goes past its end (Panorama.pastEnd), so nothing is taken from it; one that fits has nothing to flick, and
-        // a swipe over its sections is the Start's.
+        // A sideways wheel or a swipe goes to the place beside, a navigation like any other, also while a turn runs; a
+        // search stays where it is. In "alle apps" it takes no swipe over from what was pressed, so one that starts on the
+        // apps' row is the row's. Over the start place's panorama the panorama says when a gesture goes past its end
+        // (Panorama.pastEnd): the wheel there is its alone, and so is a swipe while it scrolls; one that fits has nothing
+        // to flick, and a swipe over its sections is the Start's.
         DragHandler {
             property real dx: 0
 
@@ -768,7 +772,7 @@ FocusScope {
         }
 
         WheelHandler {
-            enabled: start.wanted && !start.searching && pivot.currentIndex === 1
+            enabled: start.wanted && !start.searching
             orientation: Qt.Horizontal
             onWheel: event => start.wheel(event)
         }

@@ -294,9 +294,7 @@ TestCase {
     }
 
     function test_a_section_scrolls_down_when_its_tiles_are_longer_than_the_screen() {
-        start.pinned = Array.from({
-            length: 40
-        }, (_, i) => fakeApp(`app ${i}`, 1));
+        start.pinned = Array.from({ length: 40 }, (_, i) => fakeApp(`app ${i}`, 1));
         openNow();
         const section = named("pinned");
         verify(section.contentHeight > section.height);
@@ -593,9 +591,7 @@ TestCase {
     }
 
     function test_a_tile_that_takes_the_focus_scrolls_into_view() {
-        start.pinned = Array.from({
-            length: 40
-        }, (_, i) => fakeApp(`app ${i}`, 1));
+        start.pinned = Array.from({ length: 40 }, (_, i) => fakeApp(`app ${i}`, 1));
         openNow();
         const section = named("pinned");
         // The first tile of the tenth row, below the screen.
@@ -609,7 +605,7 @@ TestCase {
         verify(top >= 0 && top + last.height <= section.height, `whole in view at ${top}`);
     }
 
-    function test_the_start_opens_again_with_no_tile_in_focus() {
+        function test_the_start_opens_again_with_no_tile_in_focus() {
         openNow();
         keyClick(Qt.Key_Down);
         verify(tilesIn("running")[0].activeFocus);
@@ -668,9 +664,7 @@ TestCase {
     }
 
     function appNames(count: int): var {
-        return Array.from({
-            length: count
-        }, (_, i) => `app ${String(i).padStart(2, "0")}`);
+        return Array.from({ length: count }, (_, i) => `app ${String(i).padStart(2, "0")}`);
     }
 
     readonly property real step: Tokens.tileUnit + Tokens.spaceS
@@ -962,9 +956,7 @@ TestCase {
     }
 
     function test_an_upright_drag_over_the_tiles_scrolls_their_section() {
-        start.pinned = Array.from({
-            length: 40
-        }, (_, i) => fakeApp(`app ${i}`, 1));
+        start.pinned = Array.from({ length: 40 }, (_, i) => fakeApp(`app ${i}`, 1));
         openNow();
         const section = named("pinned");
         mouseDrag(section, 60, section.height - 60, 0, -300);
@@ -983,7 +975,14 @@ TestCase {
 
     // A–Z, as the app model gives them.
     function searchableApps(): var {
-        return [searchableApp("Dateien", "Dateiverwaltung", ["files"]), searchableApp("Filelight", "Disk Usage", ["disk"]), searchableApp("Firefox", "Web Browser", ["internet", "web"]), searchableApp("Kate", "Text Editor", ["text"]), searchableApp("Konsole", "Terminal", ["terminal", "shell"]), searchableApp("KWrite", "Text Editor", ["text"])];
+        return [
+            searchableApp("Dateien", "Dateiverwaltung", ["files"]),
+            searchableApp("Filelight", "Disk Usage", ["disk"]),
+            searchableApp("Firefox", "Web Browser", ["internet", "web"]),
+            searchableApp("Kate", "Text Editor", ["text"]),
+            searchableApp("Konsole", "Terminal", ["terminal", "shell"]),
+            searchableApp("KWrite", "Text Editor", ["text"])
+        ];
     }
 
     // The Start open on its start place with the searchable apps, at once.
@@ -1185,10 +1184,7 @@ TestCase {
     }
 
     function test_an_app_started_more_often_stands_first_and_wide_among_equal_hits() {
-        start.starts = {
-            "org.example.KWrite": 2,
-            "org.example.Konsole": 1
-        };
+        start.starts = { "org.example.KWrite": 2, "org.example.Konsole": 1 };
         openWithApps();
         typeNow("k");
         compare(hitNames(), ["KWrite", "Konsole", "Kate"]);
@@ -1209,9 +1205,7 @@ TestCase {
     }
 
     function test_a_hit_that_takes_the_focus_scrolls_into_view() {
-        start.apps = Array.from({
-            length: 40
-        }, (_, i) => installedApp(`app ${i}`));
+        start.apps = Array.from({ length: 40 }, (_, i) => installedApp(`app ${i}`));
         openNow();
         typeNow("app");
         const results = named("results");
@@ -1601,9 +1595,7 @@ TestCase {
     }
 
     function test_more_than_sixty_changes_apply_at_once() {
-        start.apps = Array.from({
-            length: 61
-        }, (_, i) => installedApp(`app ${i}`));
+        start.apps = Array.from({ length: 61 }, (_, i) => installedApp(`app ${i}`));
         openNow();
         keyClick("a");
         verify(!named("presence").running);
@@ -1702,6 +1694,7 @@ TestCase {
         }
     }
 
+
     function test_contact_sheet_of_the_search_with_the_best_hit() {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
@@ -1766,7 +1759,14 @@ TestCase {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const sheet = createTemporaryObject(framesComponent, testCase);
-            const turners = [openingFrame(sheet, 1, 0.25), openingFrame(sheet, 2, 0.5), openingFrame(sheet, 3, 1), closingFrame(sheet, 4, 0), closingFrame(sheet, 5, 0.5), openingFrame(sheet, 0, -1)];
+            const turners = [
+                openingFrame(sheet, 1, 0.25),
+                openingFrame(sheet, 2, 0.5),
+                openingFrame(sheet, 3, 1),
+                closingFrame(sheet, 4, 0),
+                closingFrame(sheet, 5, 0.5),
+                openingFrame(sheet, 0, -1)
+            ];
             waitForRendering(sheet);
             grabImage(sheet).save(`start-turn-sheet-${theme}.png`);
             turners.forEach(turner => turner.paused = false);
@@ -1876,24 +1876,24 @@ TestCase {
 
     // Pages of System Settings, as the app model shapes them.
     function settingsPages(): var {
-        return [Object.assign(installedApp("Bluetooth"), {
-                id: "kcm_bluetooth"
-            }), Object.assign(installedApp("Datum und Zeit"), {
-                id: "kcm_clock"
-            }), Object.assign(installedApp("Tastatur"), {
-                id: "kcm_keyboard"
-            })];
+        return [
+            Object.assign(installedApp("Bluetooth"), { id: "kcm_bluetooth" }),
+            Object.assign(installedApp("Datum und Zeit"), { id: "kcm_clock" }),
+            Object.assign(installedApp("Tastatur"), { id: "kcm_keyboard" })
+        ];
     }
 
     function fakeCommands(): var {
         const say = (text, keywords) => ({
-                    text: text,
-                    keywords: keywords,
-                    run: () => testCase.calls = [...testCase.calls, `command ${text}`]
-                });
-        return [Object.assign(say("sperren", ["lock"]), {
-                key: "Meta L"
-            }), say("dunkel an", ["dark"]), say("dateien schließen", []), say("zeit anzeigen", []),
+                text: text,
+                keywords: keywords,
+                run: () => testCase.calls = [...testCase.calls, `command ${text}`]
+            });
+        return [
+            Object.assign(say("sperren", ["lock"]), { key: "Meta L" }),
+            say("dunkel an", ["dark"]),
+            say("dateien schließen", []),
+            say("zeit anzeigen", []),
             {
                 word: "ton",
                 at: percent => say(`ton auf ${percent} %`, [])
@@ -2106,9 +2106,7 @@ TestCase {
     }
 
     function test_a_row_that_takes_the_focus_scrolls_into_view() {
-        start.windows = Array.from({
-            length: 40
-        }, (_, i) => fakeWindow(`fenster ${i}`, i));
+        start.windows = Array.from({ length: 40 }, (_, i) => fakeWindow(`fenster ${i}`, i));
         openWithApps();
         typeNow("fenster");
         const results = named("results");
@@ -2243,9 +2241,7 @@ TestCase {
     }
 
     function test_a_row_scrolled_to_the_list_s_edge_keeps_its_whole_ring_in_view() {
-        start.windows = Array.from({
-            length: 40
-        }, (_, i) => fakeWindow(`fenster ${i}`, i));
+        start.windows = Array.from({ length: 40 }, (_, i) => fakeWindow(`fenster ${i}`, i));
         openWithApps();
         typeNow("fenster");
         const results = named("results");
