@@ -65,6 +65,10 @@ TestCase {
         verify(!Sources.screenShared([], []));
     }
 
+    function test_a_running_preview_is_the_shells_own_before_its_link_appears() {
+        compare(Sources.ownScreencasts(previews, [], []), [64, 65]);
+    }
+
     function test_the_running_previews_are_the_shells_own_once_each() {
         compare(Sources.ownScreencasts(previews, previews, [link(64, "kwin-screencast-org.kde.konsole"), link(65, "kwin-screencast-org.kde.dolphin")]), [64, 65]);
     }

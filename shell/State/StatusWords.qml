@@ -1,9 +1,9 @@
 import QtQuick
 
 // What deviates from normal, as the words the app bar shows: a choice the user made (muted, do not disturb) is neutral,
-// a privacy matter or a real problem (microphone in use, battery low, offline) takes the error colour and comes first.
-// The bar decides how many of them it has room for and counts the rest in a "+N"; the sources feed the flags, this only
-// orders and names.
+// a privacy matter or a real problem (microphone in use, screen shared, battery low, offline) takes the error colour and
+// comes first. The bar decides how many of them it has room for and counts the rest in a "+N"; the sources feed the
+// flags, this only orders and names.
 QtObject {
     id: state
 
@@ -19,7 +19,8 @@ QtObject {
 
     // Every word there can be, in the order they stand.
     readonly property var keys: ["microphone", "screen", "battery", "offline", "muted", "doNotDisturb", "more"]
-    // The deviations in order of weight: errors, then choices; each names the part of the controls panel it opens.
+    // The deviations in order of weight: errors, then choices; each names the place it opens, a part of the controls panel
+    // or the bar's menu of the background apps.
     readonly property var deviations: [
         microphoneInUse ? word("microphone", "mikrofon an", "error", "sound", "ton") : null,
         screenShared ? word("screen", "bildschirm geteilt", "error", "background", "im hintergrund") : null,
