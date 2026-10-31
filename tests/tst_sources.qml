@@ -6,6 +6,8 @@ TestCase {
     name: "StatusSources"
 
     readonly property int shell: 4242
+    // The shell's own previews as SystemState holds them, a QML list rather than a script array.
+    readonly property list<int> previews: [64, 65]
 
     function stream(properties) {
         return { isStream: true, properties: Object.assign({ "media.class": "Stream/Input/Audio" }, properties) };
@@ -36,30 +38,39 @@ TestCase {
         verify(Sources.microphoneInUse([stream({ "application.process.id": String(shell) }), stream({ "application.process.id": "7" })], shell), "another program still does");
     }
 
-    function link(sourceName, targetProperties) {
-        return { source: { name: sourceName }, target: { properties: targetProperties } };
+    // A link from a source node; without a media name its properties have not arrived yet.
+    function link(sourceId, mediaName) {
+        return { source: { id: sourceId, properties: mediaName === undefined ? {} : { "media.name": mediaName } } };
     }
 
     function test_a_program_receiving_a_screencast_of_kwin_shares_the_screen() {
-        verify(Sources.screenShared([link("kwin-screencast-org.kde.dolphin", { "application.process.id": "100" })], shell));
+        verify(Sources.screenShared([link(70, "kwin-screencast-Virtual-1")], []));
     }
 
     function test_the_shells_own_preview_never_counts() {
-        verify(!Sources.screenShared([link("kwin-screencast-org.kde.konsole", { "application.process.id": String(shell) })], shell));
-        verify(Sources.screenShared([link("kwin-screencast-DP-1", { "application.process.id": String(shell) }), link("kwin-screencast-DP-1", { "application.process.id": "7" })], shell), "another receiver still does");
+        verify(!Sources.screenShared([link(64, "kwin-screencast-org.kde.konsole")], previews));
+        verify(Sources.screenShared([link(64, "kwin-screencast-org.kde.konsole"), link(70, "kwin-screencast-Virtual-1")], previews), "another source still does");
+    }
+
+    function test_a_source_counts_only_once_its_properties_are_there() {
+        verify(!Sources.screenShared([link(70)], []));
     }
 
     function test_a_camera_or_an_audio_link_is_not_a_shared_screen() {
-        verify(!Sources.screenShared([link("v4l2_input.pci-0000", { "application.process.id": "100" })], shell));
-        verify(!Sources.screenShared([link("alsa_output.pci-0000", { "application.process.id": "100" })], shell));
+        verify(!Sources.screenShared([link(30, "Integrated Camera")], []));
+        verify(!Sources.screenShared([link(31, "Playback")], []));
     }
 
     function test_without_a_link_the_screen_is_not_shared() {
-        verify(!Sources.screenShared([], shell));
+        verify(!Sources.screenShared([], []));
     }
 
-    function test_the_portal_choosers_previews_count_while_it_is_open() {
-        verify(Sources.screenShared([link("kwin-screencast-DP-1", { "application.process.id": "900" })], shell));
+    function test_the_running_previews_are_the_shells_own_once_each() {
+        compare(Sources.ownScreencasts(previews, previews, [link(64, "kwin-screencast-org.kde.konsole"), link(65, "kwin-screencast-org.kde.dolphin")]), [64, 65]);
+    }
+
+    function test_an_ended_preview_stays_the_shells_own_while_its_link_remains() {
+        compare(Sources.ownScreencasts([], previews, [link(64, "kwin-screencast-org.kde.konsole")]), [64]);
     }
 
     function test_the_battery_is_low_from_the_warning_level_low_on() {

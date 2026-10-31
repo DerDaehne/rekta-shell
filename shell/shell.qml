@@ -57,6 +57,7 @@ ShellRoot {
         sink: keys.sink
         doNotDisturb: sidePanel.doNotDisturb
         powerProfiles: sidePanel.hasPowerProfiles
+        previewNodes: start.previewNodes
     }
 
     PrimaryScreen {

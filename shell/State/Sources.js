@@ -18,13 +18,21 @@ function microphoneInUse(nodes, ownProcessId) {
 }
 
 // Whether a program receives a screencast: a link from one of KWin's screencast nodes (portal, direct clients and the
-// shell's own previews alike) to a node of another process. Matched by name, as Quickshell does not mark video nodes as
-// streams. `linkGroups` have `source.name` and `target.properties`.
-// ponytail: the portal chooser's previews count while it is open, and a paused receiver counts too; exclude the portal's
-// process and read PwLinkGroup.state when that matters.
-function screenShared(linkGroups, ownProcessId) {
-    return linkGroups.some(group => group.source.name.startsWith(screencastPrefix)
-        && Number(group.target.properties["application.process.id"]) !== ownProcessId);
+// shell's own previews alike, their media named "kwin-screencast-…") that is not one of the shell's own previews.
+// PipeWire keeps the receiving process on the client, not on the node, so the shell's previews are told by their source.
+// `linkGroups` have `source.id` and `source.properties`.
+// ponytail: the portal chooser's previews count while it is open, and a paused receiver counts too; leave out the
+// portal's receivers (their node name) and read PwLinkGroup.state when that matters.
+function screenShared(linkGroups, ownSources) {
+    return linkGroups.some(group => (group.source.properties["media.name"] ?? "").startsWith(screencastPrefix)
+        && !ownSources.includes(group.source.id));
+}
+
+// The sources of the shell's own previews: those running and those that ended while PipeWire still links them, as a
+// closing preview leaves its list before its link goes and must not show as a share meanwhile.
+function ownScreencasts(previews, kept, linkGroups) {
+    const linked = linkGroups.map(group => group.source.id);
+    return Array.from(new Set([...previews, ...kept.filter(id => linked.includes(id))]));
 }
 
 function batteryLow(warningLevel) {

@@ -30,6 +30,9 @@ PanelWindow {
     property var commands: []
     // The list in start.json, null without a usable one.
     property var listedPins: null
+    // The window previews on the Start, and KWin's node of each that streams.
+    property list<WindowPreview> previews: []
+    readonly property list<int> previewNodes: previews.map(preview => preview.node).filter(node => node > 0)
     // KWin gives the keyboard to the next window when a surface goes, also when the side panel over the open Start goes;
     // it hands it to a layer surface only as that one starts to ask for it (LayerShellV1Window::handleAcceptsFocusChanged).
     property bool askingAgain: false
@@ -107,7 +110,12 @@ PanelWindow {
         starts: usage.starts
         unseen: surface.notices.unseenByApp
         preview: Component {
-            WindowPreview {}
+            WindowPreview {
+                id: windowPreview
+
+                Component.onCompleted: surface.previews = [...surface.previews, windowPreview]
+                Component.onDestruction: surface.previews = surface.previews.filter(other => other !== windowPreview)
+            }
         }
         onHoldsKeyboardChanged: {
             if (!place.holdsKeyboard && place.shown)
@@ -182,6 +190,8 @@ PanelWindow {
         id: preview
 
         property var window
+        // KWin's PipeWire node for this window, 0 until it streams.
+        readonly property int node: request.nodeId
 
         TaskManager.ScreencastingRequest {
             id: request

@@ -6,14 +6,17 @@ import org.kde.plasma.workspace.dbus as DBus
 import State
 
 // Where the app bar's status words come from: the default output from PipeWire (muted), the capture streams of
-// programs from PipeWire (microphone in use), the display battery from UPower (its own warning level, so the threshold
-// is the system's) and the network from NetworkManager. "Do not disturb" is the shell's own and comes in from the panel.
+// programs from PipeWire (microphone in use), KWin's screencasts that programs receive from PipeWire (screen shared), the
+// display battery from UPower (its own warning level, so the threshold is the system's) and the network from
+// NetworkManager. "Do not disturb" is the shell's own and comes in from the panel.
 Scope {
     id: system
 
     // The default audio output, bound by its tracker (ReadoutSources).
     required property PwNode sink
     required property bool doNotDisturb
+    // KWin's nodes of the shell's own window previews, which never count as a shared screen.
+    required property list<int> previewNodes
     // Whether the energy profile can be chosen in the panel, so the battery word names the place it opens.
     required property bool powerProfiles
     readonly property StatusWords words: model
@@ -28,13 +31,27 @@ Scope {
         objects: system.streams
     }
 
-    // The receivers of KWin's screencast nodes; their properties stay empty until tracked.
-    readonly property var screencastLinks: Pipewire.linkGroups
-    readonly property var screencastReceivers: screencastLinks.values
-        .filter(group => group.source.name.startsWith("kwin-screencast-")).map(group => group.target)
+    readonly property var linkGroups: Pipewire.linkGroups
+    // The previews' sources, each kept until its links are gone.
+    property list<int> ownScreencasts: []
 
+    function keepOwnScreencasts() {
+        ownScreencasts = Sources.ownScreencasts(previewNodes, ownScreencasts, linkGroups.values);
+    }
+
+    onPreviewNodesChanged: keepOwnScreencasts()
+
+    Connections {
+        target: system.linkGroups
+
+        function onValuesChanged() {
+            system.keepOwnScreencasts();
+        }
+    }
+
+    // The sources of all links, as KWin's media name is in their properties, which stay empty until tracked.
     PwObjectTracker {
-        objects: system.screencastReceivers
+        objects: system.linkGroups.values.map(group => group.source)
     }
 
     DBus.Properties {
@@ -59,7 +76,7 @@ Scope {
         muted: system.sink?.audio?.muted ?? false
         doNotDisturb: system.doNotDisturb
         microphoneInUse: Sources.microphoneInUse(system.streams, Quickshell.processId)
-        screenShared: Sources.screenShared(system.screencastLinks.values, Quickshell.processId)
+        screenShared: Sources.screenShared(system.linkGroups.values, system.ownScreencasts)
         batteryLow: Sources.batteryLow(battery.properties.WarningLevel)
         batteryPercent: Math.round(battery.properties.Percentage ?? 0)
         offline: system.networkManagerRunning && Sources.offline(Networking.connectivity, NetworkConnectivity.None)
