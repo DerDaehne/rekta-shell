@@ -183,6 +183,7 @@ TestCase {
 
     function openOnMessages() {
         side.show(1);
+        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
         waitForRendering(scene);
     }
 

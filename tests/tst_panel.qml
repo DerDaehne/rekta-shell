@@ -757,8 +757,7 @@ TestCase {
         const opener = named("opener");
         const clicked = createTemporaryObject(spyComponent, testCase, { target: opener, signalName: "clicked" });
         const behind = createTemporaryObject(scrollerBehindComponent, scene);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseWheel(scene, 200, 300, 0, -120);
         tryVerify(() => behind.contentY > 0, 1000, "the wheel scrolls what lies beside it");
         mouseClick(opener);
@@ -1245,8 +1244,7 @@ TestCase {
 
     function test_the_output_select_expands_in_place_pushes_the_rows_below_down_and_a_click_asks_for_another_default() {
         const sound = giveSound(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         const select = control("outputDevice");
         const volumeRow = rowOf(control("outputVolume"));
         const before = volumeRow.mapToItem(controls, 0, 0).y;
@@ -1270,8 +1268,7 @@ TestCase {
 
     function test_the_input_select_lists_the_inputs() {
         const sound = giveSound(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         const select = control("inputDevice");
         mouseClick(findChild(select, "box"));
         const options = optionRows(select);
@@ -1445,8 +1442,7 @@ TestCase {
     function test_a_long_device_name_is_cut_in_its_select_and_in_its_row() {
         const sound = giveSound(controls);
         sound.speakers.description = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3)".repeat(Math.ceil(Tokens.tileUnit / 40));
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         const select = control("outputDevice");
         verify(findChild(select, "chosen").truncated, "in the select");
         mouseClick(findChild(select, "box"));
@@ -1622,7 +1618,7 @@ TestCase {
 
     function test_geräte_unfolds_the_paired_devices_in_place_with_their_state_and_battery() {
         giveBluetooth(controls);
-        side.show(0);
+        showSettled(0);
         const opener = control("chooseBluetoothDevice");
         const branch = control("bluetoothBranch");
         const below = findChild(controls, "display");
@@ -1650,8 +1646,7 @@ TestCase {
     function test_with_more_than_five_devices_five_unfold_connected_first_and_alle_geräte_opens_all_in_a_level() {
         giveBluetooth(controls);
         givePairedDevices(controls, 7);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseBluetoothDevice"));
         waitForRendering(side);
         const rows = branchRows();
@@ -1667,8 +1662,7 @@ TestCase {
     function test_up_to_five_devices_have_no_alle_geräte_row() {
         giveBluetooth(controls);
         givePairedDevices(controls, 5);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseBluetoothDevice"));
         waitForRendering(side);
         compare(branchRows().length, 6, "five devices and neues gerät koppeln");
@@ -1677,8 +1671,7 @@ TestCase {
 
     function test_the_unfolded_devices_connect_and_pair_like_those_of_the_level() {
         const bluetooth = giveBluetooth(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseBluetoothDevice"));
         waitForRendering(side);
         const rows = branchRows();
@@ -1694,8 +1687,7 @@ TestCase {
 
     function test_the_devices_unfold_over_duration_short_with_ease_in_and_fold_in_0_7_of_that_with_ease_out() {
         giveBluetooth(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         Prefs.motion = "on";
         const branch = control("bluetoothBranch");
         const unfolding = findChild(branch, "unfolding");
@@ -1785,12 +1777,11 @@ TestCase {
 
     function test_the_devices_come_back_folded_after_the_panel_was_away() {
         giveBluetooth(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseBluetoothDevice"));
         side.close();
         tryVerify(() => !side.visible);
-        side.show(0);
+        showSettled(0);
         verify(!control("bluetoothBranch").expanded);
     }
 
@@ -1908,8 +1899,7 @@ TestCase {
 
     function test_the_wlan_toggle_switches_wireless_and_shows_what_the_system_has() {
         giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         const toggle = control("wifi");
         verify(toggle.checked);
         compare(findChild(rowOf(toggle), "words").text, "wlan");
@@ -1926,8 +1916,7 @@ TestCase {
     function test_a_blocked_radio_greys_the_wlan_toggle_which_says_why() {
         giveNetworks(controls);
         controls.networking.wifiHardwareEnabled = false;
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         const toggle = control("wifi");
         verify(toggle.disabled);
         compare(toggle.disabledReason, "funk gesperrt");
@@ -1972,8 +1961,7 @@ TestCase {
 
     function test_with_eight_networks_the_five_strongest_unfold_and_alle_netze_opens_all_in_a_level() {
         giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         const opener = control("chooseNetwork");
         const below = findChild(controls, "display");
         const before = below.y;
@@ -1994,8 +1982,7 @@ TestCase {
     function test_up_to_five_networks_have_no_alle_netze_row() {
         const networks = giveNetworks(controls);
         networks.device.networks.values = [networks.home, networks.office, networks.guest, networks.neighbour, networks.library];
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         compare(rowsOf("wifiBranch").length, 5);
@@ -2003,8 +1990,7 @@ TestCase {
 
     function test_a_network_row_tells_what_it_is_and_its_signal_in_percent() {
         giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         const rows = rowsOf("wifiBranch");
@@ -2020,8 +2006,7 @@ TestCase {
 
     function test_the_scan_runs_while_the_list_shows_and_stops_with_it() {
         giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         compare(scans, []);
         mouseClick(control("chooseNetwork"));
         compare(scans, [true]);
@@ -2042,8 +2027,7 @@ TestCase {
 
     function test_the_networks_keep_their_order_while_the_list_shows_though_the_signal_moves() {
         const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         networks.shop.signalStrength = 0.95;
@@ -2058,8 +2042,7 @@ TestCase {
 
     function test_a_known_or_open_network_joins_at_once() {
         const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         const rows = rowsOf("wifiBranch");
@@ -2076,8 +2059,7 @@ TestCase {
 
     function test_a_secured_unknown_network_asks_for_its_password_in_a_sheet_and_joins_with_it() {
         const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         mouseClick(rowsOf("wifiBranch")[3]);
@@ -2098,8 +2080,7 @@ TestCase {
 
     function test_an_empty_password_is_refused_at_the_field_and_escape_leaves_the_sheet_alone_of_the_panel() {
         const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         mouseClick(rowsOf("wifiBranch")[3]);
@@ -2127,8 +2108,7 @@ TestCase {
 
     function test_an_untouched_password_sheet_leaves_without_asking() {
         giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         mouseClick(rowsOf("wifiBranch")[3]);
@@ -2139,8 +2119,7 @@ TestCase {
 
     function test_the_sheet_closes_when_its_network_goes() {
         const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         mouseClick(rowsOf("wifiBranch")[3]);
@@ -2152,8 +2131,7 @@ TestCase {
 
     function test_the_sheet_goes_with_the_panel() {
         giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         mouseClick(rowsOf("wifiBranch")[3]);
@@ -2165,8 +2143,7 @@ TestCase {
 
     function test_a_failed_connection_says_why_in_its_row_until_the_next_attempt() {
         const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         mouseClick(rowsOf("wifiBranch")[1]);
@@ -2190,8 +2167,7 @@ TestCase {
 
     function test_the_joined_network_is_left_by_its_quiet_button_and_a_press_on_its_row_does_nothing() {
         const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         const home = rowsOf("wifiBranch")[0];
@@ -2247,8 +2223,7 @@ TestCase {
         giveBluetooth(controls);
         givePairedDevices(controls, 7);
         scene.height = 420;
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         const scroller = findChild(side, "scroller");
         mouseClick(control("chooseNetwork"));
         wait(300);
@@ -2266,21 +2241,18 @@ TestCase {
 
     function test_the_networks_come_back_folded_after_the_panel_was_away() {
         giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         side.close();
         tryVerify(() => !side.visible);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         verify(!control("wifiBranch").expanded);
     }
 
     function test_after_trennen_the_row_does_not_say_it_is_connecting_and_bluetooth_says_the_same_word() {
         const networks = giveNetworks(controls);
         const bluetooth = giveBluetooth(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         mouseClick(findChild(rowsOf("wifiBranch")[0], "leave"));
@@ -2295,8 +2267,7 @@ TestCase {
 
     function test_the_cause_for_a_lost_connection_is_not_the_word_for_an_idle_row() {
         const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         networks.home.connected = false;
@@ -2310,8 +2281,7 @@ TestCase {
     function test_an_empty_list_says_what_is_empty_while_the_scan_runs() {
         const networks = giveNetworks(controls);
         networks.device.networks.values = [];
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         const hint = control("noNetworks");
@@ -2327,8 +2297,7 @@ TestCase {
 
     function test_networks_that_come_or_go_while_the_list_is_open_leave_the_others_in_their_place() {
         const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         networks.shop.signalStrength = 0.95;
@@ -2342,8 +2311,7 @@ TestCase {
 
     function test_folding_the_list_keeps_its_rows_while_it_folds_and_never_shows_the_empty_sentence() {
         giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         Prefs.motion = "on";
         const branch = control("wifiBranch");
         mouseClick(control("chooseNetwork"));
@@ -2363,8 +2331,7 @@ TestCase {
 
     function test_wlan_off_closes_the_level_and_stops_the_scan() {
         giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
+        showSettled(0);
         mouseClick(control("chooseNetwork"));
         waitForRendering(side);
         mouseClick(control("allNetworks"));
