@@ -508,10 +508,10 @@ FocusScope {
     }
 
     // One wheel gesture is one step: events less than wheel-latch apart belong together (layout.md). Only a sideways wheel
-    // changes the place; over the start place's panorama only the panorama's pastEnd does, so a gesture that reaches the
-    // end on its way stops there.
+    // changes the place; over the start place's panorama, while it is sideways, only the panorama's pastEnd does, so a
+    // gesture that reaches the end on its way stops there. A stacked panorama leaves the wheel alone and says nothing.
     function wheel(event: WheelEvent) {
-        if (inTheStartPlace() && panorama.contains(panorama.mapFromItem(body, event.x, event.y)))
+        if (inTheStartPlace() && panorama.sideways && panorama.contains(panorama.mapFromItem(body, event.x, event.y)))
             return;
         const now = Date.now();
         const fresh = now - lastWheel > Tokens.durationWheelLatch;
@@ -749,10 +749,10 @@ FocusScope {
         visible: false
 
         // A sideways wheel or a swipe goes to the place beside, a navigation like any other, also while a turn runs; a
-        // search stays where it is. In "alle apps" it takes no swipe over from what was pressed, so one that starts on the
-        // apps' row is the row's. Over the start place's panorama the panorama says when a gesture goes past its end
-        // (Panorama.pastEnd): the wheel there is its alone, and so is a swipe while it scrolls; one that fits has nothing
-        // to flick, and a swipe over its sections is the Start's.
+        // search, or a Start on its way out, stays where it is. In "alle apps" it takes no swipe over from what was
+        // pressed, so one that starts on the apps' row is the row's. Over the start place's sideways panorama the panorama
+        // says when a gesture goes past its end (Panorama.pastEnd): the wheel there is its alone, and so is a swipe while
+        // it scrolls; one that fits has nothing to flick, and a swipe over its sections is the Start's.
         DragHandler {
             property real dx: 0
 
@@ -827,7 +827,7 @@ FocusScope {
                 viewportHeight: start.height
                 sectionStrip: strip
                 onPastEnd: forward => {
-                    if (forward)
+                    if (forward && start.wanted && !start.searching)
                         pivot.select(1);
                 }
 

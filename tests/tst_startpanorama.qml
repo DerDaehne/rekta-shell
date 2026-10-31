@@ -372,6 +372,44 @@ TestCase {
         compare(pastEndSpy.count, 0);
     }
 
+    function test_a_sideways_wheel_over_the_stacked_panorama_of_a_compact_start_goes_to_alle_apps() {
+        openAt(700, 900);
+        verify(!named("panorama").sideways);
+        mouseWheel(named("panorama"), 100, 100, -120, 0);
+        compare(named("pivot").currentIndex, 1);
+    }
+
+    function test_a_wheel_past_the_end_as_the_search_comes_in_changes_no_place() {
+        openNow();
+        keyClick(Qt.Key_K);
+        verify(start.searching);
+        mouseWheel(named("panorama"), 300, 300, 0, -120);
+        mouseWheel(named("panorama"), 300, 300, -120, 0);
+        compare(named("pivot").currentIndex, 0);
+    }
+
+    // A Start closing at the end of its panorama.
+    function closeAtTheEnd(): var {
+        openAt(1000, 900);
+        const panorama = named("panorama");
+        panorama.scroller.contentX = panorama.mostScroll();
+        start.close(null);
+        verify(start.turning);
+        return panorama;
+    }
+
+    function test_a_wheel_past_the_end_while_the_start_closes_changes_no_place() {
+        mouseWheel(closeAtTheEnd(), 300, 300, -120, 0);
+        compare(named("pivot").currentIndex, 0);
+        verify(start.turning, "the close turns on");
+    }
+
+    function test_a_swipe_past_the_end_while_the_start_closes_changes_no_place() {
+        mouseDrag(closeAtTheEnd(), 800, 600, -200, 0);
+        compare(named("pivot").currentIndex, 0);
+        verify(start.turning, "the close turns on");
+    }
+
     // The swipe
 
     function test_a_swipe_moves_the_panorama_and_past_its_end_goes_to_alle_apps() {
