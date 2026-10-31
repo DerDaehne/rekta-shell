@@ -61,6 +61,24 @@ function freeSpaceNotice(hints) {
     return fromKdeEvent(hints, "freespacenotifier", "freespacenotif");
 }
 
+// freespacenotifier.kcfg: the defaults of its two limits, which its freespacenotifierrc may change.
+const defaultMinimumMebibytes = 200;
+const defaultMinimumPercent = 5;
+
+// The limits freespacenotifier warns at, from its config file's text (empty or missing: its defaults).
+function freeSpaceLimits(configText) {
+    const value = (key, fallback) => Number((new RegExp(`^${key}=(\\d+)`, "m").exec(configText ?? "") ?? [])[1] ?? fallback);
+    return { mebibytes: value("minimumSpace", defaultMinimumMebibytes), percent: value("minimumSpacePercentage", defaultMinimumPercent) };
+}
+
+// Whether every filesystem in `df -B1 --output=avail,size` (header or not) has more free than the smaller of the two
+// limits. Without a single reading, nothing is known, so not enough.
+function enoughSpace(dfText, limits) {
+    const readings = dfText.split("\n").map(line => line.trim().split(/\s+/).map(Number)).filter(cells => cells.length === 2 && cells.every(Number.isFinite));
+    const enough = ([available, size]) => available >= Math.min(limits.mebibytes * 1048576, size * limits.percent / 100);
+    return readings.length > 0 && readings.every(enough);
+}
+
 // powerdevil's persistent notice for a low battery, which the status word already says. Its "criticalbattery" is
 // another event: it announces the action in 60 seconds.
 function lowBatteryNotice(hints) {

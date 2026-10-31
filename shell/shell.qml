@@ -123,6 +123,7 @@ ShellRoot {
         launcher: appLauncher
         notices: notifications.board
         primaryScreen: primary.screen
+        topInset: systemBanner.zone
     }
 
     ControlPanel {
@@ -195,7 +196,15 @@ ShellRoot {
         }
     }
 
+    FreeSpace {
+        watching: notifications.board.storageFull
+
+        onChecked: enough => notifications.board.storageChecked(enough)
+    }
+
     SystemBanner {
+        id: systemBanner
+
         states: systemState.banners
         primaryScreen: primary.screen
         fullScreen: running.fullScreenOn(primary.screen)

@@ -55,12 +55,13 @@ QtObject {
     // Removed rows whose undo window is still open.
     property var pending: []
     property int arrivals: 0
-    // freespacenotifier's open notice: it is a state the system banner shows, so it is neither toast nor row. It ends
-    // when the program closes it, and its words are rewritten every minute.
-    // ponytail: one such notice at a time; a second one replaces the first.
+    // freespacenotifier's notice starts a state the system banner shows, so it is neither toast nor row. The notice's
+    // closing does not end it (Quickshell closes it after any action): only `storageChecked` does, once enough is free.
+    // ponytail: one such notice at a time; a second one replaces the first. Once the notice has gone, the remedy has no
+    // action to call until freespacenotifier warns again.
     property var storageNotice: null
     property string storageText: ""
-    readonly property bool storageFull: storageNotice !== null
+    property bool storageFull: false
     readonly property var removal: ({})
 
     // A notification without a default action was pressed, or a row that ran out: its app should come forward.
@@ -100,6 +101,7 @@ QtObject {
 
     function holdStorage(notification: var) {
         storageNotice = notification;
+        storageFull = true;
         storageText = notification.body || notification.summary;
         notification.closed.connect(() => {
             if (storageNotice === notification)
@@ -111,6 +113,12 @@ QtObject {
         };
         notification.summaryChanged.connect(reword);
         notification.bodyChanged.connect(reword);
+    }
+
+    // What the shell's own look at the free space found: the state ends only when enough is free again.
+    function storageChecked(enough: bool) {
+        if (enough)
+            storageFull = false;
     }
 
     // The remedy of the storage state: the notice's first action, which opens the program that clears space.

@@ -41,8 +41,6 @@ TestCase {
                 toaster: toasts
                 order: lights.order
                 bannerStates: lights.states
-                sinceWord: "seit"
-                stillText: (event, word) => `${event}. Das Banner zeigt weiter „${word}“, bis das endet.`
                 remedy: name => testCase.remedied = [...testCase.remedied, name]
             }
 
@@ -52,6 +50,27 @@ TestCase {
                 objectName: "toaster"
                 width: parent.width
                 y: 300
+            }
+        }
+    }
+
+    Component {
+        id: unmappedComponent
+
+        Item {
+            visible: false
+
+            SystemBanners {
+                id: lights2
+
+                objectName: "lights"
+            }
+
+            Banner {
+                objectName: "inside"
+                width: 1000
+                order: lights2.order
+                bannerStates: lights2.states
             }
         }
     }
@@ -147,6 +166,28 @@ TestCase {
         compare(banner.shown, "battery");
     }
 
+    function test_the_window_maps_from_the_banners_own_state_also_while_the_window_is_unmapped() {
+        const unmapped = createTemporaryObject(unmappedComponent, testCase);
+        const inside = findChild(unmapped, "inside");
+        const lights = findChild(unmapped, "lights");
+        verify(!lights.shows(inside, false));
+        lights.batteryCritical = true;
+        lights.apply(inside);
+        verify(!inside.visible, "the banner is not visible, as in a window that is not mapped");
+        verify(lights.shows(inside, false), "the window still maps");
+        lights.batteryCritical = false;
+        lights.apply(inside);
+        verify(!lights.shows(inside, false));
+    }
+
+    function test_the_zone_is_the_banners_height_while_a_state_stands_and_none_over_a_full_screen_window() {
+        compare(model.zone(banner, false), 0);
+        turn({ offline: true });
+        compare(model.zone(banner, false), banner.contentHeight);
+        verify(banner.contentHeight > 0);
+        compare(model.zone(banner, true), 0);
+    }
+
     function test_the_places_the_remedies_open_are_in_the_controls_panel() {
         compare(model.places, { battery: "power", offline: "connections" });
     }
@@ -199,7 +240,6 @@ TestCase {
                         width: parent.width
                         order: sheetLights.order
                         bannerStates: sheetLights.states
-                        sinceWord: "seit"
                         Component.onCompleted: set(modelData, true, { since: new Date(2026, 9, 30, 14, 5), text: sheetLights.sentences[modelData] })
                     }
                 }

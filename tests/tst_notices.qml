@@ -543,17 +543,25 @@ TestCase {
         compare(board.storageText, "4 MiB free");
     }
 
-    function test_closing_freespacenotifiers_notice_turns_the_storage_state_off() {
+    function test_closing_freespacenotifiers_notice_leaves_the_storage_state_on() {
         const notice = notify({ hints: freeSpaceHints });
         notice.close(NoticeBoard.CloseRequested);
+        verify(board.storageFull);
+    }
+
+    function test_the_storage_state_ends_when_the_shells_own_check_finds_enough_free() {
+        notify({ hints: freeSpaceHints });
+        board.storageChecked(false);
+        verify(board.storageFull, "still too little");
+        board.storageChecked(true);
         verify(!board.storageFull);
     }
 
-    function test_the_storage_remedy_invokes_the_first_action_of_the_notice() {
+    function test_the_storage_remedy_invokes_the_first_action_of_the_notice_and_leaves_the_state_on() {
         notify({ hints: freeSpaceHints }, [["default", "open"], ["filelight", "Open in Filelight"]]);
         board.cleanUp();
-        compare(calls, ["anna invoked filelight", "anna closed 2"], "the program closes its notice, which ends the state");
-        verify(!board.storageFull);
+        compare(calls, ["anna invoked filelight", "anna closed 2"]);
+        verify(board.storageFull, "the server closed the notice after the action; nothing was freed");
     }
 
     function test_powerdevils_low_battery_notice_is_neither_toast_nor_row() {

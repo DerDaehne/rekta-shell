@@ -90,6 +90,24 @@ TestCase {
         compare([undefined, 0, 1, 2, 3, 4, 5].map(level => Sources.batteryCritical(level)), [false, false, false, false, false, true, true]);
     }
 
+    function test_the_free_space_limits_are_freespacenotifiers_own_or_its_defaults() {
+        compare(Sources.freeSpaceLimits(""), { mebibytes: 200, percent: 5 });
+        compare(Sources.freeSpaceLimits("[General]\nminimumSpace=500\nminimumSpacePercentage=10\n"), { mebibytes: 500, percent: 10 });
+        compare(Sources.freeSpaceLimits("[General]\nminimumSpace=500\n"), { mebibytes: 500, percent: 5 });
+    }
+
+    function test_enough_space_needs_every_filesystem_above_the_smaller_of_the_two_limits() {
+        const limits = { mebibytes: 200, percent: 5 };
+        const header = "Avail 1B-blocks\n";
+        const mebibytes = n => n * 1048576;
+        compare(Sources.enoughSpace(header + `${mebibytes(300)} ${mebibytes(100000)}\n`, limits), true, "300 MiB is above 200 MiB");
+        compare(Sources.enoughSpace(header + `${mebibytes(100)} ${mebibytes(100000)}\n`, limits), false, "100 MiB is below 200 MiB");
+        compare(Sources.enoughSpace(header + `${mebibytes(60)} ${mebibytes(1000)}\n`, limits), true, "a small disk: 6 % is above its 5 %");
+        compare(Sources.enoughSpace(header + `${mebibytes(40)} ${mebibytes(1000)}\n`, limits), false, "a small disk: 4 % is below its 5 %");
+        compare(Sources.enoughSpace(header + `${mebibytes(900)} ${mebibytes(1000)}\n${mebibytes(10)} ${mebibytes(1000)}\n`, limits), false, "one low disk is enough");
+        compare(Sources.enoughSpace("", limits), false, "no reading, nothing known");
+    }
+
     function test_freespacenotifiers_notice_is_known_by_the_app_and_event_it_names() {
         verify(Sources.freeSpaceNotice({ "x-kde-appname": "freespacenotifier", "x-kde-eventId": "freespacenotif" }));
         verify(!Sources.freeSpaceNotice({ "x-kde-appname": "freespacenotifier", "x-kde-eventId": "other" }));

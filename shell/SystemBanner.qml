@@ -18,7 +18,8 @@ PanelWindow {
     required property bool fullScreen
     required property ControlPanel controlPanel
     required property Toaster toaster
-    // The urgent state is the one on show, also while it leaves.
+    // The room kept clear at the top, for the Start to begin below.
+    readonly property real zone: states.zone(banner, fullScreen)
 
     function runRemedy(name: string) {
         if (name === "storage")
@@ -30,13 +31,12 @@ PanelWindow {
     signal cleanUp
 
     screen: primaryScreen
-    // Not banner.visible: that is false while this window is unmapped, so the banner could never come back.
-    visible: primaryScreen !== null && (banner.shown !== "" || banner.leaving) && states.mayShow(banner.word, fullScreen)
+    visible: primaryScreen !== null && states.shows(banner, fullScreen)
     anchors.left: true
     anchors.right: true
     anchors.top: true
     implicitHeight: banner.implicitHeight
-    exclusiveZone: !fullScreen && banner.shown !== "" ? banner.contentHeight : 0
+    exclusiveZone: zone
     color: "transparent"
     WlrLayershell.namespace: "dock"
     WlrLayershell.layer: fullScreen ? WlrLayer.Overlay : WlrLayer.Top
@@ -49,8 +49,6 @@ PanelWindow {
         toaster: host.toaster
         order: host.states.order
         bannerStates: host.states.states
-        sinceWord: "seit"
-        stillText: (event, word) => `${event}. Das Banner zeigt weiter „${word}“, bis das endet.`
         remedy: name => host.runRemedy(name)
     }
 

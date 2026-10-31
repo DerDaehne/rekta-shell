@@ -29,14 +29,31 @@ QtObject {
             storage: storageText
         })
 
+    // Rekta's words around the states (strings.de.js: since, bannerStill).
+    readonly property string sinceWord: "seit"
+    readonly property var stillText: (event, word) => `${event}. Das Banner zeigt weiter „${word}“, bis das endet.`
+
     // Over a full-screen window only the urgent state shows; `word` is the one on the banner.
     function mayShow(word: string, fullScreen: bool): bool {
         return !fullScreen || word === states[urgent].word;
     }
 
+    // Whether the window holding the banner is mapped. From the banner's own state, not its `visible`: that is false
+    // while the window is unmapped, so the banner could never come back.
+    function shows(banner: var, fullScreen: bool): bool {
+        return (banner.shown !== "" || banner.leaving) && mayShow(banner.word, fullScreen);
+    }
 
-    // Turns the states on or off at the banner and writes their current sentences.
+    // The room the banner keeps clear at the top while a state stands; the Start and the windows begin below it. Over a
+    // full-screen window there is none.
+    function zone(banner: var, fullScreen: bool): real {
+        return !fullScreen && banner.shown !== "" ? banner.contentHeight : 0;
+    }
+
+    // Gives the banner its words and turns the states on or off, with their current sentences.
     function apply(banner: var) {
+        banner.sinceWord = sinceWord;
+        banner.stillText = stillText;
         for (const name of order)
             banner.set(name, active[name], { text: sentences[name] });
     }

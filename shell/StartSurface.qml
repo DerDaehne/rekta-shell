@@ -20,6 +20,8 @@ PanelWindow {
     required property Launcher launcher
     required property NoticeBoard notices
     required property ShellScreen primaryScreen
+    // The room a banner keeps clear at the top: the Start begins below it, as the windows do.
+    property real topInset: 0
     // What Escape does in a search: "close" or "back" (the setting searchEscape).
     property string searchEscape: "close"
     // From its opening to its hand-over, when the glass starts to go: in front of everything on the primary screen.
@@ -101,6 +103,7 @@ PanelWindow {
         id: place
 
         anchors.fill: parent
+        anchors.topMargin: surface.topInset
         windows: Array.from(surface.windows.all)
         pinned: surface.pinnedApps(Array.from(DesktopEntries.applications.values), surface.listedPins)
         apps: installed.list
