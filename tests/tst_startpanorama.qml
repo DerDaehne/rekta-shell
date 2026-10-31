@@ -388,6 +388,43 @@ TestCase {
         compare(named("pivot").currentIndex, 0);
     }
 
+    function test_a_click_on_alle_apps_as_the_search_comes_in_changes_no_place() {
+        openNow();
+        keyClick(Qt.Key_K);
+        verify(start.searching);
+        mouseClick(findChild(named("pivot"), "title-1"));
+        compare(named("pivot").currentIndex, 0);
+        keyClick(Qt.Key_Backspace);
+        tryVerify(() => !start.searching);
+        compare(named("pivot").currentIndex, 0, "the Start stands in start again");
+    }
+
+    function test_the_arrow_keys_on_the_pivot_as_the_search_comes_in_change_no_place() {
+        openNow();
+        keyClick(Qt.Key_K);
+        verify(start.searching);
+        named("pivot").forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        compare(named("pivot").currentIndex, 0);
+    }
+
+    function test_a_click_on_alle_apps_while_the_start_closes_changes_no_place() {
+        openNow();
+        start.close(null);
+        verify(start.turning);
+        mouseClick(findChild(named("pivot"), "title-1"));
+        compare(named("pivot").currentIndex, 0);
+    }
+
+    function test_the_arrow_keys_on_the_pivot_while_the_start_closes_change_no_place() {
+        openNow();
+        named("pivot").forceActiveFocus();
+        start.close(null);
+        verify(start.turning);
+        keyClick(Qt.Key_Right);
+        compare(named("pivot").currentIndex, 0);
+    }
+
     // A Start closing at the end of its panorama.
     function closeAtTheEnd(): var {
         openAt(1000, 900);

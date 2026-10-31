@@ -785,7 +785,7 @@ FocusScope {
             objectName: "pivot"
             x: Tokens.spaceXl
             width: parent.width - 2 * Tokens.spaceXl
-            enabled: start.wanted
+            enabled: start.wanted && !start.searching
             level: "nav"
             activeToken: Tokens.fontSizeNavActive
             inactiveToken: Tokens.fontSizeTitle
