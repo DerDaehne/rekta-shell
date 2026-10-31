@@ -30,7 +30,8 @@ PanelWindow {
     signal cleanUp
 
     screen: primaryScreen
-    visible: primaryScreen !== null && banner.visible && states.mayShow(banner.word, fullScreen)
+    // Not banner.visible: that is false while this window is unmapped, so the banner could never come back.
+    visible: primaryScreen !== null && (banner.shown !== "" || banner.leaving) && states.mayShow(banner.word, fullScreen)
     anchors.left: true
     anchors.right: true
     anchors.top: true
