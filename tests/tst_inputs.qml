@@ -78,6 +78,8 @@ TestCase {
                 Slider { width: parent.width; label: "brightness"; value: 0.7; disabledReason: "no backlight" }
                 Segments { options: ["light", "dark", "system"]; currentIndex: 1 }
                 Segments { options: ["left", "right"]; disabledReason: "one output only" }
+                Toggle { width: 170; label: "file"; disabledReason: "the file cannot be read right now" }
+                Segments { width: 220; options: ["twice", "like rekta"]; disabledReason: "the file cannot be read right now" }
                 Field { objectName: "focused"; width: parent.width; label: "name"; placeholder: "your name"; hint: "as it appears on screen" }
                 Field { width: parent.width; label: "nickname"; optional: true; text: "rk" }
                 Field { width: parent.width; label: "port"; text: "80a"; error: "only digits" }
@@ -167,7 +169,7 @@ TestCase {
         compare(findChild(toggle, "word").color, Tokens.color.textContrastHigh, "the word keeps its colour");
         const why = findChild(toggle, "why");
         const word = findChild(toggle, "word");
-        compare(why.y + why.baselineOffset, word.y + word.baselineOffset, "the reason sits on the line of the word");
+        compare(toggle.mapFromItem(why, 0, why.baselineOffset).y, toggle.mapFromItem(word, 0, word.baselineOffset).y, "the reason sits on the line of the word");
         compare(toggle.Accessible.description, "set by the administrator");
     }
 
@@ -303,6 +305,26 @@ TestCase {
         segments.choose(2);
         compare(findChild(segments, "slide").x, options[2].x);
         compare(options[2].lit, true);
+    }
+
+    function test_a_reason_that_fits_stands_beside_the_control_and_one_that_does_not_wraps_below_within_the_width() {
+        const reason = "the file cannot be read right now, so nothing here can change until it can";
+        for (const component of [toggleComponent, segmentsComponent]) {
+            const wide = createTemporaryObject(component, testCase, { disabledReason: reason });
+            const control = wide.children[0];
+            const why = findChild(wide, "why");
+            verify(why.x >= control.width, "wide: the reason stands beside the control");
+            compare(why.height, why.contentHeight, "wide: the reason takes one line");
+            compare(wide.implicitWidth, why.x + why.width, "wide: the control is as wide as both");
+
+            const narrow = createTemporaryObject(component, testCase, { disabledReason: reason, width: control.width + 40 });
+            const below = findChild(narrow, "why");
+            compare(below.x, 0, "narrow: the reason starts at the control's edge");
+            verify(below.y >= narrow.children[0].height, "narrow: the reason stands below the control");
+            compare(below.width, narrow.width, "narrow: the reason is held to the width");
+            verify(below.contentHeight > below.font.pixelSize * 1.5, "narrow: the reason wraps");
+            compare(narrow.implicitHeight, below.y + below.height, "narrow: the control takes the room of the reason");
+        }
     }
 
     function test_disabled_segments_keep_the_chosen_accent_and_say_why() {

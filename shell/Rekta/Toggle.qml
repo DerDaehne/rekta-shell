@@ -22,8 +22,13 @@ Item {
         toggled();
     }
 
-    implicitWidth: row.implicitWidth
-    implicitHeight: Math.max(Tokens.controlHeight, row.implicitHeight)
+    // The reason stands beside the switch on the word's line while it fits the width, else below, wrapped within the
+    // width (the hint is inline after the control, forms.md, "Disabled controls say why").
+    readonly property real lineHeight: Math.max(Tokens.controlHeight, row.height)
+    readonly property bool whyBeside: row.width + Tokens.spaceS + why.implicitWidth <= width
+
+    implicitWidth: row.implicitWidth + (disabled ? Tokens.spaceS + why.implicitWidth : 0)
+    implicitHeight: disabled && !whyBeside ? why.y + why.height : lineHeight
     activeFocusOnTab: true
     Accessible.role: Accessible.Switch
     Accessible.checkable: true
@@ -41,7 +46,7 @@ Item {
     Row {
         id: row
 
-        anchors.verticalCenter: parent.verticalCenter
+        y: (toggle.lineHeight - height) / 2
         spacing: Tokens.spaceS
 
         Text {
@@ -122,12 +127,16 @@ Item {
             // The word keeps its colour when disabled (rekta.css:351 outranks :349).
             color: Tokens.color.textContrastHigh
         }
+    }
 
-        Hint {
-            objectName: "why"
-            anchors.baseline: word.baseline
-            visible: toggle.disabled
-            text: toggle.disabledReason
-        }
+    Hint {
+        id: why
+
+        objectName: "why"
+        x: toggle.whyBeside ? row.width + Tokens.spaceS : 0
+        y: toggle.whyBeside ? row.y + word.y + word.baselineOffset - baselineOffset : toggle.lineHeight + Tokens.spaceXs
+        width: toggle.whyBeside ? implicitWidth : toggle.width
+        visible: toggle.disabled
+        text: toggle.disabledReason
     }
 }

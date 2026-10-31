@@ -5,8 +5,9 @@ import QtQuick
 // Two to five options seen at a glance (forms.md, "Inputs"; rekta.css:382–399): joined buttons, the chosen one in the
 // accent. On a choice made here the accent block slides over from the old one and the chosen label turns light
 // halfway (motion.md, segments). Disabled, the frames and words grey but the chosen one keeps its accent (rekta.css:397,
-// :399), and the reason stands beside it.
-Row {
+// :399), and the reason stands beside it on the words' line while it fits the width, else below, wrapped within the
+// width (the hint is inline after the control, forms.md, "Disabled controls say why").
+Item {
     id: segments
 
     property list<string> options
@@ -27,7 +28,11 @@ Row {
         activated(index);
     }
 
-    spacing: Tokens.spaceS
+    // Beside the options as wide as the reason runs; the width it is given decides where the reason stands.
+    readonly property bool whyBeside: group.width + Tokens.spaceS + why.implicitWidth <= width
+
+    implicitWidth: group.width + (disabled ? Tokens.spaceS + why.implicitWidth : 0)
+    implicitHeight: disabled && !whyBeside ? why.y + why.height : group.height
     activeFocusOnTab: true
     Accessible.role: Accessible.RadioButton
     Accessible.name: options[currentIndex] ?? ""
@@ -183,8 +188,12 @@ Row {
     }
 
     Hint {
+        id: why
+
         objectName: "why"
-        anchors.baseline: group.baseline
+        x: segments.whyBeside ? group.width + Tokens.spaceS : 0
+        y: segments.whyBeside ? group.baselineOffset - baselineOffset : group.height + Tokens.spaceXs
+        width: segments.whyBeside ? implicitWidth : segments.width
         visible: segments.disabled
         text: segments.disabledReason
     }

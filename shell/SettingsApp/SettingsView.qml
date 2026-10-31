@@ -156,6 +156,7 @@ FocusScope {
 
             Segments {
                 objectName: "startTempo"
+                width: parent.width
                 disabledReason: view.disabledReason
                 options: view.tempoChoices.map(choice => choice.text)
                 currentIndex: view.choiceIndex("startTempo", view.tempoChoices)
@@ -201,6 +202,7 @@ FocusScope {
 
             Toggle {
                 objectName: "echo"
+                width: parent.width
                 disabledReason: view.disabledReason
                 label: "kachel-echo"
                 onWord: "an"

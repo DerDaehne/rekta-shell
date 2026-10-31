@@ -316,6 +316,8 @@ TestCase {
             verify(control(name).disabled, name);
             compare(control(name).disabledReason, "datei nicht lesbar", name);
             verify(hintOf(name).includes("kein gültiges json") && hintOf(name).includes("korrigiere oder lösche"), name);
+            const why = findChild(control(name), "why");
+            verify(why.x + why.width <= control(name).width, `${name}: the reason stays within the column`);
         }
         control("startTempo").choose(1);
         verify(findChild(control("startTempo"), "options").children[0].lit, "the chosen word does not flicker");
