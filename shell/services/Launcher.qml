@@ -38,6 +38,12 @@ Scope {
         Quickshell.execDetached(command);
     }
 
+    // A web page in the user's browser, in a scope of its own as an app gets, so a browser it starts outlives a restart of
+    // the shell.
+    function open(url: string) {
+        run(Rules.scopeCommand("xdg-open", ["xdg-open", url], Date.now()));
+    }
+
     function lock() {
         run(["loginctl", "lock-session"]);
     }

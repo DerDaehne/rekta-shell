@@ -39,6 +39,7 @@ Requires:       kpipewire
 # The programs the shell runs, by path: rpmlint rejects the library packages that carry them by name
 Requires:       /usr/bin/kscreen-doctor
 Requires:       /usr/bin/canberra-gtk-play
+Requires:       /usr/bin/xdg-open
 Requires:       kf6-kirigami
 Requires:       kf6-qqc2-desktop-style
 Requires:       atkinson-hyperlegible-next-fonts

@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Rekta
 import Session
+import Settings
 import "services"
 
 // The session banner's surface: the whole primary screen, above every window, the app bar and the Start, the screen
@@ -75,8 +76,15 @@ PanelWindow {
         seatPath: Quickshell.env("XDG_SEAT_PATH") ?? ""
         // From the list rather than byId(), so it follows the entries as they are read and change.
         systemMonitor: Array.from(DesktopEntries.applications.values).find(entry => entry.id === "org.kde.plasma-systemmonitor") ?? null
+        reportFile: report.text()
 
         onLaunched: surface.launched()
+    }
+
+    UserFile {
+        id: report
+
+        path: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/rekta-shell/report.json`
     }
 
     IpcHandler {

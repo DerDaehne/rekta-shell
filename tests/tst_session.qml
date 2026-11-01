@@ -16,7 +16,7 @@ TestCase {
     height: 640
 
     readonly property string seat: "/org/freedesktop/DisplayManager/Seat0"
-    // What the actions asked the launcher for, oldest first: ["run", command], ["launch", id] or
+    // What the actions asked the launcher for, oldest first: ["run", command], ["launch", id], ["open", url] or
     // ["call", bus, service, path, interface, method].
     property var asked: []
     // The replies to a lock and to the question whether the session is locked, which the launcher holds back until the
@@ -43,6 +43,10 @@ TestCase {
             testCase.asked = [...testCase.asked, ["launch", entry.id]];
         }
 
+        function open(url) {
+            testCase.asked = [...testCase.asked, ["open", url]];
+        }
+
         function call(onSystemBus, service, path, iface, method, done) {
             testCase.asked = [...testCase.asked, ["call", onSystemBus ? "system" : "session", service, path, iface, method]];
             if (method === "Lock")
@@ -61,6 +65,7 @@ TestCase {
         Item {
             property alias seatPath: sessionActions.seatPath
             property alias systemMonitor: sessionActions.systemMonitor
+            property alias reportFile: sessionActions.reportFile
 
             width: 900
             height: 600
@@ -547,6 +552,75 @@ TestCase {
         compare(part("why").text, "Der Systemmonitor ist nicht installiert.");
     }
 
+    readonly property string reportLink: "https://localhost/board"
+
+    function reportFileFor(url: var): string {
+        return JSON.stringify({
+            url: url
+        });
+    }
+
+    function actionsShown(): var {
+        return sessionActions().actions.map(action => action.name);
+    }
+
+    function test_without_a_report_file_or_without_a_web_link_in_it_there_is_no_problem_melden() {
+        const files = ["", "{", "[]", "null", "{}", reportFileFor(3), reportFileFor(""), reportFileFor("localhost/board"), reportFileFor("file:///etc/hostname"), reportFileFor("--help"), reportFileFor("https:// localhost/board")];
+        for (const file of files) {
+            scene.reportFile = file;
+            compare(actionsShown(), actionNames, file);
+        }
+        sessionBanner.show("");
+        waitForRendering(sessionBanner);
+        compare(button("reportProblem"), null);
+    }
+
+    function test_with_a_web_link_in_the_report_file_problem_melden_stands_quiet_right_after_systemmonitor() {
+        scene.width = 1600;
+        scene.reportFile = reportFileFor(reportLink);
+        sessionBanner.show("");
+        waitForRendering(sessionBanner);
+        compare(actionsShown(), [...actionNames, "reportProblem"]);
+        const report = button("reportProblem");
+        const systemMonitor = button("systemMonitor");
+        compare(report.text, "problem melden");
+        compare(report.variant, "quiet");
+        compare(report.x + report.leftPadding - (systemMonitor.x + systemMonitor.width), Tokens.spaceS, "in the system monitor's group");
+        verify(button("lock").activeFocus, "sperren keeps the focus");
+    }
+
+    function test_problem_melden_opens_exactly_the_link_says_an_app_has_started_and_the_banner_goes() {
+        const launched = createTemporaryObject(spyComponent, testCase, {
+            target: sessionActions(),
+            signalName: "launched"
+        });
+        scene.reportFile = reportFileFor(reportLink);
+        sessionBanner.show("reportProblem");
+        keyClick(Qt.Key_Return);
+        verify(!sessionBanner.open);
+        compare(asked, [["open", reportLink]]);
+        compare(launched.count, 1, "the Start steps aside for the browser");
+        asked = [];
+        sessionBanner.show("");
+        waitForRendering(sessionBanner);
+        mouseClick(button("reportProblem"));
+        verify(!sessionBanner.open);
+        compare(asked, [["open", reportLink]]);
+    }
+
+    function test_problem_melden_follows_the_report_file_as_it_appears_changes_and_goes() {
+        sessionBanner.show("");
+        compare(actionsShown(), actionNames);
+        scene.reportFile = reportFileFor(reportLink);
+        compare(actionsShown(), [...actionNames, "reportProblem"], "appears while the banner is open");
+        scene.reportFile = reportFileFor("http://localhost/other");
+        waitForRendering(sessionBanner);
+        button("reportProblem").click();
+        compare(asked, [["open", "http://localhost/other"]]);
+        scene.reportFile = "";
+        compare(actionsShown(), actionNames, "gone with the file");
+    }
+
     function at(ms) {
         time = 1000000 + ms;
         sessionBanner.advance();
@@ -688,9 +762,11 @@ TestCase {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             Prefs.density = "compact";
+            scene.reportFile = reportFileFor(reportLink);
             sessionBanner.show("");
             waitForRendering(scene);
             grabImage(scene).save(`session-sheet-${theme}.png`);
+            scene.reportFile = "";
             scene.seatPath = "";
             scene.systemMonitor = null;
             waitForRendering(scene);

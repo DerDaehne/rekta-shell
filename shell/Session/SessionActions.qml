@@ -17,6 +17,11 @@ QtObject {
     property var systemMonitor: null
     // Says why the user was not switched (the shell's Toaster).
     property var toaster: null
+    // The user's report.json as it stands, "" without one. Its "url", a web page such as an issue board, is what
+    // "problem melden" opens; without a web link there the action is left out. The link lives only in that file, never in
+    // the shell or the Nix configuration, whose store everyone on the machine can read.
+    property string reportFile: ""
+    readonly property string reportUrl: webLinkIn(reportFile)
     // From "benutzer wechseln" until the session is locked, or until the windows have come forward again after it could
     // not be: a host shows a clear surface meanwhile, which holds the keyboard while windowsBack, so KWin's fade-back
     // steps the windows on every screen back behind it.
@@ -84,8 +89,29 @@ QtObject {
                 session.launcher.launch(session.systemMonitor);
                 session.launched();
             }
-        }
+        },
+        ...(reportUrl === "" ? [] : [
+                {
+                    name: "reportProblem",
+                    text: "problem melden",
+                    group: 2,
+                    run: () => {
+                        session.launcher.open(session.reportUrl);
+                        session.launched();
+                    }
+                }
+            ])
     ]
+
+    // Only a web link: anything else would reach xdg-open as a file to open or as an option.
+    function webLinkIn(text: string): string {
+        try {
+            const url = JSON.parse(text).url;
+            return typeof url === "string" && /^https?:\/\/\S+$/.test(url) ? url : "";
+        } catch (error) {
+            return "";
+        }
+    }
 
     function leave(method: string) {
         launcher.call(false, "org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", method, null);

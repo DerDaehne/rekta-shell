@@ -195,6 +195,21 @@ leaves them out. GNOME itself stays unchanged. What you notice when you switch:
 - **Leftovers:** the first session you start writes configuration (`kdeglobals`,
   `kwinrc` and more in `~/.config`) that the other session ignores.
 
+## A link for "problem melden"
+
+The session banner ("sitzung") can offer "problem melden", which opens a web
+page of your choice, such as your issue board, in the browser. It shows only
+while `~/.config/rekta-shell/report.json` holds an `http` or `https` link:
+
+```json
+{ "url": "https://…" }
+```
+
+The shell follows the file while it runs; delete it and the action goes. Keep
+the link in this file rather than in your Nix configuration, which would copy
+it into the world-readable Nix store. The shell itself sends nothing: no logs,
+no credentials.
+
 ## Contributing
 
 This repository is public, so nothing private may enter it. Before every commit
