@@ -239,6 +239,46 @@ TestCase {
         compare(Rules.jumpTarget([], -1, "a"), -1);
     }
 
+    function names(prefix: string, count: int): var {
+        return Array.from({ length: count }, (_, i) => `${prefix}${String.fromCharCode(97 + i % 26)}${i}`);
+    }
+
+    function test_alle_apps_has_a_section_per_initial_a_to_z_with_an_accent_under_its_letter_and_digits_and_signs_in_hash_first() {
+        const sections = Rules.letterSections(["3D Viewer", "_scratch", "ark", "Ärger", "Audacity", "Blender", "Écran", "elisa", "Zeal"], 4);
+        compare(sections.map(section => section.title), ["#", "a", "b", "e", "z"]);
+        compare(sections.map(section => [section.first, section.count]), [[0, 2], [2, 3], [5, 1], [6, 2], [8, 1]]);
+    }
+
+    function test_a_section_is_as_many_units_wide_as_its_apps_need_in_the_rows_at_most_six() {
+        const units = count => Rules.letterSections(names("k", count), 4)[0].units;
+        compare(units(1), 1);
+        compare(units(4), 1);
+        compare(units(5), 2);
+        compare(units(13), 4);
+        compare(units(24), 6, "six units hold six times the rows");
+        compare(Rules.letterSections(names("k", 5), 1)[0].units, 5, "one row: a unit per app");
+    }
+
+    function test_a_letter_with_more_apps_than_six_units_hold_splits_into_near_equal_parts_the_larger_first() {
+        compare(Rules.letterSections(names("k", 25), 4).map(part => part.count), [13, 12]);
+        compare(Rules.letterSections(names("k", 27), 4).map(part => [part.first, part.count, part.units]), [[0, 14, 4], [14, 13, 4]]);
+        compare(Rules.letterSections(names("k", 50), 4).map(part => part.count), [17, 17, 16]);
+        compare(Rules.letterSections(names("k", 24), 4).length, 1, "what six units hold stays whole");
+    }
+
+    function test_each_part_is_named_by_the_first_two_letters_of_its_first_and_last_app() {
+        const kde = ["Kaddressbook", "Kalgebra", "Kate", "KCalc", "KCharSelect", "Kdenlive", "KDiskFree", "KFind", "KGeography", "KHelpCenter", "KInfoCenter", "Kleopatra", "KMahjongg", "KMail", "KolourPaint", "Konsole", "Konversation", "KPat", "Krita", "KRuler", "KSnapshot", "KStars", "KSudoku", "KSysGuard", "KTorrent", "KTurtle", "KWrite"];
+        compare(Rules.letterSections(kde, 4).map(part => part.title), ["ka–km", "ko–kw"]);
+        compare(Rules.letterSections(["K3b", ...kde.slice(1), "KÖnig"], 4).map(part => part.title), ["kb–km", "ko–ko"], "letters only, lower case, accents dropped");
+    }
+
+    function test_stacked_every_initial_is_one_section_and_none_splits() {
+        const sections = Rules.letterSections(names("k", 60), Infinity);
+        compare(sections.length, 1);
+        compare(sections[0].title, "k");
+        compare(sections[0].count, 60);
+    }
+
     function test_running_windows_come_most_recently_active_first_then_topmost_first() {
         const windows = [
             { title: "low", lastActivated: 0, stackingOrder: 1 },

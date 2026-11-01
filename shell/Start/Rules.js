@@ -183,6 +183,59 @@ function jumpTarget(names, from, key) {
     return -1;
 }
 
+// Text folded for filing by letter: lower case, its accents dropped ("Ä" as "a").
+function folded(text) {
+    return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+// A letter has a case (QML's regular expressions know no \p{L}).
+function isLetter(character) {
+    return character.toLowerCase() !== character.toUpperCase();
+}
+
+// The section of "alle apps" a name files under: its first letter, folded, or "#" when it starts with a digit or a sign.
+function initialOf(name) {
+    const first = folded(name.trim()).charAt(0);
+    return isLetter(first) ? first : "#";
+}
+
+// The first two letters of a name, folded, anything else left out: "kb" for "K3b".
+function twoLetters(name) {
+    return [...folded(name)].filter(isLetter).slice(0, 2).join("");
+}
+
+// The sections of "alle apps" over `names`, in the app model's order: one per initial (initialOf), as many tile units
+// wide as its apps need in `rows` rows, at most six. An initial with more apps than six units hold splits into near
+// equal parts, the larger first, each named by the first two letters of its first and its last app ("ka–km"). Each is
+// {title, first, count, units}, `first` and `count` counted in `names`. With `rows` Infinity (stacked) none splits.
+function letterSections(names, rows) {
+    const sections = [];
+    for (let first = 0, count = 0; first < names.length; first += count) {
+        const initial = initialOf(names[first]);
+        count = 1;
+        while (first + count < names.length && initialOf(names[first + count]) === initial)
+            count++;
+        sections.push(...letterParts(names, initial, first, count, rows));
+    }
+    return sections;
+}
+
+function letterParts(names, initial, first, count, rows) {
+    const parts = Math.max(1, Math.ceil(count / (6 * rows)));
+    const parted = [];
+    for (let k = 0, at = first; k < parts; k++) {
+        const size = Math.floor(count / parts) + (k < count % parts ? 1 : 0);
+        parted.push({
+            title: parts === 1 ? initial : `${twoLetters(names[at])}–${twoLetters(names[at + size - 1])}`,
+            first: at,
+            count: size,
+            units: Math.min(6, Math.ceil(size / rows))
+        });
+        at += size;
+    }
+    return parted;
+}
+
 // The steps that turn the list of ids `from` into `to`: first the removals, from the end, then each place in `to`
 // filled by moving an id there or inserting it; {remove: at}, {move: from, to: at} or {insert: at, id}.
 function steps(from, to) {

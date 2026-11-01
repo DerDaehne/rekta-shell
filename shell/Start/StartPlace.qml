@@ -5,8 +5,8 @@ import Rekta
 
 // The Start, after the shell's decision for it: glass over the windows, across the whole surface. Its pivot
 // "start · alle apps" picks the place; the start place is a panorama of sections under a strip of their titles:
-// "läuft", a tile for each open window, the most recent first, then "angeheftet", the pinned apps; "alle apps" shows
-// the installed apps A–Z as one row of tiles that scrolls sideways, where a typed letter jumps to the next app it
+// "läuft", a tile for each open window, the most recent first, then "angeheftet", the pinned apps; "alle apps" is a
+// panorama of the installed apps A–Z, a section for each initial, where a typed letter jumps to the next app it
 // starts. It opens once the windows are three quarters back (Rekta's hand-over between places), its parts turning in
 // as a place arrives, and closes turning them out: back the way they came, or forward after a press, the pressed tile
 // last. While it turns its places take no input. A letter typed in the start place searches the apps: what is typed
@@ -47,15 +47,22 @@ FocusScope {
     readonly property var running: Rules.recentFirst(windows)
     // The time of the last wheel event, to tell one gesture from the next.
     property double lastWheel: 0
-    // The wheel gesture over the apps' row started at the row's end its way, and goes on to the place beside.
-    property bool wheelPastTheRow: false
     readonly property Item focusItem: Window.activeFocusItem
     // A tile unit and the space after it: a section is as wide as its units (site/site.css:81).
     readonly property real unitStep: Tokens.tileUnit + Tokens.spaceS
-    // What stands under the place pivot: "alle apps" and the search keep to the leading edge, six units wide.
+    // A search under the place pivot, and the loading line of "alle apps", keep to the leading edge, six units wide.
     readonly property real sixUnits: 6 * Tokens.tileUnit + 5 * Tokens.spaceS
     readonly property real placeTop: pivot.height
     readonly property real placeHeight: height - placeTop
+    // The panorama and the strip of the place the pivot has chosen.
+    readonly property Panorama placePanorama: pivot.currentIndex === 0 ? panorama : appsPanorama
+    readonly property Pivot placeStrip: pivot.currentIndex === 0 ? strip : appsStrip
+    // The sections of "alle apps", [{title, first, count, units}] (Rules.letterSections).
+    property var letterSections: []
+    // The rows of tiles a section of "alle apps" holds under its heading; stacked, no letter splits.
+    readonly property real letterRows: appsPanorama.sideways ? Math.max(1, Math.floor((appsPanorama.height - 2 * Tokens.spaceXl - headingMeasure.height - Tokens.spaceL + Tokens.spaceS) / unitStep)) : Infinity
+    // Stacked, a section has as many tile units across as fit, at least two (layout.md:102–104, not yet stretched).
+    readonly property int stackedColumns: Math.max(2, Math.floor((appsPanorama.width - 2 * appsPanorama.inset + Tokens.spaceS) / unitStep))
     // Whether "läuft" stands in the panorama, the first of its sections.
     readonly property bool anyRunning: running.length > 0
     // What was typed: the text of the search's line.
@@ -77,6 +84,7 @@ FocusScope {
         endSearch();
         returnTo = windows.find(window => window.active) ?? null;
         panorama.goTo(0, false, true);
+        appsPanorama.goTo(0, false, true);
         phase = "opening";
         glassOut.stop();
         pivot.focus = false;
@@ -358,31 +366,80 @@ FocusScope {
     }
 
     function allTiles(): var {
-        return [...runningGrid.children, ...pinnedGrid.children, ...hitsGrid.children, ...appTiles.children].filter(item => (item as Tile) !== null);
+        return [...runningGrid.children, ...pinnedGrid.children, ...hitsGrid.children].filter(item => (item as Tile) !== null).concat(letterTiles());
     }
 
     // The tiles of the section being read, in reading order.
     function readTiles(): var {
-        const section = panorama.sectionItems()[panorama.currentIndex];
+        const section = placePanorama.sectionItems()[placePanorama.currentIndex];
         return reachableTiles().filter(tile => isIn(tile, section));
     }
 
-    // The apps' row, in the app model's order.
-    function rowTiles(): var {
-        return appTiles.children.filter(item => (item as Tile) !== null);
+    // The tiles of "alle apps", in the app model's order.
+    function letterTiles(): var {
+        return appsPanorama.sectionItems().reduce((tiles, section) => tiles.concat(section.tiles()), []);
     }
 
-    function inTheRow(): bool {
+    // The section of "alle apps" that holds the app at `index` of the app model.
+    function sectionOf(index: int): int {
+        return letterSections.findIndex(part => index < part.first + part.count);
+    }
+
+    // "alle apps" files the apps anew under their sections when the apps change or the rows a section holds do. The app
+    // in focus, else the first of the section being read, stays in view.
+    function regroup() {
+        const kept = keptApp();
+        for (const section of [...appsPanorama.sectionParent.children]) {
+            // Out of the panorama at once: destroy() takes it only later.
+            section.parent = null;
+            section.destroy();
+        }
+        const listed = apps ?? [];
+        letterSections = Rules.letterSections(listed.map(app => app.name), letterRows);
+        for (const part of letterSections) {
+            letterSection.createObject(appsPanorama.sectionParent, {
+                part: part,
+                partApps: listed.slice(part.first, part.first + part.count)
+            });
+        }
+        keepInView(kept);
+    }
+
+    // The app that stays in view when "alle apps" regroups: {id, focused}, or null without one.
+    function keptApp(): var {
+        const tiles = letterTiles();
+        const focused = tiles.findIndex(tile => tile.activeFocus);
+        const at = focused >= 0 ? focused : letterSections[appsPanorama.currentIndex]?.first ?? -1;
+        return tiles[at] ? {
+            id: tiles[at].modelData.id,
+            focused: focused >= 0
+        } : null;
+    }
+
+    function keepInView(kept: var) {
+        const at = kept ? (apps ?? []).findIndex(app => app.id === kept.id) : -1;
+        if (at < 0)
+            return;
+        appsPanorama.goTo(sectionOf(at), false, true);
+        if (kept.focused)
+            letterTiles()[at].forceActiveFocus();
+    }
+
+    function inAllApps(): bool {
         return !searching && pivot.currentIndex === 1;
     }
 
-    // A key typed in the apps' row jumps to the next app it starts; a turn still running ends first, as typing ends it.
+    // A key typed in "alle apps" jumps to the next app it starts, and its section glides flush left; a turn still running
+    // ends first, as typing ends it. Stacked, the section goes to the top at once, so that the focus can then bring an app
+    // further down it into view.
     function jump(key: string) {
         turner.finish();
-        const tiles = rowTiles();
+        const tiles = letterTiles();
         const at = Rules.jumpTarget(tiles.map(tile => tile.name), tiles.findIndex(tile => tile.activeFocus), key);
-        if (at >= 0)
-            tiles[at].forceActiveFocus();
+        if (at < 0)
+            return;
+        appsPanorama.goTo(sectionOf(at), false, !appsPanorama.sideways);
+        tiles[at].forceActiveFocus();
     }
 
     // The tiles a key can reach, in reading order of their sections; those of a hidden view are not visible.
@@ -404,12 +461,13 @@ FocusScope {
         for (const tile of [...allTiles(), ...searchRows()])
             tile.focus = false;
         loseFocusIn(startPlace);
+        loseFocusIn(appsPlace);
         if (!pivot.activeFocus)
             forceActiveFocus();
     }
 
-    // Past the tiles, right goes to "alle apps", left back to "start" and up to the strip; a search has none of them, and up
-    // goes to its line.
+    // Past the tiles, right goes to "alle apps", left back to "start" and up to the place's strip; a search has none of
+    // them, and up goes to its line.
     function pastTheTiles(direction: string) {
         if (searching && direction === "up")
             line.forceActiveFocus();
@@ -419,37 +477,31 @@ FocusScope {
             pivot.select(1);
         else if (direction === "left")
             pivot.select(0);
-        else if (direction === "up" && inTheStartPlace())
-            strip.forceActiveFocus();
         else if (direction === "up")
-            pivot.forceActiveFocus();
-    }
-
-    function inTheStartPlace(): bool {
-        return !searching && pivot.currentIndex === 0;
+            placeStrip.forceActiveFocus();
     }
 
     // Up and down between the pivot, the strip and the tiles, when no tile has the focus: down goes the way into the place
     // (pivot, strip, first tile of the section being read), up the way back; with nothing in focus, down goes to the
     // first tile.
     function moveBetweenRows(direction: string): bool {
-        const onStrip = strip.activeFocus;
-        const inPanorama = panorama.activeFocus || headingFocused();
-        if (direction === "down" && pivot.activeFocus && inTheStartPlace())
-            strip.forceActiveFocus();
+        const onStrip = placeStrip.activeFocus;
+        const inPanorama = placePanorama.activeFocus || headingFocused();
+        if (direction === "down" && pivot.activeFocus && !searching)
+            placeStrip.forceActiveFocus();
         else if (direction === "down" && (onStrip || inPanorama))
             readTiles()[0]?.forceActiveFocus();
         else if (direction === "up" && onStrip)
             pivot.forceActiveFocus();
         else if (direction === "up" && inPanorama)
-            strip.forceActiveFocus();
+            placeStrip.forceActiveFocus();
         else
             return false;
         return true;
     }
 
     // Arrows move the focus to the nearest tile that way, across the sections: an interim rule while Rekta has none for a
-    // tile grid. In the apps' row it goes up and down a column, left and right to the column beside.
+    // tile grid.
     function moveFocus(direction: string) {
         const tiles = reachableTiles();
         const from = tiles.find(tile => tile.activeFocus);
@@ -475,7 +527,7 @@ FocusScope {
     }
 
     function headingFocused(): bool {
-        return runningSection.headingFocused || pinnedSection.headingFocused;
+        return placePanorama.sectionItems().some(section => section.headingFocused);
     }
 
     function isIn(item: Item, box: Item): bool {
@@ -486,16 +538,27 @@ FocusScope {
         return false;
     }
 
-    // Scrolls a section, the hits or the apps' row just far enough that what takes the focus there is whole in view, by
-    // arrow, by Tab or by a typed letter. A row's ring stands outside it, so the hits keep its room too.
+    // Scrolls the nearest scroller just far enough that what takes the focus there is whole in view, by arrow, by Tab or
+    // by a typed letter: a section, the hits, or a stacked panorama (a sideways one brings it in itself). A row's ring
+    // stands outside it, so the hits keep its room too.
     function reveal(item: Item) {
-        const view = item ? [runningSection, pinnedSection, results, appRow].find(scroller => isIn(item, scroller.contentItem)) : undefined;
+        const view = scrollerOf(item);
         if (!view)
             return;
         const at = item.mapToItem(view.contentItem, 0, 0);
         const room = view === results ? results.ringRoom : 0;
         view.contentY = shownFrom(view.contentY, view.height, view.contentHeight, at.y - room, item.height + 2 * room);
         view.contentX = shownFrom(view.contentX, view.width, view.contentWidth, at.x, item.width);
+    }
+
+    // The nearest scroller around `item`; a stacked section does not scroll, its panorama does.
+    function scrollerOf(item: Item): Flickable {
+        for (let at = item?.parent ?? null; at; at = at.parent) {
+            const view = at as Flickable;
+            if (view?.interactive)
+                return view;
+        }
+        return null;
     }
 
     // Where a scroller showing `size` of `content` from `scrolled` scrolls to, so that `length` from `start` shows whole.
@@ -508,35 +571,17 @@ FocusScope {
     }
 
     // One wheel gesture is one step: events less than wheel-latch apart belong together (layout.md). Only a sideways wheel
-    // changes the place; over the start place's panorama, while it is sideways, only the panorama's pastEnd does, so a
-    // gesture that reaches the end on its way stops there. A stacked panorama leaves the wheel alone and says nothing.
+    // changes the place; over the chosen place's panorama, once it shows and while it is sideways, only the panorama's
+    // pastEnd does, so a gesture that reaches the end on its way stops there. A stacked panorama leaves the wheel alone
+    // and says nothing.
     function wheel(event: WheelEvent) {
-        if (inTheStartPlace() && panorama.sideways && panorama.contains(panorama.mapFromItem(body, event.x, event.y)))
+        if (placePanorama.visible && placePanorama.sideways && placePanorama.contains(placePanorama.mapFromItem(body, event.x, event.y)))
             return;
         const now = Date.now();
         const fresh = now - lastWheel > Tokens.durationWheelLatch;
         lastWheel = now;
         if (fresh)
             pivot.select((event.angleDelta.x || event.pixelDelta.x) < 0 ? 1 : 0);
-    }
-
-    // Over the apps' row any wheel moves it sideways, a plain vertical one down along it, as over a panorama. A gesture
-    // that starts with room to move the row its way is the row's, and its rest is swallowed at the row's end; one that
-    // starts at that end goes on to the place beside (layout.md:48–62, rules 1, 2 and 4). It moves by the pixels the
-    // device gives, or else by the wheel's angle, a notch being 120 eighths of a degree, taken as pixels.
-    function rowWheel(event: WheelEvent) {
-        const now = Date.now();
-        const fresh = now - lastWheel > Tokens.durationWheelLatch;
-        lastWheel = now;
-        const x = event.pixelDelta.x || event.angleDelta.x;
-        const y = event.pixelDelta.y || event.angleDelta.y;
-        const along = -(Math.abs(x) >= Math.abs(y) ? x : y);
-        if (fresh)
-            wheelPastTheRow = along > 0 ? appRow.atXEnd : appRow.atXBeginning;
-        if (!wheelPastTheRow)
-            appRow.contentX = Math.max(0, Math.min(appRow.contentWidth - appRow.width, appRow.contentX + along));
-        else if (fresh)
-            pivot.select(along > 0 ? 1 : 0);
     }
 
     function goesBack(event: KeyEvent): bool {
@@ -561,15 +606,15 @@ FocusScope {
         moveFocus(direction);
     }
 
-    // In the apps' row a key that prints, other than a space, jumps (rekta.js:2810); elsewhere it would search.
-    function jumpsInTheRow(event: KeyEvent): bool {
-        return inTheRow() && event.text.length === 1 && /\S/.test(event.text) && (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) === 0;
+    // In "alle apps" a key that prints, other than a space, jumps (rekta.js:2810); elsewhere it would search.
+    function jumpsInAllApps(event: KeyEvent): bool {
+        return inAllApps() && event.text.length === 1 && /\S/.test(event.text) && (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) === 0;
     }
 
-    // Home and End go to the first and the last app of the row.
-    function toTheRowsEnd(event: KeyEvent): bool {
-        const tiles = rowTiles();
-        if (!inTheRow() || (event.key !== Qt.Key_Home && event.key !== Qt.Key_End) || tiles.length === 0)
+    // Home and End go to the first and the last app of "alle apps" (the focused panorama and strip take them first).
+    function toTheFirstOrLastApp(event: KeyEvent): bool {
+        const tiles = letterTiles();
+        if (!inAllApps() || (event.key !== Qt.Key_Home && event.key !== Qt.Key_End) || tiles.length === 0)
             return false;
         tiles[event.key === Qt.Key_Home ? 0 : tiles.length - 1].forceActiveFocus();
         return true;
@@ -656,7 +701,7 @@ FocusScope {
             close(null);
         else if (goesBack(event))
             back();
-        else if (jumpsInTheRow(event))
+        else if (jumpsInAllApps(event))
             jump(event.text);
         else if (typesText(event))
             typeOn(event.text);
@@ -669,7 +714,7 @@ FocusScope {
         else if (isEnter(event) && searching)
             pressFirstHit();
         else
-            return toTheRowsEnd(event);
+            return toTheFirstOrLastApp(event);
         return true;
     }
 
@@ -681,7 +726,11 @@ FocusScope {
     onQueryChanged: refresh()
     // The section being read stays the one read when "läuft" comes before it or goes.
     onAnyRunningChanged: panorama.mark(Math.max(0, panorama.currentIndex + (anyRunning ? 1 : -1)))
-    onAppsChanged: refresh()
+    onAppsChanged: {
+        refresh();
+        regroup();
+    }
+    onLetterRowsChanged: regroup()
 
     Keys.onPressed: event => {
         if (wanted && useKey(event))
@@ -749,17 +798,16 @@ FocusScope {
         visible: false
 
         // A sideways wheel or a swipe goes to the place beside, a navigation like any other, also while a turn runs; a
-        // search, or a Start on its way out, stays where it is. In "alle apps" it takes no swipe over from what was
-        // pressed, so one that starts on the apps' row is the row's. Over the start place's sideways panorama the panorama
-        // says when a gesture goes past its end (Panorama.pastEnd): the wheel there is its alone, and so is a swipe while
-        // it scrolls; one that fits has nothing to flick, and a swipe over its sections is the Start's.
+        // search, or a Start on its way out, stays where it is. Over a place's sideways panorama the panorama says when a
+        // gesture goes past its end (Panorama.pastEnd): the wheel there is its alone, and so is a swipe while it scrolls;
+        // one that fits has nothing to flick, and a swipe over its sections is the Start's.
         DragHandler {
             property real dx: 0
 
             target: null
             enabled: start.wanted && !start.searching
             yAxis.enabled: false
-            grabPermissions: (pivot.currentIndex === 0 && panorama.fit ? PointerHandler.CanTakeOverFromItems : 0) | PointerHandler.CanTakeOverFromHandlersOfDifferentType | PointerHandler.ApprovesTakeOverByAnything
+            grabPermissions: (start.placePanorama.fit ? PointerHandler.CanTakeOverFromItems : 0) | PointerHandler.CanTakeOverFromHandlersOfDifferentType | PointerHandler.ApprovesTakeOverByAnything
             onActiveTranslationChanged: {
                 if (active)
                     dx = activeTranslation.x;
@@ -910,116 +958,133 @@ FocusScope {
             }
         }
 
-        // "alle apps": its own place beside the start place, the place's one section, space-l above and below
-        // (rekta.css:852). Every installed app A–Z is a tile one unit square, space-s apart (layout.md, "Tile grids"),
-        // in one row that fills each column top down, as many tiles as the place's height holds, and scrolls sideways
-        // within its six units.
-        // ponytail: a tile for every app, made once the apps are known; a view that makes only the tiles in sight if
-        // hundreds of apps make the Start slow.
+        // "alle apps": the installed apps A–Z as a panorama under the strip of its sections' titles, as wide as the
+        // surface (layout.md:19–40). A section for each initial, as many tile units wide as its apps need in the rows the
+        // panorama holds, at most six; a letter with more apps splits into near equal parts (Rules.letterSections). Its
+        // tiles are one unit square, row by row, and the sections have the start place's spaces and headings.
+        // ponytail: a tile for every app, made anew whenever the apps or the rows change; a view that makes only the
+        // tiles in sight if hundreds of apps make the Start slow.
         Item {
             id: appsPlace
 
             objectName: "apps"
-            x: Tokens.spaceXl
-            y: start.placeTop
-            width: start.sixUnits
-            height: start.placeHeight
+            anchors.fill: parent
             visible: false
-            enabled: !start.turning
 
-            Flickable {
-                id: appRow
+            Pivot {
+                id: appsStrip
 
-                // Where a swipe started: at the row's start or at its end, or both when it all fits.
-                property bool swipeFromStart: false
-                property bool swipeFromEnd: false
+                objectName: "appsStrip"
+                x: Tokens.spaceXl
+                y: start.placeTop
+                width: parent.width - 2 * Tokens.spaceXl
+                enabled: start.wanted
+                titles: start.letterSections.map(part => part.title)
+                placeWidth: start.width
+                viewportHeight: start.height
+            }
 
-                objectName: "appRow"
-                y: Tokens.spaceL
+            Panorama {
+                id: appsPanorama
+
+                objectName: "appsPanorama"
+                y: appsStrip.y + appsStrip.height
                 width: parent.width
-                height: parent.height - 2 * Tokens.spaceL
-                clip: true
-                contentWidth: appTiles.width
-                flickableDirection: Flickable.HorizontalFlick
-                // The row stops at its ends, and tells how far a swipe went on past one.
-                boundsBehavior: Flickable.DragOverBounds
-                boundsMovement: Flickable.StopAtBounds
-
-                // A swipe that starts at an end of the row and goes on past it goes on to the place beside, as the
-                // wheel does there (layout.md:48–62, rules 1 and 4).
-                onDraggingChanged: {
-                    if (dragging) {
-                        swipeFromStart = atXBeginning;
-                        swipeFromEnd = atXEnd;
-                    } else if (horizontalOvershoot < 0 && swipeFromStart) {
+                height: parent.height - y
+                placeWidth: start.width
+                viewportHeight: start.height
+                sectionStrip: appsStrip
+                // "alle apps" is the last place: only a gesture back past its start goes on, to "start".
+                onPastEnd: forward => {
+                    if (!forward && start.wanted && !start.searching)
                         pivot.select(0);
-                    } else if (horizontalOvershoot > 0 && swipeFromEnd) {
-                        pivot.select(1);
-                    }
+                }
+            }
+
+            // Loading, the line runs on the region's first hairline; without apps a sentence there says so (states.md,
+            // "Data states"; rekta.css:675). Both stand where the first section would.
+            Item {
+                x: appsPanorama.inset
+                y: appsPanorama.y + Tokens.spaceXl
+                width: Math.min(start.sixUnits, appsPanorama.width - 2 * appsPanorama.inset)
+
+                Hairline {
+                    objectName: "appsLine"
+                    width: parent.width
+                    visible: start.letterSections.length === 0
                 }
 
-                Item {
-                    id: appTiles
+                BusyLine {
+                    objectName: "appsBusy"
+                    width: parent.width
+                    busy: start.apps === null
+                }
 
-                    readonly property real step: Tokens.tileUnit + Tokens.spaceS
-                    readonly property int rows: Math.max(1, Math.floor((appRow.height + Tokens.spaceS) / step))
-                    readonly property int columns: Math.ceil(repeater.count / rows)
+                Body {
+                    objectName: "noApps"
+                    y: Geometry.hairline + Tokens.spaceM
+                    width: parent.width
+                    visible: start.apps !== null && start.letterSections.length === 0
+                    text: "keine apps installiert."
+                    color: Tokens.color.textContrastHigh
+                }
+            }
 
-                    objectName: "appTiles"
-                    width: Math.max(0, columns * step - Tokens.spaceS)
-                    height: appRow.height
+            // A section of "alle apps": its part of the apps, as wide as its units, with the start place's spaces and
+            // headings, larger than Rekta's (rekta.css:854–856, :53, :50). Stacked it is as wide as the panorama.
+            Component {
+                id: letterSection
 
-                    Repeater {
-                        id: repeater
+                Section {
+                    id: letterPart
 
-                        model: start.apps ?? []
+                    // {title, first, count, units} and its apps.
+                    required property var part
+                    required property var partApps
 
-                        delegate: AppTile {
-                            id: rowTile
+                    function tiles(): var {
+                        return letterGrid.children.filter(item => (item as Tile) !== null);
+                    }
 
-                            required property var modelData
-                            required property int index
+                    title: part.title
+                    sectionWidth: part.units * start.unitStep
+                    verticalInset: Tokens.spaceXl
+                    headingSpacing: Tokens.spaceL
+                    headingToken: Tokens.fontSizeXl
+                    placeWidth: start.width
+                    enabled: !start.turning
 
-                            x: Math.floor(index / appTiles.rows) * appTiles.step
-                            y: index % appTiles.rows * appTiles.step
-                            name: modelData.name
-                            icon: modelData.icon
-                            onActivated: start.press(rowTile, () => rowTile.modelData.launch())
+                    TileGrid {
+                        id: letterGrid
+
+                        objectName: "grid"
+                        columns: appsPanorama.sideways ? letterPart.part.units : start.stackedColumns
+
+                        Repeater {
+                            model: letterPart.partApps
+
+                            delegate: AppTile {
+                                id: letterTile
+
+                                required property var modelData
+
+                                name: modelData.name
+                                icon: modelData.icon
+                                onActivated: start.press(letterTile, () => letterTile.modelData.launch())
+                            }
                         }
                     }
                 }
             }
 
-            // The wheel over the row is the Start's, so that it can go on past the row's ends; a press goes by.
-            MouseArea {
-                anchors.fill: appRow
-                acceptedButtons: Qt.NoButton
-                onWheel: wheel => start.rowWheel(wheel)
-            }
+            // How high a section's heading stands, for the rows below it.
+            GroupHeading {
+                id: headingMeasure
 
-            // Loading, the line runs on the region's first hairline; without apps a sentence there says so (states.md,
-            // "Data states"; rekta.css:675).
-            Hairline {
-                objectName: "appsLine"
-                y: Tokens.spaceL
-                width: parent.width
-                visible: repeater.count === 0
-            }
-
-            BusyLine {
-                objectName: "appsBusy"
-                y: Tokens.spaceL
-                width: parent.width
-                busy: start.apps === null
-            }
-
-            Body {
-                objectName: "noApps"
-                y: Tokens.spaceL + Geometry.hairline + Tokens.spaceM
-                width: parent.width
-                visible: start.apps !== null && repeater.count === 0
-                text: "keine apps installiert."
-                color: Tokens.color.textContrastHigh
+                visible: false
+                sizeToken: Tokens.fontSizeXl
+                placeWidth: start.width
+                text: "a"
             }
         }
 
