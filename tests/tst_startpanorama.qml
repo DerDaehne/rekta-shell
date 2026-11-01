@@ -505,12 +505,13 @@ TestCase {
         const strip = named("sectionStrip");
         strip.forceActiveFocus();
         keyClick(Qt.Key_Right);
-        compare(strip.currentIndex, 1);
         tryCompare(named("panorama").scroller, "contentX", named("pinned").x - Tokens.spaceXl);
+        compare(strip.currentIndex, 1);
         keyClick(Qt.Key_Home);
-        compare(strip.currentIndex, 0);
         tryCompare(named("panorama").scroller, "contentX", 0);
+        compare(strip.currentIndex, 0);
         keyClick(Qt.Key_End);
+        tryCompare(named("panorama"), "gliding", false);
         compare(strip.currentIndex, 1);
         keyClick(Qt.Key_Return);
         verify(named("pinned").headingFocused);
@@ -521,17 +522,23 @@ TestCase {
         const panorama = named("panorama");
         panorama.forceActiveFocus();
         keyClick(Qt.Key_Right);
+        tryCompare(panorama, "gliding", false);
         compare(panorama.currentIndex, 1);
         keyClick(Qt.Key_Right);
+        tryCompare(panorama, "gliding", false);
         compare(panorama.currentIndex, 1, "no section beyond the last");
         compare(named("pivot").currentIndex, 0, "and no place either");
         keyClick(Qt.Key_PageUp);
+        tryCompare(panorama, "gliding", false);
         compare(panorama.currentIndex, 0);
         keyClick(Qt.Key_PageDown);
+        tryCompare(panorama, "gliding", false);
         compare(panorama.currentIndex, 1);
         keyClick(Qt.Key_Home);
+        tryCompare(panorama, "gliding", false);
         compare(panorama.currentIndex, 0);
         keyClick(Qt.Key_End);
+        tryCompare(panorama, "gliding", false);
         compare(panorama.currentIndex, 1);
     }
 
