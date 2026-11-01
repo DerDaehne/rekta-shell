@@ -105,6 +105,7 @@ TestCase {
         compare(Sources.enoughSpace(header + `${mebibytes(60)} ${mebibytes(1000)}\n`, limits), true, "a small disk: 6 % is above its 5 %");
         compare(Sources.enoughSpace(header + `${mebibytes(40)} ${mebibytes(1000)}\n`, limits), false, "a small disk: 4 % is below its 5 %");
         compare(Sources.enoughSpace(header + `${mebibytes(900)} ${mebibytes(1000)}\n${mebibytes(10)} ${mebibytes(1000)}\n`, limits), false, "one low disk is enough");
+        compare(Sources.enoughSpace(header + `${mebibytes(200)} ${mebibytes(100000)}\n`, limits), true, "exactly the limit is enough");
         compare(Sources.enoughSpace("", limits), false, "no reading, nothing known");
     }
 

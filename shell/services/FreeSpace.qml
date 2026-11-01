@@ -7,7 +7,9 @@ import State
 // The shell's own look at the free space, once a minute while `watching`: `checked(enough)` says whether the root and
 // the home filesystem are both above the limits freespacenotifier warns at. It reads that program's config file and
 // never writes it.
-// ponytail: only the root and the home filesystem are looked at, not every writable disk as freespacenotifier does.
+// ponytail: only the root and the home filesystem are looked at, not every writable disk as freespacenotifier does; the
+// board waits for the notice to go before it trusts this, so a warning about another disk lasts until the notice
+// closes. Upgrade: look at the disk the notice names.
 Scope {
     id: space
 

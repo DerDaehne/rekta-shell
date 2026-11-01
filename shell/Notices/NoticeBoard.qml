@@ -58,7 +58,8 @@ QtObject {
     // freespacenotifier's notice starts a state the system banner shows, so it is neither toast nor row. The notice's
     // closing does not end it (Quickshell closes it after any action): only `storageChecked` does, once enough is free.
     // ponytail: one such notice at a time; a second one replaces the first. Once the notice has gone, the remedy has no
-    // action to call until freespacenotifier warns again.
+    // action to call until freespacenotifier warns again, and the banner's sentence keeps the notice's last figures.
+    // Upgrade: remember the action and check the disk the notice names, so that the remedy opens the file manager.
     property var storageNotice: null
     property string storageText: ""
     property bool storageFull: false
@@ -115,9 +116,10 @@ QtObject {
         notification.bodyChanged.connect(reword);
     }
 
-    // What the shell's own look at the free space found: the state ends only when enough is free again.
+    // What the shell's own look at the free space found: the state ends only when enough is free again and the
+    // notice has gone (freespacenotifier closes it itself when its disk has room, and may mean another disk).
     function storageChecked(enough: bool) {
-        if (enough)
+        if (enough && storageNotice === null)
             storageFull = false;
     }
 

@@ -240,6 +240,7 @@ TestCase {
                         width: parent.width
                         order: sheetLights.order
                         bannerStates: sheetLights.states
+                        sinceWord: sheetLights.sinceWord
                         Component.onCompleted: set(modelData, true, { since: new Date(2026, 9, 30, 14, 5), text: sheetLights.sentences[modelData] })
                     }
                 }

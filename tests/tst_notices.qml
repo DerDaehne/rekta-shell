@@ -549,10 +549,20 @@ TestCase {
         verify(board.storageFull);
     }
 
-    function test_the_storage_state_ends_when_the_shells_own_check_finds_enough_free() {
-        notify({ hints: freeSpaceHints });
+    function test_the_storage_state_ends_when_the_notice_has_gone_and_the_shells_own_check_finds_enough_free() {
+        const notice = notify({ hints: freeSpaceHints });
+        notice.close(NoticeBoard.CloseRequested);
         board.storageChecked(false);
         verify(board.storageFull, "still too little");
+        board.storageChecked(true);
+        verify(!board.storageFull);
+    }
+
+    function test_an_open_notice_keeps_the_storage_state_on_although_the_root_and_home_have_room() {
+        const notice = notify({ hints: freeSpaceHints });
+        board.storageChecked(true);
+        verify(board.storageFull, "the notice may mean another disk");
+        notice.close(NoticeBoard.CloseRequested);
         board.storageChecked(true);
         verify(!board.storageFull);
     }
