@@ -176,7 +176,10 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   with its own HOME, runtime and config directories and a session
   bus without service activation. Never pass the desktop's environment, runtime
   directory or bus into it: its plugins and config leak in, and portals or wallets
-  started there break the real session's services.
+  started there break the real session's services. It runs a PipeWire and WirePlumber
+  of its own (config from the store only, no devices, no D-Bus) for KWin's
+  screencasts; `mapfile -t s < /tmp/rekta-nested.*/session.env; env -i "${s[@]}" pw-dump`
+  shows its graph.
 - `nix run .#vm` is for what a nested session cannot show: session start,
   systemd, the lock screen and global shortcuts. It logs in automatically as the
   test user `rekta` (public test password `rekta`) and mounts the checkout's
