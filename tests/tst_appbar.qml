@@ -73,6 +73,8 @@ TestCase {
     property var scene
     property AppBar bar
     readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
@@ -127,6 +129,15 @@ TestCase {
     // Where an item shows halfway through the glide: half the time along ease-base.
     function halfway(from: real, to: real): real {
         return from + (to - from) * easeBase.valueForProgress(0.5);
+    }
+
+    // Holds the fade of `control` that has begun `ms` into it, and returns its opacity then.
+    function opacityAt(control: Item, ms: real): real {
+        const run = findChild(control, "fadeRun");
+        verify(run.running, `${control.objectName} fades`);
+        run.pause();
+        findChild(control, "fade").phase = Math.min(1, ms / run.duration);
+        return control.opacity;
     }
 
     // Makes `change` and checks that no two shown items overlap while what goes fades out, and at every tenth of the glide
@@ -703,6 +714,51 @@ TestCase {
         bar.reflow.run.complete();
         verify(pause.x > from, "and close the gap");
         compare(endOf(pause), named("messages").x - bar.gap);
+    }
+
+    function test_a_control_that_goes_fades_out_over_six_tenths_of_duration_short_with_ease_out() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        const background = named("in the background");
+        const leaving = Geometry.leaveShare * Tokens.durationShort;
+        scene.backgroundShown = false;
+        for (const share of [0, 0.25, 0.5, 0.75, 1]) {
+            fuzzyCompare(opacityAt(background, share * leaving), 1 - easeOut.valueForProgress(share), 1e-6, `at ${share * leaving} ms`);
+            verify(background.visible, `it stays at ${share * leaving} ms`);
+        }
+        findChild(background, "fadeRun").complete();
+        verify(!background.visible, "it has gone once it has faded");
+        verify(!bar.settling);
+    }
+
+    function test_a_control_that_comes_fades_in_over_duration_short_with_ease_in() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400, backgroundShown: false });
+        const background = named("in the background");
+        scene.backgroundShown = true;
+        for (const share of [0, 0.25, 0.5, 0.75, 1])
+            fuzzyCompare(opacityAt(background, share * Tokens.durationShort), easeIn.valueForProgress(share), 1e-6, `at ${share * Tokens.durationShort} ms`);
+        findChild(background, "fadeRun").complete();
+        compare(background.opacity, 1);
+    }
+
+    function test_a_change_of_the_room_the_bar_has_ends_its_fades_and_lays_it_out_at_once() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        const background = named("in the background");
+        scene.backgroundShown = false;
+        verify(bar.settling, "it fades out");
+        scene.barWidth = 1100;
+        verify(!bar.settling && !bar.gliding, "nothing waits or glides");
+        verify(!background.visible, "it has gone at once");
+        const shown = laidOut().filter(item => item.visible);
+        compare(endOf(shown[shown.length - 1]), bar.width - bar.padding, "the bar ends at its new end");
+        checkClear("in the new room");
+        scene.backgroundShown = true;
+        verify(background.opacity < 1, "it fades in");
+        scene.barWidth = 1200;
+        compare(background.opacity, 1, "it is there at once");
+        checkClear("back in the old room");
     }
 
     function test_while_a_control_goes_nothing_overlaps() {

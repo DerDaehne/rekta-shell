@@ -309,6 +309,19 @@ TestCase {
         scene.bar.reflow.run.complete();
     }
 
+    function test_a_word_that_gives_its_place_to_the_count_fades_out_as_a_control_moving_into_more_does() {
+        Prefs.motion = "on";
+        makeScene({ shown: [muted] });
+        settle();
+        scene.shown = everything;
+        verify(word("muted").visible && word("muted").fading, "it fades out where it stands");
+        verify(!word("more").visible, "the count waits out of sight");
+        holdGlide();
+        verify(!word("muted").visible);
+        verify(word("more").visible, "and comes as the others glide");
+        scene.bar.reflow.run.complete();
+    }
+
     function test_while_words_come_and_go_nothing_runs_into_the_clock_or_another_control() {
         Prefs.motion = "on";
         for (const barWidth of [1600, 1200]) {

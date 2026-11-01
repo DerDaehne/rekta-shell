@@ -27,7 +27,8 @@ Item {
     property bool overflowed: false
     // False while there is nothing for the control to do: it is gone from the bar, not counted in its layout.
     property bool present: true
-    // Set by the bar once it has laid itself out; before that the control stands and goes at once.
+    // Set by the bar; false before it has laid itself out and while its room changes: the control then comes and goes
+    // at once.
     property bool animated: false
     // It is there for the bar: present and not in "more".
     readonly property bool wanted: present && !overflowed
@@ -35,9 +36,7 @@ Item {
     property bool held: false
     readonly property bool showing: wanted && !held
     // While it fades out it stays where it was, and the bar closes the gap after it (motion.md, "Arriving, leaving").
-    property bool fading: false
-    // Asked as the control goes: whether it fades out, or is gone at once.
-    property var fadesOnLeaving: () => true
+    readonly property bool fading: fadeRun.running && !fade.arriving
     readonly property bool disabled: disabledReason !== ""
     readonly property bool hovered: hover.hovered
     readonly property bool pressed: tap.pressed
@@ -54,36 +53,50 @@ Item {
     implicitWidth: box.implicitWidth
     implicitHeight: box.height
     visible: showing || fading
-    opacity: showing ? 1 : 0
+    opacity: fade.opacity
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: words
     Accessible.description: disabledReason
     Accessible.onPressAction: click()
 
-    onWantedChanged: {
-        fading = !wanted && !held && animated && Tokens.durationShort > 0 && fadesOnLeaving();
-        if (fading)
-            gone.restart();
-    }
-
-    Behavior on opacity {
-        enabled: control.animated
-
-        NumberAnimation {
-            // The Behavior sets its target before this takes its curve.
-            readonly property bool arriving: control.showing
-            duration: arriving ? Tokens.durationShort : Geometry.leaveShare * Tokens.durationShort
-            easing.type: Easing.Bezier
-            easing.bezierCurve: arriving ? Tokens.easeIn : Tokens.easeOut
+    onShowingChanged: {
+        fade.arriving = showing;
+        if (animated && Tokens.durationShort > 0) {
+            fadeRun.restart();
+            return;
         }
+        fadeRun.stop();
+        fade.phase = 1;
+    }
+    // The bar lays out at once, so a fade still running ends.
+    onAnimatedChanged: {
+        if (!animated)
+            fadeRun.complete();
     }
 
-    Timer {
-        id: gone
+    // The last fade, in or out (rekta.js enter(), :3410–3416, and leave(), :3419–3425): phase runs 0 to 1, linear, over
+    // the fade's time, and each way eases its own curve from its far end, as Rekta's keyframes do.
+    QtObject {
+        id: fade
 
-        interval: Geometry.leaveShare * Tokens.durationShort
-        onTriggered: control.fading = false
+        objectName: "fade"
+        property bool arriving: true
+        property real phase: 1
+        readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+        readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
+        readonly property real opacity: arriving ? easeIn.valueForProgress(phase) : 1 - easeOut.valueForProgress(phase)
+    }
+
+    NumberAnimation {
+        id: fadeRun
+
+        objectName: "fadeRun"
+        target: fade
+        property: "phase"
+        from: 0
+        to: 1
+        duration: fade.arriving ? Tokens.durationShort : Geometry.leaveShare * Tokens.durationShort
     }
 
     // The first count is no news.

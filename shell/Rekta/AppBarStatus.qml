@@ -128,8 +128,6 @@ Item {
         objectName: `status-${modelData}`
         text: shown?.name ?? ""
         present: current !== undefined
-        // A word dropped for lack of room goes at once: fading, it would stand over the middle.
-        fadesOnLeaving: () => !status.words.some(word => word.key === modelData)
         face: StatusTag {
             x: Geometry.appBarControlPadding
             y: (Geometry.appBarControl - implicitHeight) / 2
