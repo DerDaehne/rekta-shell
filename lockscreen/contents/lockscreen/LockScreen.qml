@@ -7,8 +7,8 @@ import org.kde.plasma.workspace.keyboardlayout as Keyboards
 import Rekta
 
 // The lock screen kscreenlocker_greet loads, once per monitor. It only hands the greeter's context and Plasma's
-// modules to the parts beside it, LockFace (what is shown) and Unlock (how PAM is asked), and quits the greeter once
-// the session is unlocked. Its opaque face covers the wallpaper the greeter puts below it.
+// modules to the parts beside it, LockFace (what is shown) and Unlock (how PAM is asked, one for all monitors), and
+// quits the greeter once the session is unlocked. Its opaque face covers the wallpaper the greeter puts below it.
 Item {
     id: root
 
@@ -20,6 +20,12 @@ Item {
     readonly property var pam: authenticator
     readonly property string userName: kscreenlocker_userName
     // qmllint enable unqualified
+
+    Component.onCompleted: Unlock.authenticator = pam
+    onViewVisibleChanged: {
+        if (viewVisible)
+            Unlock.shown = true;
+    }
 
     // KWin hands KDE's animation speed to QML only through Kirigami's units, which turn "instant" into 1 ms.
     Binding {
@@ -55,31 +61,27 @@ Item {
         id: sessionManagement
     }
 
-    Unlock {
-        id: unlock
+    Connections {
+        target: Unlock
 
-        authenticator: root.pam
-        viewVisible: root.viewVisible
-        capsLock: capsLockState.locked
-        onRejected: face.reject()
-        onUnlocked: Qt.quit()
+        function onUnlocked() {
+            Qt.quit();
+        }
     }
 
     LockFace {
-        id: face
-
         anchors.fill: parent
         // Until the pointer enters a monitor, the one with the keyboard is the user's, and a single one always.
         active: Application.screens.length === 1 || monitor.active || root.Window.active
         userName: root.userName
-        checking: unlock.checking
-        error: unlock.error
-        info: unlock.info
+        checking: Unlock.checking
+        error: Unlock.error
+        info: Unlock.info
         capsLock: capsLockState.locked
         layouts: Array.from(keyboardLayout.layoutsList, layout => layout.shortName)
         layoutIndex: keyboardLayout.layout
         canSwitchUser: sessionManagement.canSwitchUser
-        onSubmitted: secret => unlock.submit(secret)
+        onSubmitted: secret => Unlock.submit(secret, capsLockState.locked)
         onLayoutChosen: index => keyboardLayout.layout = index
         onSwitchUser: sessionManagement.switchUser()
     }

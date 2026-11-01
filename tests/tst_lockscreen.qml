@@ -15,8 +15,10 @@ TestCase {
     width: 1920
     height: 1080
 
-    // kscreenlocker's authenticator as the lock screen sees it: its properties, signals and calls. `calls` records the
-    // calls in order: "start", "stop" or ["respond", text].
+    // kscreenlocker 6.8.0's authenticator as the lock screen sees it. Like its PamAuthenticator, it signals a question
+    // before the question can take an answer, so an answer given inside that signal's handler finds no question and is
+    // lost, as is any answer without one. It never signals `inPasswordDelay`: a stand-in keeps the value it was made
+    // with. `calls` records the calls in order: "start", "stop", ["respond", text], or ["lost", text].
     Component {
         id: authenticatorComponent
 
@@ -27,10 +29,25 @@ TestCase {
             property string promptForSecret
             property string errorMessage
             property string infoMessage
+            property bool waiting: false
             property var calls: []
 
             signal failed(int kind)
             signal succeeded
+
+            // The signal comes each time, with the same words or not, and only then does the question wait.
+            function ask(question: string) {
+                if (promptForSecret === question)
+                    promptForSecretChanged();
+                else
+                    promptForSecret = question;
+                waiting = true;
+            }
+
+            function succeed() {
+                unlocked = true;
+                succeeded();
+            }
 
             function startAuthenticating() {
                 calls.push("start");
@@ -41,82 +58,76 @@ TestCase {
             }
 
             function respond(text: string) {
+                if (!waiting) {
+                    console.warn("Received prompt response, but no pending prompt was found!");
+                    calls.push(["lost", text]);
+                    return;
+                }
+                waiting = false;
                 calls.push(["respond", text]);
             }
         }
     }
 
-    // The lock screen of one monitor, wired as LockScreen.qml wires it to the greeter.
+    // The lock screen of one monitor, wired to the shared flow as LockScreen.qml wires it.
     Component {
-        id: sceneComponent
+        id: faceComponent
 
-        Item {
-            id: scene
-
-            property alias unlock: unlockFlow
-            property alias face: lockFace
-            property bool quit: false
-            required property var authenticator
+        LockFace {
+            id: lockFace
 
             width: 1920
             height: 1080
-
-            Unlock {
-                id: unlockFlow
-
-                authenticator: scene.authenticator
-                capsLock: lockFace.capsLock
-                onRejected: lockFace.reject()
-                onUnlocked: scene.quit = true
-            }
-
-            LockFace {
-                id: lockFace
-
-                anchors.fill: parent
-                locale: Qt.locale("de_DE")
-                now: new Date(2026, 9, 29, 14, 32)
-                userName: "rekta"
-                checking: unlockFlow.checking
-                error: unlockFlow.error
-                info: unlockFlow.info
-                onSubmitted: secret => unlockFlow.submit(secret)
-            }
+            locale: Qt.locale("de_DE")
+            now: new Date(2026, 9, 29, 14, 32)
+            userName: "rekta"
+            checking: Unlock.checking
+            error: Unlock.error
+            info: Unlock.info
+            onSubmitted: secret => Unlock.submit(secret, lockFace.capsLock)
         }
+    }
+
+    SignalSpy {
+        id: unlockedSpy
+
+        target: Unlock
+        signalName: "unlocked"
     }
 
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var pam
-    property var scene
+    property var face
 
     function init() {
-        failOnWarning(/TypeError|ReferenceError|Binding loop/);
+        failOnWarning(/TypeError|ReferenceError|Binding loop|no pending prompt/);
         Prefs.motion = "off";
+        unlockedSpy.clear();
         pam = createTemporaryObject(authenticatorComponent, testCase);
-        scene = createTemporaryObject(sceneComponent, testCase, {
-            authenticator: pam
-        });
-        waitForRendering(scene);
+        Unlock.authenticator = pam;
+        face = createTemporaryObject(faceComponent, testCase);
+        waitForRendering(face);
     }
 
+    // The stand-ins go when the test ends; the real authenticator lives as long as the greeter.
     function cleanup() {
+        Unlock.shown = false;
+        Unlock.authenticator = null;
         Prefs.motion = "system";
         Prefs.theme = "system";
         Prefs.density = "auto";
     }
 
     function part(name: string): var {
-        return findChild(scene, name);
+        return findChild(face, name);
     }
 
     function input(): var {
         return findChild(part("password"), "input");
     }
 
-    // PAM asks for the password, as its signal says each time.
     function ask() {
-        pam.promptForSecret = "";
-        pam.promptForSecret = "Password: ";
+        pam.ask("Password: ");
     }
 
     function type(text: string) {
@@ -130,17 +141,15 @@ TestCase {
     }
 
     function test_the_heartbeat_keeps_pam_asking_only_while_the_screen_shows() {
-        const heartbeat = findChild(scene.unlock, "heartbeat");
+        const heartbeat = findChild(Unlock, "heartbeat");
         verify(!heartbeat.running, "not before the greeter shows the screen");
-        scene.unlock.viewVisible = true;
+        Unlock.shown = true;
         verify(heartbeat.running);
         tryVerify(() => pam.calls[0] === "start", 100, "at once");
         compare(heartbeat.interval, 1000);
         verify(heartbeat.repeat);
         pam.unlocked = true;
         verify(!heartbeat.running, "and no more once unlocked");
-        // The stand-in goes first when the test ends; the real one lives as long as the greeter.
-        scene.unlock.viewVisible = false;
     }
 
     function test_the_password_goes_to_pam_only_on_sending_never_when_pam_asks() {
@@ -150,6 +159,7 @@ TestCase {
         keyClick(Qt.Key_Return);
         compare(responses(), [["respond", "geheim"]]);
         ask();
+        wait(10);
         compare(responses().length, 1, "a new question is no answer");
     }
 
@@ -160,32 +170,96 @@ TestCase {
         compare(responses(), [["respond", "geheim"]]);
     }
 
-    function test_a_password_sent_before_pam_asks_waits_for_the_question() {
+    function test_a_password_sent_before_pam_asks_reaches_pam_once_it_asks() {
         type("geheim");
         keyClick(Qt.Key_Return);
         compare(responses(), []);
-        verify(scene.unlock.checking);
+        verify(Unlock.checking);
         ask();
+        tryVerify(() => responses().length > 0);
         compare(responses(), [["respond", "geheim"]]);
     }
 
     function test_a_question_asked_before_the_lock_screen_loaded_is_answered() {
-        pam.promptForSecret = "Password: ";
-        const later = createTemporaryObject(sceneComponent, testCase, {
-            authenticator: pam
-        });
-        later.unlock.submit("geheim");
-        compare(responses(), [["respond", "geheim"]]);
+        const early = createTemporaryObject(authenticatorComponent, testCase);
+        early.ask("Password: ");
+        Unlock.authenticator = early;
+        Unlock.submit("geheim", false);
+        compare(early.calls, [["respond", "geheim"]]);
     }
 
-    function test_a_password_sent_in_the_delay_after_a_failure_waits_for_its_end() {
+    function test_a_password_sent_while_pam_still_reports_its_delay_reaches_pam_when_it_asks() {
+        const delayed = createTemporaryObject(authenticatorComponent, testCase, {
+            inPasswordDelay: true
+        });
+        Unlock.authenticator = delayed;
+        Unlock.submit("geheim", false);
+        delayed.ask("Password: ");
+        tryVerify(() => delayed.calls.length > 0);
+        compare(delayed.calls, [["respond", "geheim"]]);
+    }
+
+    function test_after_a_failure_pam_gets_the_next_answer_no_sooner_than_two_seconds_later() {
         ask();
-        pam.inPasswordDelay = true;
-        scene.unlock.submit("geheim");
-        compare(responses(), []);
-        verify(scene.unlock.checking);
-        pam.inPasswordDelay = false;
-        compare(responses(), [["respond", "geheim"]]);
+        Unlock.submit("falsch", false);
+        pam.failed(0);
+        const pause = findChild(Unlock, "pause");
+        verify(pause.running);
+        compare(pause.interval, 2000);
+        Unlock.submit("geheim", false);
+        ask();
+        wait(50);
+        compare(responses(), [["respond", "falsch"]], "not yet");
+        tryVerify(() => responses().length === 2, 3000);
+        compare(responses()[1], ["respond", "geheim"]);
+    }
+
+    function test_a_second_question_during_a_check_opens_the_field_and_says_it() {
+        ask();
+        type("geheim");
+        keyClick(Qt.Key_Return);
+        pam.ask("Bestätigungscode: ");
+        verify(!Unlock.checking, "the check ends");
+        verify(!input().readOnly);
+        compare(part("password").hint, "Bestätigungscode: ");
+        compare(input().selectedText, "geheim", "typing replaces what was sent");
+        type("123456");
+        keyClick(Qt.Key_Return);
+        compare(responses(), [["respond", "geheim"], ["respond", "123456"]]);
+    }
+
+    function test_a_check_without_word_from_pam_ends_after_a_while_and_the_field_takes_input_again() {
+        ask();
+        type("geheim");
+        keyClick(Qt.Key_Return);
+        const watchdog = findChild(Unlock, "watchdog");
+        verify(watchdog.running);
+        compare(watchdog.interval, 10000);
+        watchdog.triggered();
+        verify(!Unlock.checking);
+        verify(!input().readOnly);
+        verify(!part("dots").running);
+        compare(part("password").error, "Das Passwort wurde nicht geprüft – bitte noch einmal eingeben.");
+        compare(input().selectedText, "geheim");
+        verify(Unlock.asked, "the next answer goes straight to a question PAM may still hold");
+    }
+
+    function test_all_monitors_share_one_check() {
+        ask();
+        type("geheim");
+        keyClick(Qt.Key_Return);
+        const other = createTemporaryObject(faceComponent, testCase);
+        verify(findChild(other, "dots").running, "the other monitor shows the check");
+        verify(findChild(findChild(other, "password"), "input").readOnly);
+        other.submitted("anders");
+        compare(responses(), [["respond", "geheim"]], "and sends nothing meanwhile");
+        pam.failed(0);
+        compare(findChild(other, "password").error, "Das Passwort stimmt nicht – bitte noch einmal eingeben.");
+        compare(part("password").error, findChild(other, "password").error);
+        other.submitted("anders");
+        ask();
+        tryVerify(() => responses().length === 2, 3000);
+        compare(responses()[1], ["respond", "anders"], "the other monitor's password reaches PAM");
     }
 
     function test_a_wrong_password_says_cause_and_remedy_and_stays_all_selected() {
@@ -193,7 +267,7 @@ TestCase {
         type("geheim");
         keyClick(Qt.Key_Return);
         pam.failed(0);
-        verify(!scene.unlock.checking);
+        verify(!Unlock.checking);
         compare(part("password").error, "Das Passwort stimmt nicht – bitte noch einmal eingeben.");
         compare(input().text, "geheim", "the input stays");
         compare(input().selectedText, "geheim", "all of it selected");
@@ -204,10 +278,10 @@ TestCase {
     }
 
     function test_with_caps_lock_on_a_wrong_password_names_it() {
-        scene.face.capsLock = true;
+        face.capsLock = true;
         compare(part("password").hint, "Die Feststelltaste ist an.");
         ask();
-        scene.unlock.submit("GEHEIM");
+        face.submitted("GEHEIM");
         pam.failed(0);
         compare(part("password").error, "Das Passwort stimmt nicht – die Feststelltaste ist an.");
     }
@@ -218,7 +292,7 @@ TestCase {
         pam.errorMessage = "Das Konto ist gesperrt.";
         compare(part("password").error, "Das Konto ist gesperrt.", "as it comes, outside a check");
         ask();
-        scene.unlock.submit("geheim");
+        Unlock.submit("geheim", false);
         compare(part("password").error, "", "a check starts without the old error");
         pam.errorMessage = "Das Konto ist abgelaufen.";
         pam.failed(0);
@@ -227,18 +301,19 @@ TestCase {
 
     function test_a_failing_fingerprint_reader_shows_nothing() {
         ask();
-        scene.unlock.submit("geheim");
+        Unlock.submit("geheim", false);
         pam.failed(1);
-        verify(scene.unlock.checking);
+        verify(Unlock.checking);
         compare(part("password").error, "");
     }
 
     function test_success_stops_asking_and_quits() {
         ask();
-        scene.unlock.submit("geheim");
-        pam.succeeded();
+        Unlock.submit("geheim", false);
+        pam.succeed();
         compare(pam.calls[pam.calls.length - 1], "stop");
-        verify(scene.quit);
+        compare(unlockedSpy.count, 1);
+        verify(!findChild(Unlock, "watchdog").running);
     }
 
     function test_while_checking_field_and_button_take_nothing() {
@@ -247,51 +322,51 @@ TestCase {
         keyClick(Qt.Key_Return);
         keyClick(Qt.Key_X);
         compare(input().text, "geheim", "the field takes no typing");
+        keyClick(Qt.Key_Return);
         mouseClick(part("unlock"));
-        ask();
-        compare(responses().length, 1, "the button sends nothing more");
+        compare(responses().length, 1, "Enter and the button send nothing more");
     }
 
     function test_the_dots_run_under_the_field_as_wide_as_it_and_above_the_button_only_while_checking() {
         Prefs.motion = "on";
-        waitForRendering(scene);
+        waitForRendering(face);
         const field = part("password"), dots = part("dots"), button = part("unlock");
         const flying = () => Array.from(dots.children).filter(child => child.position !== undefined).length;
         verify(!dots.running);
         compare(flying(), 0, "resting, no dot exists");
-        scene.unlock.submit("geheim");
-        waitForRendering(scene);
+        Unlock.submit("geheim", false);
+        waitForRendering(face);
         verify(dots.running);
         compare(flying(), Geometry.dotCount);
         compare(dots.height, Geometry.dotSize);
         compare(dots.width, field.width);
         compare(dots.width, 2 * Tokens.tileUnit + Tokens.spaceS);
-        const fieldBottom = field.mapToItem(scene, 0, field.height).y;
-        const dotsTop = dots.mapToItem(scene, 0, 0).y;
+        const fieldBottom = field.mapToItem(face, 0, field.height).y;
+        const dotsTop = dots.mapToItem(face, 0, 0).y;
         compare(dotsTop - fieldBottom, Tokens.spaceS);
-        compare(button.mapToItem(scene, 0, 0).y - (dotsTop + dots.height), Tokens.spaceS);
-        compare(dots.mapToItem(scene, 0, 0).x, field.mapToItem(scene, 0, 0).x);
+        compare(button.mapToItem(face, 0, 0).y - (dotsTop + dots.height), Tokens.spaceS);
+        compare(dots.mapToItem(face, 0, 0).x, field.mapToItem(face, 0, 0).x);
     }
 
     function test_field_and_button_stay_where_they_are_when_the_check_starts() {
         Prefs.motion = "on";
-        waitForRendering(scene);
+        waitForRendering(face);
         const field = part("password"), button = part("unlock");
-        const fieldAt = field.mapToItem(scene, 0, 0), buttonAt = button.mapToItem(scene, 0, 0);
-        scene.unlock.submit("geheim");
-        waitForRendering(scene);
-        compare(field.mapToItem(scene, 0, 0), fieldAt);
-        compare(button.mapToItem(scene, 0, 0), buttonAt);
+        const fieldAt = field.mapToItem(face, 0, 0), buttonAt = button.mapToItem(face, 0, 0);
+        Unlock.submit("geheim", false);
+        waitForRendering(face);
+        compare(field.mapToItem(face, 0, 0), fieldAt);
+        compare(button.mapToItem(face, 0, 0), buttonAt);
     }
 
     function test_under_reduced_motion_the_dots_stand_with_words_and_every_end_state_is_reached() {
-        scene.face.active = false;
-        compare(findChild(scene.face, "rest").opacity, 0, "the rest is gone at once");
+        face.active = false;
+        compare(part("rest").opacity, 0, "the rest is gone at once");
         compare(part("clock").shrink, part("clock").ratio);
-        scene.face.active = true;
+        face.active = true;
         compare(part("clock").shrink, 1, "the clock is whole at once");
-        compare(findChild(scene.face, "rest").opacity, 1);
-        scene.unlock.submit("geheim");
+        compare(part("rest").opacity, 1);
+        Unlock.submit("geheim", false);
         const dots = part("dots");
         const words = Array.from(dots.children).find(child => child.text === "wird geprüft …");
         verify(words.visible, "the dots say what happens");
@@ -317,15 +392,15 @@ TestCase {
 
     function test_another_monitor_shows_the_clock_alone_as_the_inactive_title_which_grows_when_it_becomes_active() {
         Prefs.motion = "on";
-        waitForRendering(scene);
-        const clock = part("clock"), rest = findChild(scene.face, "rest");
-        scene.face.active = false;
+        waitForRendering(face);
+        const clock = part("clock"), rest = part("rest");
+        face.active = false;
         tryCompare(rest, "opacity", 0);
         verify(!rest.enabled, "the hidden parts take nothing");
         const ratio = Tokens.fluid(Tokens.fontSizeNavInactive, 1920) / Tokens.fluid(Tokens.fontSizeNavActive, 1920);
         tryCompare(clock, "shrink", ratio);
         compare(clock.color, Tokens.color.textContrastMedium);
-        scene.face.active = true;
+        face.active = true;
         wait(Tokens.durationPivotSize / 2);
         verify(clock.shrink > clock.ratio && clock.shrink < 1, "it grows, not jumps");
         tryCompare(clock, "shrink", 1);
@@ -338,34 +413,34 @@ TestCase {
         compare(name.text, "rekta");
         compare(name.font.weight, Tokens.fontWeightLight);
         compare(signIn.x, Tokens.spaceXl);
-        compare(signIn.y + signIn.height, scene.height - Tokens.spaceXl);
+        compare(signIn.y + signIn.height, face.height - Tokens.spaceXl);
         compare(part("password").label, "passwort");
         compare(input().echoMode, TextInput.Password);
         compare(part("unlock").variant, "primary");
-        compare(corner.x + corner.width, scene.width - Tokens.spaceXl);
-        compare(corner.y + corner.height, scene.height - Tokens.spaceXl);
+        compare(corner.x + corner.width, face.width - Tokens.spaceXl);
+        compare(corner.y + corner.height, face.height - Tokens.spaceXl);
         const switchUser = part("switchUser");
         compare(switchUser.variant, "quiet");
         compare(switchUser.text, "benutzer wechseln");
-        const bottomRight = Qt.point(scene.width - Tokens.spaceXl, scene.height - Tokens.spaceXl);
-        compare(switchUser.mapToItem(scene, switchUser.width, switchUser.height), bottomRight);
+        const bottomRight = Qt.point(face.width - Tokens.spaceXl, face.height - Tokens.spaceXl);
+        compare(switchUser.mapToItem(face, switchUser.width, switchUser.height), bottomRight);
         verify(!part("status").visible, "the empty status area takes no room");
-        scene.face.canSwitchUser = false;
+        face.canSwitchUser = false;
         verify(!switchUser.visible);
     }
 
     function test_the_layouts_stand_beside_the_field_level_with_its_input_only_when_there_are_several() {
         const layouts = part("layouts"), field = part("password");
-        scene.face.layouts = ["de"];
+        face.layouts = ["de"];
         verify(!layouts.visible);
-        scene.face.layouts = ["de", "us"];
-        scene.face.layoutIndex = 1;
+        face.layouts = ["de", "us"];
+        face.layoutIndex = 1;
         verify(layouts.visible);
         compare(layouts.currentIndex, 1);
         compare(layouts.x, field.width + Tokens.spaceM);
-        compare(layouts.mapToItem(scene, 0, 0).y, findChild(field, "box").mapToItem(scene, 0, 0).y);
+        compare(layouts.mapToItem(face, 0, 0).y, findChild(field, "box").mapToItem(face, 0, 0).y);
         let chosen = -1;
-        scene.face.layoutChosen.connect(index => chosen = index);
+        face.layoutChosen.connect(index => chosen = index);
         layouts.choose(0);
         compare(chosen, 0);
     }
@@ -375,22 +450,21 @@ TestCase {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             pam = createTemporaryObject(authenticatorComponent, testCase);
-            scene = createTemporaryObject(sceneComponent, testCase, {
-                authenticator: pam
-            });
-            scene.face.layouts = ["de", "us"];
-            waitForRendering(scene);
-            grabImage(scene).save(`lockscreen-sheet-${theme}.png`);
+            Unlock.authenticator = pam;
+            face = createTemporaryObject(faceComponent, testCase);
+            face.layouts = ["de", "us"];
+            waitForRendering(face);
+            grabImage(face).save(`lockscreen-sheet-${theme}.png`);
             ask();
             type("geheim");
             keyClick(Qt.Key_Return);
             pam.failed(0);
-            waitForRendering(scene);
-            grabImage(scene).save(`lockscreen-sheet-${theme}-error.png`);
-            scene.face.active = false;
-            waitForRendering(scene);
-            grabImage(scene).save(`lockscreen-sheet-${theme}-other-monitor.png`);
-            verify(scene.height > 0, theme);
+            waitForRendering(face);
+            grabImage(face).save(`lockscreen-sheet-${theme}-error.png`);
+            face.active = false;
+            waitForRendering(face);
+            grabImage(face).save(`lockscreen-sheet-${theme}-other-monitor.png`);
+            verify(face.height > 0, theme);
         }
     }
 }

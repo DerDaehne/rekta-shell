@@ -28,18 +28,21 @@ Rectangle {
     signal layoutChosen(int index)
     signal switchUser
 
-    // A refused password stays, all of it selected, so typing replaces it (forms.md, "When the server says no").
-    function reject() {
-        field.selectAll();
-    }
-
     color: Tokens.color.bg
 
+    // After a check the input stays, all of it selected, so typing replaces it (forms.md, "When the server says no").
+    // The field turns editable first: a TextInput drops its selection whenever readOnly changes.
+    onCheckingChanged: {
+        field.readOnly = checking;
+        if (!checking)
+            field.selectAll();
+    }
     onActiveChanged: {
         if (active)
             field.selectAll();
     }
     Component.onCompleted: {
+        field.readOnly = checking;
         if (active)
             field.selectAll();
     }
@@ -108,7 +111,6 @@ Rectangle {
                     width: 2 * Tokens.tileUnit + Tokens.spaceS
                     label: "passwort"
                     echoMode: TextInput.Password
-                    readOnly: face.checking
                     error: face.error
                     hint: face.capsLock ? "Die Feststelltaste ist an." : face.info
                     onAccepted: face.submitted(field.text)

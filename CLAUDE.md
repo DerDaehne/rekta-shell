@@ -162,8 +162,9 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   `contents/lockscreen/`: Rekta's lock screen, which `kscreenlocker_greet` loads from
   `share/rekta-kwin/plasma/shells/`. The greeter inherits KWin's environment, so it finds
   the package (and `import Rekta`) only in the rekta session; Plasma keeps Breeze's.
-  `LockScreen.qml` only adapts the greeter's context; `LockFace` and `Unlock` beside it
-  are tested in `tests/tst_lockscreen.qml` with a stand-in authenticator. Try it only in
+  `LockScreen.qml` only adapts the greeter's context; `LockFace` and the singleton `Unlock`
+  (one PAM conversation for all monitors) beside it are tested in `tests/tst_lockscreen.qml`
+  with a stand-in that behaves like kscreenlocker 6.8.0's authenticator. Try it only in
   the VM: lock with `loginctl lock-session <id>` of the graphical session, inside the guest.
 - `nixosModules.default` (`nix/nixos-module.nix`) registers that package as session
   and systemd package once `programs.rekta-shell.enable` is set;
