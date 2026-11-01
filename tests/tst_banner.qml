@@ -107,7 +107,8 @@ TestCase {
         compare(banner.entry, 0);
         compare(banner.opacity, 0);
         compare(banner.transform[0].y, -Geometry.bannerShift);
-        tryCompare(banner, "entry", 1, 1000);
+        tryCompare(coming, "running", false, 1000);
+        compare(banner.entry, 1);
         compare(banner.transform[0].y, 0);
         banner.update("paused", "Runs wait until you resume them: 3 so far.");
         compare(findChild(banner, "sentence").text, "Runs wait until you resume them: 3 so far.");
@@ -156,7 +157,7 @@ TestCase {
         const before = banner.height;
         banner.set("halted", true, {});
         compare(banner.height, before, "it starts where the last state stood");
-        tryCompare(banner, "entry", 1, 1000);
+        tryCompare(findChild(banner, "coming"), "running", false, 1000);
         compare(banner.height, banner.contentHeight);
         verify(banner.height !== before, "a time line makes it higher");
     }

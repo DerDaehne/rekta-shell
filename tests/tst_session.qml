@@ -244,8 +244,7 @@ TestCase {
         compare(banner.opacity, 0.5);
         compare(banner.mapToItem(sessionBanner, 0, 0).y, -Geometry.bannerShift / 2, "from 8px above");
         compare(part("shading").opacity, 0.5);
-        tryCompare(sessionBanner, "entry", 1, Tokens.durationShort * 4);
-        tryCompare(sessionBanner, "shade", 1, Tokens.durationShort * 4);
+        tryVerify(() => sessionBanner.entry === 1 && sessionBanner.shade === 1, Tokens.durationShort * 4, "both animations ended");
         compare(banner.mapToItem(sessionBanner, 0, 0).y, 0);
     }
 
