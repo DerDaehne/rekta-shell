@@ -2,6 +2,8 @@
 rekta-turnstileEnabled=true
 rekta-fadebackEnabled=true
 slideEnabled=false
+# rekta-fadeback fades the splash out after login, in Rekta's duration and curve.
+loginEnabled=false
 # scale opens every layer surface of a namespace KWin does not know, the shell's too; Rekta gives it no meaning.
 scaleEnabled=false
 

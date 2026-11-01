@@ -14,7 +14,7 @@ import "services"
 // it. The middle with the active window leads, the clock stands in the centre, the background apps (gone
 // while none runs), messages and controls trail, each opening the side panel on this screen on its facet; those
 // whose features come later stand disabled, their reason in their tooltip. Under a full-screen window it slides down
-// out of sight and comes back the same way.
+// out of sight and comes back the same way; after login it comes that way once the splash has gone.
 PanelWindow {
     id: panel
 
@@ -29,10 +29,12 @@ PanelWindow {
     // What deviates from normal, as the words before "steuerung".
     required property StatusWords status
     required property ShellScreen primaryScreen
+    // The splash has gone after login (SplashEnd.arrived).
+    required property bool arrived
     readonly property bool showsReadout: modelData === primaryScreen
     // The active window, when it is on this screen.
     readonly property var front: windows?.active?.isOn(modelData) ? windows.active : null
-    readonly property bool away: windows?.fullScreenOn(modelData) ?? false
+    readonly property bool away: !arrived || (windows?.fullScreenOn(modelData) ?? false)
     // What the middle says, the first of these that has something: the music that plays, else the window.
     readonly property var musicParts: Middle.musicParts(media?.title ?? "", media?.artist ?? "", media?.position ?? 0, media?.length ?? 0)
     readonly property bool playing: musicParts.length > 0
@@ -45,8 +47,9 @@ PanelWindow {
     implicitHeight: Tokens.appbarHeight
     exclusiveZone: Tokens.appbarHeight
     color: "transparent"
-    // Unmapped once out of sight, so a full-screen window has the screen to itself.
-    visible: !away || bar.sliding
+    // Unmapped once out of sight, so a full-screen window has the screen to itself. Mapped under the splash already: a
+    // new layer surface takes some 60ms to its first frame, which the slide in would lose.
+    visible: !away || bar.sliding || !arrived
     // A dock to KWin: a namespace it does not know makes a normal window, which tiling scripts move into the work area,
     // out of the zone the surface keeps clear itself.
     WlrLayershell.namespace: "dock"

@@ -1,17 +1,36 @@
 import QtQuick
-import org.kde.plasma.workspace.dbus as DBus
+import Rekta
+import RektaShell.DBus
 
 // KSplash waits for the desktop stage, which plasmashell reports in Plasma; without it the splash stays until its
-// timeout.
-// ponytail: reported once the shell has loaded, as it has no surface yet, and through plasma-workspace's DBus module;
-// move it to the first surface's first frame, and to the shell's own DBus module once there is one.
+// timeout. The shell reports it once, as soon as what stands under the splash has drawn, and KWin's fade-back fades the
+// splash onto it in duration-moderate. Then the shell has arrived: what comes after the splash comes in.
 QtObject {
-    Component.onCompleted: DBus.SessionBus.asyncCall({
-        service: "org.kde.KSplash",
-        path: "/KSplash",
-        iface: "org.kde.KSplash",
-        member: "setStage",
-        arguments: [new DBus.string("desktop")],
-        signature: "(s)"
-    })
+    id: splash
+
+    // The surfaces the splash fades onto have drawn their first frame.
+    property bool ready: false
+    // The splash has faded, or was never there to fade.
+    property bool arrived: false
+    property bool reported: false
+
+    readonly property DBusConnection bus: DBusConnection {}
+
+    readonly property Timer fading: Timer {
+        interval: Tokens.durationModerate
+        onTriggered: splash.arrived = true
+    }
+
+    // Without a splash, as after a restart of the shell, the call fails unheard.
+    function end() {
+        if (!ready || reported)
+            return;
+        reported = true;
+        console.info("SplashEnd: the ground and the Start's surface have drawn; the splash ends");
+        bus.call("org.kde.KSplash", "/KSplash", "org.kde.KSplash", "setStage", ["desktop"], "s");
+        fading.start();
+    }
+
+    onReadyChanged: end()
+    Component.onCompleted: end()
 }

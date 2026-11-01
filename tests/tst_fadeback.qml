@@ -70,6 +70,19 @@ TestCase {
         compare(FadeBack.leaveProgress(1, 0, 0), 0);
     }
 
+    function test_after_login_the_splash_fades_out_in_a_whole_duration_moderate_with_ease_out() {
+        compare(FadeBack.splashOpacity(0), 1);
+        fuzzyCompare(FadeBack.splashOpacity(Tokens.durationModerate / 2), 1 - easeOut.valueForProgress(0.5), 1e-9);
+        compare(FadeBack.splashOpacity(Tokens.durationModerate), 0);
+        compare(FadeBack.splashOpacity(5 * Tokens.durationModerate), 0);
+    }
+
+    function test_the_splash_keeps_rekta_s_tempo_whatever_the_start_s() {
+        FadeBack.startTempo = 0.5;
+        verify(FadeBack.splashOpacity(Tokens.durationModerate / 2) > 0);
+        FadeBack.startTempo = Geometry.startTempo;
+    }
+
     function test_all_the_way_back_a_window_is_86_percent_and_dimmed_to_0_78() {
         compare(FadeBack.scale(0), 1);
         compare(FadeBack.brightness(0), 1);

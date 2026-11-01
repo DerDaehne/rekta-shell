@@ -8,7 +8,13 @@ import "services"
 
 ShellRoot {
     SystemMotion {}
-    SplashEnd {}
+
+    // The splash fades onto the ground, the Start's surface ready over it; then the bar and the Start come in.
+    SplashEnd {
+        id: splash
+
+        ready: Array.from(grounds.instances).every(ground => (ground as Ground).drawn) && (start.drawn || !start.visible)
+    }
 
     // The side panel writes the density; every other setting is the app's alone, which the shell only follows.
     SettingsFiles {
@@ -86,6 +92,8 @@ ShellRoot {
     }
 
     Variants {
+        id: grounds
+
         model: primary.screens
 
         Ground {
@@ -105,6 +113,7 @@ ShellRoot {
             status: systemState.words
             primaryScreen: primary.screen
             controlPanel: sidePanel
+            arrived: splash.arrived
         }
     }
 
@@ -124,6 +133,7 @@ ShellRoot {
         notices: notifications.board
         primaryScreen: primary.screen
         topInset: systemBanner.zone
+        arrived: splash.arrived
     }
 
     ControlPanel {

@@ -3,7 +3,8 @@ import QtQuick
 
 // How far the windows have stepped back, 0 in front and 1 all the way back, and how a window looks that far back. They
 // step back with ease-out and come forward with ease-in, each way in duration-moderate: behind the Start at the Start's
-// tempo, as the session is left at Rekta's own. A change on the way turns them round from where they are.
+// tempo, as the session is left at Rekta's own. A change on the way turns them round from where they are. After login
+// the splash fades onto the ground as they step back, at Rekta's tempo.
 QtObject {
     readonly property easingCurve stepBack: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
     readonly property easingCurve comeForward: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
@@ -23,6 +24,11 @@ QtObject {
     // The same for the windows of every screen as the session is left.
     function leaveProgress(from: real, to: real, elapsed: real): real {
         return along(from, to, elapsed, leaveDuration);
+    }
+
+    // How much of the splash still shows `elapsed` ms after it closed: all of it as it closes, nothing once gone.
+    function splashOpacity(elapsed: real): real {
+        return 1 - along(0, 1, elapsed, Tokens.durationModerate);
     }
 
     function along(from: real, to: real, elapsed: real, span: real): real {

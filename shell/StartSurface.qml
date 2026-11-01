@@ -22,6 +22,10 @@ PanelWindow {
     required property ShellScreen primaryScreen
     // The room a banner keeps clear at the top: the Start begins below it, as the windows do.
     property real topInset: 0
+    // The splash has gone after login (SplashEnd.arrived); until then the Start does not open on its own.
+    required property bool arrived
+    // Its first frame is out: the splash may fade over it.
+    property bool drawn: false
     // What Escape does in a search: "close" or "back" (the setting searchEscape).
     property string searchEscape: "close"
     // From its opening to its hand-over, when the glass starts to go: in front of everything on the primary screen.
@@ -149,6 +153,7 @@ PanelWindow {
         target: surface.contentItem.Window.window
 
         function onFrameSwapped() {
+            surface.drawn = true;
             surface.askingAgain = false;
             if (surface.confirmingHandOver) {
                 surface.confirmingHandOver = false;
@@ -157,21 +162,22 @@ PanelWindow {
         }
     }
 
-    // Without windows the Start stands: after login and once the last window closes.
+    // Without windows the Start stands: once the splash has gone after login, and once the last window closes.
+    // ponytail: windows that come back with the session after the splash has gone find the Start open; wait for
+    // ksmserver's restore if that shows.
+    function standWithoutWindows() {
+        if (arrived && windows.all.length === 0)
+            place.open();
+    }
+
+    onArrivedChanged: standWithoutWindows()
+
     Connections {
         target: surface.windows
 
         function onAllChanged() {
-            if (surface.windows.all.length === 0)
-                place.open();
+            surface.standWithoutWindows();
         }
-    }
-
-    // ponytail: the window list fills a moment after the shell starts, so a shell restarted over open windows opens the
-    // Start too; check once the list has its first answer, if that bothers.
-    Component.onCompleted: {
-        if (windows.all.length === 0)
-            place.open();
     }
 
     IpcHandler {

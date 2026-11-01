@@ -11,6 +11,8 @@ PanelWindow {
 
     required property ShellScreen modelData
     required property Layers settings
+    // Its first frame is out: the splash may fade onto it.
+    property bool drawn: false
 
     screen: modelData
     anchors {
@@ -30,5 +32,14 @@ PanelWindow {
     Backdrop {
         anchors.fill: parent
         solid: panel.settings.value("background") === "solid"
+    }
+
+    Connections {
+        target: panel.contentItem.Window.window
+        enabled: !panel.drawn
+
+        function onFrameSwapped() {
+            panel.drawn = true;
+        }
     }
 }

@@ -11,6 +11,7 @@
 #include "workspace.h"
 
 #include <QDBusConnection>
+#include <QHash>
 #include <QPointer>
 #include <QQmlEngine>
 #include <QVector2D>
@@ -26,6 +27,14 @@ namespace KWin
 static LogicalOutput *primaryScreen()
 {
     return workspace()->outputOrder().value(0);
+}
+
+// The splash by its program, as KWin's own login effect knows it: the layer surface that names it is gone by the time
+// it closes, and may have come before this effect loaded. Nix runs a wrapped program as .<name>-wrapped.
+static bool isSplash(const EffectWindow *w)
+{
+    const QString program = w->window()->resourceName();
+    return program == QLatin1StringView("ksplashqml") || program == QLatin1StringView(".ksplashqml-wrapped");
 }
 
 // How far the windows have stepped back behind one of the shell's layer surfaces, 0 in front and 1 all the way back:
@@ -60,10 +69,18 @@ struct Look {
     qreal brightness = 1;
 };
 
+// The splash's windows, held after ksplashqml has closed them while they fade.
+struct Splash {
+    QHash<EffectWindow *, EffectWindowDeletedRef> windows;
+    std::optional<std::chrono::nanoseconds> closedAt;
+    qreal opacity = 1;
+};
+
 // The windows on the primary screen step back while the Start is open, smaller about the screen's centre and dimmed,
 // and the Start's surface fades in over them with its glass and blur. As the session is left, the windows on every
 // screen step back the same way behind a clear surface. Either surface sets them off by taking the keyboard and brings
-// them forward by handing it over. How far and how fast come from the shell's Rekta module.
+// them forward by handing it over. After login the splash fades onto the shell's ground. How far and how fast come
+// from the shell's Rekta module.
 class FadeBackEffect : public Effect
 {
     Q_OBJECT
@@ -98,6 +115,9 @@ private:
     void fadeStart(qreal opacity) const;
     bool stepsBack(const EffectWindow *w) const;
     bool moving() const;
+    void holdSplash(EffectWindow *w);
+    void fadeSplash(std::chrono::nanoseconds presentation);
+    bool fading() const;
 
     template<typename... Args>
     qreal rule(const char *name, Args... args) const
@@ -113,6 +133,7 @@ private:
     Retreat m_leave{"rekta-leave", "leaveProgress"};
     Look m_onPrimary;
     Look m_elsewhere;
+    Splash m_splash;
 };
 
 FadeBackEffect::FadeBackEffect()
@@ -128,6 +149,7 @@ FadeBackEffect::FadeBackEffect()
     QDBusConnection::sessionBus().registerObject(QStringLiteral("/RektaFadeBack"), this, QDBusConnection::ExportScriptableSlots);
     connect(waylandServer()->findChild<LayerShellV1Interface *>(), &LayerShellV1Interface::surfaceCreated,
             this, &FadeBackEffect::watch);
+    connect(effects, &EffectsHandler::windowClosed, this, &FadeBackEffect::holdSplash);
 }
 
 FadeBackEffect::~FadeBackEffect()
@@ -273,20 +295,58 @@ bool FadeBackEffect::moving() const
     return m_start.moving() || m_leave.moving();
 }
 
+// Once ksplashqml has closed the splash, it fades onto the shell's ground, which stands under it by then; under
+// reduced motion it goes at once.
+void FadeBackEffect::holdSplash(EffectWindow *w)
+{
+    if (!isSplash(w) || effects->animationTimeFactor() == 0) {
+        return;
+    }
+    if (!fading()) {
+        m_splash = {};
+    }
+    m_splash.windows.insert(w, EffectWindowDeletedRef(w));
+    effects->addRepaintFull();
+}
+
+// Timed as the windows are, from the frame it starts to fade in; every screen's splash fades alike.
+void FadeBackEffect::fadeSplash(std::chrono::nanoseconds presentation)
+{
+    if (!fading()) {
+        return;
+    }
+    if (!m_splash.closedAt) {
+        m_splash.closedAt = presentation;
+    }
+    const double elapsed = std::chrono::duration<double, std::milli>(presentation - *m_splash.closedAt).count();
+    m_splash.opacity = rule("splashOpacity", elapsed);
+}
+
+bool FadeBackEffect::fading() const
+{
+    return !m_splash.windows.isEmpty();
+}
+
 void FadeBackEffect::prePaintScreen(ScreenPrePaintData &data)
 {
-    if (moving() && data.screen == primaryScreen()) {
+    if (data.screen == primaryScreen()) {
         const auto presentation = data.screen->backendOutput()->renderLoop()->nextPresentationTimestamp();
-        advance(m_start, presentation);
-        advance(m_leave, presentation);
-        step();
+        if (moving()) {
+            advance(m_start, presentation);
+            advance(m_leave, presentation);
+            step();
+        }
+        fadeSplash(presentation);
     }
     effects->prePaintScreen(data);
 }
 
 void FadeBackEffect::postPaintScreen()
 {
-    if (moving()) {
+    if (fading() && m_splash.opacity <= 0) {
+        m_splash.windows.clear();
+    }
+    if (moving() || fading()) {
         effects->addRepaintFull();
     }
     effects->postPaintScreen();
@@ -296,6 +356,9 @@ void FadeBackEffect::prePaintWindow(RenderView *view, EffectWindow *w, WindowPre
 {
     if (stepsBack(w)) {
         data.setTransformed();
+    }
+    if (m_splash.windows.contains(w)) {
+        data.setTranslucent();
     }
     effects->prePaintWindow(view, w, data);
 }
@@ -311,12 +374,15 @@ bool FadeBackEffect::paintWindow(const RenderTarget &renderTarget, const RenderV
         data += (centre - w->pos()) * (1 - look.scale);
         data.multiplyBrightness(look.brightness);
     }
+    if (m_splash.windows.contains(w)) {
+        data.multiplyOpacity(m_splash.opacity);
+    }
     return effects->paintWindow(renderTarget, viewport, w, mask, deviceRegion, data);
 }
 
 bool FadeBackEffect::isActive() const
 {
-    return m_start.active() || m_leave.active();
+    return m_start.active() || m_leave.active() || fading();
 }
 
 KWIN_EFFECT_FACTORY(FadeBackEffect, "metadata.json")
