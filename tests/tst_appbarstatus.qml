@@ -274,6 +274,20 @@ TestCase {
         verify(Math.abs(half - (from + (messages.x - from) * easeBase.valueForProgress(0.5))) <= 1, `halfway at ${half}`);
     }
 
+    function test_the_first_word_to_come_fades_in_where_it_rests_clear_of_the_control_after_it() {
+        Prefs.motion = "on";
+        makeScene({});
+        settle();
+        const quietWord = word("doNotDisturb");
+        const controls = findChild(scene, "controls");
+        scene.shown = [quiet];
+        tryVerify(() => quietWord.visible, 1000, "it comes");
+        const at = drawnX(quietWord);
+        verify(at + quietWord.width <= drawnX(controls) + 0.5, `it stands clear of the control after it: ${at + quietWord.width} > ${drawnX(controls)}`);
+        settle();
+        compare(drawnX(quietWord), at, "it stood where it rests from the start");
+    }
+
     function test_a_word_that_goes_fades_out_where_it_stands_and_then_the_others_close_the_gap() {
         Prefs.motion = "on";
         makeScene({ shown: [microphone, muted] });

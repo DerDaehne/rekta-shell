@@ -158,17 +158,23 @@ Rectangle {
             after.push(moreButton);
         let start = region.start;
         for (const item of visible(region.items.slice(0, split))) {
-            put(targets, item, start, item.implicitWidth);
-            start += item.implicitWidth + gap;
+            put(targets, item, start, widthOf(item));
+            start += widthOf(item) + gap;
         }
         let end = region.end;
         for (const item of after.reverse()) {
-            end -= item.implicitWidth;
-            put(targets, item, end, item.implicitWidth);
+            end -= widthOf(item);
+            put(targets, item, end, widthOf(item));
             end -= gap;
         }
         if (at >= 0 && shows(region.items[at], plan.moved, plan.more))
             fill(targets, region.items[at] as AppBarMiddle, start, end);
+    }
+
+    // The status words' room is read from their slots: the bar lays out as soon as they are present, which may be before
+    // their implicitWidth has followed the same change.
+    function widthOf(item: Item): real {
+        return (item as AppBarStatus)?.occupied() ?? item.implicitWidth;
     }
 
     function fill(targets: var, middle: AppBarMiddle, start: real, end: real) {
