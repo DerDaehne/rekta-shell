@@ -5,7 +5,7 @@ import Rekta
 TestCase {
     name: "Turnstile"
 
-    readonly property real tile: Tokens.tileUnit
+    readonly property real tile: Tokens.heftReference
 
     function part(x: real, y: real, width: real, height: real): var {
         return {
@@ -28,8 +28,9 @@ TestCase {
         Tokens.reducedMotion = false;
     }
 
-    function test_a_tile_weighs_as_a_tile_and_every_part_lies_between_the_lightest_and_the_heaviest() {
+    function test_a_part_of_heft_reference_square_weighs_as_a_tile_and_every_part_lies_between_the_lightest_and_the_heaviest() {
         fuzzyCompare(Turnstile.heft(tile, tile), Tokens.heftTile, 1e-9);
+        verify(Turnstile.heft(Tokens.tileUnit, Tokens.tileUnit) > Tokens.heftTile, "the product's larger tile unit is no reference");
         compare(Turnstile.heft(1, 1), Tokens.heftMin);
         compare(Turnstile.heft(4000, 3000), Tokens.heftMax);
     }
@@ -60,6 +61,16 @@ TestCase {
         compare(turns.map(turn => turn.part.x), row.map(p => p.x).reverse());
         for (let i = 0; i < turns.length; i++)
             fuzzyCompare(turns[i].at, first + Math.min(i, Geometry.sameHeftSteps) * step, 1e-9);
+    }
+
+    function test_parts_at_one_place_keep_the_order_they_come_in() {
+        const parts = [];
+        for (let i = 0; i < 12; i++)
+            parts.push(part(0, 0, tile, tile + i % 2));
+        for (const given of [parts, parts.slice().reverse()]) {
+            const turns = Turnstile.plan(given, Tokens.durationShort, 0);
+            compare(turns.map(turn => given.indexOf(turn.part)), given.map((part, index) => index));
+        }
     }
 
     function test_a_row_turns_in_the_perspective_of_its_farthest_reach() {

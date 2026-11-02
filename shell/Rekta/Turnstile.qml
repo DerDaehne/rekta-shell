@@ -6,9 +6,10 @@ import QtQuick
 // when given, is the top left {x, y} of the box that clips it, otherwise the screen's. It turns around the leading
 // edge of that box.
 QtObject {
-    // How heavy a part is against a tile: light parts turn first and quickest, heavy ones later and slower.
+    // How heavy a part is against Rekta's reference tile, heft-reference square (motion.md:51–52), whatever size the
+    // product's tiles are: light parts turn first and quickest, heavy ones later and slower.
     function heft(width: real, height: real): real {
-        const tiles = Math.max(1, width * height) / (Tokens.tileUnit * Tokens.tileUnit);
+        const tiles = Math.max(1, width * height) / (Tokens.heftReference * Tokens.heftReference);
         const weight = Tokens.heftTile * Math.pow(tiles, Tokens.heftExponent);
         return Math.min(Tokens.heftMax, Math.max(Tokens.heftMin, weight));
     }
@@ -42,7 +43,9 @@ QtObject {
     // turns about its clipping box's leading edge (originX, in the part's own coordinates), from its top when it is
     // flush with that box's top, otherwise from its middle (originY).
     function plan(parts: var, duration: real, from: real): var {
-        const ordered = parts.slice().sort((a, b) => (readingRow(a) - readingRow(b)) || (a.x - b.x));
+        // Parts at one place keep the order they come in, as the web's stable sort keeps the page's; V4's sort may not.
+        const indexOf = new Map(parts.map((part, index) => [part, index]));
+        const ordered = parts.slice().sort((a, b) => (readingRow(a) - readingRow(b)) || (a.x - b.x) || (indexOf.get(a) - indexOf.get(b)));
         const perspectives = rowPerspectives(ordered);
         const seen = new Map();
         return ordered.map((part, index) => {

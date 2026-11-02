@@ -335,9 +335,11 @@ TestCase {
         const titleHeft = Turnstile.heft(title.width, title.height);
         fuzzyCompare(titleTurn.at, startOf(titleHeft), 1e-9);
         fuzzyCompare(titleTurn.duration, Tokens.durationShort * titleHeft, 1e-9);
-        const tileTurn = turnOf(turner.leavingTurns, named("tile0"));
-        fuzzyCompare(tileTurn.at, startOf(Tokens.heftTile), 1e-9);
-        fuzzyCompare(tileTurn.duration, Tokens.durationShort * Tokens.heftTile, 1e-9);
+        const tile = named("tile0");
+        const tileTurn = turnOf(turner.leavingTurns, tile);
+        const tileHeft = Turnstile.heft(tile.width, tile.height);
+        fuzzyCompare(tileTurn.at, startOf(tileHeft), 1e-9);
+        fuzzyCompare(tileTurn.duration, Tokens.durationShort * tileHeft, 1e-9);
 
         turner.elapsed = turner.handOverAt;
         const summary = named("summary");
@@ -351,9 +353,10 @@ TestCase {
         turnToSecond();
         const tiles = turner.leavingTurns.filter(turn => turn.part.item.objectName.startsWith("tile"));
         compare(tiles.map(turn => turn.part.item.objectName), ["tile0", "tile1", "tile2", "tile3", "tile4", "tile5", "tile6", "tile7"]);
+        const tileHeft = Turnstile.heft(tiles[0].part.width, tiles[0].part.height);
         for (let i = 0; i < tiles.length; i++) {
             const byOrder = Math.min(i, Geometry.sameHeftSteps) * Geometry.sameHeftStagger * Tokens.durationStagger;
-            fuzzyCompare(tiles[i].at, startOf(Tokens.heftTile) + byOrder, 1e-9);
+            fuzzyCompare(tiles[i].at, startOf(tileHeft) + byOrder, 1e-9);
         }
     }
 
