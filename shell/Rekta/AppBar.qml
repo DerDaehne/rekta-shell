@@ -202,10 +202,11 @@ Rectangle {
     }
 
     // What changes at once: what goes, into "more" or for good, starts fading out; the middle and the words follow the
-    // plan. Once nothing fades any more, the rest glide to their places while what comes fades in where it rests (rekta.js
-    // presence(), :3430–3446); until then it waits out of sight. A change of the room the sides have, such as the
-    // window's width, lays out at once: what that change brings comes and goes without a fade, what comes or goes after
-    // it fades again.
+    // plan. Once nothing fades any more, the rest glide to their places while what comes fades in where it rests; until
+    // then it waits out of sight. A change of the room the sides have, such as the window's width, lays out at once: what
+    // that change brings comes and goes without a fade, what comes or goes after it fades again.
+    // ponytail: fading in while the rest glide is Rekta 0.5.0's presence(); 0.6.0 holds a bar control that comes unseen
+    // until the others have made room and fades it in after (motion.md:24; rekta.js:4101–4105, :4121–4127).
     function apply() {
         const room = roomKey();
         const still = ready && room === laidOutIn;

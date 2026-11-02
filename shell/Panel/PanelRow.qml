@@ -3,7 +3,7 @@ import Rekta
 
 // A row of a group, a form's field rather than a list's item, so it stands on no hairline: its words at the start, its
 // control at the end; where the two do not fit on one line, the control goes below them (flex-wrap, rekta.css:74),
-// space-xs apart as a field's label and control are (rekta.css:385).
+// space-xs apart as a field's label and control are (rekta.css:386).
 // Words too long for the row are cut. A row without words has its control at the start.
 Item {
     id: row

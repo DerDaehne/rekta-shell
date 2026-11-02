@@ -3,9 +3,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 
 // Boxes laid out in a row that glide to their new places (motion.md, "Resize and re-flow" and "Reordering (FLIP)";
-// rekta.js reflow(), :3390–3408): whatever a change moves or resizes goes from where it showed to where it rests over
+// rekta.js reflow(), :4053–4077): whatever a change moves or resizes goes from where it showed to where it rests over
 // duration-moderate and ease-base. Content is never stretched: only the boxes' edges move. A box that was not laid out
-// before stands at its place at once, as rekta.js presence() (:3430–3446) lets what comes enter where it rests while the
+// before stands at its place at once, as rekta.js presence() (:4121–4125) places what comes where it rests while the
 // rest glide. A newer change starts from what is showing. No motion, or `glide` false, sets everything at once.
 QtObject {
     id: reflow

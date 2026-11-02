@@ -193,7 +193,7 @@ TestCase {
         compare(banner.y, 0);
         compare(banner.width, 900, "full bleed");
         compare(banner.color, Tokens.color.surface);
-        compare(word.x, Tokens.spaceXl, "space-xl at the sides of a sideways screen (rekta.css:1417)");
+        compare(word.x, Tokens.spaceXl, "space-xl at the sides of a sideways screen (rekta.css:1419)");
         compare(word.font.pixelSize, Math.floor(Tokens.fluid(Tokens.fontSizeL, 900)));
         compare(word.font.weight, Tokens.fontWeightLight);
         compare(actions.x, Tokens.spaceXl + Math.max(Tokens.tileUnit, word.implicitWidth) + Tokens.spaceS, "the actions from tile column 2");

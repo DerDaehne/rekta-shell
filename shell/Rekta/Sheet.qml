@@ -55,8 +55,9 @@ Item {
     function request(answer: string) {
         if (!open)
             return;
-        // While it leaves, a request ends the leave at once with its own answer; with unsaved input it keeps the answer
-        // the sheet leaves with, as rekta.js does once its question has come and gone (rekta.js:1813–1814, :1819, :1863).
+        // While it leaves, a request ends the leave at once; with unsaved input it keeps the answer the sheet leaves with,
+        // otherwise it takes its own. ponytail: taking its own answer is Rekta 0.5.0's; 0.6.0 keeps the answer the sheet
+        // leaves with for every request and only ends the leaving (rekta.js:1813–1814, :1819, :1863).
         if (going.running)
             leave(dirty ? memo.answer : answer);
         else if (asking)

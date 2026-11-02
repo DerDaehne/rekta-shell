@@ -2,8 +2,9 @@ import QtQuick
 import Rekta
 
 // An app in the Start, pinned or found by a search: its icon top left, its name along the bottom, neutral; a press
-// starts it. Rekta has no app tile yet; this one follows the shell's decision for the Start (an icon top left in every
-// size). The best hit of a search is wide and says which key starts it (navigation.md, "a command shows its key").
+// starts it. It follows the shell's decision for the Start (an icon top left in every size). The best hit of a search
+// is wide and says which key starts it (navigation.md, "a command shows its key").
+// ponytail: this tile is the shell's own from before Rekta had one; 0.6.0 has the launch tile (tiles.md:141–163).
 Tile {
     id: tile
 

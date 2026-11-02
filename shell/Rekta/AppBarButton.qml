@@ -74,7 +74,7 @@ Item {
             fadeRun.complete();
     }
 
-    // The last fade, in or out (rekta.js enter(), :3410–3416, and leave(), :3419–3425): phase runs 0 to 1, linear, over
+    // The last fade, in or out (rekta.js enter(), :4078–4088, and leave(), :4089–4100): phase runs 0 to 1, linear, over
     // the fade's time, and each way eases its own curve from its far end, as Rekta's keyframes do.
     QtObject {
         id: fade

@@ -193,7 +193,8 @@ Item {
                 color: parent.isToday ? Tokens.color.textOnAccent : Tokens.color.textPrimary
             }
 
-            // On the cell's edge, as rekta-core rings the keys' day (`rk__focus_ring(c, cell, 0)`, :933).
+            // On the cell's edge, as rekta-core rings the keys' day (`rk__focus_ring(c, cell, 0)`,
+            // core/src/controls.c:932).
             FocusRing {
                 offset: 0
                 shown: month.activeFocus && month.showsFocus && Calendar.sameDay(parent.day, month.cursor)

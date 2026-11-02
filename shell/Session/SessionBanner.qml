@@ -3,9 +3,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 
-// The session's actions as a banner over the shading (Rekta has no pattern for session actions yet): across the top
-// in a status banner's geometry and its neutral look, on surface with a hairline below (rekta.css:1238–1266), the word
-// "sitzung" large and light in the first tile column, the actions as buttons from the second, sharing its baseline.
+// The session's actions as a banner over the shading: across the top in a status banner's geometry and its neutral
+// look, on surface with a hairline below (rekta.css:1238–1266), the word "sitzung" large and light in the first tile
+// column, the actions as buttons from the second, sharing its baseline.
 // It comes in once with a fade and 8px over duration-short, as a banner state does (motion.md, "Status banner"), the
 // shading fading in alongside; it leaves the same way in 0.8 × that with ease-out, as a sheet leaves (motion.md,
 // "Sheets"). An action that clears the shading takes the shading away at once as it is chosen, and the banner leaves
@@ -15,6 +15,8 @@ import Rekta
 // "ausschalten in 5 · abbrechen", under Rekta's undo line (behaviour.md, "Undo"; rekta.css:1218–1226). Enter acts at once;
 // Escape, Back, "abbrechen" and a press on the shading take it back to the actions with nothing done. Rekta asks a
 // confirm sheet for what cannot be undone (live.md:109–111); this window replaces it.
+// ponytail: this bar is the shell's own from before Rekta had one; 0.6.0 has a session bar, a sheet in the banner's
+// geometry whose restart and power off ask nothing more (shell.md:132–167).
 FocusScope {
     id: sessionBanner
 

@@ -500,8 +500,9 @@ FocusScope {
         return true;
     }
 
-    // Arrows move the focus to the nearest tile that way, across the sections: an interim rule while Rekta has none for a
-    // tile grid.
+    // Arrows move the focus to the nearest tile that way, across the sections.
+    // ponytail: this rule is the shell's own from before Rekta had one; 0.6.0 has it for a grid of tiles: shared row or
+    // column first, of two as near the better aligned, at the edge focus stays (navigation.md:515–528, :461).
     function moveFocus(direction: string) {
         const tiles = reachableTiles();
         const from = tiles.find(tile => tile.activeFocus);
@@ -1115,9 +1116,9 @@ FocusScope {
             }
 
             // What was typed is a line edited as a field is. Its caret is a field's, one pixel in the text's colour
-            // (`caret-color: auto` on `.rk-input`, rekta.css:390; rekta-core field.c:472, :503), as high and blinking as
-            // the platform draws it, as on the web. Its selection takes the accent with on-accent text, as any selection
-            // does (rekta.css:937; field.c:497–498).
+            // (`caret-color: currentColor` on `.rk-input`, rekta.css:395–398; rekta-core field.c:472, :503), as high and
+            // blinking as the platform draws it, as on the web. Its selection takes the accent with on-accent text, as any
+            // selection does (rekta.css:399; field.c:497–498).
             // ponytail: past the six units' edge the caret goes out of sight with the text; cap the width at them
             // and let the line scroll if queries get that long.
             TextInput {
@@ -1147,7 +1148,7 @@ FocusScope {
         }
 
         // The apps that match, as tiles one unit square in the six units' grid, space-l above and below as a section
-        // (rekta.css:1123).
+        // (rekta.css:1125).
         Flickable {
             id: results
 

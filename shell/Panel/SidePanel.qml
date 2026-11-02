@@ -3,13 +3,15 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 
-// The side panel, the shell's own surface (Rekta has no side panel yet): two tile units wide with a sheet's padding
-// (rekta.css:1067), the full height of its host at the trailing edge, on the ground with a hairline along its leading
-// edge. It slides all the way in from the trailing edge over duration-moderate with ease-out and leaves the way it came
-// in 0.8 × that, as a sheet leaves (motion.md, "Sheets"); nothing beside it is shaded or blocked. Its pivot picks a
-// facet. Escape and close() send it away. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move
-// through the controls, and once the panel has gone the focus goes back. A sheet a facet opens lies over the panel's
-// ground (`sheets`); while one is open the panel keeps still.
+// The side panel, the shell's own surface: two tile units wide with a sheet's padding (rekta.css:1067), the full height
+// of its host at the trailing edge, on the ground with a hairline along its leading edge. It slides all the way in from
+// the trailing edge over duration-moderate with ease-out and leaves the way it came in 0.8 × that, as a sheet leaves
+// (motion.md, "Sheets"); nothing beside it is shaded or blocked. Its pivot picks a facet. Escape and close() send it
+// away. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move through the controls, and once the
+// panel has gone the focus goes back. A sheet a facet opens lies over the panel's ground (`sheets`); while one is open
+// the panel keeps still.
+// ponytail: this panel is the shell's own from before Rekta had one; 0.6.0's side panel is a sheet from the trailing
+// edge that shades and holds focus and arrives on ease-in (`.rk-sheet--side`, rekta.css:1095–1106).
 FocusScope {
     id: sidePanel
 
