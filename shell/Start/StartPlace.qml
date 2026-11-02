@@ -978,6 +978,9 @@ FocusScope {
                 x: Tokens.spaceXl
                 y: start.placeTop
                 width: parent.width - 2 * Tokens.spaceXl
+                // As high as the start place's strip, which always has a title: a strip without titles is lower, and the
+                // rows its sections hold would change as their titles came.
+                height: strip.height
                 enabled: start.wanted
                 titles: start.letterSections.map(part => part.title)
                 placeWidth: start.width

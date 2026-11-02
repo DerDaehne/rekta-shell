@@ -226,7 +226,8 @@ TestCase {
     }
 
     function test_the_rows_are_as_many_as_fit_under_a_section_s_heading() {
-        for (const size of [Qt.size(1920, 1080), Qt.size(2560, 1440), Qt.size(1600, 700)]) {
+        // At 640 a count without the heading or the space under it would make one row more.
+        for (const size of [Qt.size(1920, 1080), Qt.size(2560, 1440), Qt.size(1600, 700), Qt.size(1920, 640)]) {
             openOnAllApps(desktopApps, size.width, size.height);
             const panorama = named("appsPanorama");
             const room = panorama.height - 2 * Tokens.spaceXl - findChild(sections()[0], "heading").height - Tokens.spaceL;
@@ -234,6 +235,17 @@ TestCase {
             verify(rows >= 1);
             verify(unit(rows) - Tokens.spaceS <= room, `${rows} rows fit at ${size.height}`);
             verify(unit(rows + 1) - Tokens.spaceS > room, `one more would not at ${size.height}`);
+        }
+    }
+
+    // A strip without titles is lower than one with them: at these heights the panorama would hold a row less once the
+    // titles came.
+    function test_at_any_height_every_app_has_one_tile_and_the_strip_names_exactly_the_sections() {
+        for (const height of [1013, 1190]) {
+            openOnAllApps(desktopApps, 1920, height);
+            compare(start.letterTiles().map(tile => tile.name), desktopApps, `every app once at ${height}`);
+            compare(named("appsStrip").titles, sections().map(section => section.title));
+            compare(named("appsPanorama").y, named("panorama").y, "where the start place's panorama begins");
         }
     }
 
@@ -535,6 +547,21 @@ TestCase {
         compare(panorama.currentIndex, sections().filter(section => section.x <= panorama.width / 3).length - 1);
     }
 
+    function test_down_from_a_focused_heading_goes_to_the_first_tile_of_its_section_and_up_to_the_strip() {
+        openOnAllApps(desktopApps, 1920, 1080);
+        const strip = named("appsStrip");
+        strip.forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        keyClick(Qt.Key_Right);
+        keyClick(Qt.Key_Return);
+        verify(sections()[2].headingFocused);
+        keyClick(Qt.Key_Down);
+        verify(sections()[2].tiles()[0].activeFocus, focusedTile()?.name);
+        sections()[2].focusHeading();
+        keyClick(Qt.Key_Up);
+        verify(strip.activeFocus);
+    }
+
     function test_enter_or_space_on_an_app_launches_it_once() {
         openOnAllApps(desktopApps, 1600, 900);
         keyClick("b");
@@ -548,6 +575,19 @@ TestCase {
         keyClick("c");
         keyClick(Qt.Key_Space);
         compare(calls, ["launch Blender", "launch Chromium"]);
+    }
+
+    function test_the_start_opens_again_on_the_first_section_of_alle_apps() {
+        openOnAllApps(desktopApps, 1920, 1080);
+        const panorama = named("appsPanorama");
+        keyClick("w");
+        tryVerify(() => !panorama.gliding, Tokens.durationPivotGlide + 1000);
+        start.close(null);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        showAllApps();
+        compare(panorama.scroller.contentX, 0);
+        compare(panorama.currentIndex, 0);
+        compare(named("appsStrip").currentIndex, 0);
     }
 
     // A change of height
@@ -607,6 +647,7 @@ TestCase {
             return top >= 0 && top + item.height <= panorama.height + 1;
         };
         keyClick("k");
+        verify(!panorama.gliding, "stacked, the jump goes at once");
         verify(tileOf("Kaddressbook").activeFocus);
         compare(strip.titles[strip.currentIndex], "k");
         verify(shown(tileOf("Kaddressbook")));

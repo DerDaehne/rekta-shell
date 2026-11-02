@@ -229,7 +229,7 @@ function letterParts(names, initial, first, count, rows) {
             title: parts === 1 ? initial : `${twoLetters(names[at])}–${twoLetters(names[at + size - 1])}`,
             first: at,
             count: size,
-            units: Math.min(6, Math.ceil(size / rows))
+            units: Math.ceil(size / rows)
         });
         at += size;
     }
