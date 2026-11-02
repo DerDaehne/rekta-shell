@@ -31,9 +31,20 @@ TestCase {
             property string infoMessage
             property bool waiting: false
             property var calls: []
+            property bool announced: false
 
             signal failed(int kind)
             signal succeeded
+
+            // Like PamAuthenticators, which queues this in its constructor: once the event loop runs, after the lock
+            // screen has loaded, both questions are signalled, still without words.
+            Component.onCompleted: Qt.callLater(announce)
+
+            function announce() {
+                promptChanged();
+                promptForSecretChanged();
+                announced = true;
+            }
 
             // The signal comes each time, with the same words or not, and only then does the question wait.
             function ask(question: string) {
@@ -171,6 +182,7 @@ TestCase {
     }
 
     function test_a_password_sent_before_pam_asks_reaches_pam_once_it_asks() {
+        verify(pam.announced, "after the questions without words");
         type("geheim");
         keyClick(Qt.Key_Return);
         compare(responses(), []);
@@ -228,6 +240,17 @@ TestCase {
         compare(responses(), [["respond", "geheim"], ["respond", "123456"]]);
     }
 
+    function test_sending_again_during_a_check_reaches_no_question_of_pam() {
+        ask();
+        type("geheim");
+        keyClick(Qt.Key_Return);
+        mouseClick(part("unlock"));
+        pam.ask("Bestätigungscode: ");
+        verify(!Unlock.checking, "the second question ends the check");
+        wait(10);
+        compare(responses(), [["respond", "geheim"]], "the code is not answered with the password");
+    }
+
     function test_a_check_without_word_from_pam_ends_after_a_while_and_the_field_takes_input_again() {
         ask();
         type("geheim");
@@ -242,6 +265,8 @@ TestCase {
         compare(part("password").error, "Das Passwort wurde nicht geprüft – bitte noch einmal eingeben.");
         compare(input().selectedText, "geheim");
         verify(Unlock.asked, "the next answer goes straight to a question PAM may still hold");
+        pam.failed(0);
+        verify(!Unlock.asked, "unless the answer that was out fails late: then PAM holds no question");
     }
 
     function test_all_monitors_share_one_check() {
