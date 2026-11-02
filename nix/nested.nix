@@ -30,7 +30,12 @@ let
       '')
     ];
   };
+  # WirePlumber's own PipeWire context loads the realtime module, which falls back to RTKit on the system bus unless
+  # the context has no D-Bus.
   wireplumberConfig = writeTextDir "wireplumber.conf.d/nested.conf" ''
+    context.properties = {
+      support.dbus = false
+    }
     wireplumber.profiles = {
       nested = {
         inherits = [ policy ]
