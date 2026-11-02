@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A month to look at, after rekta-core's (core/src/controls.c:887–990): the month and year over the weekdays, the
+// A month to look at, after rekta-core's (core/src/controls.c:887–1020): the month and year over the weekdays, the
 // weeks the month touches below with their ISO week numbers in front, only the month's own days, today on the accent;
 // the week starts on Monday. ← → go by day, ↑ ↓ by week, Page Up and Page Down by month (with Shift by year),
 // Home and End to the month's first and last day; Escape asks the host to close it.
@@ -71,8 +71,8 @@ Item {
         return false;
     }
 
-    implicitWidth: daysLeft + 7 * Geometry.monthCell + pad
-    implicitHeight: daysTop + weeks * Geometry.monthCell + pad
+    implicitWidth: daysLeft + 7 * Tokens.dayCell + pad
+    implicitHeight: daysTop + weeks * Tokens.dayCell + pad
     activeFocusOnTab: true
     Accessible.role: Accessible.Dialog
     Accessible.name: Calendar.monthTitle(cursor, locale)
@@ -122,9 +122,9 @@ Item {
             required property int index
 
             objectName: `weekday ${index}`
-            x: month.daysLeft + index * Geometry.monthCell
+            x: month.daysLeft + index * Tokens.dayCell
             y: month.pad + Tokens.controlHeight
-            width: Geometry.monthCell
+            width: Tokens.dayCell
             horizontalAlignment: Text.AlignHCenter
             lineHeightFactor: Tokens.lineHeightCompact
             text: Calendar.word(month.locale.dayName((index + 1) % 7, Locale.ShortFormat))
@@ -143,9 +143,9 @@ Item {
 
             objectName: `week ${index}`
             x: month.pad
-            y: month.daysTop + index * Geometry.monthCell
+            y: month.daysTop + index * Tokens.dayCell
             width: Geometry.monthWeekColumn
-            height: Geometry.monthCell
+            height: Tokens.dayCell
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             text: number
@@ -166,10 +166,10 @@ Item {
             readonly property bool isToday: Calendar.sameDay(day, month.today)
 
             objectName: `day ${index}`
-            x: month.daysLeft + index % 7 * Geometry.monthCell
-            y: month.daysTop + Math.floor(index / 7) * Geometry.monthCell
-            width: Geometry.monthCell
-            height: Geometry.monthCell
+            x: month.daysLeft + index % 7 * Tokens.dayCell
+            y: month.daysTop + Math.floor(index / 7) * Tokens.dayCell
+            width: Tokens.dayCell
+            height: Tokens.dayCell
             visible: day.getMonth() === month.cursor.getMonth()
             Accessible.role: Accessible.StaticText
             Accessible.name: day.toLocaleDateString(month.locale, Locale.LongFormat)

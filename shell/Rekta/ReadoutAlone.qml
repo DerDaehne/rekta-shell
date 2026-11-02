@@ -2,9 +2,9 @@ import QtQuick
 
 // A short display with no bar to stand in, in a glass of its own along the bottom edge: the word over Rekta's meter
 // with its value (ReadoutFace). It comes only while `away` holds, the bar being out of sight. It rises from below the
-// glass edge with a fade, as a compact toast does (rekta.css:896–901, :929–930, :1096; motion.md:29) and the bar's mode
-// change (rekta.css:765–766; motion.md:23), and after the last key and its hold runs the same curve backwards, as the
-// stylesheet's reversed keyframes do (rekta.css:901). `press()` is a key: the first brings the display, every later one
+// glass edge with a fade, as a compact toast does (rekta.css:1167–1172, :1235–1236, :1407; motion.md:36) and the bar's mode
+// change (rekta.css:980–981; motion.md:28), and after the last key and its hold runs the same curve backwards, as the
+// stylesheet's reversed keyframes do (rekta.css:1172). `press()` is a key: the first brings the display, every later one
 // only keeps it, and one during the way back waits until it has gone.
 // ponytail: a new layer surface takes some 60ms to its first frame, so the way in starts with that frame; should no frame
 // ever come the display stays at its start until its hold runs out, then goes.
@@ -98,7 +98,7 @@ Item {
         id: hold
 
         objectName: "hold"
-        interval: Geometry.displayHold
+        interval: Tokens.durationLevel
 
         onTriggered: alone.depart()
     }

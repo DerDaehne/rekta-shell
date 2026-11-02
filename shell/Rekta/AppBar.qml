@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// The app bar (navigation.md, "App bar"; rekta.css:616–653, :1101; rekta.js appbar(), :2287–2353): along the bottom,
+// The app bar (navigation.md, "App bar"; rekta.css:797–861, :1412; rekta.js appbar(), :2699–2815): along the bottom,
 // frosted glass under a hairline, its controls 48px in every density. The middle takes the room the controls leave
 // and gives it up first: it cuts its words, then is gone while "more" shows. Controls that still do not fit move into
 // "more", the least important first, and its menu repeats their words. Pinned, the middle keeps its words up to half
@@ -27,7 +27,7 @@ Rectangle {
     default property alias content: strip.data
     // One of the content items, centred in the bar.
     property Item centre: null
-    // Sideways (the viewport wide and tall enough) the bar takes desktop padding (rekta.css:1099–1101).
+    // Sideways (the viewport wide and tall enough) the bar takes desktop padding (rekta.css:1410–1412).
     property real viewportHeight: Window.height
     // The window "more" has to fit in; the bar runs along its bottom.
     property size area: Qt.size(Window.width, Window.height)
@@ -52,7 +52,7 @@ Rectangle {
     property bool ready: false
     // The room the bar last laid itself out in (roomKey()).
     property string laidOutIn: ""
-    // Where the menu rises, in the bar's coordinates: above "more" at the trailing edge (rekta.css:649–653).
+    // Where the menu rises, in the bar's coordinates: above "more" at the trailing edge (rekta.css:857–861).
     readonly property var menuPlace: floatPlace(moreButton, Qt.size(moreMenu.width, moreMenu.height))
 
     // Where a floating surface of one of the bar's controls goes, in the bar's coordinates (Placement.float in `area`).

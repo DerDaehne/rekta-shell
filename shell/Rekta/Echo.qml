@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Shapes
 
 // The shell's background mark, a faint print of six tiles whose strength fades out from the bottom right corner. The
-// cells are the real tile unit (layout.md:105, :134), with space-s between them. Rekta
+// cells are the real tile unit (layout.md:115, :144), with space-s between them. Rekta
 // has no ground for a whole workspace; the mix, the pattern and the fade are the shell's own choice,
 // proposed to Rekta Design, and stay here as literals until Rekta names them.
 Item {

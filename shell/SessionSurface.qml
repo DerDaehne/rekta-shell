@@ -52,7 +52,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     // A deliberate deviation, as for the app bar: KWin blurs at the strength of its blur effect, not the shading's
-    // blur(4px) (rekta.css:832).
+    // blur(4px) (rekta.css:1073).
     // ponytail: the blur stands at once while the shading fades in; fade the surface in KWin, as the fade-back does
     // the Start, should that show.
     BackgroundEffect.blurRegion: Region {

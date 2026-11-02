@@ -53,7 +53,7 @@ Item {
             objectName: "label"
             anchors.verticalCenter: parent.verticalCenter
             visible: toggle.label !== ""
-            // `.rk-toggle-label { margin-right: space-s }` on top of the row's gap (rekta.css:333, :350)
+            // `.rk-toggle-label { margin-right: space-s }` on top of the row's gap (rekta.css:473, :491)
             rightPadding: Tokens.spaceS
             text: toggle.label
             font.family: Tokens.fontSans
@@ -124,7 +124,7 @@ Item {
             font.family: Tokens.fontSans
             font.pixelSize: Tokens.fontSizeS
             font.weight: Tokens.fontWeightRegular
-            // The word keeps its colour when disabled (rekta.css:351 outranks :349).
+            // ponytail: the word keeps its colour when disabled, as in Rekta 0.5.0; 0.6.0 greys it (rekta.css:490).
             color: Tokens.color.textContrastHigh
         }
     }

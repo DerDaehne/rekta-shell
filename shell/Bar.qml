@@ -56,7 +56,7 @@ PanelWindow {
     // Above the full-screen window while it slides away.
     WlrLayershell.layer: away ? WlrLayer.Overlay : WlrLayer.Top
     // A deliberate deviation: KWin blurs at the strength of its blur effect, as ext-background-effect has no radius for
-    // rekta.css:619's blur(12px). The glass slides without it: a region moving out of the window leaves KWin's blur an
+    // rekta.css:800's blur(12px). The glass slides without it: a region moving out of the window leaves KWin's blur an
     // empty framebuffer.
     BackgroundEffect.blurRegion: Region {
         item: panel.away || bar.sliding ? null : bar

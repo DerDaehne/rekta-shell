@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 
-// The toast region (behaviour.md `toaster()`; rekta.css:873–930): one toast at a time, hanging from the top centre. A
+// The toast region (behaviour.md `toaster()`; rekta.css:1144–1236): one toast at a time, hanging from the top centre. A
 // new toast replaces the one open and comes in once that one has gone; the same key with undo joins the open toast
 // instead and restarts its window. Escape inside a toast dismisses it (key layer 30); Ctrl+Z undoes while an undo
 // window is open, except in a text field (layer 25). It stays on the toast layer, below floating surfaces and below

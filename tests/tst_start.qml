@@ -356,9 +356,9 @@ TestCase {
         verify(start.shown);
         verify(!turner.running, "first only the glass");
         verify(!named("body").visible);
-        compare(named("waitForWindows").interval, Geometry.turnOverlap * Tokens.durationModerate / 2);
+        compare(named("waitForWindows").interval, Tokens.turnOverlap * Tokens.durationModerate / 2);
         tryVerify(() => turner.running, 2000);
-        verify(Date.now() - started >= Geometry.turnOverlap * Tokens.durationModerate / 2 - 2);
+        verify(Date.now() - started >= Tokens.turnOverlap * Tokens.durationModerate / 2 - 2);
         verify(turner.arrivingTurns.length > 0);
         tryVerify(() => start.phase === "open", 3000);
     }
@@ -1095,7 +1095,7 @@ TestCase {
     function test_at_rekta_s_own_pace_the_parts_turn_in_and_out_at_full_length_while_the_windows_stay_at_the_effect_s_pace() {
         Prefs.startPace = "rekta";
         start.open();
-        compare(named("waitForWindows").interval, Geometry.turnOverlap * FadeBack.duration, "the windows come back at the effect's pace");
+        compare(named("waitForWindows").interval, Tokens.turnOverlap * FadeBack.duration, "the windows come back at the effect's pace");
         tryVerify(() => turner.running, 2000);
         verifyPace(turner.arrivingTurns, Tokens.durationModerate, turner.handOverAt, 1);
         tryVerify(() => start.phase === "open", 3000);
@@ -1343,7 +1343,7 @@ TestCase {
         verify(!start.turning, "the opening stands at its end");
         compare(start.phase, "open");
         verify(start.holdsKeyboard, "the windows stay back");
-        const earliestLanding = Geometry.turnOverlap * FadeBack.duration + Geometry.startTempo * Geometry.heftMin * Tokens.durationModerate;
+        const earliestLanding = Tokens.turnOverlap * FadeBack.duration + Geometry.startTempo * Tokens.heftMin * Tokens.durationModerate;
         tryVerify(() => named("searchTitle").visible, earliestLanding);
         compare(named("typed").text, "k");
         compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
@@ -1620,7 +1620,7 @@ TestCase {
         const turner = findChild(place, "turn");
         place.open();
         if (share < 0) {
-            wait(Geometry.turnOverlap * FadeBack.duration / 2);
+            wait(Tokens.turnOverlap * FadeBack.duration / 2);
             return turner;
         }
         tryVerify(() => turner.running, 2000);

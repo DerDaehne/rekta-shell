@@ -17,8 +17,8 @@ KWin.WindowThumbnail {
     // Forward, a leaving part swings its far side toward the viewer; the way back mirrors both turns.
     readonly property real direction: back ? 1 : -1
     readonly property real restAngle: 0
-    readonly property real leftAngle: direction * Geometry.turnOutAngle
-    readonly property real comingAngle: -direction * Geometry.turnInAngle
+    readonly property real leftAngle: direction * Tokens.turnstileOutAngle
+    readonly property real comingAngle: -direction * Tokens.turnstileInAngle
 
     signal landed
 
@@ -57,19 +57,19 @@ KWin.WindowThumbnail {
                 to: part.leaving ? part.leftAngle : part.restAngle
                 duration: part.duration
                 easing.type: Easing.Bezier
-                easing.bezierCurve: part.leaving ? Geometry.easeTurnOut : Geometry.easeTurnIn
+                easing.bezierCurve: part.leaving ? Tokens.easeTurnOut : Tokens.easeTurnIn
             }
             SequentialAnimation {
                 PauseAnimation {
-                    duration: part.leaving ? Geometry.turnOutWhole * part.duration : 0
+                    duration: part.leaving ? Tokens.turnOutWhole * part.duration : 0
                 }
                 NumberAnimation {
                     target: part
                     property: "opacity"
                     to: part.leaving ? 0 : 1
-                    duration: (part.leaving ? 1 - Geometry.turnOutWhole : Geometry.turnInWhole) * part.duration
+                    duration: (part.leaving ? 1 - Tokens.turnOutWhole : Tokens.turnInWhole) * part.duration
                     easing.type: Easing.Bezier
-                    easing.bezierCurve: part.leaving ? Geometry.easeTurnOut : Geometry.easeTurnIn
+                    easing.bezierCurve: part.leaving ? Tokens.easeTurnOut : Tokens.easeTurnIn
                 }
             }
         }

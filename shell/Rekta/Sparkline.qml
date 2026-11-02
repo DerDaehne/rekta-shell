@@ -1,10 +1,12 @@
 import QtQuick
 import QtQuick.Shapes
 
-// A sparkline (tiles.md, "Tile content patterns"; data.md, "Sparklines"; rekta.css:136–145): a trend at a glance, one
+// A sparkline (tiles.md, "Tile content patterns"; data.md, "Sparklines"; rekta.css:215–227): a trend at a glance, one
 // series, no axis. It is drawn in a 200 × 28 box scaled to its width, stroke and all, in the tile's text colour; a
 // finished (success) tile drops it, since stillness means done. It draws in when its place arrives; new values on as
 // many points move the line to them (motion.md, "Data morph"); while its live region is stale or offline it fades.
+// ponytail: the stroke scaling with the box and the dashed draw-in are Rekta 0.5.0's; 0.6.0 keeps the line 2px at any
+// width and wipes it in from the leading edge (rekta.css:219–223, :227).
 Item {
     id: spark
 
@@ -58,7 +60,7 @@ Item {
     }
 
     // As many points as before travel to their new places, eased from wherever the line is now; any other count is
-    // drawn again at once (rekta.js sparkTo(), :3477–3492).
+    // drawn again at once (rekta.js sparkTo(), :4232–4247).
     function moveTo(next: var) {
         const now = between(morph.from, morph.to, morph.progress);
         morphRun.stop();

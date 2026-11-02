@@ -1,8 +1,8 @@
 import QtQuick
 
-// A panorama section (rekta.css `.rk-sec`, :853–857, :1173): a heading and what belongs to it, space-m apart, space-l
+// A panorama section (rekta.css `.rk-sec`, :1124–1128, :1492): a heading and what belongs to it, space-m apart, space-l
 // above and below. Sideways it scrolls vertically within itself when its content is taller than the panorama's box;
-// stacked (compact) it takes its content's height and a hairline separates it from the section above (:855).
+// stacked (compact) it takes its content's height and a hairline separates it from the section above (:1126).
 Flickable {
     id: section
 
@@ -20,7 +20,7 @@ Flickable {
     readonly property bool headingFocused: headline.activeFocus
     default property alias content: column.data
 
-    // The section's heading takes the focus when a jump asks for it (rekta.js focusHeading(), :192–198).
+    // The section's heading takes the focus when a jump asks for it (rekta.js focusHeading(), :217–223).
     function focusHeading() {
         headline.forceActiveFocus(Qt.TabFocusReason);
     }
@@ -42,7 +42,7 @@ Flickable {
         id: column
 
         y: section.verticalInset
-        // Sideways a section keeps space-s clear on the right for its scrollbar (rekta.css:1173).
+        // Sideways a section keeps space-s clear on the right for its scrollbar (rekta.css:1492).
         width: section.width - (section.stacked ? 0 : Tokens.spaceS)
         spacing: section.headingSpacing
 
@@ -55,7 +55,7 @@ Flickable {
             placeWidth: section.placeWidth
             text: section.title
             visible: text !== ""
-            // No tab stop of its own (rekta.js:192–198 gives it tabindex -1); once a jump has put the focus on it, Tab goes
+            // No tab stop of its own (rekta.js:217–223 gives it tabindex -1); once a jump has put the focus on it, Tab goes
             // on into the section.
             activeFocusOnTab: activeFocus
             Accessible.role: Accessible.Heading

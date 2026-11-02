@@ -132,7 +132,7 @@ function programName(command) {
 
 // The installed apps that match what was typed, the most often started first, then the best match, A–Z among equals:
 // by name, or by a word of their generic name, keywords or program. `starts` counts the starts by app id. Space around
-// the text does not count (rekta.js:2192).
+// the text does not count (rekta.js:2604).
 function hits(apps, text, starts) {
     const typed = text.trim();
     const ranked = Rekta.Match.ranked(apps, app => Rekta.Match.score(app.name, [app.genericName, ...app.keywords, app.exec].join(" "), typed));
@@ -172,7 +172,9 @@ function stateDir(stateHome, home) {
 }
 
 // Where a typed key jumps among `names`: the next after `from` that starts with it, whatever the case, round past the
-// end; -1 when none does. A tree's rule (collections.md:142; rekta.js:2810–2811), carried over to the apps' row.
+// end; -1 when none does. A tree's rule, carried over to the apps' row (collections.md:142–143).
+// ponytail: one key at a time is Rekta 0.5.0's; 0.6.0 joins letters typed within duration-type-ahead into a prefix
+// (rekta.js:173–190).
 function jumpTarget(names, from, key) {
     const typed = key.toLowerCase();
     for (let step = 1; step <= names.length; step++) {
@@ -352,8 +354,10 @@ function rowGroups(sources, text, starts, noApp) {
 }
 
 const keyModifiers = [[0x10000000, "Meta"], [0x04000000, "Ctrl"], [0x08000000, "Alt"], [0x02000000, "Shift"]];
-// Rekta names a key as shortcutText() does (rekta.js:2536–2541): Ctrl, Alt, Shift and Esc as such, the arrows as glyphs, any
-// other in capitals, the keys of a combination apart by a space. Rekta has no word for the Super key off the Mac; Meta here.
+// Rekta names a key as shortcutText() does: Ctrl, Alt, Shift and Esc as such, the arrows as glyphs, any other in
+// capitals.
+// ponytail: the keys of a combination apart by a space and Meta for the Super key are Rekta 0.5.0's; 0.6.0 orders the
+// modifiers Ctrl, Alt, Shift, Meta, joins them by "+" and calls Meta "Super" off Apple and Windows (rekta.js:3000–3018).
 const namedKeys = {
     0x20: "SPACE",
     0x01000000: "Esc",

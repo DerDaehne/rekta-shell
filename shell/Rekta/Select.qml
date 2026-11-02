@@ -3,14 +3,14 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 
-// One of many from a list you know (forms.md, "Inputs"; rekta.css:265–273, :295–301): a field's box with the chosen
+// One of many from a list you know (forms.md, "Inputs"; rekta.css:388–403, :435–440): a field's box with the chosen
 // option, cut where it is too long, and a caret pointing down at its end. ↓, Alt+↓, Enter, Space or a press expand it in
 // place, like Metro's list picker: the box grows to hold every option as a row and pushes what stands below it down;
-// nothing floats. Expanded, the box is a list as `select.rk-input[multiple]` is (rekta.css:300): no caret, space-xs
-// above and below the rows. The chosen option takes the accent like any Metro selection (rekta.css:734–736); the row
-// the keys are on looks focused while the focus stays on the select, as a combobox's active option does (rekta.css:323,
-// :752). ↑ ↓ Home End move, Enter or Space chooses and Escape collapses without a change; a press on an option chooses
-// it. It unfolds and folds as a tree branch does (motion.md, "Tree branch"; rekta.js:2776, :2779) and keeps itself in
+// nothing floats. Expanded, the box is a list as `select.rk-input[multiple]` is (rekta.css:439): no caret, space-xs
+// above and below the rows. The chosen option takes the accent like any Metro selection (rekta.css:949–951); the row
+// the keys are on looks focused while the focus stays on the select, as a combobox's active option does (rekta.css:463,
+// :967). ↑ ↓ Home End move, Enter or Space chooses and Escape collapses without a change; a press on an option chooses
+// it. It unfolds and folds as a tree branch does (motion.md, "Tree branch"; rekta.js:3336, :3339) and keeps itself in
 // view in the scroller it stands in. Disabled, the box greys, stays focusable and says why below it.
 Item {
     id: select
@@ -144,7 +144,7 @@ Item {
         radius: Tokens.radiusS
         color: Tokens.color.bg
         border.width: Geometry.inputBorder
-        // Hover only with a pointer that hovers (rekta.css:1024).
+        // Hover only with a pointer that hovers (rekta.css:1335).
         border.color: {
             if (select.disabled)
                 return Tokens.color.disabled;
@@ -253,7 +253,7 @@ Item {
                             color: Tokens.color.accent
                         }
 
-                        // Over the fill (rekta.css:1028), and on the row the keys are on (rekta.css:323).
+                        // Over the fill (rekta.css:1339), and on the row the keys are on (rekta.css:463).
                         Rectangle {
                             objectName: "tint"
                             anchors.fill: parent

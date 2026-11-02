@@ -106,28 +106,27 @@ TestCase {
         tryCompare(display, "phase", display.span, 2000);
         compare(clock.opacity, 0);
         compare(display.opacity, 1);
-        compare(display.replacesAngle, Geometry.flipAngle);
+        compare(display.replacesAngle, Tokens.flipAngle);
         compare(display.displayAngle, 0);
     }
 
-    function test_the_swap_takes_200_ms_a_turn_and_the_display_starts_when_the_clock_is_three_quarters_through() {
-        compare(Geometry.flipDuration, 200);
+    function test_the_swap_takes_half_of_duration_moderate_a_turn_and_the_display_starts_when_the_clock_is_three_quarters_through() {
         display.press();
-        compare(turning.duration, (1 + Geometry.turnOverlap) * 200);
-        stopAt(Geometry.turnOverlap - 0.01);
+        compare(turning.duration, (1 + Tokens.turnOverlap) * Tokens.durationModerate / 2);
+        stopAt(Tokens.turnOverlap - 0.01);
         compare(display.opacity, 0);
-        verify(display.replacesAngle > 0 && display.replacesAngle < Geometry.flipAngle);
-        stopAt(Geometry.turnOverlap + 0.05);
+        verify(display.replacesAngle > 0 && display.replacesAngle < Tokens.flipAngle);
+        stopAt(Tokens.turnOverlap + 0.05);
         verify(display.opacity > 0);
         verify(display.displayAngle < 0);
     }
 
     function test_the_clock_turns_about_its_bottom_edge_through_90_degrees_and_the_display_comes_in_from_minus_90() {
         display.press();
-        stopAt(Geometry.turnOverlap);
-        compare(display.displayAngle, -Geometry.flipAngle);
+        stopAt(Tokens.turnOverlap);
+        compare(display.displayAngle, -Tokens.flipAngle);
         stopAt(1);
-        compare(display.replacesAngle, Geometry.flipAngle);
+        compare(display.replacesAngle, Tokens.flipAngle);
         const turn = clock.transform[clock.transform.length - 1];
         compare(turn.origin.y, clock.height);
         compare(turn.origin.x, clock.width / 2);
@@ -136,7 +135,7 @@ TestCase {
 
     function test_the_clock_stays_whole_for_its_first_40_percent_then_fades() {
         display.press();
-        stopAt(Geometry.turnOutWhole);
+        stopAt(Tokens.turnOutWhole);
         compare(display.replacesFade, 1);
         stopAt(0.7);
         verify(display.replacesFade > 0 && display.replacesFade < 1);
@@ -145,16 +144,16 @@ TestCase {
 
     function test_the_display_is_whole_after_its_first_35_percent() {
         display.press();
-        stopAt(Geometry.turnOverlap + Geometry.turnInWhole);
+        stopAt(Tokens.turnOverlap + Tokens.turnInWhole);
         compare(display.displayFade, 1);
-        stopAt(Geometry.turnOverlap + 0.1);
+        stopAt(Tokens.turnOverlap + 0.1);
         verify(display.displayFade > 0 && display.displayFade < 1);
     }
 
-    function test_the_display_stays_1700_ms_after_a_key() {
-        compare(hold.interval, 1700);
+    function test_the_display_stays_duration_level_after_a_key() {
+        compare(hold.interval, Tokens.durationLevel);
         display.press();
-        wait(1500);
+        wait(Tokens.durationLevel - 200);
         verify(display.shown);
         tryCompare(display, "shown", false, 1000);
     }
@@ -177,15 +176,15 @@ TestCase {
         tryCompare(display, "shown", false, 3000);
         tryCompare(turning, "running", true, 500);
         stopAt(0.5);
-        verify(display.displayAngle < 0 && display.displayAngle > -Geometry.flipAngle);
+        verify(display.displayAngle < 0 && display.displayAngle > -Tokens.flipAngle);
         compare(display.opacity, display.leaveFade);
         compare(clock.opacity, 0);
-        stopAt(Geometry.turnOverlap);
-        compare(display.replacesAngle, Geometry.flipAngle);
+        stopAt(Tokens.turnOverlap);
+        compare(display.replacesAngle, Tokens.flipAngle);
         stopAt(display.span);
         compare(clock.opacity, 1);
         compare(display.replacesAngle, 0);
-        compare(display.displayAngle, -Geometry.flipAngle);
+        compare(display.displayAngle, -Tokens.flipAngle);
     }
 
     function test_the_clock_is_whole_and_the_display_gone_after_the_way_back() {
@@ -223,11 +222,11 @@ TestCase {
         verify(display.shown);
     }
 
-    function test_under_reduced_motion_the_display_still_stays_1700_ms_and_goes_at_once() {
+    function test_under_reduced_motion_the_display_still_stays_duration_level_and_goes_at_once() {
         Prefs.motion = "off";
         display.press();
-        compare(hold.interval, 1700);
-        wait(1500);
+        compare(hold.interval, Tokens.durationLevel);
+        wait(Tokens.durationLevel - 200);
         verify(display.shown);
         tryCompare(display, "shown", false, 1000);
         compare(clock.opacity, 1);

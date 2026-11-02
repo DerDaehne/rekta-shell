@@ -132,7 +132,7 @@ TestCase {
         compare(findChild(clock.month, "weekday 0").text, "mo");
         compare(findChild(clock.month, "weekday 6").text, "so");
         compare(cellOf(new Date(2026, 9, 1)).x, cell(3).x, "Thursday 1 October in the fourth column");
-        compare(clock.month.width, 2 * clock.month.pad + Geometry.monthWeekColumn + 7 * Geometry.monthCell);
+        compare(clock.month.width, 2 * clock.month.pad + Geometry.monthWeekColumn + 7 * Tokens.dayCell);
         clock.locale = Qt.locale("en_US");
         compare(findChild(clock.month, "weekday 0").text, "mon");
         compare(cellOf(new Date(2026, 9, 1)).x, cell(3).x, "a locale starting on Sunday does not move it");
@@ -144,7 +144,7 @@ TestCase {
         for (const [month, weeks] of [[new Date(2027, 1, 10), 4], [new Date(2026, 9, 10), 5], [new Date(2026, 7, 10), 6]]) {
             clock.month.cursor = month;
             compare(clock.month.weeks, weeks, month.toDateString());
-            compare(clock.month.height, clock.month.daysTop + weeks * Geometry.monthCell + clock.month.pad);
+            compare(clock.month.height, clock.month.daysTop + weeks * Tokens.dayCell + clock.month.pad);
             verify(findChild(clock.month, `week ${weeks - 1}`), "the last row has its week number");
             verify(!findChild(clock.month, `week ${weeks}`), "and no row follows");
         }
@@ -183,7 +183,7 @@ TestCase {
         compare(frame.border.width, 0);
         compare(findChild(today, "number").color, Tokens.color.textOnAccent);
         compare(frame.x, Geometry.monthTodayInset);
-        compare(frame.width, Geometry.monthCell - 2 * Geometry.monthTodayInset);
+        compare(frame.width, Tokens.dayCell - 2 * Geometry.monthTodayInset);
         for (let i = 0; i < 42; i++) {
             if (cell(i) !== today)
                 verify(!findChild(cell(i), "today").visible, `${cell(i).day}`);
@@ -208,7 +208,7 @@ TestCase {
         verify(clock.month.activeFocus, "the month holds the keys");
         verify(!clock.month.showsFocus, "without a ring until a key moves");
         compare(calendar.side, "above");
-        compare(calendar.y + calendar.height, -Geometry.floatGap, "space-xs above the clock");
+        compare(calendar.y + calendar.height, -Tokens.spaceXs, "space-xs above the clock");
         compare(Calendar.monthTitle(clock.month.cursor, clock.locale), "oktober 2026");
         mouseClick(clock, 20, 20);
         verify(!calendar.open);

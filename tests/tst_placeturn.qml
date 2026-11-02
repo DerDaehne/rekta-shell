@@ -286,7 +286,7 @@ TestCase {
     }
 
     function startOf(heft: real): real {
-        return (heft - Geometry.heftMin) * Geometry.heftStaggerSteps * Tokens.durationStagger;
+        return (heft - Tokens.heftMin) * Tokens.heftSpread * Tokens.durationStagger;
     }
 
     function test_a_tile_turns_as_one_part_and_a_layout_box_lets_its_children_turn_one_by_one() {
@@ -323,7 +323,7 @@ TestCase {
             const rotation = rotationOf(findChild(clipped, name));
             compare(rotation.origin.x, x, name);
             compare(rotation.origin.y, y, name);
-            fuzzyCompare(rotation.distanceToPlane, Tokens.turnstilePerspective + Geometry.turnPerspectivePerReach * reach, 1e-9);
+            fuzzyCompare(rotation.distanceToPlane, Tokens.turnstilePerspective + Tokens.turnstileReach * reach, 1e-9);
         }
         clippedTurner.finish();
     }
@@ -336,8 +336,8 @@ TestCase {
         fuzzyCompare(titleTurn.at, startOf(titleHeft), 1e-9);
         fuzzyCompare(titleTurn.duration, Tokens.durationShort * titleHeft, 1e-9);
         const tileTurn = turnOf(turner.leavingTurns, named("tile0"));
-        fuzzyCompare(tileTurn.at, startOf(Geometry.heftAtTile), 1e-9);
-        fuzzyCompare(tileTurn.duration, Tokens.durationShort * Geometry.heftAtTile, 1e-9);
+        fuzzyCompare(tileTurn.at, startOf(Tokens.heftTile), 1e-9);
+        fuzzyCompare(tileTurn.duration, Tokens.durationShort * Tokens.heftTile, 1e-9);
 
         turner.elapsed = turner.handOverAt;
         const summary = named("summary");
@@ -353,7 +353,7 @@ TestCase {
         compare(tiles.map(turn => turn.part.item.objectName), ["tile0", "tile1", "tile2", "tile3", "tile4", "tile5", "tile6", "tile7"]);
         for (let i = 0; i < tiles.length; i++) {
             const byOrder = Math.min(i, Geometry.sameHeftSteps) * Geometry.sameHeftStagger * Tokens.durationStagger;
-            fuzzyCompare(tiles[i].at, startOf(Geometry.heftAtTile) + byOrder, 1e-9);
+            fuzzyCompare(tiles[i].at, startOf(Tokens.heftTile) + byOrder, 1e-9);
         }
     }
 
@@ -367,23 +367,23 @@ TestCase {
         turner.elapsed = turn.at;
         compare(rotation.angle, 0);
         compare(tile.opacity, 1);
-        turner.elapsed = turn.at + Geometry.turnOutWhole * turn.duration;
+        turner.elapsed = turn.at + Tokens.turnOutWhole * turn.duration;
         verify(rotation.angle < 0, "toward the viewer");
         compare(tile.opacity, 1);
         verify(!tile.layer.enabled, "drawn as it is while whole");
-        turner.elapsed = turn.at + Geometry.turnOutWhole * turn.duration + 2;
+        turner.elapsed = turn.at + Tokens.turnOutWhole * turn.duration + 2;
         verify(tile.opacity < 1);
         // cubic-bezier(0.35, 0, 0.65, 0.6) is symmetric in time: halfway it has come 0.35 of its way, gathering speed.
         turner.elapsed = turn.at + turn.duration / 2;
-        fuzzyCompare(rotation.angle, -0.35 * Geometry.turnOutAngle, 0.05);
+        fuzzyCompare(rotation.angle, -0.35 * Tokens.turnstileOutAngle, 0.05);
         verify(tile.opacity > 0 && tile.opacity < 1);
         verify(tile.layer.enabled, "fading as one");
         // The fade runs the same curve over the rest of the time: halfway through it, it has come 0.35 of its way.
-        turner.elapsed = turn.at + (Geometry.turnOutWhole + (1 - Geometry.turnOutWhole) / 2) * turn.duration;
+        turner.elapsed = turn.at + (Tokens.turnOutWhole + (1 - Tokens.turnOutWhole) / 2) * turn.duration;
         fuzzyCompare(tile.opacity, 1 - 0.35, 0.02);
         turner.elapsed = turn.at + turn.duration;
         verify(turner.elapsed < turner.handOverAt);
-        compare(rotation.angle, -Geometry.turnOutAngle);
+        compare(rotation.angle, -Tokens.turnstileOutAngle);
         compare(tile.opacity, 0);
     }
 
@@ -394,23 +394,23 @@ TestCase {
         const turn = turnOf(turner.arrivingTurns, tile);
         const rotation = rotationOf(tile);
         turner.elapsed = turn.at;
-        compare(rotation.angle, Geometry.turnInAngle);
+        compare(rotation.angle, Tokens.turnstileInAngle);
         compare(tile.opacity, 0);
         turner.elapsed = turn.at + 0.2 * turn.duration;
         verify(tile.opacity > 0 && tile.opacity < 1);
         verify(tile.layer.enabled, "fading as one");
         // The fade runs the same curve over its share of the time: 0.83 of its way at 0.4325 of it.
-        turner.elapsed = turn.at + 0.4325 * Geometry.turnInWhole * turn.duration;
+        turner.elapsed = turn.at + 0.4325 * Tokens.turnInWhole * turn.duration;
         fuzzyCompare(tile.opacity, 0.83, 0.03);
         // The animation clock counts whole milliseconds.
-        turner.elapsed = turn.at + Geometry.turnInWhole * turn.duration - 2;
+        turner.elapsed = turn.at + Tokens.turnInWhole * turn.duration - 2;
         verify(tile.opacity < 1);
-        turner.elapsed = turn.at + Geometry.turnInWhole * turn.duration + 1;
+        turner.elapsed = turn.at + Tokens.turnInWhole * turn.duration + 1;
         compare(tile.opacity, 1);
         verify(!tile.layer.enabled, "drawn as it is once whole");
         // cubic-bezier(0.22, 0.9, 0.6, 0.98) has come 0.83 of its way at 0.4325 of its time: quick at first.
         turner.elapsed = turn.at + 0.4325 * turn.duration;
-        fuzzyCompare(rotation.angle, Geometry.turnInAngle * (1 - 0.83), 0.2);
+        fuzzyCompare(rotation.angle, Tokens.turnstileInAngle * (1 - 0.83), 0.2);
         turner.elapsed = turn.at + turn.duration;
         compare(rotationOf(tile), null, "let go as it lands");
         compare(tile.opacity, 1);
@@ -418,7 +418,7 @@ TestCase {
 
     function test_the_next_place_shows_when_the_last_leaving_part_is_three_quarters_through() {
         turnToSecond();
-        const handOver = Math.max(...turner.leavingTurns.map(turn => turn.at + Geometry.turnOverlap * turn.duration));
+        const handOver = Math.max(...turner.leavingTurns.map(turn => turn.at + Tokens.turnOverlap * turn.duration));
         compare(turner.handOverAt, handOver);
         turner.elapsed = handOver - 1;
         verify(first.visible);
@@ -471,7 +471,7 @@ TestCase {
         for (const other of turner.leavingTurns)
             verify(other.at <= turn.at);
         const reach = tile.parent.mapToItem(first, tile.x, tile.y).x + tile.width;
-        fuzzyCompare(turn.perspective, Tokens.turnstilePerspective + Geometry.turnPerspectivePerReach * reach, 1e-9);
+        fuzzyCompare(turn.perspective, Tokens.turnstilePerspective + Tokens.turnstileReach * reach, 1e-9);
         verify(tile.pressX > 0 && tile.pressY > 0, "where it was pressed");
         wait(Tokens.durationPress + Tokens.durationShort + 50);
         compare(tile.sink, 1, "still pressed when the press alone would have let go");
@@ -535,11 +535,11 @@ TestCase {
         const button = named("rerun");
         const turn = turnOf(turner.leavingTurns, button);
         turner.elapsed = turn.at + turn.duration;
-        compare(rotationOf(button).angle, Geometry.turnOutAngle, "away from the viewer");
+        compare(rotationOf(button).angle, Tokens.turnstileOutAngle, "away from the viewer");
         turner.elapsed = turner.handOverAt;
         const tile = named("tile0");
         turner.elapsed = turnOf(turner.arrivingTurns, tile).at;
-        compare(rotationOf(tile).angle, -Geometry.turnInAngle);
+        compare(rotationOf(tile).angle, -Tokens.turnstileInAngle);
     }
 
     function test_a_turn_runs_on_its_own_clock_and_lands() {

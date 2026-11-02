@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// The status words of the app bar: tags in controls. Each is a tag (rekta.css:609–610: a square and its word, the word
-// always visible) in a control of the bar (.rk-ab, rekta.css:621–629) that opens the place where it can be changed.
-// A deviation (ADR-032, point 3): Rekta's single live-state slot (.rk-ab-status, rekta.css:632) is one plain text that
+// The status words of the app bar: tags in controls. Each is a tag (rekta.css:790–791: a square and its word, the word
+// always visible) in a control of the bar (.rk-ab, rekta.css:802–813) that opens the place where it can be changed.
+// A deviation (ADR-032, point 3): Rekta's single live-state slot (.rk-ab-status, rekta.css:824) is one plain text that
 // does nothing; here there are several, they are controls, and they take the controls' gap, size and weight, not the
 // slot's. Like the live state they never move into "more" (AppBar).
 //

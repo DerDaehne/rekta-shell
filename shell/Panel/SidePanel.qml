@@ -4,7 +4,7 @@ import QtQuick
 import Rekta
 
 // The side panel, the shell's own surface (Rekta has no side panel yet): two tile units wide with a sheet's padding
-// (rekta.css:827), the full height of its host at the trailing edge, on the ground with a hairline along its leading
+// (rekta.css:1067), the full height of its host at the trailing edge, on the ground with a hairline along its leading
 // edge. It slides all the way in from the trailing edge over duration-moderate with ease-out and leaves the way it came
 // in 0.8 × that, as a sheet leaves (motion.md, "Sheets"); nothing beside it is shaded or blocked. Its pivot picks a
 // facet. Escape and close() send it away. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move
@@ -142,7 +142,7 @@ FocusScope {
     function gone() {
         open = false;
         revealed = null;
-        // The focus goes back only to something that still shows (rekta.js:2424).
+        // The focus goes back only to something that still shows (rekta.js:2887).
         if (memo.focused?.visible)
             memo.focused.forceActiveFocus();
         closed();
@@ -240,7 +240,7 @@ FocusScope {
         onFinished: sidePanel.gone()
     }
 
-    // The hairline along its leading edge shows under the ground, as a sheet's does along its bottom (rekta.css:828).
+    // The hairline along its leading edge shows under the ground, as a sheet's does along its bottom (rekta.css:1068).
     Rectangle {
         id: panel
 
@@ -273,7 +273,7 @@ FocusScope {
                 viewportHeight: sidePanel.height
             }
 
-            // A compact place's strip has a hairline below it (rekta.css:864–868).
+            // A compact place's strip has a hairline below it (rekta.css:1135–1139).
             Hairline {
                 objectName: "underPivot"
                 x: Tokens.spaceM

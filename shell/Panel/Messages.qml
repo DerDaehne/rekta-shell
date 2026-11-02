@@ -173,7 +173,7 @@ Column {
         }
     }
 
-    // What is empty, in a sentence on the first hairline (states.md, "Data states"; rekta.css:675).
+    // What is empty, in a sentence on the first hairline (states.md, "Data states"; rekta.css:890).
     Item {
         objectName: "empty"
         width: messages.width

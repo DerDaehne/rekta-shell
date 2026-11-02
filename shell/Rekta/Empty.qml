@@ -1,7 +1,7 @@
 import QtQuick
 
 // An empty region says what is empty and why in one sentence below its first hairline, with space-m of room above and
-// below the sentence (states.md, "Empty"; rekta.css:675).
+// below the sentence (states.md, "Empty"; rekta.css:890).
 Item {
     id: empty
 

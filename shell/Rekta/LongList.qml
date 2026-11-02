@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A long list (collections.md, "Long lists"; rekta.css:463–476; rekta.js virtual()): rows of any number on hairlines
+// A long list (collections.md, "Long lists"; rekta.css:622–635; rekta.js virtual()): rows of any number on hairlines
 // in a bounded scroller, where only the rows in view and a few either side exist. It is one tab stop; ↑ ↓ PageUp
 // PageDown Home End move the active row, which shows the focus ring inside. A click, Enter or Space chooses a row the
 // Metro way and shows it (`shown`); the choice stays until clear(). Its data states (states.md, "Data states"): while
@@ -41,7 +41,7 @@ FocusScope {
         view.positionViewAtIndex(active, ListView.Contain);
     }
 
-    // Where a key moves the active row, a page being the rows in view less one (rekta.js:2994–2995); undefined for a
+    // Where a key moves the active row, a page being the rows in view less one (rekta.js:3644–3645); undefined for a
     // key that does not.
     function target(key: int): var {
         const page = Math.max(1, Math.floor(view.height / Tokens.rowHeight) - 1);
@@ -56,7 +56,7 @@ FocusScope {
         return moves[key];
     }
 
-    // The keyboard presses the row in its centre, and it lets go once the sink has played (rekta.js:321).
+    // The keyboard presses the row in its centre, and it lets go once the sink has played (rekta.js:351).
     function chooseActive() {
         const row = view.itemAtIndex(active) as ListRow;
         if (row) {
@@ -69,7 +69,7 @@ FocusScope {
     activeFocusOnTab: true
     Accessible.role: Accessible.List
 
-    // On focus the keys start from the first row in view (rekta.js:3006).
+    // On focus the keys start from the first row in view (rekta.js:3660).
     onActiveFocusChanged: {
         if (activeFocus && active < 0 && rows.length > 0)
             active = Math.max(0, view.indexAt(0, view.contentY));
@@ -89,7 +89,7 @@ FocusScope {
         }
     }
 
-    // The scroller's top border (rekta.css:464): the region starts at its first hairline.
+    // The scroller's top border (rekta.css:623): the region starts at its first hairline.
     Hairline {
         width: list.width
     }
@@ -127,7 +127,7 @@ FocusScope {
         }
     }
 
-    // Still placeholders hold the rows' place until the first rows come (rekta.css:673–674); nothing shimmers.
+    // Still placeholders hold the rows' place until the first rows come (rekta.css:888–889); nothing shimmers.
     Column {
         objectName: "ghosts"
         y: Geometry.hairline
@@ -158,7 +158,7 @@ FocusScope {
         }
     }
 
-    // A sentence on the first hairline, in text-contrast-high, says what is empty (rekta.css:675).
+    // A sentence on the first hairline, in text-contrast-high, says what is empty (rekta.css:890).
     Body {
         objectName: "empty"
         y: Geometry.hairline + Tokens.spaceM
@@ -168,7 +168,7 @@ FocusScope {
         color: Tokens.color.textContrastHigh
     }
 
-    // The list's own ring, outside (rekta.css:471).
+    // The list's own ring, outside (rekta.css:630).
     FocusRing {
         shown: list.activeFocus
     }

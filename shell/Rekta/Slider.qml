@@ -1,8 +1,9 @@
 import QtQuick
 
 // A value on a scale (forms.md, "Inputs"): a 6px track the accent fills up to the value, an ink bar as the thumb, and
-// the value shown beside it in tabular figures. Disabled, only the thumb greys (rekta.css:377) and the reason stands
-// below (forms.md, "Disabled controls say why").
+// the value shown beside it in tabular figures. Disabled, only the thumb greys and the reason stands below (forms.md,
+// "Disabled controls say why").
+// ponytail: the grey thumb alone is Rekta 0.5.0's; 0.6.0 also greys the filled track and the value (rekta.css:520–525).
 Item {
     id: slider
 

@@ -136,13 +136,13 @@ TestCase {
         const placed = Placement.float(Qt.rect(100, 100, 80, 32), Qt.size(200, 150), window);
         compare(placed.side, "below");
         compare(placed.x, 100);
-        compare(placed.y, 132 + Geometry.floatGap);
+        compare(placed.y, 132 + Tokens.spaceXs);
     }
 
     function test_with_no_room_below_it_opens_above() {
         const placed = Placement.float(Qt.rect(100, 500, 80, 32), Qt.size(200, 150), window);
         compare(placed.side, "above");
-        compare(placed.y, 500 - Geometry.floatGap - 150);
+        compare(placed.y, 500 - Tokens.spaceXs - 150);
         compare(placed.x, 100);
     }
 
@@ -187,13 +187,13 @@ TestCase {
         const placed = Placement.tip(Qt.rect(400, 300, 32, 32), Qt.size(60, 25), window);
         compare(placed.side, "above");
         compare(placed.x, 416 - 30);
-        compare(placed.y, 300 - Geometry.tipGap - 25);
+        compare(placed.y, 300 - Tokens.tipGap - 25);
     }
 
     function test_a_tip_goes_below_when_there_is_no_room_above() {
         const placed = Placement.tip(Qt.rect(400, 20, 32, 32), Qt.size(60, 25), window);
         compare(placed.side, "below");
-        compare(placed.y, 52 + Geometry.tipGap);
+        compare(placed.y, 52 + Tokens.tipGap);
     }
 
     function test_a_tip_keeps_off_the_window_s_sides() {

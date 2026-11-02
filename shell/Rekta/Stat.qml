@@ -1,9 +1,9 @@
 import QtQuick
 import "Status.js" as Status
 
-// A stat pair (tiles.md, "Tile content patterns"; rekta.css:95): one large tabular number, medium so it reads as data,
+// A stat pair (tiles.md, "Tile content patterns"; rekta.css:109): one large tabular number, medium so it reads as data,
 // over the short lowercase words that name it. In a tile the words take the tile's text colour, right under the
-// number; among figures on the ground they are secondary text, space-xs below (rekta.css:98).
+// number; among figures on the ground they are secondary text, space-xs below (rekta.css:112).
 Column {
     id: stat
 
@@ -13,7 +13,7 @@ Column {
     property real placeWidth: Window.width
     readonly property bool inFigures: (parent as Figures) !== null
 
-    // In a tile it is a flex item stretched to the content width, and its text wraps there (rekta.css:82); among
+    // In a tile it is a flex item stretched to the content width, and its text wraps there (rekta.css:90); among
     // figures it is as wide as its content.
     width: inFigures ? implicitWidth : (parent ? parent.width : 0)
     spacing: inFigures ? Tokens.spaceXs : 0
@@ -34,7 +34,7 @@ Column {
         wrapMode: Text.Wrap
     }
 
-    // A tile sets its text in xs at line-height-compact (rekta.css:86); figures take the ground's line-height-body.
+    // A tile sets its text in xs at line-height-compact (rekta.css:94); figures take the ground's line-height-body.
     TextRole {
         objectName: "words"
         width: stat.inFigures ? implicitWidth : stat.width

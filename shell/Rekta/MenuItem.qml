@@ -1,10 +1,10 @@
 import QtQuick
 
-// One row of a menu (states.md, "Floating surfaces"; rekta.css:789–797): a lowercase verb or option at the density's
+// One row of a menu (states.md, "Floating surfaces"; rekta.css:1013–1021): a lowercase verb or option at the density's
 // row height; a checkbox or radio option starts with a 10px square, filled when chosen; a key hint sits at the end.
 // A disabled item stays in the list, greyed, and says why in its label ("print (needs a printer)"). The menu moves the
 // focus between rows; the focused row shows the ring inside and the hover colour, and an enabled row under the pointer
-// takes the hover colour too (rekta.css:793, :1027). In a row narrower than its words they are cut.
+// takes the hover colour too (rekta.css:1017, :1338). In a row narrower than its words they are cut.
 Item {
     id: item
 
@@ -27,8 +27,8 @@ Item {
     property string disabledReason
     // Off with no reason to give: a foreign menu's entry that the app has turned off.
     property bool dimmed: false
-    // The room before and after the row's content: space-m inside a bordered menu (rekta.css:790), none for rows that
-    // stand on a surface (`.rk-rows`, rekta.css:68–69).
+    // The room before and after the row's content: space-m inside a bordered menu (rekta.css:1014), none for rows that
+    // stand on a surface (`.rk-rows`, rekta.css:73–74).
     property real inset: Tokens.spaceM
     // Keeps the icon's room also for a row without one, so every text of a list starts at one edge.
     property bool iconSlot: false
@@ -47,7 +47,7 @@ Item {
     readonly property real leadSpace: lead !== "" ? leadWords.implicitWidth + Tokens.spaceS : 0
     readonly property real textEdge: inset + checkSpace + iconSpace + leadSpace
     readonly property string spoken: lead !== "" ? `${lead} ${label}` : label
-    // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:790, :797)
+    // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:1014, :1021)
     readonly property real keySpace: keyHint !== "" ? Tokens.spaceS + Tokens.spaceL + key.implicitWidth : 0
     readonly property real endSpace: end.implicitWidth > 0 ? Tokens.spaceS + end.implicitWidth : 0
 
@@ -151,7 +151,7 @@ Item {
         color: Tokens.color.textContrastHigh
     }
 
-    // Inside a row with room of its own, outside one that has none (rekta.css:42, :323).
+    // Inside a row with room of its own, outside one that has none (rekta.css:44, :463).
     FocusRing {
         objectName: "ring"
         offset: item.inset > 0 ? -Geometry.focusRingInsetInRow : Geometry.focusRingOffset

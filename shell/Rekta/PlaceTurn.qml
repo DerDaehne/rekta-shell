@@ -49,8 +49,8 @@ QtObject {
             readonly property bool pressed: item === turner.pressedTile
             // Forward, a leaving part swings its far side toward the viewer; back mirrors both turns.
             readonly property real direction: turner.back ? 1 : -1
-            readonly property real fromAngle: leaving ? 0 : -direction * Geometry.turnInAngle
-            readonly property real toAngle: leaving ? direction * Geometry.turnOutAngle : 0
+            readonly property real fromAngle: leaving ? 0 : -direction * Tokens.turnstileInAngle
+            readonly property real toAngle: leaving ? direction * Tokens.turnstileOutAngle : 0
             readonly property real progress: Math.min(1, Math.max(0, (turner.elapsed - turn.at) / turn.duration))
             readonly property bool started: turner.elapsed >= turn.at
             property real angle: fromAngle
@@ -100,20 +100,20 @@ QtObject {
                         to: part.toAngle
                         duration: part.turn.duration
                         easing.type: Easing.Bezier
-                        easing.bezierCurve: part.leaving ? Geometry.easeTurnOut : Geometry.easeTurnIn
+                        easing.bezierCurve: part.leaving ? Tokens.easeTurnOut : Tokens.easeTurnIn
                     }
                     SequentialAnimation {
                         PauseAnimation {
-                            duration: part.leaving ? Geometry.turnOutWhole * part.turn.duration : 0
+                            duration: part.leaving ? Tokens.turnOutWhole * part.turn.duration : 0
                         }
                         NumberAnimation {
                             target: part
                             property: "fade"
                             from: part.leaving ? 1 : 0
                             to: part.leaving ? 0 : 1
-                            duration: (part.leaving ? 1 - Geometry.turnOutWhole : Geometry.turnInWhole) * part.turn.duration
+                            duration: (part.leaving ? 1 - Tokens.turnOutWhole : Tokens.turnInWhole) * part.turn.duration
                             easing.type: Easing.Bezier
-                            easing.bezierCurve: part.leaving ? Geometry.easeTurnOut : Geometry.easeTurnIn
+                            easing.bezierCurve: part.leaving ? Tokens.easeTurnOut : Tokens.easeTurnIn
                         }
                     }
                 }
@@ -128,7 +128,7 @@ QtObject {
                 to: 0
                 duration: part.turn.duration
                 easing.type: Easing.Bezier
-                easing.bezierCurve: Geometry.easeTurnOut
+                easing.bezierCurve: Tokens.easeTurnOut
             }
             property AnimationController pressMotion: AnimationController {
                 progress: part.progress

@@ -1,7 +1,7 @@
 pragma Singleton
 import QtQuick
 
-// Which control's tip shows, one at a time (navigation.md, "Tooltips"; rekta.js tips(), :2530–2615). A tip shows after
+// Which control's tip shows, one at a time (navigation.md, "Tooltips"; rekta.js tips(), :2993–3103). A tip shows after
 // the pointer has rested on its control for tip-delay, at once when focus arrives by keyboard or when moving on from
 // another tip, never on touch: controls report only a mouse or pen. Escape (key layer 45), a press, scrolling or
 // leaving hide it; the host reports presses and scrolling anywhere with hide(). A Tooltip draws it.

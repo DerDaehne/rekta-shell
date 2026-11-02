@@ -4,7 +4,7 @@ import QtQuick
 import Rekta
 
 // The session's actions as a banner over the shading (Rekta has no pattern for session actions yet): across the top
-// in a status banner's geometry and its neutral look, on surface with a hairline below (rekta.css:932–960), the word
+// in a status banner's geometry and its neutral look, on surface with a hairline below (rekta.css:1238–1266), the word
 // "sitzung" large and light in the first tile column, the actions as buttons from the second, sharing its baseline.
 // It comes in once with a fade and 8px over duration-short, as a banner state does (motion.md, "Status banner"), the
 // shading fading in alongside; it leaves the same way in 0.8 × that with ease-out, as a sheet leaves (motion.md,
@@ -12,9 +12,9 @@ import Rekta
 // alone. Escape, Back and a press on the shading send it away; ← → and Tab go from button to button, Enter or Space
 // acts. Once it has gone the focus goes back.
 // An action that ends the session (endsSession) first counts down duration-toast in whole seconds in the buttons' place,
-// "ausschalten in 5 · abbrechen", under Rekta's undo line (behaviour.md, "Undo"; rekta.css:919–927). Enter acts at once;
+// "ausschalten in 5 · abbrechen", under Rekta's undo line (behaviour.md, "Undo"; rekta.css:1218–1226). Enter acts at once;
 // Escape, Back, "abbrechen" and a press on the shading take it back to the actions with nothing done. Rekta asks a
-// confirm sheet for what cannot be undone (live.md:69–71); this window replaces it.
+// confirm sheet for what cannot be undone (live.md:109–111); this window replaces it.
 FocusScope {
     id: sessionBanner
 
@@ -152,7 +152,7 @@ FocusScope {
 
     function gone() {
         open = false;
-        // The focus goes back only to something that still shows (rekta.js:2424).
+        // The focus goes back only to something that still shows (rekta.js:2887).
         if (memo.focused?.visible)
             memo.focused.forceActiveFocus();
         closed();
@@ -232,7 +232,8 @@ FocusScope {
             easing.bezierCurve: Tokens.easeOut
         }
 
-        // The shading fades linearly as it leaves, as a sheet's does (rekta.js:1540).
+        // ponytail: the shading fades linearly as it leaves, as a sheet's did in Rekta 0.5.0; 0.6.0 eases it out
+        // (rekta.js:1828).
         NumberAnimation {
             objectName: "shadingOut"
             target: sessionBanner
@@ -318,7 +319,7 @@ FocusScope {
 
                     objectName: modelData.name
                     text: modelData.text
-                    // The ones that end the session are framed in the error colour, never filled (forms.md:134–140).
+                    // The ones that end the session are framed in the error colour, never filled (forms.md:218–226).
                     variant: modelData.primary ? "primary" : modelData.endsSession ? "destructive" : "quiet"
                     // A group stands space-l from the one before it; the flow adds space-s.
                     leftPadding: index > 0 && sessionBanner.actions[index - 1].group !== modelData.group ? Tokens.spaceL - Tokens.spaceS : 0

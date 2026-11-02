@@ -411,7 +411,7 @@ TestCase {
         compare(panorama.scroller.contentWidth, reach + Tokens.spaceXl + spacer + Tokens.spaceXl);
     }
 
-    // The wheel latch, rules 1 to 6 (layout.md:42–66; rekta.js:872–900).
+    // The wheel latch, rules 1 to 6 (layout.md:52–76; rekta.js:998–1026).
 
     function test_events_closer_than_the_latch_are_one_gesture_however_long_it_lasts() {
         const down = {
@@ -696,7 +696,7 @@ TestCase {
         compare(panorama.scroller.contentWidth, 600);
     }
 
-    // Keys (navigation.md:292–294).
+    // Keys (navigation.md:454–456).
 
     function test_arrow_and_page_keys_jump_to_the_previous_and_next_section_flush_left() {
         Prefs.motion = "off";
@@ -785,7 +785,7 @@ TestCase {
         verify(sectionAt(place.panorama, 0).headingFocused);
     }
 
-    // The strip follows the scroll, and a press on it scrolls there (navigation.md:56–62; motion.md "Panorama scroll").
+    // The strip follows the scroll, and a press on it scrolls there (navigation.md:61–67; motion.md "Panorama scroll").
 
     function test_the_strip_follows_a_section_scrolled_into_view_by_wheel() {
         const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
@@ -884,7 +884,7 @@ TestCase {
         verify(!panorama.gliding);
     }
 
-    // The strip's own wheel (layout.md:68–71; rekta.js stripWheel()).
+    // The strip's own wheel (layout.md:78–81; rekta.js stripWheel()).
 
     function test_a_plain_vertical_wheel_over_a_strip_that_does_not_fit_moves_it_sideways() {
         const strip = createTemporaryObject(stripAndPanoramaComponent, testCase).strip;
@@ -923,7 +923,7 @@ TestCase {
         verify(!strip.stripWheel(wheelEvent(30)));
     }
 
-    // A wide facet pivot (navigation.md:52–64).
+    // A wide facet pivot (navigation.md:57–69).
 
     function test_below_pivot_wide_one_facet_shows_at_a_time_and_a_pivot_that_picks_the_place_is_never_wide() {
         const place = createTemporaryObject(wideComponent, testCase);

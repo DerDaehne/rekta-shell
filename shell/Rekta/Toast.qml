@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import "Status.js" as Status
 
-// One toast, made and taken away by its Toaster (rekta.css:893–930; rekta.js toaster()). An ink strip for something
+// One toast, made and taken away by its Toaster (rekta.css:1164–1236; rekta.js toaster()). An ink strip for something
 // that just happened; with a status, that fill, for a failure whose control has gone (states.md, "Pending actions").
 // It stays its window, duration-toast, which holds while it is hovered or has focus. With undo, the window closes as a
 // 2px line and a tabular figure, once a second. The window runs against a deadline in wall-clock time, and reduced
@@ -166,7 +166,7 @@ FocusScope {
         destroy();
     }
 
-    // A toast on its way out takes no press (rekta.css:901).
+    // A toast on its way out takes no press (rekta.css:1172).
     function press() {
         if (done)
             return;
@@ -247,7 +247,7 @@ FocusScope {
         id: hover
     }
 
-    // Hover and press lay `hover` over a part of the strip (rekta.css:916, :1032).
+    // Hover and press lay `hover` over a part of the strip (rekta.css:1215, :1343).
     component Tint: Rectangle {
         property bool lit
 
@@ -365,7 +365,7 @@ FocusScope {
             wrapMode: Text.Wrap
             elide: Text.ElideRight
             maximumLineCount: heading.visible ? toast.bodyMaxLines : 2147483647
-            // Next to the app's icon the words keep the space a glyph keeps from its label (rekta.css:212).
+            // Next to the app's icon the words keep the space a glyph keeps from its label (rekta.css:321).
             leftPadding: front.width > 0 ? Tokens.spaceS : Tokens.spaceM
             rightPadding: Tokens.spaceM
             topPadding: heading.visible ? lineBoxTop : Tokens.spaceS + Tokens.spaceXs + lineBoxTop
@@ -438,7 +438,7 @@ FocusScope {
 
         Keys.onPressed: event => toast.activateOnKey(event, toast.press)
 
-        // Hover and press lay `hover` over it (rekta.css:916, :1032), up to the toast's rounded end.
+        // Hover and press lay `hover` over it (rekta.css:1215, :1343), up to the toast's rounded end.
         Tint {
             objectName: "press"
             topRightRadius: Tokens.radiusS

@@ -1,6 +1,6 @@
 import QtQuick
 
-// A menu on a floating surface (states.md, "Floating surfaces"; behaviour.md, `menu()`; rekta.js menu(), :1671–1741):
+// A menu on a floating surface (states.md, "Floating surfaces"; behaviour.md, `menu()`; rekta.js menu(), :2040–2148):
 // MenuItem rows, MenuSeparator and MenuLabel between groups. Keys: ↑ ↓ wrap, Home End, a letter jumps to the next item
 // starting with it, Enter or Space chooses, Escape closes and gives the focus back to the control, Tab closes and moves
 // on. A checkbox item toggles and leaves the menu open; any other choice closes it; `chosen` follows either way. A

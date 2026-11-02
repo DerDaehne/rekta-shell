@@ -6,8 +6,11 @@ import QtQuick
 // with its value in tabular figures (data.md, "Meters"), or over a plain text when there is no level. The control turns
 // away around its bottom edge and the display turns in, from the other side, once the control is three quarters
 // through; after the last key it stays, then runs the same turn the other way round. The turns use the place change's
-// curves and shares (rekta.css:975, :988–1011, rekta.js:489). Under reduced motion the two change at once; the display
-// still stays its time. `press()` is a key: the first brings the display, every later one only keeps it.
+// curves and shares (rekta.css:1283–1318, rekta.js:594), half of duration-moderate each way. Under reduced motion the
+// two change at once; the display still stays duration-level. `press()` is a key: the first brings the display, every
+// later one only keeps it.
+// ponytail: Rekta's indicate() now flips the two in turn as a live tile does, on ease-out and ease-in without the
+// overlap (rekta.js:4152–4179, :4190–4197); the place change's curves stand until the display follows it.
 Item {
     id: display
 
@@ -23,17 +26,17 @@ Item {
     property real phase: span
     // The direction of the swap running or last run.
     property bool toDisplay: false
-    readonly property real span: 1 + Geometry.turnOverlap
-    readonly property real turnTime: Tokens.reducedMotion ? 0 : Geometry.flipDuration
+    readonly property real span: 1 + Tokens.turnOverlap
+    readonly property real turnTime: Tokens.durationModerate / 2
     readonly property real leaving: Math.min(1, phase)
-    readonly property real arriving: Math.min(1, Math.max(0, phase - Geometry.turnOverlap))
-    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Geometry.easeTurnOut })
-    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Geometry.easeTurnIn })
+    readonly property real arriving: Math.min(1, Math.max(0, phase - Tokens.turnOverlap))
+    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeTurnOut })
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeTurnIn })
     // The leaving part is whole for its first share, then fades; the arriving one is whole after its first share.
-    readonly property real leaveFade: 1 - easeOut.valueForProgress(Math.max(0, (leaving - Geometry.turnOutWhole) / (1 - Geometry.turnOutWhole)))
-    readonly property real arriveFade: easeIn.valueForProgress(Math.min(1, arriving / Geometry.turnInWhole))
-    readonly property real turnedOut: Geometry.flipAngle * easeOut.valueForProgress(leaving)
-    readonly property real turnedIn: Geometry.flipAngle * (1 - easeIn.valueForProgress(arriving))
+    readonly property real leaveFade: 1 - easeOut.valueForProgress(Math.max(0, (leaving - Tokens.turnOutWhole) / (1 - Tokens.turnOutWhole)))
+    readonly property real arriveFade: easeIn.valueForProgress(Math.min(1, arriving / Tokens.turnInWhole))
+    readonly property real turnedOut: Tokens.flipAngle * easeOut.valueForProgress(leaving)
+    readonly property real turnedIn: Tokens.flipAngle * (1 - easeIn.valueForProgress(arriving))
     // The control turns toward one side, the display toward the other: -90 at its start in, and on its way out.
     readonly property real replacesAngle: toDisplay ? turnedOut : turnedIn
     readonly property real displayAngle: -(toDisplay ? turnedIn : turnedOut)
@@ -107,7 +110,7 @@ Item {
         id: hold
 
         objectName: "hold"
-        interval: Geometry.displayHold
+        interval: Tokens.durationLevel
 
         onTriggered: display.shown = false
     }

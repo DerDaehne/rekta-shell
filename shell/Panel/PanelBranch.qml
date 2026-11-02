@@ -2,7 +2,7 @@ import QtQuick
 import Rekta
 
 // Rows that unfold below the row that opened them and push what stands below down; nothing floats. It unfolds and folds
-// as a tree branch does (motion.md, "Tree branch"; rekta.js:2776, :2779): the height grows with a fade, in
+// as a tree branch does (motion.md, "Tree branch"; rekta.js:3336, :3339): the height grows with a fade, in
 // duration-short on ease-in, and closes in 0.7 of that on ease-out. Its rows are MenuItems; pressing one, or Enter or
 // Space on it, says so in `activated`. Escape folds it and the focus goes back to what opened it. While it unfolds it
 // keeps itself in view in the scroller it stands in; once open it leaves the view alone.

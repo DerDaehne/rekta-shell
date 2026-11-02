@@ -8,7 +8,7 @@ function word(status) {
 }
 
 // The fill a toast or banner takes for its status (`[data-status] { --_rk-fill: var(--rk-status-*-tile) }`,
-// rekta.css:58–61); `otherwise` without one.
+// rekta.css:63–66); `otherwise` without one.
 function tileFill(status, colors, otherwise) {
     const fills = { info: colors.statusInfoTile, success: colors.statusSuccessTile, warning: colors.statusWarningTile, error: colors.statusErrorTile };
     return fills[status] ?? otherwise;
@@ -25,7 +25,7 @@ function onStatusFill(item) {
 }
 
 // The secondary text colour where an item stands. On a status fill only the primary text colour clears AA, so text
-// that is text-contrast-high on the ground takes text-primary there (rekta.css:63–65).
+// that is text-contrast-high on the ground takes text-primary there (rekta.css:68–70).
 function secondaryInk(item, colors) {
     return onStatusFill(item) ? colors.textPrimary : colors.textContrastHigh;
 }

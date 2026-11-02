@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 
-// One notification in the centre, a row on a hairline (rekta.css:68–70): the picture or the app's icon, square with a
+// One notification in the centre, a row on a hairline (rekta.css:73–75): the picture or the app's icon, square with a
 // tile's corners, the summary in semibold with how long ago at the end, one line of the body, cut, and under it up to two
 // of the notification's actions as quiet buttons. A click, Enter or Space presses the row, tinted on hover and press like
 // a toast's text. While the pointer is on the row or the focus is in it, a quiet "entfernen" button takes the place of
@@ -181,7 +181,7 @@ Item {
             elide: Text.ElideRight
         }
 
-        // Hover and press lay `hover` over the row, as over a toast's text (rekta.css:916).
+        // Hover and press lay `hover` over the row, as over a toast's text (rekta.css:1215).
         Rectangle {
             objectName: "tint"
             anchors.fill: parent

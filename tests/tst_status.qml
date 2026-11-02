@@ -146,7 +146,7 @@ TestCase {
         const before = segment.x;
         wait(Tokens.durationBusy / 4);
         verify(segment.x !== before, "the segment moves");
-        compare(segment.width, 300 * Geometry.busySegment);
+        compare(segment.width, 300 * Tokens.busySegment);
         Prefs.motion = "off";
         compare(segment.width, 300);
         compare(segment.x, 0);
@@ -188,7 +188,7 @@ TestCase {
         const dots = createTemporaryObject(dotsComponent, testCase);
         const all = Array.from(dots.children).filter(child => child.position !== undefined);
         compare(all.length, Geometry.dotCount);
-        wait(Tokens.durationDots * Geometry.dotStagger * 2);
+        wait(Tokens.durationDots * Tokens.dotsStagger * 2);
         verify(all[0].position > all[4].position, "the first dot leads");
         verify(all[0].opacity > 0, "the first dot is visible");
     }

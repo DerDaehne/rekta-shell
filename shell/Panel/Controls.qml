@@ -660,7 +660,7 @@ Column {
             id: picker
 
             objectName: `${deviceRow.kind}Device`
-            // As wide as the row, so it stands below its label (forms.md, "Fields"; rekta.css:265, an input is 100% wide).
+            // As wide as the row, so it stands below its label (forms.md, "Fields"; rekta.css:388, an input is 100% wide).
             implicitWidth: deviceRow.width
             label: deviceRow.name
             options: deviceRow.devices.map(node => ({ text: controls.deviceName(node), value: node }))
@@ -692,7 +692,7 @@ Column {
             id: volumeSlider
 
             objectName: `${volumeRow.kind}Volume`
-            // As wide as the row, so it stands below the words (rekta.css:367, a range is 100% wide).
+            // As wide as the row, so it stands below the words (rekta.css:510, a range is 100% wide).
             implicitWidth: volumeRow.width
             value: volumeRow.volume
             valueText: `${Math.round(value * 100)}%`

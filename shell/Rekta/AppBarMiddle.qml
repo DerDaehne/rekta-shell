@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// The middle of the app bar (navigation.md, "The middle of the bar"; rekta.css:638–646): a product's own short line,
+// The middle of the app bar (navigation.md, "The middle of the bar"; rekta.css:830–838): a product's own short line,
 // xs in the secondary colour. Rekta gives it no controls; here a press on it signals `tapped`. Several parts stand
 // side by side, space-s apart on one baseline, and the last is cut with an ellipsis. The bar gives it the room the
 // controls leave; pinned it keeps its words up to half the bar and the controls make room instead.

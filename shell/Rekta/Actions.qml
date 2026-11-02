@@ -1,8 +1,8 @@
 import QtQuick
 
-// The controls of a region in one row that wraps, space-s apart (rekta.css:232). A button that cannot act says why
+// The controls of a region in one row that wraps, space-s apart (rekta.css:353). A button that cannot act says why
 // after the controls: the reason takes the rest of the row, or a row of its own when less than its basis is left
-// (`.rk-actions > .rk-why { flex: 1 1 12rem }`, :290). It takes the width it is given, like a block.
+// (`.rk-actions > .rk-why { flex: 1 1 12rem }`, :420). It takes the width it is given, like a block.
 Item {
     id: actions
 

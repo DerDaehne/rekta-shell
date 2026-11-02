@@ -2,14 +2,13 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A control of the app bar (navigation.md, "App bar"; rekta.css:621–629, :1025): a glyph and a word, never a glyph
+// A control of the app bar (navigation.md, "App bar"; rekta.css:802–813, :1336): a glyph and a word, never a glyph
 // alone, at least 48px square in every density, no frame; hover and press lay `hover` under it. A click gives no focus,
 // so the ring shows only for the keyboard. A control that cannot act stays focusable and is read with its reason; the
-// reason shows as its tooltip and moves into "more" with it. A deliberate deviation: Rekta puts a hint beside it and no
-// tooltip (forms.md, "Disabled controls say why"), which here takes the room of the bar's middle. A count follows the
-// word ("meldungen 3"); a new count peeks in as a live tile's news does (motion.md, "Live tile news"; rekta.js
-// tileUpdate()): the old one leaves upwards over 0.6 × duration-moderate while the new one rises from below over 0.8 ×,
-// after 0.2 ×.
+// reason shows as its tooltip and moves into "more" with it, as Rekta has it in the bar (forms.md:304–313). A count
+// follows the word ("meldungen 3"); a new count peeks in as a live tile's news does (motion.md, "Live tile news";
+// rekta.js tileUpdate()): the old one leaves upwards over 0.6 × duration-moderate while the new one rises from below
+// over 0.8 ×, after 0.2 ×.
 Item {
     id: control
 
@@ -197,7 +196,7 @@ Item {
             value: peek.now
             opacity: peek.rising
             transform: Translate {
-                y: Geometry.peekShift * figure.height * (1 - peek.rising)
+                y: Tokens.peekTravel * figure.height * (1 - peek.rising)
             }
         }
 
@@ -210,7 +209,7 @@ Item {
             opacity: 1 - peek.leaving
             Accessible.ignored: true
             transform: Translate {
-                y: -Geometry.peekShift * ghost.height * peek.leaving
+                y: -Tokens.peekTravel * ghost.height * peek.leaving
             }
         }
 

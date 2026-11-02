@@ -14,7 +14,7 @@ Item {
     // Set false, the dots are gone but keep their room; set again, they fly in from the start.
     property bool running: true
 
-    // As tall as a dot while they fly (`.rk-dots { height: 4px }`, rekta.css:568), as the words when they stand.
+    // As tall as a dot while they fly (`.rk-dots { height: 4px }`, rekta.css:728), as the words when they stand.
     implicitHeight: Tokens.reducedMotion ? Math.max(Geometry.dotSize, words.implicitHeight) : Geometry.dotSize
     Accessible.role: Accessible.ProgressBar
     Accessible.name: text
@@ -27,7 +27,7 @@ Item {
 
             required property int index
             // Where the dot is on its flight, as a share of the width.
-            property real position: Geometry.dotStart
+            property real position: Tokens.dotsFrom
             property bool launched: false
 
             width: Geometry.dotSize
@@ -38,7 +38,7 @@ Item {
             opacity: Tokens.reducedMotion ? 1 : 0
 
             Timer {
-                interval: dot.index * Tokens.durationDots * Geometry.dotStagger
+                interval: dot.index * Tokens.durationDots * Tokens.dotsStagger
                 running: !Tokens.reducedMotion && !dot.launched
                 onTriggered: dot.launched = true
             }
@@ -60,25 +60,25 @@ Item {
                     NumberAnimation {
                         target: dot
                         property: "position"
-                        from: Geometry.dotStart
-                        to: Geometry.dotSlowFromAt
-                        duration: Tokens.durationDots * Geometry.dotSlowFrom
+                        from: Tokens.dotsFrom
+                        to: Tokens.dotsMiddleStart
+                        duration: Tokens.durationDots * Tokens.dotsMiddleStartAt
                         easing.type: Easing.Bezier
-                        easing.bezierCurve: Geometry.dotEaseIn
+                        easing.bezierCurve: Tokens.dotsEaseArrive
                     }
                     NumberAnimation {
                         target: dot
                         property: "position"
-                        to: Geometry.dotSlowUntilAt
-                        duration: Tokens.durationDots * (Geometry.dotSlowUntil - Geometry.dotSlowFrom)
+                        to: Tokens.dotsMiddleEnd
+                        duration: Tokens.durationDots * (Tokens.dotsMiddleEndAt - Tokens.dotsMiddleStartAt)
                     }
                     NumberAnimation {
                         target: dot
                         property: "position"
-                        to: Geometry.dotEnd
-                        duration: Tokens.durationDots * (1 - Geometry.dotSlowUntil)
+                        to: Tokens.dotsTo
+                        duration: Tokens.durationDots * (1 - Tokens.dotsMiddleEndAt)
                         easing.type: Easing.Bezier
-                        easing.bezierCurve: Geometry.dotEaseOut
+                        easing.bezierCurve: Tokens.dotsEaseLeave
                     }
                 }
 
@@ -88,19 +88,19 @@ Item {
                         property: "opacity"
                         from: 0
                         to: 1
-                        duration: Tokens.durationDots * Geometry.dotVisibleAt
+                        duration: Tokens.durationDots * Tokens.dotsWholeAt
                         easing.type: Easing.Bezier
-                        easing.bezierCurve: Geometry.dotEaseIn
+                        easing.bezierCurve: Tokens.dotsEaseArrive
                     }
                     PauseAnimation {
-                        duration: Tokens.durationDots * (Geometry.dotFadeFrom - Geometry.dotVisibleAt)
+                        duration: Tokens.durationDots * (Tokens.dotsFadeAt - Tokens.dotsWholeAt)
                     }
                     // The keyframes from here on take the stylesheet's default timing, ease, which is the base easing.
                     NumberAnimation {
                         target: dot
                         property: "opacity"
                         to: 0
-                        duration: Tokens.durationDots * (1 - Geometry.dotFadeFrom)
+                        duration: Tokens.durationDots * (1 - Tokens.dotsFadeAt)
                         easing.type: Easing.Bezier
                         easing.bezierCurve: Tokens.easeBase
                     }

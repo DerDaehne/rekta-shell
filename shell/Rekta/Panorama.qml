@@ -2,20 +2,20 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A panorama (layout.md "Panorama" and "Sideways scrolling by mouse wheel"; navigation.md:52–64, :288–311; motion.md
-// "Panorama scroll"; rekta.css:853–857, :1163–1180; rekta.js panorama(), :825–966): sections side by side, each
+// A panorama (layout.md "Panorama" and "Sideways scrolling by mouse wheel"; navigation.md:57–69, :450–479; motion.md
+// "Panorama scroll"; rekta.css:1124–1128, :1478–1499; rekta.js panorama(), :946–1119): sections side by side, each
 // sized in tile units, so a wider window shows more sections, never wider ones. Each child is a section (see
 // Section); a section scrolls vertically within itself, and the panorama is never taller than its box. When every
 // section fits nothing scrolls. Compact the sections stack and the panorama scrolls vertically, the wheel untouched.
 // An optional pivot of section titles follows the scroll and jumps to a section.
 //
-// facetRow is the same machinery for the facets of a wide pivot (rekta.css:197–207; rekta.js pivot(), :1041–1074):
+// facetRow is the same machinery for the facets of a wide pivot (rekta.css:285–295; rekta.js pivot(), :1210–1252):
 // no inset and no trailing spacer, the wheel not redirected, and the facet chosen is the one scrolled into view.
 Item {
     id: panorama
 
     default property alias content: row.data
-    // --rk-sec-w (rekta.css:1173)
+    // --rk-sec-w (rekta.css:1492)
     property real sectionWidth: 3 * Tokens.tileUnit + 2 * Tokens.spaceS + 2 * Tokens.spaceXl
     property real placeWidth: width
     property real viewportHeight: Window.height
@@ -28,7 +28,7 @@ Item {
     readonly property real inset: facetRow ? 0 : sideways ? Tokens.spaceXl : Tokens.spaceM
     readonly property real gap: Tokens.spaceXl
     readonly property int currentIndex: reading.current
-    // Everything fits: nothing scrolls, and no spacer lets the last section reach the left edge (rekta.css:1179).
+    // Everything fits: nothing scrolls, and no spacer lets the last section reach the left edge (rekta.css:1498).
     readonly property bool fit: fits()
     readonly property alias scroller: flick
     readonly property alias sectionParent: row
@@ -38,7 +38,7 @@ Item {
     // once, a swipe when it ends), forward being right and down. A panorama that fits has both ends under every gesture.
     signal pastEnd(bool forward)
 
-    // The nearest section's start: flush left, or as far as the panorama scrolls (rekta.js startOf(), :833).
+    // The nearest section's start: flush left, or as far as the panorama scrolls (rekta.js startOf(), :954).
     function startOf(index: int): real {
         const section = sectionItems()[index];
         if (!section)
@@ -46,7 +46,7 @@ Item {
         return Math.min(sideways ? section.x - inset : section.y, mostScroll());
     }
 
-    // Aligns a section and marks it (rekta.js goTo(), :843); focusHeading puts the focus on its heading.
+    // Aligns a section and marks it (rekta.js goTo(), :964); focusHeading puts the focus on its heading.
     function goTo(index: int, focusHeading: bool, instant: bool) {
         const section = sectionItems()[index];
         if (!section)
@@ -58,8 +58,8 @@ Item {
             section.focusHeading();
     }
 
-    // One wheel event at wheel.x/wheel.y; true when the panorama took it (rekta.js wheel(), :872). The row of a wide
-    // facet pivot takes only Shift+wheel (layout.md:89–91): a vertical wheel over its facets never moves it sideways.
+    // One wheel event at wheel.x/wheel.y; true when the panorama took it (rekta.js wheel(), :998). The row of a wide
+    // facet pivot takes only Shift+wheel (layout.md:99–101): a vertical wheel over its facets never moves it sideways.
     function handleWheel(wheel: var, now: real): bool {
         userScroll();
         if (!sideways)
@@ -115,7 +115,7 @@ Item {
     function extent(): size {
         if (!sideways)
             return Qt.size(width, reading.stackHeight);
-        // The last section can reach the left edge: a spacer after it, as wide as is left (rekta.css:1178).
+        // The last section can reach the left edge: a spacer after it, as wide as is left (rekta.css:1497–1498).
         const spacer = facetRow ? 0 : Math.max(0, width - 2 * inset - sectionWidth - gap);
         return Qt.size(fits() ? width : reading.reach + gap + spacer + inset, height);
     }
@@ -138,7 +138,7 @@ Item {
         glide.start();
     }
 
-    // Anything the user does with the panorama makes the scroll that follows worth following again (rekta.js:869).
+    // Anything the user does with the panorama makes the scroll that follows worth following again (rekta.js:995).
     function userScroll() {
         reading.jumped = false;
     }
@@ -151,7 +151,7 @@ Item {
     }
 
     // A focused item beyond the edge scrolls into view with space-xl clear, as a browser does with
-    // `scroll-padding-inline` (rekta.css:1169), at once like the wheel.
+    // `scroll-padding-inline` (rekta.css:1488), at once like the wheel.
     // ponytail: sideways only; a stacked panorama's vertical reveal is the nearest scroller's.
     function revealFocus() {
         const focused = Window.activeFocusItem;
@@ -202,7 +202,7 @@ Item {
         return item.contentHeight > item.height + 1 && host.room(item, down);
     }
 
-    // The nearest flick at the pointer with room in the wheel's direction (rekta.js:882–885).
+    // The nearest flick at the pointer with room in the wheel's direction (rekta.js:1008–1011).
     function innerScrollerAt(down: bool): var {
         let at = row.mapFromItem(panorama, reading.pointer.x, reading.pointer.y);
         let leaf = row;
@@ -217,7 +217,7 @@ Item {
         return null;
     }
 
-    // Sections side by side from the inset, or stacked top to bottom (rekta.css:1167–1173, :853–856).
+    // Sections side by side from the inset, or stacked top to bottom (rekta.css:1486–1492, :1124–1127).
     function relayout() {
         if (reading.gone)
             return;
@@ -254,7 +254,7 @@ Item {
             section.sectionWidthChanged.connect(relayout);
     }
 
-    // The section being read follows the scroll (rekta.js follow(), :852; a wide pivot's follow(), :1066).
+    // The section being read follows the scroll (rekta.js follow(), :973; a wide pivot's follow(), :1244).
     function follow() {
         const sections = sectionItems();
         if (fit || !sections.length)
@@ -312,7 +312,7 @@ Item {
         mark(reading.current);
     }
 
-    // ← → PageUp PageDown jump a section, Home End to the ends; only on the panorama itself (rekta.js key(), :901).
+    // ← → PageUp PageDown jump a section, Home End to the ends; only on the panorama itself (rekta.js key(), :1027).
     Keys.onPressed: event => {
         userScroll();
         if (Window.activeFocusItem !== panorama || !sideways || facetRow || (event.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.MetaModifier)))
@@ -330,7 +330,7 @@ Item {
         if (!(event.key in moves))
             return;
         goTo(Math.max(0, Math.min(last, moves[event.key])), false, false);
-        // A key is the user's (rekta.js:945, :948): the scroll its jump causes is followed, only a click wins over that.
+        // A key is the user's (rekta.js:1098, :1101): the scroll its jump causes is followed, only a click wins over that.
         userScroll();
         event.accepted = true;
     }

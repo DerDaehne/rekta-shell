@@ -38,10 +38,10 @@ QtObject {
     }
 
     function scale(progress: real): real {
-        return 1 - (1 - Geometry.fadeBackScale) * progress;
+        return 1 - (1 - Tokens.stepBackScale) * progress;
     }
 
     function brightness(progress: real): real {
-        return 1 - (1 - Geometry.fadeBackBrightness) * progress;
+        return 1 - (1 - Tokens.stepBackBrightness) * progress;
     }
 }

@@ -1,6 +1,6 @@
 import QtQuick
 
-// Live tile news (motion.md, "Live tile news"; rekta.js tileUpdate(), :3447–3476), over duration-moderate. A peek, for a
+// Live tile news (motion.md, "Live tile news"; rekta.js tileUpdate(), :4181–4215), over duration-moderate. A peek, for a
 // new number: the stat as it was leaves upwards over 0.6 × that while the new one rises from below over 0.8 ×, after
 // 0.2 ×. A flip, for a new status: the tile turns away around its horizontal axis over the first half, changes, and
 // turns back. A continuous reading is no news and changes in place. While held, news waits, and comes in one step when
@@ -13,7 +13,7 @@ Item {
     property bool held: false
     readonly property bool peeking: peek.target !== null
     // How far the flip has turned the tile around its horizontal axis, in degrees (as CSS rotateX).
-    readonly property real flipAngle: flip.phase < 0.5 ? -Geometry.flipAngle * easeOut.valueForProgress(flip.phase * 2) : Geometry.flipAngle * (1 - easeIn.valueForProgress(flip.phase * 2 - 1))
+    readonly property real flipAngle: flip.phase < 0.5 ? -Tokens.flipAngle * easeOut.valueForProgress(flip.phase * 2) : Tokens.flipAngle * (1 - easeIn.valueForProgress(flip.phase * 2 - 1))
     readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
     readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
     property var waiting: []
@@ -92,7 +92,7 @@ Item {
     }
 
     // Let go, a held tile catches up in one step; a new status among the waiting news turns it over, as rekta-core's
-    // tile does (core/src/declare.c:663).
+    // tile does (core/src/declare.c:667).
     onHeldChanged: {
         if (held || waiting.length === 0)
             return;
@@ -138,7 +138,7 @@ Item {
         opacity: 1 - peek.leaving
         Accessible.ignored: true
         transform: Translate {
-            y: -Geometry.peekShift * ghost.height * peek.leaving
+            y: -Tokens.peekTravel * ghost.height * peek.leaving
         }
     }
 
@@ -149,7 +149,7 @@ Item {
         sourceItem: peek.target
         hideSource: news.peeking
         x: peek.at.x
-        y: peek.at.y + Geometry.peekShift * height * (1 - peek.rising)
+        y: peek.at.y + Tokens.peekTravel * height * (1 - peek.rising)
         width: peek.target?.width ?? 0
         height: peek.target?.height ?? 0
         opacity: peek.rising

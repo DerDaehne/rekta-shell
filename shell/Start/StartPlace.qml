@@ -48,7 +48,7 @@ FocusScope {
     // The time of the last wheel event, to tell one gesture from the next.
     property double lastWheel: 0
     readonly property Item focusItem: Window.activeFocusItem
-    // A tile unit and the space after it: a section is as wide as its units (site/site.css:81).
+    // A tile unit and the space after it: a section is as wide as its units (site/site.css:78).
     readonly property real unitStep: Tokens.tileUnit + Tokens.spaceS
     // A search under the place pivot, and the loading line of "alle apps", keep to the leading edge, six units wide.
     readonly property real sixUnits: 6 * Tokens.tileUnit + 5 * Tokens.spaceS
@@ -621,7 +621,7 @@ FocusScope {
     }
 
     // Typing shows the search at once: a turn still running, or the parts still waiting to turn in, ends in its end
-    // state first, as a navigation that comes while a turn runs finishes it (rekta.js:349–350, :557–558). What is typed
+    // state first, as a navigation that comes while a turn runs finishes it (rekta.js:379–380, :669–670). What is typed
     // goes in at the line's caret.
     function typeOn(text: string) {
         if (waitForWindows.running) {
@@ -765,7 +765,7 @@ FocusScope {
         id: waitForWindows
 
         objectName: "waitForWindows"
-        interval: Geometry.turnOverlap * FadeBack.duration
+        interval: Tokens.turnOverlap * FadeBack.duration
         onTriggered: start.turnIn()
     }
 
@@ -825,8 +825,8 @@ FocusScope {
             onWheel: event => start.wheel(event)
         }
 
-        // The place's strip along the top, the space-xl in from the edge of a sideways place (rekta.css:1180). Its inactive
-        // title is one step up from Rekta's (rekta.css:53), so both titles stay above the section headings.
+        // The place's strip along the top, the space-xl in from the edge of a sideways place (rekta.css:1499). Its inactive
+        // title is one step up from Rekta's (rekta.css:55), so both titles stay above the section headings.
         Pivot {
             id: pivot
 
@@ -880,7 +880,7 @@ FocusScope {
                 }
 
                 // The sections stand space-xl above and below, the heading space-l before the tiles, the headings one step
-                // up from Rekta's: the Start is airier and larger than a compact panorama (rekta.css:854–856, :53, :50).
+                // up from Rekta's: the Start is airier and larger than a compact panorama (rekta.css:1125–1127, :55, :52).
                 Section {
                     id: runningSection
 
@@ -1092,7 +1092,7 @@ FocusScope {
         }
 
         // The search's title where the pivot stands, as a place's strip is its title (navigation.md, "Pivot"): what was
-        // typed, light, and "suche" beside it as an inactive title, on one baseline, space-l apart (rekta.css:152). A
+        // typed, light, and "suche" beside it as an inactive title, on one baseline, space-l apart (rekta.css:234). A
         // title never shrinks (typography.md); one too long for the six units is cut at its edge, as the strip is.
         Item {
             id: searchTitle
@@ -1115,9 +1115,9 @@ FocusScope {
             }
 
             // What was typed is a line edited as a field is. Its caret is a field's, one pixel in the text's colour
-            // (`caret-color: auto` on `.rk-input`, rekta.css:267; rekta-core field.c:472, :503), as high and blinking as
+            // (`caret-color: auto` on `.rk-input`, rekta.css:390; rekta-core field.c:472, :503), as high and blinking as
             // the platform draws it, as on the web. Its selection takes the accent with on-accent text, as any selection
-            // does (rekta.css:722; field.c:497–498).
+            // does (rekta.css:937; field.c:497–498).
             // ponytail: past the six units' edge the caret goes out of sight with the text; cap the width at them
             // and let the line scroll if queries get that long.
             TextInput {
@@ -1147,7 +1147,7 @@ FocusScope {
         }
 
         // The apps that match, as tiles one unit square in the six units' grid, space-l above and below as a section
-        // (rekta.css:852).
+        // (rekta.css:1123).
         Flickable {
             id: results
 
@@ -1243,7 +1243,7 @@ FocusScope {
                 }
             }
 
-            // Without a match, a sentence on the region's first hairline says so (states.md, "Empty"; rekta.css:675).
+            // Without a match, a sentence on the region's first hairline says so (states.md, "Empty"; rekta.css:890).
             Empty {
                 objectName: "noHits"
                 y: Tokens.spaceL

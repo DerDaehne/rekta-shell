@@ -6,7 +6,7 @@ import QtQuick
 Text {
     id: role
 
-    // Every text inherits line-height-body unless its role sets another (rekta.css:35).
+    // Every text inherits line-height-body unless its role sets another (rekta.css:37).
     property real lineHeightFactor: Tokens.lineHeightBody
     // Half the leading, above the first line's glyphs; negative where the line box is lower than the glyphs, which then
     // reach past it, as in CSS.

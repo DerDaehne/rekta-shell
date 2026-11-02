@@ -2,11 +2,13 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// Two to five options seen at a glance (forms.md, "Inputs"; rekta.css:382–399): joined buttons, the chosen one in the
+// Two to five options seen at a glance (forms.md, "Inputs"; rekta.css:530–552): joined buttons, the chosen one in the
 // accent. On a choice made here the accent block slides over from the old one and the chosen label turns light
-// halfway (motion.md, segments). Disabled, the frames and words grey but the chosen one keeps its accent (rekta.css:397,
-// :399), and the reason stands beside it on the words' line while it fits the width, else below, wrapped within the
-// width (the hint is inline after the control, forms.md, "Disabled controls say why").
+// halfway (motion.md, segments). Disabled, the frames and words grey but the chosen one keeps its accent, and the reason
+// stands beside it on the words' line while it fits the width, else below, wrapped within the width (the hint is
+// inline after the control, forms.md, "Disabled controls say why").
+// ponytail: the accent kept when disabled is Rekta 0.5.0's; 0.6.0 greys the chosen one to a disabled fill with bg
+// words (rekta.css:551–552).
 Item {
     id: segments
 

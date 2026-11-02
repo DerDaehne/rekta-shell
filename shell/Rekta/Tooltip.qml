@@ -1,6 +1,6 @@
 import QtQuick
 
-// The tooltip (navigation.md, "Tooltips"; rekta.css:416–423): a small ink strip, like a toast, xs semibold in the
+// The tooltip (navigation.md, "Tooltips"; rekta.css:571–578): a small ink strip, like a toast, xs semibold in the
 // ground colour, above its control or below it where there is no room. It draws the tip Tips holds and comes in like a
 // floating surface, again for each control; it leaves at once and never takes the pointer. The host floats one above
 // each window and places it with Placement.tip, which also gives its side; each draws only a tip whose control is in

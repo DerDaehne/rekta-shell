@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A pivot (navigation.md, "Pivot"; rekta.css:148–190): titles in a fixed order, exactly one active. Along the top, a
+// A pivot (navigation.md, "Pivot"; rekta.css:230–278): titles in a fixed order, exactly one active. Along the top, a
 // strip that does not fit glides by the active title's place in the order, and only the old and the new active title
 // change size, scaled from one fixed line box, so the strip's height never changes. Down the side, the title in sight
 // steps in by space-m. Compact, a side pivot is the strip along the top again, and a nav strip takes the facet sizes.
@@ -108,7 +108,7 @@ Item {
     }
 
     Keys.onPressed: event => {
-        // Alt+Left is back (platforms.md:166–169), so a key with a modifier is not the strip's (rekta.js:902, the panorama's).
+        // Alt+Left is back (platforms.md:210–213), so a key with a modifier is not the strip's (rekta.js:1028, the panorama's).
         if (event.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.MetaModifier))
             return;
         const count = titles.length;
@@ -132,7 +132,7 @@ Item {
     Flickable {
         id: strip
 
-        // The focus ring stands outside the title (rekta.css:42): the clipped view reaches that far past the pivot
+        // The focus ring stands outside the title (rekta.css:44): the clipped view reaches that far past the pivot
         // on every side, and the titles sit inside it, so only titles further away are cut at the pivot's edges.
         readonly property real ringRoom: Geometry.focusRingOffset + Geometry.focusRingWidth
 
@@ -180,7 +180,7 @@ Item {
     }
 
     // A plain vertical wheel over the strip moves it sideways, inside its own box; elsewhere the wheel is not its own
-    // (layout.md:68–71; rekta.js stripWheel(), :968).
+    // (layout.md:78–81; rekta.js stripWheel(), :1121).
     MouseArea {
         anchors.fill: parent
         z: 1
@@ -198,7 +198,7 @@ Item {
         // The width the title takes at the active size; an inactive one takes this times the ratio.
         readonly property real restingWidth: word.implicitWidth
         readonly property real ratio: pivot.down ? 1 : pivot.inactiveSize / pivot.activeSize
-        // A title under the pointer darkens like the active one (rekta.css:1020).
+        // A title under the pointer darkens like the active one (rekta.css:1327).
         readonly property bool lit: active || hover.hovered
 
         objectName: `title-${index}`
@@ -232,14 +232,14 @@ Item {
                 NumberAnimation {
                     duration: Tokens.durationPivotSize
                     easing.type: Easing.Bezier
-                    easing.bezierCurve: Geometry.easeInOut
+                    easing.bezierCurve: Tokens.easeInOut
                 }
             }
             Behavior on shrink {
                 NumberAnimation {
                     duration: Tokens.durationPivotSize
                     easing.type: Easing.Bezier
-                    easing.bezierCurve: Geometry.easeInOut
+                    easing.bezierCurve: Tokens.easeInOut
                 }
             }
             // Along the top the colour eases like any state change; down the side it moves with the step.
@@ -247,7 +247,7 @@ Item {
                 ColorAnimation {
                     duration: pivot.down ? Tokens.durationPivotSize : Tokens.durationShort
                     easing.type: Easing.Bezier
-                    easing.bezierCurve: pivot.down ? Geometry.easeInOut : Tokens.easeBase
+                    easing.bezierCurve: pivot.down ? Tokens.easeInOut : Tokens.easeBase
                 }
             }
         }
@@ -258,7 +258,7 @@ Item {
             cursorShape: Qt.PointingHandCursor
         }
 
-        // Each title's hit area is at least touch-target tall (rekta.css:167–169).
+        // Each title's hit area is at least touch-target tall (rekta.css:255–257).
         TapHandler {
             margin: Math.max(0, (Tokens.touchTarget - title.height) / 2)
             onTapped: {

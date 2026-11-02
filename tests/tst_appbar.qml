@@ -239,7 +239,7 @@ TestCase {
         verify(ghost.transform[0].y < 0, "the old one moves up");
         peek.phase = 0.6;
         compare(ghost.opacity, 0, "gone after 0.6 ×");
-        compare(ghost.transform[0].y, -Geometry.peekShift * ghost.height);
+        compare(ghost.transform[0].y, -Tokens.peekTravel * ghost.height);
         verify(count.opacity > 0 && count.transform[0].y > 0, "the new one rises from below");
         peek.phase = 1;
         compare(count.opacity, 1);
@@ -323,7 +323,7 @@ TestCase {
         const at = messages.mapToItem(bar, 0, 0);
         const place = bar.tipPlace(messages, Qt.size(120, 24));
         compare(place.side, "above");
-        compare(place.y, at.y - Geometry.tipGap - 24, "tip-gap above the control, past the bar's top edge");
+        compare(place.y, at.y - Tokens.tipGap - 24, "tip-gap above the control, past the bar's top edge");
         compare(place.x, Math.round(at.x + messages.width / 2 - 60), "centred over it");
         const last = findChild(named("controls"), "box");
         compare(bar.tipPlace(last, Qt.size(300, 24)).x, bar.width - 300 - Tokens.spaceS, "space-s from the window's side");
@@ -463,7 +463,7 @@ TestCase {
         mouseClick(bar.more, 10, 10);
         const menu = bar.menu;
         compare(menu.side, "above");
-        compare(menu.y + menu.height, bar.more.y - Geometry.floatGap, "space-xs above more");
+        compare(menu.y + menu.height, bar.more.y - Tokens.spaceXs, "space-xs above more");
         compare(menu.x + menu.width, endOf(bar.more), "flush with the trailing edge of more");
         mouseClick(bar.more, 10, 10);
         verify(!menu.open, "more closes it again");

@@ -1,7 +1,7 @@
 import QtQuick
 import "Status.js" as Status
 
-// A tile (tiles.md; rekta.css:81–94, :115–125): its whole area is one fill, and the fill is its status. It opens
+// A tile (tiles.md; rekta.css:89–108, :194–204): its whole area is one fill, and the fill is its status. It opens
 // something or it only informs; it never changes data. A tile that opens nudges back where it is pressed, by up to
 // tile-tilt, and shrinks to tile-press-scale (motion.md, "Press"; rekta.js press()). Its content sits at the bottom.
 // It builds in when its place arrives (motion.md, "Tiles building in"), and news() shows what is new (TileNews).
@@ -23,7 +23,7 @@ Item {
     property int buildIndex: 0
     // True while its live region holds still: news waits (live.md, "Holding still").
     property bool held: false
-    // On a status fill only the primary text colour clears AA; Status.secondaryInk() reads this (rekta.css:63–65).
+    // On a status fill only the primary text colour clears AA; Status.secondaryInk() reads this (rekta.css:68–70).
     readonly property bool statusFill: status !== ""
     // A place turn keeps the tile that opened the next place pressed until it turns away (rekta.js turn.leave()).
     property bool kept: false
@@ -36,7 +36,7 @@ Item {
     // How far it has sunk, 0 to 1, eased like a CSS transition: in over duration-press, back over duration-short.
     // Not bound to `pressed`, or sink moves before the Behavior's duration does and lets go in duration-press.
     property real sink: (press.held || kept) ? 1 : 0
-    // The tilt the sink has reached, in degrees; none under reduced motion, where a press only shrinks (rekta.css:1211).
+    // The tilt the sink has reached, in degrees; none under reduced motion, where a press only shrinks (rekta.css:1530).
     readonly property real tiltX: Tokens.reducedMotion ? 0 : -pressY * sink * Tokens.tileTilt
     readonly property real tiltY: Tokens.reducedMotion ? 0 : pressX * sink * Tokens.tileTilt
     readonly property real pressScale: 1 - sink * (1 - Tokens.tilePressScale)
@@ -78,7 +78,9 @@ Item {
     }
 
     // Only an arriving place builds in: never after a turn, never for new live data. Each tile rises duration-stagger
-    // after the one before it, from ten on all together (rekta.css:91).
+    // after the one before it, from ten on all together.
+    // ponytail: the build-in is Rekta 0.5.0's; 0.6.0 rises arrive-distance over duration-long on ease-landing, whole after
+    // duration-short, duration-greet apart and four steps at most (rekta.css:97–104, :188–189).
     function followArrival() {
         if (arrival !== "arriving") {
             buildInRun.complete();
@@ -114,7 +116,7 @@ Item {
     }
 
     // translateY(build-in rise) perspective(turnstile-perspective) rotateX(-py · tilt + flip) rotateY(px · tilt)
-    // scale(press-scale) around the centre (rekta.css:110, :115–116), flattened to the item's plane as Qt's own
+    // scale(press-scale) around the centre (rekta.css:188, :194–195), flattened to the item's plane as Qt's own
     // Rotation does.
     transform: Matrix4x4 {
         matrix: {
@@ -161,7 +163,7 @@ Item {
             }
         }
 
-        // Hover tints a tile that opens (rekta.css:1019); it is an image in the stylesheet, so it changes at once.
+        // Hover tints a tile that opens (rekta.css:1326); it is an image in the stylesheet, so it changes at once.
         Rectangle {
             objectName: "tint"
             anchors.fill: parent
@@ -204,7 +206,7 @@ Item {
         color: Tokens.color.textPrimary
     }
 
-    // On a fill the ring sits inside in the text colour (rekta.css:93).
+    // On a fill the ring sits inside in the text colour (rekta.css:107).
     FocusRing {
         onFill: true
         ink: Tokens.color.textPrimary
@@ -245,7 +247,7 @@ Item {
             press.release(false);
     }
 
-    // The press, after rekta.js press() (:255–330): a mouse presses at once, a finger after tap-delay; moving past the
+    // The press, after rekta.js press() (:285–360): a mouse presses at once, a finger after tap-delay; moving past the
     // slop gives up; a quick tap still shows the whole sink, since the press lets go no sooner than duration-press.
     QtObject {
         id: press
@@ -318,7 +320,7 @@ Item {
     }
 
     // While pressed, the hit area reaches space-m past the tile, so a release on an edge that sank away still lands
-    // (rekta.css:119–123). A press there before the tile is pressed belongs to whatever lies beneath. A scroller around
+    // (rekta.css:198–202). A press there before the tile is pressed belongs to whatever lies beneath. A scroller around
     // the tile may take a drag over, as a page scrolls under a finger; the press then gives up.
     MouseArea {
         id: area

@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 
 // Things coming and going in a list or a grid (motion.md, "Arriving, leaving" and "Reordering"; rekta.js presence(),
-// enter(), leave(), :3409–3445). Those that go leave first; then the change is made, the ones that stay glide from where
+// enter(), leave(), :4078–4128). Those that go leave first; then the change is made, the ones that stay glide from where
 // they were to where they are now, and those that come arrive. A tile leaves shrinking to 90% and arrives rising from
 // 96%; anything else moves as a row, leaving towards its trailing edge and arriving from just above. A newer change
 // makes the one still waiting at once; more than sixty changes, or no motion, apply at once.

@@ -104,7 +104,7 @@ TestCase {
 
     function test_it_stays_the_hold_and_then_goes_and_is_unmapped_after_the_way_out() {
         showAlone();
-        compare(hold.interval, Geometry.displayHold);
+        compare(hold.interval, Tokens.durationLevel);
         verify(hold.running);
         expire();
         verify(alone.mapped);
@@ -226,7 +226,7 @@ TestCase {
         Prefs.motion = "off";
         failOnWarning(/setPaused|TypeError|ReferenceError|Binding loop/);
         compare(moving.duration, 0);
-        compare(hold.interval, Geometry.displayHold);
+        compare(hold.interval, Tokens.durationLevel);
         alone.away = true;
         alone.press();
         tryCompare(alone, "settled", true, 500);

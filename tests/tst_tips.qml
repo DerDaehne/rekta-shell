@@ -232,7 +232,7 @@ TestCase {
         const close = box("close");
         findChild(scene, "close").forceActiveFocus();
         compare(tooltip.side, "above");
-        compare(tooltip.y, Math.round(scene.mapFromItem(close, 0, 0).y - Geometry.tipGap - tooltip.height));
+        compare(tooltip.y, Math.round(scene.mapFromItem(close, 0, 0).y - Tokens.tipGap - tooltip.height));
         compare(tooltip.opacity, 0);
         compare(tooltip.shift, 4, "it rises from its control");
         compare(findChild(tooltip, "comingIn").duration, Tokens.durationFloat);

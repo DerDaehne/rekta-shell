@@ -1,7 +1,7 @@
 .pragma library
 
-// Rekta's wheel latch (layout.md "Sideways scrolling by mouse wheel", rules 1–6; rekta.js panorama() wheel(), :872–900,
-// and stripWheel(), :968–975), as plain functions over web-signed deltas: positive dy scrolls down, positive dx right.
+// Rekta's wheel latch (layout.md "Sideways scrolling by mouse wheel", rules 1–6; rekta.js panorama() wheel(), :998–1026,
+// and stripWheel(), :1121–1128), as plain functions over web-signed deltas: positive dy scrolls down, positive dx right.
 // route() takes the gesture so far and one wheel event and says what to do with it.
 //
 // ponytail: Qt hands a wheel event to the item under the pointer and has no "native" scroll to leave to, so the
@@ -26,27 +26,27 @@ function begin(horizontal, down, host) {
     return inner ? { target: "inner", inner } : { target: "pan", inner: null };
 }
 
-// host: innerAt(down) the nearest scroller under the pointer with room in that direction (rekta.js:882–885),
+// host: innerAt(down) the nearest scroller under the pointer with room in that direction (rekta.js:1008–1011),
 // room(scroller, down) whether it still has room, panRoom(down) whether the panorama has.
 // Returns { gesture, fresh, action }, action being "pass", "swallow", "inner" or "pan".
 function route(gesture, e, now, latch, host) {
     if (e.ctrl)
-        return { gesture, fresh: false, action: "pass" };              // rule 5 (rekta.js:873)
-    const horizontal = e.shift || Math.abs(e.dx) >= Math.abs(e.dy);    // rule 3 (:875)
+        return { gesture, fresh: false, action: "pass" };              // rule 5 (rekta.js:999)
+    const horizontal = e.shift || Math.abs(e.dx) >= Math.abs(e.dy);    // rule 3 (:1001)
     const down = e.dy > 0;
-    const fresh = !gesture || now - gesture.last > latch;              // one gesture: events less than the latch apart (:877)
+    const fresh = !gesture || now - gesture.last > latch;              // one gesture: events less than the latch apart (:1003)
     const started = fresh ? begin(horizontal, down, host) : gesture;
-    const next = { target: started.target, inner: started.inner, last: now };    // :888
+    const next = { target: started.target, inner: started.inner, last: now };    // :1014
     if (next.target === "native" || horizontal)
-        return { gesture: next, fresh, action: "pass" };               // :889
-    if (next.target === "inner")                                       // rule 1: swallowed at its end, never sideways (:890–894)
+        return { gesture: next, fresh, action: "pass" };               // :1015
+    if (next.target === "inner")                                       // rule 1: swallowed at its end, never sideways (:1016–1020)
         return { gesture: next, fresh, action: host.room(next.inner, down) ? "inner" : "swallow" };
     if (!host.panRoom(down))
-        return { gesture: next, fresh, action: "pass" };               // rule 4: the ends fall through (:896–897)
+        return { gesture: next, fresh, action: "pass" };               // rule 4: the ends fall through (:1022–1023)
     return { gesture: next, fresh, action: "pan" };
 }
 
-// A strip of titles moves sideways under a plain vertical wheel, inside its own box (rekta.js:968–975): the new
+// A strip of titles moves sideways under a plain vertical wheel, inside its own box (rekta.js:1121–1128): the new
 // position, or null where the event is not the strip's (modifier, horizontal input, no room, an end).
 function stripMove(e, position, most) {
     if (e.ctrl || e.shift || Math.abs(e.dx) >= Math.abs(e.dy))

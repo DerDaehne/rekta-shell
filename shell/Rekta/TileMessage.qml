@@ -1,6 +1,6 @@
 import QtQuick
 
-// A message (tiles.md, "Tile content patterns"; rekta.css:103–107): one plain sentence in size s, for a tile whose
+// A message (tiles.md, "Tile content patterns"; rekta.css:121–125): one plain sentence in size s, for a tile whose
 // content is a statement; a kicker may name it above and a fact line carry one small value below. Past four lines, six
 // on a wide tile, the sentence ends in an ellipsis; the whole of it is still read.
 Column {
@@ -14,7 +14,7 @@ Column {
     width: parent ? parent.width : 0
     spacing: Tokens.spaceS
 
-    // Text in a tile takes the tile's line-height-compact (rekta.css:86), the kicker and the fact line too.
+    // Text in a tile takes the tile's line-height-compact (rekta.css:94), the kicker and the fact line too.
     Kicker {
         objectName: "kicker"
         width: message.width

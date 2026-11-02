@@ -2,7 +2,7 @@ import QtQuick
 
 // The keyboard focus ring of the item it is declared in. On a fill (a status tile, the accent) it sits inside in the
 // fill's text colour, which clears AA on every fill; on a neutral ground it sits outside in `focus`
-// (accessibility.md, "Focus on fills"). Like `:focus-visible` (rekta.css:42) it is for the keyboard: an ancestor that
+// (accessibility.md, "Focus on fills"). Like `:focus-visible` (rekta.css:44) it is for the keyboard: an ancestor that
 // sets `ringsHidden` (a surface a pointer opened) hides every ring inside it until the keyboard takes over.
 Rectangle {
     property bool onFill: false
