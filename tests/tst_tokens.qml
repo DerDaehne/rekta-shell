@@ -7,6 +7,7 @@ TestCase {
 
     function cleanup() {
         Tokens.theme = "light";
+        Tokens.moreContrast = false;
         Tokens.density = "compact";
         Tokens.reducedMotion = false;
     }
@@ -59,6 +60,26 @@ TestCase {
         verify(Tokens.color.bg !== Tokens.light.bg);
     }
 
+    function test_more_contrast_switches_each_theme_to_its_contrast_set() {
+        Tokens.moreContrast = true;
+        compare(Tokens.color, Tokens.lightContrast);
+        Tokens.theme = "dark";
+        compare(Tokens.color, Tokens.darkContrast);
+        verify(!Qt.colorEqual(Tokens.darkContrast.textContrastMedium, Tokens.dark.textContrastMedium));
+    }
+
+    function test_every_named_accent_has_a_pair_for_each_theme_and_contrast_set() {
+        const names = Object.keys(Tokens.accents);
+        verify(names.includes("ink"));
+        for (const name of names) {
+            for (const set of ["light", "dark", "lightContrast", "darkContrast"]) {
+                const pair = Tokens.accents[name][set];
+                verify(/^#[0-9a-f]{6}$/.test(pair.accent) && /^#[0-9a-f]{6}$/.test(pair.textOnAccent), `${name} ${set}`);
+            }
+        }
+        verify(Qt.colorEqual(Tokens.accents.ink.light.accent, Tokens.light.accent), "ink is the themes' own accent");
+    }
+
     function test_density_switches_control_and_row_sizes() {
         compare(Tokens.controlHeight, Tokens.compact.controlHeight);
         Tokens.density = "comfortable";
@@ -74,7 +95,7 @@ TestCase {
     }
 
     function test_easings_are_qt_bezier_curves_ending_at_one() {
-        for (const name of ["easeBase", "easeIn", "easeOut", "easePivotGlide"]) {
+        for (const name of ["easeBase", "easeIn", "easeOut", "easePivotGlide", "dotsEaseArrive"]) {
             const curve = Tokens[name];
             compare(curve.length, 6, name);
             compare(curve[4], 1, name);
@@ -84,5 +105,10 @@ TestCase {
 
     function test_the_typeface_is_the_product_choice() {
         compare(Tokens.fontSans, "Atkinson Hyperlegible Next");
+    }
+
+    function test_the_ascent_and_descent_are_those_of_the_typeface() {
+        compare(Tokens.fontAscent, 0.984);
+        compare(Tokens.fontDescent, 0.316);
     }
 }

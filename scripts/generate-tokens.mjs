@@ -2,15 +2,18 @@
 // Writes shell/Rekta/Tokens.qml and shell/Rekta/IconData.js from Rekta Design's dist (rekta.tokens.json, rekta.icons.json).
 //   node scripts/generate-tokens.mjs <rekta-design dist dir> <shell dir>          write the files
 //   node scripts/generate-tokens.mjs <rekta-design dist dir> <shell dir> --check  fail if one differs
-// Every value comes from Rekta Design; the product's own choices are the typeface and the tile unit.
+// Every value comes from Rekta Design; the product's own choices are the typeface, with its metrics, and the tile unit.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const FONT_SANS = 'Atkinson Hyperlegible Next';
 // The tokens list CSS font stacks; on Linux the fontconfig generic picks the monospace face.
 const FONT_MONO = 'monospace';
-// Rekta lets the product choose the tile unit (platforms.md:89); the product uses one value for every width.
-const PRODUCT_SIZES = { 'tile-unit': 170 };
+// Rekta's ascent and descent are Barlow's and a product with another face sets its own: the face's hhea values in em.
+const FONT_METRICS = { 'font-ascent': 0.984, 'font-descent': 0.316 };
+// Rekta lets the product choose the tile unit, below and from 2560px (platforms.md:105); the product uses one value for
+// every width.
+const PRODUCT_SIZES = { 'tile-unit': 170, 'tile-unit-ultrawide': 170 };
 
 // Documentation, not values: descriptions, and the hooks (runtime custom properties of the web stylesheet).
 const SKIPPED_GROUPS = new Set(['name', 'version', 'units', 'descriptions', 'hooks']);
@@ -61,13 +64,14 @@ function modeComponent(type, qmlType, modes) {
 
 function modeInstance(type, mode, values, format) {
 	const lines = Object.entries(values).map(([name, value]) => `        ${camel(name)}: ${format(value, name)}`);
-	return [`    readonly property ${type} ${mode}: ${type} {`, ...lines, '    }'];
+	return [`    readonly property ${type} ${camel(mode)}: ${type} {`, ...lines, '    }'];
 }
 
 function typography(entries) {
 	return Object.entries(entries).map(([name, value]) => {
 		if (name === 'font-sans') return property('string', name, JSON.stringify(FONT_SANS));
 		if (name === 'font-mono') return property('string', name, JSON.stringify(FONT_MONO));
+		if (name in FONT_METRICS) return property('real', name, number(FONT_METRICS[name], name));
 		if (name.startsWith('font-weight-')) return property('int', name, number(value, name));
 		if (name.startsWith('line-height-')) return property('real', name, number(value, name));
 		if (name.startsWith('font-size-') && isFluid(value)) {
@@ -81,7 +85,7 @@ function typography(entries) {
 function motion(entries) {
 	return Object.entries(entries).map(([name, value]) => {
 		if (name.startsWith('duration-')) return property('int', name, `reducedMotion ? 0 : ${number(value, name)}`);
-		if (name.startsWith('ease-')) return property('var', name, qtBezier(value));
+		if (/(^|-)ease-/.test(name)) return property('var', name, qtBezier(value));
 		return property('real', name, number(value, name));
 	});
 }
@@ -99,12 +103,13 @@ function expectModes(group, modes, names) {
 	if (actual !== [...names].sort().join(', ')) throw new Error(`${group}: expected ${names.join(', ')}, got ${actual}`);
 }
 
-const KNOWN_GROUPS = ['themes', 'densities', 'typography', 'spacing', 'radius', 'size', 'motion', 'timing', 'layer', 'breakpoint'];
+const KNOWN_GROUPS = ['themes', 'accents', 'densities', 'typography', 'spacing', 'radius', 'size', 'motion', 'timing', 'layer', 'breakpoint'];
+const THEMES = ['light', 'dark', 'light-contrast', 'dark-contrast'];
 
 function expectKnownGroups(tokens) {
 	const unknown = Object.keys(tokens).filter((g) => !SKIPPED_GROUPS.has(g) && !KNOWN_GROUPS.includes(g));
 	if (unknown.length) throw new Error(`no mapping for token group(s): ${unknown.join(', ')}`);
-	expectModes('themes', tokens.themes, ['light', 'dark']);
+	expectModes('themes', tokens.themes, THEMES);
 	expectModes('densities', tokens.densities, ['comfortable', 'compact']);
 }
 
@@ -115,8 +120,9 @@ function inputs(tokens) {
 		'import QtQuick',
 		'',
 		'QtObject {',
-		'    // Inputs: set from the preferences (theme, density, reduced motion).',
+		'    // Inputs: set from the preferences (theme, more contrast, density, reduced motion).',
 		'    property string theme: "light"',
+		'    property bool moreContrast: false',
 		'    property string density: "compact"',
 		'    property bool reducedMotion: false',
 	];
@@ -127,13 +133,27 @@ function modes(tokens) {
 	return [
 		...modeComponent('Colours', 'color', tokens.themes),
 		...Object.entries(tokens.themes).flatMap(([theme, colours]) => modeInstance('Colours', theme, colours, (hex) => `"${qtColour(hex)}"`)),
-		'    readonly property Colours color: theme === "dark" ? dark : light',
+		'    readonly property Colours color: theme === "dark" ? (moreContrast ? darkContrast : dark) : (moreContrast ? lightContrast : light)',
+		...accents(tokens.accents),
 		'',
 		...modeComponent('Density', 'int', tokens.densities),
 		...Object.entries(tokens.densities).flatMap(([density, values]) => modeInstance('Density', density, values, number)),
 		'    readonly property Density currentDensity: density === "comfortable" ? comfortable : compact',
 		...densityKeys.map((name) => property('int', name, `currentDensity.${camel(name)}`)),
 	];
+}
+
+// The named accents: per theme an accent and the text on it. The themes' own accent is ink.
+function accents(entries) {
+	const named = Object.entries(entries).map(([name, { description, ...themes }]) => {
+		expectModes(`accents.${name}`, themes, THEMES);
+		const pairs = Object.entries(themes).map(([theme, pair]) => {
+			const colours = Object.entries(pair).map(([key, hex]) => `${camel(key)}: "${qtColour(hex)}"`);
+			return `${camel(theme)}: { ${colours.join(', ')} }`;
+		});
+		return `        ${JSON.stringify(name)}: { ${pairs.join(', ')} }`;
+	});
+	return ['    readonly property var accents: ({', named.join(',\n'), '    })'];
 }
 
 function scalars(tokens) {

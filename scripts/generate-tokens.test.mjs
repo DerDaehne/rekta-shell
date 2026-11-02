@@ -54,8 +54,29 @@ test('a new kind of typography token stops the generator', () => {
 	assertRefused((t) => (t.typography['letter-spacing-kicker'] = 0.02), /typography: no mapping for letter-spacing-kicker/);
 });
 
-test('a third theme stops the generator', () => {
-	assertRefused((t) => (t.themes.sepia = t.themes.light), /themes: expected light, dark, got/);
+test('a theme beyond light, dark and their contrast sets stops the generator', () => {
+	assertRefused((t) => (t.themes.sepia = t.themes.light), /themes: expected light, dark, light-contrast, dark-contrast, got/);
+});
+
+test('a named accent without a pair for every theme stops the generator', () => {
+	assertRefused((t) => delete t.accents.teal['dark-contrast'], /accents\.teal: expected light, dark, light-contrast, dark-contrast, got/);
+});
+
+test('a named accent reaches the module with its pair for each theme', () => {
+	const pair = { accent: '#123456', 'on-accent': '#ffffff' };
+	const { tokens } = generate((t) => {
+		t.accents.probe = { description: 'A probe.', light: pair, dark: pair, 'light-contrast': pair, 'dark-contrast': pair };
+	});
+	assert.match(tokens, /"probe": \{ light: \{ accent: "#123456", textOnAccent: "#ffffff" \}, dark: .*, darkContrast: \{ accent: "#123456", textOnAccent: "#ffffff" \} \}/);
+});
+
+test('a malformed accent colour stops the generator', () => {
+	assertRefused((t) => (t.accents.teal.light.accent = 'teal'), /not a colour: teal/);
+});
+
+test('the ascent and descent are the typeface\'s whatever Rekta gives', () => {
+	const { tokens } = generate((t) => (t.typography['font-ascent'] = 1.5));
+	assert.match(tokens, /property real fontAscent: 0\.984\n/);
 });
 
 test('a third density stops the generator', () => {
@@ -72,12 +93,12 @@ test('a malformed colour stops the generator', () => {
 
 test('a malformed easing stops the generator', () => {
 	assertRefused((t) => (t.motion['ease-in'] = [0, 0, 1]), /not a cubic-bezier/);
+	assertRefused((t) => (t.motion['dots-ease-arrive'] = [0, 0, 1]), /not a cubic-bezier/);
 });
 
 test('a name QML reads as a signal handler stops the generator', () => {
 	assertRefused((t) => {
-		t.themes.light['on-surface'] = '#000000';
-		t.themes.dark['on-surface'] = '#ffffff';
+		for (const theme of Object.values(t.themes)) theme['on-surface'] = '#000000';
 	}, /on-surface: QML would read onSurface as a signal handler/);
 });
 
@@ -121,6 +142,10 @@ test('a line cap or join the icon cannot draw stops the generator', () => {
 });
 
 test('the tile unit is the product value whatever Rekta gives', () => {
-	const { tokens } = generate((t) => (t.size['tile-unit'] = 99));
+	const { tokens } = generate((t) => {
+		t.size['tile-unit'] = 99;
+		t.size['tile-unit-ultrawide'] = 99;
+	});
 	assert.match(tokens, /property real tileUnit: 170\n/);
+	assert.match(tokens, /property real tileUnitUltrawide: 170\n/);
 });
