@@ -46,6 +46,7 @@ TestCase {
             property real barWidth: 1600
             property var shown: []
             property date clockNow: testCase.widestClock
+            property real reserve: Tokens.tileUnit
 
             width: 1800
             height: 300
@@ -58,7 +59,7 @@ TestCase {
                 width: scene.barWidth
                 area: Qt.size(scene.barWidth, scene.height)
                 centre: clock
-                centreReserve: Tokens.tileUnit
+                centreReserve: scene.reserve
 
                 AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects: build the shell and its tests"] }
                 AppBarClock { id: clock; objectName: "clock"; area: appBar.area; locale: Qt.locale("de_DE"); now: scene.clockNow }
@@ -314,13 +315,40 @@ TestCase {
         makeScene({ shown: [microphone, muted] });
         settle();
         scene.shown = [muted, quiet];
-        verify(word("microphone").visible, "the one that goes fades out");
-        wait(Geometry.leaveShare * Tokens.durationShort / 3);
+        const leaving = findChild(word("microphone"), "fadeRun");
+        verify(leaving.running, "the one that goes fades out");
+        leaving.pause();
+        wait(Geometry.leaveShare * Tokens.durationShort);
         verify(!word("doNotDisturb").visible, "the one that comes waits out of sight");
+        leaving.resume();
         holdGlide();
         verify(!word("microphone").visible);
         verify(word("doNotDisturb").visible, "and comes as the others glide");
         scene.bar.reflow.run.complete();
+    }
+
+    function test_after_a_change_of_the_bar_s_width_a_word_that_goes_fades_out_again() {
+        Prefs.motion = "on";
+        makeScene({ shown: [microphone, muted] });
+        settle();
+        scene.barWidth = 1500;
+        settle();
+        scene.shown = [muted];
+        verify(word("microphone").visible && word("microphone").fading, "it fades out where it stands");
+    }
+
+    // Without a reserve the clock's width sets the room of the sides, as on every screen but the primary one.
+    function test_on_a_bar_without_a_reserve_after_the_clock_changes_width_a_word_that_goes_fades_out_again() {
+        Prefs.motion = "on";
+        makeScene({ shown: [microphone, muted], reserve: 0 });
+        settle();
+        const clock = findChild(scene, "clock");
+        const clockWidth = clock.implicitWidth;
+        scene.clockNow = testCase.narrowestClock;
+        verify(clock.implicitWidth !== clockWidth, "the clock changed width");
+        settle();
+        scene.shown = [muted];
+        verify(word("microphone").visible && word("microphone").fading, "it fades out where it stands");
     }
 
     function test_a_word_that_gives_its_place_to_the_count_fades_out_as_a_control_moving_into_more_does() {

@@ -135,6 +135,7 @@ TestCase {
     function opacityAt(control: Item, ms: real): real {
         const run = findChild(control, "fadeRun");
         verify(run.running, `${control.objectName} fades`);
+        compare(run.easing.type, Easing.Linear, "its phase runs evenly in time");
         run.pause();
         findChild(control, "fade").phase = Math.min(1, ms / run.duration);
         return control.opacity;
@@ -759,6 +760,36 @@ TestCase {
         scene.barWidth = 1200;
         compare(background.opacity, 1, "it is there at once");
         checkClear("back in the old room");
+    }
+
+    function test_after_a_change_of_its_room_a_control_that_goes_fades_out_again() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        const background = named("in the background");
+        scene.barWidth = 1100;
+        settle();
+        scene.backgroundShown = false;
+        verify(background.visible && background.fading, "it fades out where it stands");
+        verify(bar.settling, "the others wait for it");
+    }
+
+    function test_after_a_change_of_its_room_a_control_that_widens_moves_the_others_with_a_glide_again() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        scene.barWidth = 1100;
+        settle();
+        named("messages").count = 10;
+        verify(bar.gliding);
+    }
+
+    function test_after_a_change_of_its_room_a_control_that_comes_fades_in_again() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400, backgroundShown: false });
+        const background = named("in the background");
+        scene.barWidth = 1100;
+        settle();
+        scene.backgroundShown = true;
+        verify(background.visible && background.opacity < 1);
     }
 
     function test_while_a_control_goes_nothing_overlaps() {

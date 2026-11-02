@@ -27,8 +27,8 @@ Item {
     property bool overflowed: false
     // False while there is nothing for the control to do: it is gone from the bar, not counted in its layout.
     property bool present: true
-    // Set by the bar; false before it has laid itself out and while its room changes: the control then comes and goes
-    // at once.
+    // Set by the bar; false before it has laid itself out and while it lays itself out in a new room: the control then
+    // comes and goes at once.
     property bool animated: false
     // It is there for the bar: present and not in "more".
     readonly property bool wanted: present && !overflowed
