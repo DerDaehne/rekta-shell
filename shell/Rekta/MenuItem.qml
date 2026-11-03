@@ -12,8 +12,8 @@ Item {
     // item | checkbox | radio
     property string kind: "item"
     property bool checked: false
-    // An image at the front of the row, 20px: the shell's own addition to Rekta's text-only rows. When one row of a menu has
-    // one, every row's text starts at the same edge.
+    // An image at the front of the row, 20px; when one row of a menu has one, every row's text starts at the same edge
+    // (rekta.css:1024–1025).
     property url icon
     // The same, by the name of a Rekta icon.
     property string glyph
@@ -21,8 +21,7 @@ Item {
     property string lead
     // The keys that do the same from anywhere, such as "Ctrl S".
     property string keyHint
-    // Marks at the end of the row, before a key hint, such as a device's battery and state: the shell's own addition, as
-    // the image is.
+    // Marks at the end of the row, before a key hint, such as a device's battery and state: the shell's own addition.
     default property alias trailing: end.data
     property string disabledReason
     // Off with no reason to give: a foreign menu's entry that the app has turned off.

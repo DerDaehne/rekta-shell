@@ -3,7 +3,7 @@ import QtQuick
 // A short question in a sheet (behaviour.md, `confirm()`; rekta.js:2861–2891): the question as its title, a line under
 // it, cancel and ok. The safe answer is the primary button and takes the focus; Escape and the shading answer cancel.
 // For an action that cannot be undone the safe answer is cancel, and ok wears the error frame (forms.md, "Dialog
-// levels"), where rekta.js leaves it plain. Its own safe answer is its way out, so it has no close button.
+// levels"; rekta.js:2879). Its own safe answer is its way out, so it has no close button.
 Sheet {
     id: confirm
 

@@ -335,8 +335,8 @@ Item {
             return;
         goTo(Math.max(0, Math.min(last, moves[event.key])), false, false);
         // A key is the user's: the scroll its jump causes is followed, only a click wins over that.
-        // ponytail: following a key's own jump is Rekta 0.5.0's; 0.6.0 keeps its target marked for the whole glide, as a
-        // click's (rekta.js:993–995).
+        // ponytail: following a key's own jump is Rekta 0.5.0's; 0.6.0 keeps its target marked for the whole glide, as
+        // a click's (rekta.js:993–995).
         userScroll();
         event.accepted = true;
     }

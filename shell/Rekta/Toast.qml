@@ -14,7 +14,7 @@ FocusScope {
     property string key
     property string text
     // A notification's summary, semibold above the text; with it the text keeps to bodyMaxLines and ends in an ellipsis.
-    // The reader still gets all of it. The shell's own addition to Rekta's one-sentence toast.
+    // The reader still gets all of it, as in Rekta's toast from another program (rekta.css:1183–1184, :1195–1196).
     property string title
     readonly property int bodyMaxLines: 2
     // { run }: the text is a control; pressing it calls run and ends the toast as "acted". What the press does, such as
@@ -24,7 +24,8 @@ FocusScope {
     property bool stays: false
     // info | success | warning | error, or "" for the ink strip; a success says it without a status (states.md).
     property string status
-    // The app the toast speaks for, at the front of the strip: the shell's own addition to Rekta's toast.
+    // The app the toast speaks for, at the front of the strip in the icon's 20px field (rekta.css:1182–1183, :1192).
+    // ponytail: its rounded corners are the shell's from before Rekta had it; 0.6.0 crops a picture square (:1193).
     property url icon
     // "undo", "redo" or the label of another action with a window.
     property string action: "undo"
