@@ -27,6 +27,8 @@ QtObject {
     }
 
     // How much of the splash still shows `elapsed` ms after it closed: all of it as it closes, nothing once gone.
+    // ponytail: ease-out, as the windows step back, is the shell's from before Rekta had this transition; 0.6.0 fades the
+    // loading screen to the ground with ease-in (motion.md:118).
     function splashOpacity(elapsed: real): real {
         return 1 - along(0, 1, elapsed, Tokens.durationModerate);
     }
