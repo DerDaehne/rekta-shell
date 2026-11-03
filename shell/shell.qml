@@ -114,6 +114,7 @@ ShellRoot {
             primaryScreen: primary.screen
             controlPanel: sidePanel
             arrived: splash.arrived
+            toaster: toasts.toaster
         }
     }
 

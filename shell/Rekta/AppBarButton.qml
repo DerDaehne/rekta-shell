@@ -33,6 +33,11 @@ Item {
     readonly property bool wanted: present && !overflowed
     // Kept out of sight by the bar until it has a place there.
     property bool held: false
+    // Gives way to what rises from it, such as a toast it counts: the face (glyph, word and count) leaves upwards as the
+    // old count of a peek does and comes back with the second half of a flip, as a live tile's news (motion.md:26;
+    // rekta.js:4211, :4197). The width stays and the control takes no press while away; a count that changes meanwhile
+    // comes back with the face, without a peek of its own.
+    property bool away: false
     readonly property bool showing: wanted && !held
     // While it fades out it stays where it was, and the bar closes the gap after it (motion.md, "Arriving, leaving").
     readonly property bool fading: fadeRun.running && !fade.arriving
@@ -53,6 +58,7 @@ Item {
     implicitHeight: box.height
     visible: showing || fading
     opacity: fade.opacity
+    enabled: !away
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: words
@@ -67,6 +73,15 @@ Item {
         }
         fadeRun.stop();
         fade.phase = 1;
+    }
+    onAwayChanged: {
+        giveWay.back = !away;
+        if (giveWayRun.duration > 0) {
+            giveWayRun.restart();
+            return;
+        }
+        giveWayRun.stop();
+        giveWay.phase = 1;
     }
     // The bar lays out at once, so a fade still running ends.
     onAnimatedChanged: {
@@ -108,7 +123,10 @@ Item {
             return;
         peek.was = peek.now;
         peek.now = count;
-        peekRun.restart();
+        if (away)
+            peekRun.complete();
+        else
+            peekRun.restart();
     }
 
     // Focus comes only from the keyboard, so the reason shows at once.
@@ -123,7 +141,7 @@ Item {
 
     onFaceChanged: {
         if (face)
-            face.parent = box;
+            face.parent = features;
     }
 
     Keys.onPressed: event => {
@@ -164,52 +182,81 @@ Item {
             }
         }
 
-        Icon {
-            objectName: "glyph"
-            x: Geometry.appBarControlPadding
-            anchors.verticalCenter: parent.verticalCenter
-            visible: box.glyph > 0
-            name: control.icon
-            size: Geometry.appBarGlyph
-            color: control.ink
-        }
+        // What gives way: the glyph, the word and the count, or the control's own face.
+        Item {
+            id: features
 
-        Text {
-            id: label
+            // The height of the face's line; a peek travels a share of it.
+            readonly property real lineHeight: control.face ? control.face.height : Math.max(box.glyph > 0 ? Geometry.appBarGlyph : 0, label.height)
 
-            objectName: "label"
-            visible: !control.face
-            x: Geometry.appBarControlPadding + box.glyph
-            anchors.verticalCenter: parent.verticalCenter
-            text: control.text
-            font.family: Tokens.fontSans
-            font.pixelSize: Tokens.fontSizeXs
-            font.weight: Tokens.fontWeightSemibold
-            color: control.ink
-        }
+            objectName: "face"
+            anchors.fill: parent
+            opacity: 1 - giveWay.gone
+            transform: [
+                Translate {
+                    y: -Tokens.peekTravel * features.lineHeight * giveWay.gone
+                },
+                // About the middle of the face, as a flip turns what it turns about its middle.
+                Rotation {
+                    axis {
+                        x: 1
+                        y: 0
+                        z: 0
+                    }
+                    origin.x: Geometry.appBarControlPadding + box.content / 2
+                    origin.y: features.height / 2
+                    distanceToPlane: Tokens.turnstilePerspective
+                    angle: giveWay.angle
+                }
+            ]
 
-        // The space before the count belongs to it, so at 0 the word stands alone.
-        CountText {
-            id: figure
-
-            objectName: "count"
-            value: peek.now
-            opacity: peek.rising
-            transform: Translate {
-                y: Tokens.peekTravel * figure.height * (1 - peek.rising)
+            Icon {
+                objectName: "glyph"
+                x: Geometry.appBarControlPadding
+                anchors.verticalCenter: parent.verticalCenter
+                visible: box.glyph > 0
+                name: control.icon
+                size: Geometry.appBarGlyph
+                color: control.ink
             }
-        }
 
-        CountText {
-            id: ghost
+            Text {
+                id: label
 
-            objectName: "ghost"
-            value: peek.was
-            visible: peekRun.running
-            opacity: 1 - peek.leaving
-            Accessible.ignored: true
-            transform: Translate {
-                y: -Tokens.peekTravel * ghost.height * peek.leaving
+                objectName: "label"
+                visible: !control.face
+                x: Geometry.appBarControlPadding + box.glyph
+                anchors.verticalCenter: parent.verticalCenter
+                text: control.text
+                font.family: Tokens.fontSans
+                font.pixelSize: Tokens.fontSizeXs
+                font.weight: Tokens.fontWeightSemibold
+                color: control.ink
+            }
+
+            // The space before the count belongs to it, so at 0 the word stands alone.
+            CountText {
+                id: figure
+
+                objectName: "count"
+                value: peek.now
+                opacity: peek.rising
+                transform: Translate {
+                    y: Tokens.peekTravel * figure.height * (1 - peek.rising)
+                }
+            }
+
+            CountText {
+                id: ghost
+
+                objectName: "ghost"
+                value: peek.was
+                visible: peekRun.running
+                opacity: 1 - peek.leaving
+                Accessible.ignored: true
+                transform: Translate {
+                    y: -Tokens.peekTravel * ghost.height * peek.leaving
+                }
             }
         }
 
@@ -285,5 +332,30 @@ Item {
         from: 0
         to: 1
         duration: Tokens.durationModerate
+    }
+
+    // The face's last way, away or back; phase runs 0 to 1, linear, over that way's time, and each way eases its own curve.
+    QtObject {
+        id: giveWay
+
+        objectName: "giveWay"
+        property bool back: true
+        property real phase: 1
+        readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
+        readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+        // How far the face has gone up and faded on its way away, and its angle on the way back.
+        readonly property real gone: back ? 0 : easeOut.valueForProgress(phase)
+        readonly property real angle: back ? Tokens.flipAngle * (1 - easeIn.valueForProgress(phase)) : 0
+    }
+
+    NumberAnimation {
+        id: giveWayRun
+
+        objectName: "giveWayRun"
+        target: giveWay
+        property: "phase"
+        from: 0
+        to: 1
+        duration: giveWay.back ? Tokens.durationModerate / 2 : Geometry.peekOutShare * Tokens.durationModerate
     }
 }

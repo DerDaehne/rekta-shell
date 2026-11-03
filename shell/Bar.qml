@@ -29,9 +29,12 @@ PanelWindow {
     // What deviates from normal, as the words before "steuerung".
     required property StatusWords status
     required property ShellScreen primaryScreen
+    // The toasts rise from the bar of the primary screen, above "meldungen"; it gives way to a notification's toast.
+    required property Toaster toaster
     // The splash has gone after login (SplashEnd.arrived).
     required property bool arrived
     readonly property bool showsReadout: modelData === primaryScreen
+    readonly property bool showsToasts: modelData === primaryScreen
     // The active window, when it is on this screen.
     readonly property var front: windows?.active?.isOn(modelData) ? windows.active : null
     readonly property bool away: !arrived || (windows?.fullScreenOn(modelData) ?? false)
@@ -122,6 +125,7 @@ PanelWindow {
             icon: "bell"
             text: "meldungen"
             count: panel.notices.unseen
+            away: panel.showsToasts && panel.toaster.countAway
             priority: 2
             onClicked: panel.controlPanel.toggle(panel.modelData, 1, !bell.activeFocus)
         }
@@ -150,6 +154,22 @@ PanelWindow {
         function onPressed() {
             display.press();
         }
+    }
+
+    // A toast stands flush with the trailing edge of "meldungen", or of "mehr" while that holds it; the bar spans the
+    // screen as the toasts' surface does, so its x is theirs.
+    Binding {
+        when: panel.showsToasts
+        target: panel.toaster
+        property: "trailingEdge"
+        value: bell.overflowed ? bar.more.x + bar.more.width : bell.x + bell.width
+    }
+
+    Binding {
+        when: panel.showsToasts
+        target: panel.toaster
+        property: "countInSight"
+        value: !panel.away && !bell.overflowed
     }
 
     FloatPopup {

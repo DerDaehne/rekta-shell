@@ -255,6 +255,93 @@ TestCase {
         verify(!findChild(control, "ghost").visible);
     }
 
+    // Holds the way the face of `control` has begun, away or back, and sets it `share` of the way along its time.
+    function faceAt(control: Item, share: real): var {
+        const run = findChild(control, "giveWayRun");
+        verify(run.running, `${control.objectName}'s face moves`);
+        compare(run.easing.type, Easing.Linear, "its phase runs evenly in time");
+        run.pause();
+        findChild(control, "giveWay").phase = share;
+        return findChild(control, "face");
+    }
+
+    function test_away_the_face_leaves_upwards_as_the_old_count_of_a_peek_does_and_the_width_stays() {
+        Prefs.motion = "on";
+        const control = createTemporaryObject(buttonComponent, testCase, { count: 3 });
+        const width = control.width;
+        control.away = true;
+        compare(findChild(control, "giveWayRun").duration, Geometry.peekOutShare * Tokens.durationModerate);
+        for (const share of [0, 0.25, 0.5, 0.75, 1]) {
+            const face = faceAt(control, share);
+            const gone = easeOut.valueForProgress(share);
+            compare(face.lineHeight, Geometry.appBarGlyph, "the line of a glyph and a word");
+            fuzzyCompare(face.transform[0].y, -Tokens.peekTravel * face.lineHeight * gone, 0.001, `up at ${share}`);
+            fuzzyCompare(face.opacity, 1 - gone, 0.001, `fading at ${share}`);
+            compare(face.transform[1].angle, 0, "it does not turn on its way out");
+        }
+        compare(control.width, width);
+        compare(findChild(control, "box").width, width);
+    }
+
+    function test_back_the_face_comes_with_the_second_half_of_a_flip() {
+        Prefs.motion = "on";
+        const control = createTemporaryObject(buttonComponent, testCase, { count: 3 });
+        control.away = true;
+        findChild(control, "giveWayRun").complete();
+        control.away = false;
+        compare(findChild(control, "giveWayRun").duration, Tokens.durationModerate / 2);
+        for (const share of [0, 0.25, 0.5, 0.75, 1]) {
+            const face = faceAt(control, share);
+            const turn = face.transform[1];
+            fuzzyCompare(turn.angle, Tokens.flipAngle * (1 - easeIn.valueForProgress(share)), 0.001, `turning at ${share}`);
+            compare(face.opacity, 1, "it turns in whole");
+            compare(face.transform[0].y, 0);
+            compare(turn.axis.x, 1, "about the horizontal axis");
+            compare(turn.axis.y, 0);
+            compare(turn.origin.y, face.height / 2, "through the middle of the face");
+            compare(turn.distanceToPlane, Tokens.turnstilePerspective);
+        }
+        compare(findChild(control, "face").transform[1].angle, 0);
+    }
+
+    function test_away_a_control_takes_no_press_and_back_it_does_again() {
+        const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 40 });
+        const clicked = createTemporaryObject(spy, testCase, { target: control });
+        control.away = true;
+        mouseClick(control, 10, 10);
+        control.forceActiveFocus();
+        keyClick(Qt.Key_Space);
+        compare(clicked.count, 0);
+        control.away = false;
+        mouseClick(control, 10, 10);
+        compare(clicked.count, 1);
+    }
+
+    function test_a_count_that_changes_while_away_comes_back_with_the_face_without_a_peek() {
+        Prefs.motion = "on";
+        const control = createTemporaryObject(buttonComponent, testCase, { count: 9 });
+        control.away = true;
+        control.count = 10;
+        verify(!findChild(control, "peekRun").running);
+        verify(!findChild(control, "ghost").visible);
+        control.away = false;
+        compare(findChild(control, "count").text, " 10", "the new count turns in with the face");
+        compare(findChild(control, "count").opacity, 1);
+        compare(control.Accessible.name, "back 10");
+    }
+
+    function test_under_reduced_motion_the_face_goes_and_comes_back_at_once() {
+        Prefs.motion = "off";
+        const control = createTemporaryObject(buttonComponent, testCase, { count: 1 });
+        const face = findChild(control, "face");
+        control.away = true;
+        verify(!findChild(control, "giveWayRun").running);
+        compare(face.opacity, 0);
+        control.away = false;
+        compare(face.opacity, 1);
+        compare(face.transform[1].angle, 0);
+    }
+
     function test_hover_and_press_lay_the_hover_colour_under_the_control() {
         const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 40 });
         const press = findChild(control, "press");
@@ -709,6 +796,30 @@ TestCase {
             settle();
             checkClearAllAlong(`centre ${withCentre}`, () => (named("messages").count = 10));
         }
+    }
+
+    // The toast has run out while "messages" is away: its count widens, the others glide, and the face comes back as they do.
+    function test_while_a_count_widens_away_the_others_glide_as_the_face_comes_back_and_nothing_overlaps() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400, withCentre: true, barWidth: 1400 });
+        const messages = named("messages");
+        messages.count = 9;
+        settle();
+        messages.away = true;
+        findChild(messages, "giveWayRun").complete();
+        const narrow = messages.width;
+        messages.count = 10;
+        holdGlide();
+        messages.away = false;
+        verify(findChild(messages, "giveWayRun").running, "the face comes back while the others glide");
+        compare(findChild(messages, "count").text, " 10", "in the new width");
+        verify(messages.implicitWidth > narrow);
+        for (let step = 0; step <= 10; step++) {
+            bar.reflow.progress = step / 10;
+            checkClear(`at ${step / 10}`);
+        }
+        bar.reflow.run.complete();
+        compare(messages.width, messages.implicitWidth);
     }
 
     function test_a_control_that_goes_fades_out_where_it_stands_and_then_the_others_close_the_gap() {

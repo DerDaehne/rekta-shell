@@ -36,7 +36,9 @@ FocusScope {
     property Item from: null
     property var endHandler: null
     property int windowMs: 0
-    // True while the toast it replaces leaves.
+    // A notification from another program: its count in the bar gives way to it.
+    property bool notification: false
+    // True while the toast it replaces leaves, or while its count makes way.
     property bool waiting: false
 
     property double total: undoAction ? windowMs || toaster.undoWindow : Tokens.durationToast
@@ -55,13 +57,16 @@ FocusScope {
     readonly property string spoken: title !== "" ? `${title}. ${text}` : text
     // An undo toast says how long its window is.
     readonly property string announcement: undoAction ? `${spoken}, ${seconds} ${seconds === 1 ? "second" : "seconds"} to ${action}` : spoken
-    // Runs from 0, above the top edge, to 1, at rest.
-    property real entry: 0
+    // Runs from 0, toast-rise below its place and unseen, to 1 at rest, linear in time; the way down runs it back, so it
+    // plays the same curve backwards, as the stylesheet's reversed keyframes do (rekta.css:1169, :1172, :1235).
+    property real phase: 0
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+    readonly property real entry: easeIn.valueForProgress(phase)
 
     function begin() {
         waiting = false;
         announce();
-        slidingIn.start();
+        rising.start();
         // Just made, or hidden while it waited: nothing holds it yet.
         run();
     }
@@ -78,11 +83,12 @@ FocusScope {
         running = false;
         tick.stop();
         const hadFocus = activeFocus;
-        toaster.letGo(toast);
+        rising.stop();
+        toaster.letGo(toast, waiting ? 0 : sinking.duration);
         if (waiting)
             goAway();
         else
-            slidingOut.start();
+            sinking.start();
         if (doUndo && undoAction)
             undoAction();
         if (endHandler)
@@ -204,8 +210,10 @@ FocusScope {
             run();
     }
 
-    x: (toaster.width - width) / 2
-    y: toaster.rest - (1 - entry) * (toaster.rest + height)
+    // Flush with the trailing edge it is given, space-m inside the region's sides (rekta.css:1159), space-s above the bar.
+    x: Math.max(Tokens.spaceM, Math.min(toaster.trailingEdge, toaster.width - Tokens.spaceM) - width)
+    y: toaster.height - Tokens.spaceS - height + (1 - entry) * Geometry.toastRise
+    opacity: entry
     width: Math.min(Geometry.toastMaxWidth, toaster.width - 2 * Tokens.spaceM, front.width + words.implicitWidth + actionBox.width)
     height: Math.max(Tokens.controlHeight + Tokens.spaceXs, words.height)
     visible: !waiting
@@ -220,27 +228,23 @@ FocusScope {
     }
 
     NumberAnimation {
-        id: slidingIn
+        id: rising
 
-        objectName: "slidingIn"
+        objectName: "rising"
         target: toast
-        property: "entry"
+        property: "phase"
         to: 1
-        duration: toast.toaster.slideIn
-        easing.type: Easing.Bezier
-        easing.bezierCurve: Tokens.easePivotGlide
+        duration: Tokens.durationShort
     }
 
     NumberAnimation {
-        id: slidingOut
+        id: sinking
 
-        objectName: "slidingOut"
+        objectName: "sinking"
         target: toast
-        property: "entry"
+        property: "phase"
         to: 0
-        duration: toast.toaster.slideOut
-        easing.type: Easing.Bezier
-        easing.bezierCurve: Tokens.easeOut
+        duration: Tokens.durationShort
         onFinished: toast.goAway()
     }
 

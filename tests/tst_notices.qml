@@ -154,6 +154,14 @@ TestCase {
         compare(toaster.open, null);
     }
 
+    function test_a_notification_s_toast_rises_from_its_count_and_the_undo_toast_of_a_removal_does_not() {
+        notify({ summary: "anna" });
+        verify(toaster.open.notification, "its count gives way to it");
+        runOut();
+        board.remove([board.rows[0]]);
+        verify(!toaster.open.notification, "the count stays for the shell's own toast");
+    }
+
     function test_a_toast_waits_while_the_one_before_slides_away() {
         Prefs.motion = "on";
         notify({ summary: "anna" });

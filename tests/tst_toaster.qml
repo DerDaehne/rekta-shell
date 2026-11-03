@@ -74,6 +74,50 @@ TestCase {
         }
     }
 
+    // The toaster on the bar, as the shell wires them: it stands over a count, which gives way while the toaster says so.
+    Component {
+        id: countSceneComponent
+
+        Item {
+            id: counted
+
+            property bool countInSight: true
+
+            width: 800
+            height: 600
+
+            Toaster {
+                id: region
+
+                objectName: "toaster"
+                width: parent.width
+                clock: () => testCase.time
+                countInSight: counted.countInSight
+                trailingEdge: count.x + count.width
+            }
+
+            AppBarButton {
+                id: count
+
+                objectName: "count"
+                x: 500
+                y: 552
+                icon: "bell"
+                text: "messages"
+                count: 3
+                away: region.countAway
+            }
+        }
+    }
+
+    Component {
+        id: spyComponent
+
+        SignalSpy {}
+    }
+
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         Prefs.motion = "off";
@@ -108,15 +152,25 @@ TestCase {
         toast.step();
     }
 
-    function test_a_toast_hangs_from_the_top_centre_12px_below_the_edge() {
+    // Where a toast rests: space-s above the toaster's foot, which stands on the bar.
+    function restingY(toast: Toast): real {
+        return toaster.height - Tokens.spaceS - toast.height;
+    }
+
+    function test_a_toast_stands_space_s_above_the_bar_flush_with_the_trailing_edge_it_is_given() {
+        toaster.trailingEdge = 600;
         const toast = toaster.show("3 messages archived", {});
-        compare(toast.y, toaster.rest);
-        compare(toaster.rest, 12);
-        compare(toast.x, (toaster.width - toast.width) / 2);
+        compare(toast.x + toast.width, 600, "flush with the trailing edge");
+        compare(toaster.height - toast.y - toast.height, Tokens.spaceS);
         compare(toast.height, Math.max(Tokens.controlHeight + Tokens.spaceXs, findChild(toast, "words").height));
-        compare(toaster.implicitHeight, 12 + toast.height, "the host's window holds it");
+        compare(toaster.implicitHeight, Tokens.spaceS + toast.height, "the host's window holds it");
         toast.text = "a very long sentence that says what happened in many words, and then some more words, so it wraps";
         compare(toast.width, Geometry.toastMaxWidth, "at most 32rem");
+        compare(toast.x + toast.width, 600, "still flush when it grows");
+        toaster.trailingEdge = 300;
+        compare(toast.x, Tokens.spaceM, "never nearer than space-m to the region's leading side");
+        toaster.trailingEdge = toaster.width;
+        compare(toast.x + toast.width, toaster.width - Tokens.spaceM, "nor to its trailing side");
     }
 
     function test_a_success_is_the_plain_ink_strip_without_a_status() {
@@ -146,7 +200,7 @@ TestCase {
         verify(first.visible, "the first is on its way out");
         tryVerify(() => second.visible, 1000);
         compare(toaster.leaving, 0);
-        tryCompare(second, "y", toaster.rest, 1000);
+        tryCompare(second, "phase", 1, 1000);
     }
 
     function test_a_toast_dismissed_before_it_came_in_never_shows() {
@@ -313,9 +367,9 @@ TestCase {
         Prefs.motion = "on";
         let runs = 0;
         const toast = toaster.show("could not load the jobs", { act: { label: "reload", run: () => { runs++; } }, onEnd: ending("toast") });
-        tryCompare(toast, "y", toaster.rest, 1000);
+        tryCompare(toast, "phase", 1, 1000);
         toaster.dismiss();
-        verify(findChild(toast, "slidingOut").running);
+        verify(findChild(toast, "sinking").running);
         mouseClick(findChild(toast, "action"));
         compare(runs, 0);
         compare(testCase.ends, ["toast dismissed"]);
@@ -325,7 +379,7 @@ TestCase {
         Prefs.motion = "on";
         let runs = 0;
         const toast = toaster.show("could not load the jobs", { act: { label: "reload", run: () => { runs++; } } });
-        tryCompare(toast, "y", toaster.rest, 1000);
+        tryCompare(toast, "phase", 1, 1000);
         findChild(toast, "action").forceActiveFocus();
         toaster.show("message archived", {});
         verify(findChild(toast, "action").activeFocus, "no `from` to return focus to");
@@ -472,9 +526,9 @@ TestCase {
         Prefs.motion = "on";
         let runs = 0;
         const toast = toaster.show("see you soon", { open: { run: () => { runs++; } }, onEnd: ending("toast") });
-        tryCompare(toast, "y", toaster.rest, 1000);
+        tryCompare(toast, "phase", 1, 1000);
         toaster.dismiss();
-        verify(findChild(toast, "slidingOut").running);
+        verify(findChild(toast, "sinking").running);
         mouseClick(findChild(toast, "open"));
         compare(runs, 0);
         compare(testCase.ends, ["toast dismissed"]);
@@ -536,6 +590,7 @@ TestCase {
     // A toast at a fraction of a pixel is drawn blurred; pixel tests put it on the grid.
     function onWholePixels(toast) {
         toaster.width = toast.width + 200;
+        toaster.trailingEdge = toast.width + 100;
         compare(toast.x, 100);
     }
 
@@ -569,41 +624,151 @@ TestCase {
             compare(shot.pixel(origin.x + x, origin.y + y), Qt.color("#3a76f0"), `pixel ${x},${y} is picture`);
     }
 
-    function test_a_toast_slides_in_whole_from_the_top_edge_without_a_fade_and_leaves_back_up() {
-        Prefs.motion = "on";
-        const toast = toaster.show("message archived", {});
-        const slidingIn = findChild(toast, "slidingIn");
-        compare(slidingIn.duration, 300);
-        compare(slidingIn.easing.bezierCurve, Tokens.easePivotGlide);
-        wait(slidingIn.duration / 2);
-        verify(toast.y > -toast.height && toast.y < toaster.rest, `on its way: ${toast.y}`);
-        compare(toast.opacity, 1, "no fade");
-        tryCompare(toast, "y", toaster.rest, 1000);
-        const slidingOut = findChild(toast, "slidingOut");
-        compare(slidingOut.duration, 0.6 * 300);
-        compare(slidingOut.easing.bezierCurve, Tokens.easeOut);
-        toaster.dismiss();
-        verify(slidingOut.running);
-        tryVerify(() => toast.y <= -toast.height + 1 || toaster.leaving === 0, 1000, "whole above the edge");
-        tryCompare(toaster, "leaving", 0, 1000);
+    // Holds the way `run` is on and checks the toast at even steps of its time: it rises toast-rise with a fade, both on
+    // ease-in, from below its place.
+    function checkWay(toast: Toast, run: var, way: string) {
+        verify(run.running, `${way}: it moves`);
+        compare(run.duration, Tokens.durationShort, way);
+        compare(run.easing.type, Easing.Linear, `${way}: its phase runs evenly in time`);
+        run.pause();
+        for (const phase of [0, 0.25, 0.5, 0.75, 1]) {
+            toast.phase = phase;
+            const shown = easeIn.valueForProgress(phase);
+            fuzzyCompare(toast.y, restingY(toast) + (1 - shown) * Geometry.toastRise, 0.001, `${way} at ${phase}`);
+            fuzzyCompare(toast.opacity, shown, 0.001, `${way} at ${phase}: it fades on the same curve`);
+        }
     }
 
-    function test_a_toast_starts_whole_above_the_top_edge() {
+    function test_a_toast_rises_12px_from_below_its_place_with_a_fade_and_goes_down_the_same_way() {
         Prefs.motion = "on";
         const toast = toaster.show("message archived", {});
-        compare(toast.entry, 0);
-        compare(toast.y, -toast.height);
+        compare(toast.phase, 0, "it starts below its place, unseen");
+        compare(Geometry.toastRise, 12);
+        checkWay(toast, findChild(toast, "rising"), "up");
+        toaster.dismiss();
+        checkWay(toast, findChild(toast, "sinking"), "down");
+        findChild(toast, "sinking").resume();
+        tryCompare(toaster, "leaving", 0, 1000);
     }
 
     function test_under_reduced_motion_toasts_come_and_go_at_once_and_the_window_still_runs() {
         const first = toaster.show("message archived", { undo: undoing("archive") });
-        compare(first.y, toaster.rest);
+        compare(first.entry, 1);
+        compare(first.y, restingY(first));
         compare(findChild(first, "tick").interval, 1000, "the wall clock keeps running");
         compare(first.total, 5000);
         const second = toaster.show("message moved", {});
         verify(!second.waiting, "the first has gone at once");
-        compare(second.y, toaster.rest);
+        compare(second.y, restingY(second));
         compare(toaster.leaving, 0);
+    }
+
+    // The toaster over a count that gives way while it says so, as the shell wires them.
+    function makeCountScene(properties) {
+        const counted = createTemporaryObject(countSceneComponent, testCase, properties);
+        return { toaster: findChild(counted, "toaster"), count: findChild(counted, "count") };
+    }
+
+    function test_a_notification_s_toast_comes_in_once_its_count_is_turn_overlap_through_its_way_out() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        const toast = region.show("lunch at noon?", { title: "anna", notification: true });
+        verify(count.away, "the count gives way");
+        const out = findChild(count, "giveWayRun");
+        verify(out.running);
+        verify(toast.waiting, "the toast waits for it");
+        const handOver = findChild(region, "handOver");
+        verify(handOver.running);
+        fuzzyCompare(handOver.interval, Tokens.turnOverlap * out.duration, 1);
+        tryVerify(() => !toast.waiting, 1000);
+        verify(findChild(toast, "rising").running, "then it rises");
+        verify(count.away, "and the count stays away while it stands");
+    }
+
+    function test_a_notification_s_count_comes_back_turn_overlap_into_its_toast_s_way_down() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        const toast = region.show("lunch at noon?", { notification: true });
+        tryVerify(() => !toast.waiting, 1000);
+        region.dismiss();
+        verify(count.away, "still away as the toast starts down");
+        const countBack = findChild(region, "countBack");
+        verify(countBack.running);
+        fuzzyCompare(countBack.interval, Tokens.turnOverlap * findChild(toast, "sinking").duration, 1);
+        tryVerify(() => !count.away, 1000);
+        verify(findChild(count, "giveWayRun").running, "it comes back");
+    }
+
+    function test_a_notification_s_toast_that_runs_out_falls_into_the_count_which_comes_back_with_it() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        const toast = region.show("lunch at noon?", { notification: true, onEnd: reason => { if (reason === "expired") count.count++; } });
+        tryVerify(() => !toast.waiting, 1000);
+        at(Tokens.durationToast, toast);
+        compare(count.count, 4, "it counts as unseen");
+        verify(count.away);
+        verify(!findChild(count, "peekRun").running, "the new count does not peek");
+        tryVerify(() => !count.away, 1000);
+        compare(findChild(count, "count").text, " 4", "the count comes back with the new number");
+    }
+
+    function test_a_notification_s_toast_that_is_pressed_or_dismissed_leaves_the_count_as_it_was() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        for (const end of ["press", "dismiss"]) {
+            const toast = region.show("lunch at noon?", { notification: true, open: { run: () => {} }, onEnd: reason => { if (reason === "expired") count.count++; } });
+            tryVerify(() => !toast.waiting, 1000, end);
+            if (end === "press")
+                toast.pressText();
+            else
+                region.dismiss();
+            tryVerify(() => !count.away && region.leaving === 0, 1000, end);
+            compare(count.count, 3, end);
+        }
+    }
+
+    function test_the_count_stays_away_while_one_notification_s_toast_follows_another() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        const first = region.show("lunch at noon?", { notification: true });
+        tryVerify(() => !first.waiting, 1000);
+        const back = createTemporaryObject(spyComponent, testCase, { target: count, signalName: "awayChanged" });
+        const second = region.show("on my way", { notification: true });
+        tryVerify(() => !second.waiting, 1000);
+        tryCompare(region, "leaving", 0, 1000);
+        compare(back.count, 0, "it never came back between them");
+    }
+
+    function test_other_toasts_stand_in_the_same_place_and_the_count_stays() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        const toast = region.show("meldung entfernt", { undo: () => {} });
+        verify(!region.countAway);
+        verify(!count.away);
+        verify(!toast.waiting, "it comes in at once");
+        compare(toast.x + toast.width, count.x + count.width, "over the count, flush with its trailing edge");
+    }
+
+    function test_a_notification_s_toast_comes_in_at_once_when_its_count_is_not_in_sight() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({ countInSight: false });
+        const toast = region.show("lunch at noon?", { notification: true });
+        verify(!toast.waiting);
+        verify(findChild(toast, "rising").running);
+    }
+
+    function test_under_reduced_motion_the_count_gives_way_and_comes_back_at_once_and_the_window_still_runs() {
+        const { toaster: region, count } = makeCountScene({});
+        const toast = region.show("lunch at noon?", { notification: true });
+        verify(count.away);
+        compare(findChild(count, "face").opacity, 0, "gone at once");
+        verify(!toast.waiting, "the toast is in at once");
+        compare(toast.entry, 1);
+        compare(toast.total, Tokens.durationToast, "it still stands duration-toast");
+        region.dismiss();
+        verify(!count.away, "back at once");
+        compare(findChild(count, "face").opacity, 1);
+        compare(region.leaving, 0);
     }
 
     function test_toasts_stay_on_their_layer_below_floating_surfaces_and_sheets() {
@@ -641,7 +806,7 @@ TestCase {
             tryCompare(findChild(titled, "appIcon"), "status", Image.Ready);
             waitForRendering(sheet);
             grabImage(sheet).save(`toast-sheet-${theme}.png`);
-            compare(plain.y, 12, theme);
+            compare(plain.entry, 1, theme);
             sheet.destroy();
         }
     }
@@ -710,6 +875,132 @@ TestCase {
                     objectName: "alert"
                     width: parent.width
                     bannerStates: ({ halted: { word: "halted", status: "error", alert: true, text: "Every run has stopped: the job server does not answer.", action: "retry now" } })
+                }
+            }
+        }
+    }
+
+    // The way of a notification's toast, held at six moments: at rest, the count halfway out, the toast halfway up, at
+    // rest above the bar, halfway down, and the count halfway back with the toast counted.
+    function test_contact_sheet_of_a_notification_rising_from_its_count_and_falling_into_it_in_both_themes() {
+        Prefs.motion = "on";
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            testCase.time = 0;
+            const sheet = createTemporaryObject(riseSheetComponent, testCase);
+            for (let moment = 1; moment < 6; moment++)
+                holdAt(findChild(sheet, `toaster ${moment}`), findChild(sheet, `count ${moment}`), moment);
+            waitForRendering(sheet);
+            grabImage(sheet).save(`toast-rise-sheet-${theme}.png`);
+            sheet.destroy();
+        }
+    }
+
+    // Takes the toaster and its count through the way up to `moment` and holds both there.
+    function holdAt(region: Toaster, count: AppBarButton, moment: int) {
+        const toast = region.show("lunch at noon?", { title: "anna", icon: testCase.appIcon, notification: true, open: { run: () => {} }, onEnd: reason => { if (reason === "expired") count.count++; } });
+        const giveWay = findChild(count, "giveWayRun");
+        if (moment === 1) {
+            giveWay.pause();
+            findChild(count, "giveWay").phase = 0.5;
+            return;
+        }
+        giveWay.complete();
+        findChild(region, "handOver").stop();
+        region.beginNext();
+        const rising = findChild(toast, "rising");
+        if (moment === 2) {
+            rising.pause();
+            toast.phase = 0.5;
+            return;
+        }
+        rising.complete();
+        if (moment === 3)
+            return;
+        toast.leave(false, "expired");
+        findChild(region, "countBack").stop();
+        const sinking = findChild(toast, "sinking");
+        if (moment === 4) {
+            sinking.pause();
+            toast.phase = 0.5;
+            return;
+        }
+        sinking.complete();
+        region.takeCountBack();
+        giveWay.pause();
+        findChild(count, "giveWay").phase = 0.5;
+    }
+
+    Component {
+        id: riseSheetComponent
+
+        Rectangle {
+            width: 800
+            height: 480
+            color: Tokens.color.surface
+
+            Grid {
+                columns: 2
+
+                Repeater {
+                    model: ["at rest", "the count goes", "the toast rises", "it stands", "it goes down", "the count comes back"]
+
+                    delegate: Item {
+                        id: moment
+
+                        required property string modelData
+                        required property int index
+
+                        width: 400
+                        height: 160
+
+                        Text {
+                            x: Tokens.spaceM
+                            y: Tokens.spaceS
+                            text: moment.modelData
+                            font.family: Tokens.fontSans
+                            font.pixelSize: Tokens.fontSizeXs
+                            color: Tokens.color.textContrastHigh
+                        }
+
+                        Toaster {
+                            id: region
+
+                            objectName: `toaster ${moment.index}`
+                            y: bar.y - height
+                            width: parent.width
+                            clock: () => testCase.time
+                            countInSight: true
+                            trailingEdge: count.x + count.width
+                        }
+
+                        AppBar {
+                            id: bar
+
+                            y: parent.height - height
+                            width: parent.width
+                            area: Qt.size(width, moment.height)
+
+                            AppBarMiddle {
+                                parts: ["konsole", "~/projects"]
+                            }
+
+                            AppBarButton {
+                                id: count
+
+                                objectName: `count ${moment.index}`
+                                icon: "bell"
+                                text: "messages"
+                                count: 3
+                                away: region.countAway
+                            }
+
+                            AppBarButton {
+                                icon: "tune"
+                                text: "controls"
+                            }
+                        }
+                    }
                 }
             }
         }

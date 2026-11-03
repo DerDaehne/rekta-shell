@@ -3,9 +3,11 @@ import Quickshell
 import Quickshell.Wayland
 import Rekta
 
-// The toasts' surface: along the top of the primary screen, above every window, so a critical toast shows over a
-// full-screen one too. It takes input only over the open toast and never the keyboard. Not the namespace
-// "notification": KWin would slide that in with an effect of its own.
+// The toasts' surface: along the bottom of the primary screen, kept clear of the app bar's zone, so a toast rises from the
+// top of the bar; under a full-screen window, where the bar and its zone have gone, from the screen's edge. Above every
+// window, so a critical toast shows over a full-screen one too. A toast starts its way below the surface's edge, which
+// hides it there. It takes input only over the open toast and never the keyboard. Not the namespace "notification":
+// KWin would slide that in with an effect of its own.
 PanelWindow {
     id: host
 
@@ -22,7 +24,7 @@ PanelWindow {
     onVisibleChanged: lifted = false
     anchors.left: true
     anchors.right: true
-    anchors.top: true
+    anchors.bottom: true
     implicitHeight: region.implicitHeight
     exclusionMode: ExclusionMode.Normal
     focusable: false

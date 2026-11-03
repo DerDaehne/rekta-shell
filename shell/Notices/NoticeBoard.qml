@@ -198,6 +198,7 @@ QtObject {
             icon: record.icon,
             stays: notification.urgency === NoticeBoard.Critical || notification.expireTimeout === 0,
             act: act ? { label: act.text, run: () => act.invoke() } : null,
+            notification: true,
             open: { run: () => pressed(notification) },
             onEnd: reason => ended(record, reason)
         });
