@@ -70,14 +70,14 @@ Row {
             Tips.leave(box);
     }
 
-    // A tip that changes while it shows, such as one naming what a press does next, says its new words.
+    // A tip that changes while it shows or waits to, such as one naming what a press does next, says its new words.
     onTipChanged: {
-        if (Tips.target !== box)
-            return;
         if (tip === "")
-            Tips.hide();
-        else
+            Tips.leave(box);
+        else if (Tips.target === box)
             Tips.show(box, tip);
+        else if (Tips.waiting === box)
+            Tips.waitingText = tip;
     }
 
     Keys.onPressed: event => {

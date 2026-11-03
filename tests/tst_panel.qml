@@ -1094,6 +1094,13 @@ TestCase {
         return Array.from(findChild(group, "rows").children).filter(row => row instanceof PanelRow && row.visible);
     }
 
+    // The tooltip shows as drawn: its ink at its padding, left of the words.
+    function drawnAsInk(tip: var): bool {
+        waitForRendering(side);
+        const at = tip.mapToItem(scene, Tokens.spaceS / 2, tip.height / 2);
+        return Qt.colorEqual(grabImage(scene).pixel(at.x, at.y), Tokens.color.textPrimary);
+    }
+
     function glyphOf(name: string): string {
         return findChild(control(name), "glyph").name;
     }
@@ -1161,6 +1168,7 @@ TestCase {
         compare(glyphOf("outputMute"), "speaker-muted");
         verify(slider.disabled, "the slider rests");
         compare(findChild(slider, "output").text, "stumm", "its value says why");
+        compare(findChild(slider, "output").color, Tokens.color.disabled, "in grey");
         compare(slider.Accessible.description, "stumm");
         verify(!findChild(slider, "why").visible, "and nothing below says it again");
         compare(rowOf(slider).height, Tokens.controlHeight);
@@ -1211,6 +1219,29 @@ TestCase {
         sound.speakers.audio.muted = false;
         compare(button.Accessible.name, "ausgang stumm schalten", "both follow a change from elsewhere");
         compare(Tips.text, "stumm schalten");
+    }
+
+    function test_the_panel_draws_the_tip_of_its_control_above_it_and_scrolling_hides_it() {
+        giveSound(controls);
+        showSettled(0);
+        const tip = named("tip");
+        const words = findChild(tip, "words");
+        const box = findChild(control("outputMute"), "box");
+        verify(!tip.visible);
+        control("outputMute").forceActiveFocus();
+        verify(tip.visible, "the panel's window draws its own tips");
+        compare(words.text, "stumm schalten");
+        const at = box.mapToItem(tip.parent, 0, 0);
+        compare(tip.side, "above");
+        compare(tip.y, Math.round(at.y - Tokens.tipGap - tip.height), "tip-gap above its control");
+        verify(tip.x < at.x + box.width && tip.x + tip.width > at.x, "over it");
+        verify(tip.x >= Tokens.spaceS && tip.x + tip.width <= tip.parent.width - Tokens.spaceS, "within the panel");
+        verify(drawnAsInk(tip), "an ink strip");
+        keyClick(Qt.Key_Space);
+        verify(tip.visible);
+        compare(words.text, "ton an", "it says what the next press does");
+        named("scroller").contentY = 1;
+        verify(!tip.visible, "scrolling hides it");
     }
 
     function test_ton_works_from_the_keyboard() {
@@ -2169,6 +2200,21 @@ TestCase {
         verify(!sheet().open);
         compare(findChild(findChild(sheet(), "password"), "input").text, "", "the password is not kept");
         verify(rowsOf("wifiBranch")[3].activeFocus, "the focus goes back to the row");
+    }
+
+    function test_the_tip_of_the_password_sheets_close_button_is_drawn_over_the_sheet() {
+        giveNetworks(controls);
+        showSettled(0);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        mouseClick(rowsOf("wifiBranch")[3]);
+        verify(sheet().open);
+        const close = findChild(sheet(), "close");
+        close.forceActiveFocus();
+        const tip = named("tip");
+        verify(tip.visible);
+        compare(findChild(tip, "words").text, close.label);
+        verify(drawnAsInk(tip), "over the sheet");
     }
 
     function test_an_empty_password_is_refused_at_the_field_and_escape_leaves_the_sheet_alone_of_the_panel() {

@@ -115,6 +115,7 @@ TestCase {
     }
 
     function cleanup() {
+        Tips.hide();
         Prefs.motion = "system";
         Prefs.theme = "system";
     }
@@ -435,6 +436,21 @@ TestCase {
         compare(calls, [], "it closes only once the undo window has run out");
         toaster.open.press();
         compare(summaries(), ["cleo", "ben", "anna"], "undo brings it back");
+    }
+
+    function test_the_remove_button_shows_its_tip_entfernen_drawn_in_the_panel() {
+        notify({ summary: "ben" });
+        openOnMessages();
+        const remove = findChild(rows()[0], "remove");
+        keyClick(Qt.Key_Tab);
+        verify(remove.activeFocus);
+        const tip = findChild(side, "tip");
+        verify(tip.visible, "the panel's window draws it");
+        compare(findChild(tip, "words").text, "entfernen");
+        const box = findChild(remove, "box");
+        const at = box.mapToItem(tip.parent, 0, 0);
+        verify(tip.x < at.x + box.width && tip.x + tip.width > at.x, "over its button");
+        compare(tip.x, Math.round(tip.parent.width - Tokens.spaceS - tip.width), "space-s from the panel's trailing edge");
     }
 
     function test_the_focus_reaches_the_remove_button_and_the_actions_with_tab_and_enter_presses_them() {

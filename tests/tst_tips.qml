@@ -203,6 +203,22 @@ TestCase {
         compare(Tips.target, null, "a tip that goes empty hides");
     }
 
+    function test_a_tip_that_changes_while_its_pointer_waits_shows_its_new_words() {
+        const close = findChild(scene, "close");
+        mouseMove(box("close"));
+        compare(Tips.waiting, box("close"));
+        close.label = "close for good";
+        tryCompare(Tips, "target", box("close"), Tokens.durationTipDelay * 2);
+        compare(findChild(tooltip, "words").text, "close for good");
+        mouseMove(scene, 5, 5);
+        Tips.hiddenAt = -Infinity;
+        mouseMove(box("close"));
+        close.tip = "";
+        compare(Tips.waiting, null, "a tip that goes empty while it waits never shows");
+        wait(Tokens.durationTipDelay * 2);
+        compare(Tips.target, null);
+    }
+
     function test_each_window_s_tooltip_draws_only_a_tip_from_its_own_window() {
         const other = createTemporaryObject(otherWindowComponent, testCase);
         const far = findChild(other.button, "box");

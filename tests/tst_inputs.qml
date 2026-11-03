@@ -224,15 +224,23 @@ TestCase {
         mouseRelease(track, 5, 3);
     }
 
-    function test_a_disabled_slider_ignores_the_keys_and_says_why() {
+    function test_a_disabled_slider_ignores_the_keys_greys_its_thumb_fill_and_value_and_says_why() {
         useColourfulAccent();
         const slider = createTemporaryObject(sliderComponent, testCase, { disabledReason: "no backlight" });
         slider.forceActiveFocus();
         keyClick(Qt.Key_Right);
         compare(slider.value, 40);
-        compare(findChild(slider, "thumb").color, Tokens.color.disabled);
-        compare(findChild(slider, "fill").color, Qt.color("#1f5fd1"), "only the thumb greys");
-        compare(findChild(slider, "output").color, Tokens.color.textPrimary);
+        const [thumb, track, fill, output] = ["thumb", "track", "fill", "output"].map(name => findChild(slider, name));
+        compare(thumb.color, Tokens.color.disabled);
+        compare(fill.color, Tokens.color.disabled, "the fill up to the value");
+        compare(fill.width, track.width * 0.4);
+        compare(track.color, Tokens.color.textContrastLow, "the empty track stays");
+        compare(output.color, Tokens.color.disabled);
+        slider.disabledReason = "";
+        compare(thumb.color, Tokens.color.textPrimary, "enabled, it takes its colours back");
+        compare(fill.color, Qt.color("#1f5fd1"));
+        compare(output.color, Tokens.color.textPrimary);
+        slider.disabledReason = "no backlight";
         const why = findChild(slider, "why");
         verify(why.visible);
         compare(why.text, "no backlight");

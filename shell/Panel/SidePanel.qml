@@ -296,6 +296,7 @@ FocusScope {
                 interactive: contentHeight > height
                 boundsBehavior: Flickable.StopAtBounds
                 onContentHeightChanged: sidePanel.keepRevealedIfAny()
+                onContentYChanged: Tips.hide()
                 onMovementStarted: sidePanel.revealed = null
                 clip: true
 
@@ -315,6 +316,20 @@ FocusScope {
 
                 objectName: "sheets"
                 anchors.fill: parent
+            }
+
+            // The tip of any control in the panel's window, its sheets' included, over them all; it slides with the
+            // panel, and the view scrolling hides it, as it hides every tip (rekta.js tips()).
+            Tooltip {
+                id: tip
+
+                readonly property var place: target ? Placement.tip(parent.mapFromItem(target, 0, 0, target.width, target.height), Qt.size(width, height), area) : null
+
+                objectName: "tip"
+                area: Qt.size(parent.width, parent.height)
+                x: place?.x ?? 0
+                y: place?.y ?? 0
+                side: place?.side ?? "above"
             }
         }
     }
