@@ -21,7 +21,7 @@ TestCase {
     readonly property var battery: ({ key: "battery", word: "akku 12 %", status: "error", opens: "power", name: "akku 12 %, öffnet energieprofil" })
     readonly property var offline: ({ key: "offline", word: "offline", status: "error", opens: "connections", name: "offline, öffnet verbindungen" })
     readonly property var muted: ({ key: "muted", word: "stumm", status: "", opens: "sound", name: "stumm, öffnet ton" })
-    readonly property var quiet: ({ key: "doNotDisturb", word: "nicht stören", status: "", opens: "doNotDisturb", name: "nicht stören, öffnet anzeige" })
+    readonly property var quiet: ({ key: "doNotDisturb", word: "nicht stören", status: "", opens: "doNotDisturb", name: "nicht stören, öffnet steuerung" })
     readonly property var everything: [microphone, battery, offline, muted, quiet]
     // The clock text is the widest on "mo 16. märz" and the narrowest on "fr 3. juli" (tabular figures keep the time as wide as any).
     readonly property date widestClock: new Date(2026, 2, 16, 20, 8)

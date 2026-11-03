@@ -63,7 +63,7 @@ TestCase {
     function test_every_word_names_what_it_opens() {
         compare(make({ muted: true }).deviations[0].name, "stumm, öffnet ton");
         compare(make({ offline: true }).deviations[0].name, "offline, öffnet verbindungen");
-        compare(make({ doNotDisturb: true }).deviations[0].name, "nicht stören, öffnet anzeige");
+        compare(make({ doNotDisturb: true }).deviations[0].name, "nicht stören, öffnet steuerung");
     }
 
     function test_the_battery_word_names_the_energy_profile_or_else_the_group_it_would_stand_in() {

@@ -10,6 +10,8 @@ import Rekta
 // away; a tip that shows takes Escape first. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move
 // through the controls, and once the panel has gone the focus goes back. A sheet a facet opens lies over the panel's
 // ground (`sheets`); while one is open the panel keeps still. A press anywhere in it hides a tip, as scrolling does.
+// What a facet keeps at hand stands at the panel's edge nearest the app bar (`edge`), below its scroll: the app bar is
+// at the bottom, so that is the bottom edge.
 // ponytail: this panel is the shell's own from before Rekta had one; 0.6.0's side panel is a sheet from the trailing
 // edge that shades and holds focus and arrives on ease-in (`.rk-sheet--side`, rekta.css:1095–1106).
 FocusScope {
@@ -33,6 +35,8 @@ FocusScope {
     default property alias facets: facetHolder.content
     // Where a facet's sheets stand: over the whole ground, pivot included.
     readonly property Item sheets: sheetHolder
+    // Where a facet's quick settings stand: out of its scroll, at the edge nearest the app bar.
+    readonly property Item edge: edgeHolder
     readonly property bool sheetOpen: Array.from(sheetHolder.children).some(child => child.open === true)
 
     // It has gone.
@@ -60,14 +64,16 @@ FocusScope {
     // Scrolls the facet so an item of it stands at the top, or to the top without one, and puts the focus on the item's
     // first control. The facet lays itself out when it first shows, which moves the item and grows the content: the item
     // is kept at the top through the frames that change the content, and let go after two frames without a change or when
-    // a hand moves the view. An item that does not show leaves the view at the top.
+    // a hand moves the view. An item that does not show leaves the view at the top; one at the edge is always in view and
+    // only takes the focus.
     function reveal(item: Item) {
-        revealed = item?.visible ? item : null;
+        const shown = item?.visible ?? false;
+        revealed = shown && within(scroller, item) ? item : null;
         settledHeight = scroller.contentHeight;
         quietFrames = 0;
         keepRevealed();
-        if (revealed)
-            focusIn(revealed);
+        if (shown)
+            focusIn(item);
     }
 
     // A frame has been drawn: content that changed takes the place again; two frames in a row without a change end the
@@ -93,9 +99,9 @@ FocusScope {
         scroller.contentY = revealed ? Math.max(0, Math.min(revealed.mapToItem(scroller.contentItem, 0, 0).y, scroller.contentHeight - scroller.height)) : 0;
     }
 
-    // The first control inside an item, if it has one.
+    // The item itself where it is a control, else the first control inside it, if it has one.
     function focusIn(item: Item) {
-        const first = item.nextItemInFocusChain(true);
+        const first = item.activeFocusOnTab ? item : item.nextItemInFocusChain(true);
         if (first && within(item, first))
             first.forceActiveFocus(Qt.TabFocusReason);
     }
@@ -290,7 +296,8 @@ FocusScope {
                 objectName: "scroller"
                 y: pivot.y + pivot.height + Geometry.hairline
                 width: parent.width
-                height: parent.height - y - Tokens.spaceL
+                // Above the edge's quick settings, space-m from them as a sheet's parts are (rekta.css:1076).
+                height: (edgeHolder.height > 0 ? edgeHolder.y - Tokens.spaceM : parent.height - Tokens.spaceL) - y
                 contentWidth: width
                 contentHeight: facetHolder.height
                 interactive: contentHeight > height
@@ -309,6 +316,19 @@ FocusScope {
                     height: (sidePanel.facets[currentIndex] as Item)?.implicitHeight ?? 0
                     currentIndex: pivot.currentIndex
                 }
+            }
+
+            // On the sheet's padding at the bottom (rekta.css:1100); as tall as what shows in it.
+            Item {
+                id: edgeHolder
+
+                readonly property Item shown: Array.from(children).find(child => child.visible) ?? null
+
+                objectName: "edge"
+                x: Tokens.spaceM
+                y: parent.height - Tokens.spaceL - height
+                width: sidePanel.contentWidth
+                height: shown?.implicitHeight ?? 0
             }
 
             Item {

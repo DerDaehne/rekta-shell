@@ -4,8 +4,9 @@ import Rekta
 // Rows that unfold below the row that opened them and push what stands below down; nothing floats. It unfolds and folds
 // as a tree branch does (motion.md, "Tree branch"; rekta.js:3336, :3339): the height grows with a fade, in
 // duration-short on ease-in, and closes in 0.7 of that on ease-out. Its rows are MenuItems; pressing one, or Enter or
-// Space on it, says so in `activated`. Escape folds it and the focus goes back to what opened it. While it unfolds it
-// keeps itself in view in the scroller it stands in; once open it leaves the view alone.
+// Space on it, says so in `activated`. Escape folds it and the focus goes back to what opened it; opened from elsewhere,
+// the focus goes to its first row. While it unfolds it keeps itself in view in the scroller it stands in; once open it
+// leaves the view alone.
 Item {
     id: branch
 
@@ -16,6 +17,8 @@ Item {
     property bool revealing: false
     // What opened it; the focus goes back there.
     property Item opener
+    // Opened from elsewhere than its opener: the focus goes to its first row once it shows.
+    property bool focusOnShow: false
     default property alias rows: list.data
 
     signal activated(MenuItem row)
@@ -31,6 +34,7 @@ Item {
     function collapse() {
         expanded = false;
         revealing = false;
+        focusOnShow = false;
         unfolding.stop();
         folding.start();
     }
@@ -40,6 +44,22 @@ Item {
             collapse();
         else
             expand();
+    }
+
+    // Unfolds with the focus on its first row, or on its opener while it has none.
+    function expandFocused() {
+        focusOnShow = true;
+        expand();
+        focusFirstRowOnceShown();
+    }
+
+    // Its rows show only once it shows itself.
+    function focusFirstRowOnceShown() {
+        if (!focusOnShow || !visible)
+            return;
+        focusOnShow = false;
+        const first = Array.from(list.children).find(row => row instanceof MenuItem && row.visible);
+        (first ?? opener)?.forceActiveFocus(Qt.TabFocusReason);
     }
 
     // Folded at once, for when it goes out of sight.
@@ -80,6 +100,7 @@ Item {
     // A column places a row that just appeared only on its next layout.
     onYChanged: reveal()
     visible: unfolded > 0
+    onVisibleChanged: focusFirstRowOnceShown()
     opacity: unfolded
     clip: true
     Keys.onPressed: event => event.accepted = handleKey(event)

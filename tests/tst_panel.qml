@@ -103,6 +103,7 @@ TestCase {
             onConnectionChosen: (device, connect) => connect ? device.connect() : device.disconnect()
             onPairingAsked: testCase.pairingAsked += 1
             sheets: panel.sheets
+            edge: panel.edge
             // As the host has it, with the networks' own calls.
             onWifiChosen: on => {
                 testCase.wifiSwitches = [...testCase.wifiSwitches, on];
@@ -643,7 +644,12 @@ TestCase {
         compare(facets.width, contentWidth);
         const scroller = findChild(side, "scroller");
         compare(scroller.width, panel.width - Geometry.hairline, "they scroll across the ground, so no focus ring at their edge is cut off");
-        compare(scroller.y + scroller.height, 640 - Tokens.spaceL, "and at the bottom");
+        const edge = findChild(side, "edge");
+        compare(edge.y + edge.height, 640 - Tokens.spaceL, "and at the bottom, below the quick settings");
+        compare(scroller.y + scroller.height, edge.y - Tokens.spaceM, "which stand space-m below the facet's scroll");
+        side.show(1);
+        compare(edge.height, 0, "meldungen keeps nothing at the edge");
+        compare(scroller.y + scroller.height, 640 - Tokens.spaceL, "and scrolls down to the padding");
         scene.height = 400;
         compare(panel.height, 400);
     }
@@ -813,7 +819,7 @@ TestCase {
 
     function test_focus_starts_at_the_first_control_and_on_an_empty_facet_at_the_pivot() {
         side.show(0);
-        verify(control("dark").activeFocus, "the first control in steuerung");
+        verify(control("density").activeFocus, "the first control in steuerung");
         side.close();
         side.show(1);
         verify(findChild(side, "pivot").activeFocus, "meldungen has none yet");
@@ -825,11 +831,11 @@ TestCase {
 
     function test_opened_by_a_pointer_no_control_shows_a_focus_ring_until_a_key_is_pressed() {
         side.show(0, true);
-        verify(control("dark").activeFocus, "the focus is on the first control all the same");
-        verify(!ringOf("dark").visible);
+        verify(control("density").activeFocus, "the focus is on the first control all the same");
+        compare(ringsShowing(control("density")), 0);
         keyClick(Qt.Key_Tab);
-        verify(control("doNotDisturb").activeFocus);
-        verify(ringOf("doNotDisturb").visible, "the keyboard brings the ring");
+        verify(control("powerProfile").activeFocus);
+        compare(ringsShowing(control("powerProfile")), 1, "the keyboard brings the ring");
     }
 
     // The focus rings that show inside an item.
@@ -894,9 +900,11 @@ TestCase {
         compare(ringsShowing(pivot), 1, "the arrow moved the selection, and the keyboard has a ring");
     }
 
-    function test_space_on_a_toggle_after_a_pointer_open_brings_the_ring() {
+    function test_space_on_a_toggle_button_after_a_pointer_open_brings_the_ring() {
         side.show(0, true);
-        verify(control("dark").activeFocus);
+        control("dark").forceActiveFocus();
+        // The focus move above would bring the ring on its own; the key is what is under test.
+        side.ringsHidden = true;
         compare(ringsShowing(control("dark")), 0);
         keyClick(Qt.Key_Space);
         compare(ringsShowing(control("dark")), 1, "the control took the key itself, and the keyboard has a ring");
@@ -923,43 +931,47 @@ TestCase {
 
     function test_opened_by_the_keyboard_the_first_control_shows_its_focus_ring() {
         side.show(0, false);
-        verify(ringOf("dark").visible);
+        compare(ringsShowing(control("density")), 1);
     }
 
+    // The quick settings at the bottom edge come last, as they stand.
     function test_tab_and_the_arrows_reach_every_control_in_order() {
+        giveBluetooth(controls);
         side.show(0);
-        const order = [control("dark"), control("doNotDisturb"), control("density"), control("powerProfile"), control("lock"), control("sessionActions")];
+        const names = ["chooseBluetoothDevice", "density", "powerProfile", "lock", "sessionActions", "bluetooth", "doNotDisturb", "dark"];
+        const order = names.map(name => control(name));
+        verify(order[0].activeFocus);
         for (let k = 1; k < order.length; k++) {
             keyClick(Qt.Key_Tab);
-            verify(order[k].activeFocus, `Tab to ${order[k].objectName}`);
+            verify(order[k].activeFocus, `Tab to ${names[k]}`);
         }
         for (let k = order.length - 2; k >= 0; k--) {
             keyClick(Qt.Key_Tab, Qt.ShiftModifier);
-            verify(order[k].activeFocus, `Shift+Tab to ${order[k].objectName}`);
+            verify(order[k].activeFocus, `Shift+Tab to ${names[k]}`);
         }
         keyClick(Qt.Key_Down);
         verify(order[1].activeFocus, "↓ to the next");
-        keyClick(Qt.Key_Up);
-        verify(order[0].activeFocus, "↑ to the one before");
+        order[0].forceActiveFocus();
         keyClick(Qt.Key_Up);
         verify(findChild(side, "pivot").activeFocus, "↑ from the first to the pivot");
         keyClick(Qt.Key_Down);
         verify(order[0].activeFocus, "↓ from the pivot to the first");
-        order[5].forceActiveFocus();
+        order[4].forceActiveFocus();
         keyClick(Qt.Key_Down);
-        verify(order[5].activeFocus, "the arrows never leave the panel");
+        verify(order[5].activeFocus, "↓ from the last row into the quick settings");
+        keyClick(Qt.Key_Down);
+        verify(order[6].activeFocus, "and through them");
+        keyClick(Qt.Key_Up);
+        verify(order[5].activeFocus, "↑ to the one before");
+        order[7].forceActiveFocus();
+        keyClick(Qt.Key_Down);
+        verify(order[7].activeFocus, "the arrows never leave the panel");
     }
 
     function test_every_row_works_from_the_keyboard() {
         controls.hasPerformanceProfile = true;
         controls.kdeglobals = "";
         side.show(0);
-        keyClick(Qt.Key_Space);
-        compare(commands, [["plasma-apply-lookandfeel", "--apply", "org.kde.breezedark.desktop"]], "dunkel");
-        keyClick(Qt.Key_Down);
-        keyClick(Qt.Key_Space);
-        verify(controls.doNotDisturb, "nicht stören");
-        keyClick(Qt.Key_Down);
         verify(control("density").activeFocus);
         keyClick(Qt.Key_Right);
         compare(chosenDensities, ["comfortable"], "dichte, where the arrows choose");
@@ -973,6 +985,12 @@ TestCase {
         keyClick(Qt.Key_Tab);
         keyClick(Qt.Key_Return);
         compare(sessionAsked, 1, "sitzung …");
+        keyClick(Qt.Key_Tab);
+        keyClick(Qt.Key_Space);
+        verify(controls.doNotDisturb, "nicht stören");
+        keyClick(Qt.Key_Tab);
+        keyClick(Qt.Key_Return);
+        compare(commands, [["plasma-apply-lookandfeel", "--apply", "org.kde.breezedark.desktop"]], "dunkel");
     }
 
     function test_dunkel_applies_the_dark_theme_of_plasmas_pair_and_the_light_one_back() {
@@ -1003,7 +1021,7 @@ TestCase {
         showSettled(0);
         Prefs.theme = "dark";
         verify(control("dark").checked);
-        compare(findChild(control("dark"), "word").text, "an");
+        compare(findChild(control("dark"), "state").text, "an");
         mouseClick(control("dark"));
         verify(!control("dark").checked, "the choice shows at once");
         Prefs.theme = "light";
@@ -1011,7 +1029,7 @@ TestCase {
         verify(control("dark").checked, "and the system's next change too");
         Prefs.theme = "light";
         verify(!control("dark").checked);
-        compare(findChild(control("dark"), "word").text, "aus");
+        compare(findChild(control("dark"), "state").text, "aus");
     }
 
     function test_with_nicht_stoeren_only_critical_notifications_toast_and_the_others_go_quietly_into_the_list() {
@@ -1329,7 +1347,7 @@ TestCase {
         compare(slider.Accessible.name, "helligkeit Built-in Screen");
         compare(control("display1Brightness").value, 0.3);
         compare(slider.width, rowOf(slider).width, "as wide as the row, below its words");
-        verify(rowOf(slider).y < rowOf(control("dark")).y, "above the other rows of anzeige");
+        verify(rowOf(slider).y < rowOf(control("density")).y, "above the other rows of anzeige");
     }
 
     function test_a_step_of_a_brightness_slider_asks_for_that_display_in_its_own_units() {
@@ -1358,7 +1376,7 @@ TestCase {
 
     function test_a_brightness_slider_held_by_the_pointer_ignores_changes_until_released() {
         const displays = giveDisplays(controls);
-        side.show(0);
+        showSettled(0);
         const slider = control("display1Brightness");
         const track = findChild(slider, "track");
         mousePress(track, track.width / 2, 3);
@@ -1386,7 +1404,7 @@ TestCase {
         verify(findChild(controls, "display").visible);
         giveDisplays(controls).clear();
         verify(!control("display0Brightness"));
-        verify(rowOf(control("dark")).visible);
+        verify(rowOf(control("density")).visible);
     }
 
     function test_without_audio_devices_ton_falls_away_and_without_an_input_only_its_rows_go() {
@@ -1506,7 +1524,7 @@ TestCase {
     function test_revealing_a_place_from_a_closed_panel_scrolls_to_it_once_the_facet_has_laid_out() {
         giveSound(controls);
         scene.height = 360;
-        const row = controls.places.doNotDisturb;
+        const row = controls.places.power;
         side.show(0);
         side.reveal(row);
         const scroller = findChild(side, "scroller");
@@ -1522,11 +1540,11 @@ TestCase {
         side.show(0);
         waitForRendering(side);
         const scroller = findChild(side, "scroller");
-        side.reveal(controls.places.doNotDisturb);
+        side.reveal(controls.places.power);
         tryVerify(() => scroller.contentY > 0);
         side.reveal(null);
         compare(scroller.contentY, 0);
-        side.reveal(controls.places.doNotDisturb);
+        side.reveal(controls.places.power);
         mouseWheel(scroller, 10, 10, 0, 120);
         verify(side.revealed === null, "the wheel takes the view");
     }
@@ -1535,7 +1553,7 @@ TestCase {
         giveBluetooth(controls);
         compare(controls.places.sound, findChild(side, "sound"));
         compare(controls.places.connections, findChild(side, "connections"));
-        compare(controls.places.doNotDisturb.label, "nicht stören");
+        compare(controls.places.doNotDisturb, control("doNotDisturb"), "nicht stören is its button");
         compare(controls.places.power.label, "energieprofil");
         controls.hasPowerProfiles = false;
         compare(controls.places.power, findChild(side, "session"), "without profiles the group it would stand in");
@@ -1547,17 +1565,29 @@ TestCase {
         scene.height = 360;
         side.show(0);
         side.reveal(controls.places.connections);
-        const first = findChild(side, "bluetooth");
+        const first = findChild(side, "chooseBluetoothDevice");
         tryVerify(() => first.activeFocus);
         side.reveal(controls.places.sound);
         tryVerify(() => findChild(side, "outputDevice").activeFocus || side.within(controls.places.sound, scene.Window.activeFocusItem));
+    }
+
+    function test_revealing_a_quick_setting_puts_the_focus_on_it_and_scrolls_the_facet_to_the_top() {
+        giveSound(controls);
+        scene.height = 360;
+        side.show(0);
+        const scroller = findChild(side, "scroller");
+        scroller.contentY = 40;
+        side.reveal(controls.places.doNotDisturb);
+        verify(control("doNotDisturb").activeFocus, "the button itself, at the edge and always in view");
+        compare(side.revealed, null, "there is nothing to hold in view");
+        compare(scroller.contentY, 0);
     }
 
     function test_the_place_is_let_go_once_the_facet_has_laid_out() {
         giveSound(controls);
         scene.height = 360;
         side.show(0);
-        side.reveal(controls.places.doNotDisturb);
+        side.reveal(controls.places.power);
         verify(side.revealed !== null);
         tryVerify(() => side.revealed === null);
     }
@@ -1580,7 +1610,7 @@ TestCase {
         giveSound(controls);
         scene.height = 360;
         side.show(0);
-        side.reveal(controls.places.doNotDisturb);
+        side.reveal(controls.places.power);
         tryVerify(() => side.revealed === null);
         const scroller = findChild(side, "scroller");
         scroller.contentY = 0;
@@ -1739,12 +1769,13 @@ TestCase {
         verify(label.x + label.width <= row.width - Tokens.spaceM);
     }
 
-    function test_the_bluetooth_toggle_switches_the_adapter_and_shows_what_the_adapter_has() {
+    function test_the_bluetooth_button_switches_the_adapter_and_shows_what_the_adapter_has() {
         const bluetooth = giveBluetooth(controls);
         side.show(0);
         const toggle = control("bluetooth");
-        compare(findChild(rowOf(toggle), "words").text, "bluetooth");
-        verify(findChild(controls, "connections").visible, "in verbindungen");
+        compare(toggle.text, "bluetooth");
+        compare(toggle.icon, "bluetooth");
+        compare(findChild(toggle, "state").text, "an");
         verify(toggle.checked, "on, as the adapter is");
         toggle.forceActiveFocus();
         keyClick(Qt.Key_Space);
@@ -1759,7 +1790,7 @@ TestCase {
         verify(toggle.checked, "a switch the system did not take springs back");
     }
 
-    function test_a_blocked_adapter_greys_the_toggle_which_says_why() {
+    function test_a_blocked_adapter_greys_the_bluetooth_button_which_says_why() {
         const bluetooth = giveBluetooth(controls);
         bluetooth.adapter.enabled = false;
         bluetooth.adapter.state = Controls.Blocked;
@@ -1867,7 +1898,6 @@ TestCase {
         giveBluetooth(controls);
         side.show(0);
         const branch = control("bluetoothBranch");
-        keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Return);
         compare(branch.unfolded, 1);
         keyClick(Qt.Key_Escape);
@@ -1877,14 +1907,12 @@ TestCase {
     function test_geräte_unfolds_from_the_keyboard_and_escape_folds_it() {
         const bluetooth = giveBluetooth(controls);
         side.show(0);
-        keyClick(Qt.Key_Down);
         const opener = control("chooseBluetoothDevice");
         verify(opener.activeFocus);
         const branch = control("bluetoothBranch");
         keyClick(Qt.Key_Escape);
         verify(!side.open, "folded, Escape leaves the panel");
         side.show(0);
-        keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Return);
         verify(branch.expanded, "Enter unfolds");
         keyClick(Qt.Key_Return);
@@ -2008,7 +2036,7 @@ TestCase {
         verify(findChild(controls, "connections").visible);
         controls.bluetooth = null;
         controls.bluetoothDevices = [];
-        verify(!rowOf(control("bluetooth")).visible);
+        verify(!control("bluetooth").visible, "its quick setting too");
         verify(!rowOf(control("chooseBluetoothDevice")).visible);
         verify(!findChild(controls, "connections").visible, "with no other row the group falls away");
     }
@@ -2016,12 +2044,11 @@ TestCase {
     function test_bluetooth_works_from_the_keyboard() {
         const bluetooth = giveBluetooth(controls);
         side.show(0);
-        verify(control("bluetooth").activeFocus, "the first control without sound");
+        control("bluetooth").forceActiveFocus();
         keyClick(Qt.Key_Space);
-        compare(bluetoothSwitches, [false]);
-        keyClick(Qt.Key_Down);
+        compare(bluetoothSwitches, [false], "its quick setting");
         const opener = control("chooseBluetoothDevice");
-        verify(opener.activeFocus);
+        opener.forceActiveFocus();
         const level = control("bluetoothDevices");
         level.show(opener);
         const rows = levelRows(level);
@@ -2055,12 +2082,13 @@ TestCase {
         compare(label.x + label.width, findChild(row, "end").x - Tokens.spaceS);
     }
 
-    function test_the_wlan_toggle_switches_wireless_and_shows_what_the_system_has() {
+    function test_the_wlan_button_switches_wireless_and_shows_what_the_system_has() {
         giveNetworks(controls);
         showSettled(0);
         const toggle = control("wifi");
         verify(toggle.checked);
-        compare(findChild(rowOf(toggle), "words").text, "wlan");
+        compare(toggle.text, "wlan");
+        compare(toggle.icon, "wireless");
         mouseClick(toggle);
         compare(wifiSwitches, [false]);
         verify(!toggle.checked);
@@ -2069,9 +2097,24 @@ TestCase {
         mouseClick(toggle);
         compare(wifiSwitches, [false, true]);
         verify(!toggle.checked, "a switch the system did not take springs back");
+        controls.networking.wifiEnabled = true;
+        verify(toggle.checked, "a change from elsewhere shows");
     }
 
-    function test_a_blocked_radio_greys_the_wlan_toggle_which_says_why() {
+    function test_the_wlan_button_names_the_joined_network_as_its_state() {
+        const networks = giveNetworks(controls);
+        side.show(0);
+        const state = findChild(control("wifi"), "state");
+        compare(state.text, "Home");
+        compare(control("wifi").Accessible.name, "wlan Home");
+        networks.home.connected = false;
+        compare(state.text, "an", "on, without a network");
+        compare(control("wifi").Accessible.name, "wlan");
+        controls.networking.wifiEnabled = false;
+        compare(state.text, "aus");
+    }
+
+    function test_a_blocked_radio_greys_the_wlan_button_which_says_why() {
         giveNetworks(controls);
         controls.networking.wifiHardwareEnabled = false;
         showSettled(0);
@@ -2539,9 +2582,9 @@ TestCase {
             verify(group.visible, name);
             compare(hairlinesIn(group).length, 0, name);
         }
-        const dark = rowOf(control("dark"));
-        const doNotDisturb = rowOf(control("doNotDisturb"));
-        compare(doNotDisturb.y - (dark.y + dark.height), Tokens.spaceM, "a section's parts are space-m apart");
+        const device = rowOf(control("outputDevice"));
+        const volume = rowOf(control("outputVolume"));
+        compare(volume.y - (device.y + device.height), Tokens.spaceM, "a section's parts are space-m apart");
         const display = findChild(controls, "display");
         const session = findChild(controls, "session");
         compare(session.y - (display.y + display.height), 0, "the groups' own space-l above and below parts them");
@@ -2566,12 +2609,13 @@ TestCase {
     }
 
     function test_a_row_has_its_words_at_the_start_and_its_control_at_the_end() {
+        controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
         side.show(0);
-        const toggle = control("dark");
+        const toggle = control("wiredState");
         const row = rowOf(toggle);
         waitForRendering(side);
         const words = findChild(row, "words");
-        compare(words.text, "dunkel");
+        compare(words.text, "kabel");
         compare(words.x, 0);
         compare(findChild(row, "holder").x, row.width - toggle.implicitWidth, "the control at the end");
         compare(row.height, Math.max(words.height, toggle.implicitHeight), "the height of its line");
@@ -2579,10 +2623,11 @@ TestCase {
     }
 
     function test_a_row_whose_words_and_control_do_not_fit_puts_the_control_below_and_cuts_long_words() {
+        controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
         side.show(0);
-        const toggle = control("dark");
+        const toggle = control("wiredState");
         const row = rowOf(toggle);
-        row.label = "a long word for the dark look that cannot share its line with the toggle";
+        row.label = "a long word for the wired connection that cannot share its line with its state";
         waitForRendering(side);
         const words = findChild(row, "words");
         compare(findChild(row, "holder").x, 0);
@@ -2593,9 +2638,142 @@ TestCase {
         compare(words.lineCount, 1);
     }
 
-    function test_the_toggles_are_named_by_their_rows() {
-        compare(control("dark").Accessible.name, "dunkel");
-        compare(control("doNotDisturb").Accessible.name, "nicht stören");
+    // The way from "steuerung" in the app bar at the bottom to them stays short.
+    function test_the_quick_settings_stand_in_two_columns_at_the_bottom_edge_above_the_app_bar_without_a_heading() {
+        giveNetworks(controls);
+        giveBluetooth(controls);
+        showSettled(0);
+        const edge = findChild(side, "edge");
+        const ground = findChild(side, "ground");
+        const buttons = ["wifi", "bluetooth", "doNotDisturb", "dark"].map(name => control(name));
+        const cell = (side.contentWidth - Tokens.spaceS) / 2;
+        const at = button => button.mapToItem(ground, 0, 0);
+        for (const button of buttons) {
+            verify(button instanceof ToggleButton);
+            verify(side.within(edge, button), `${button.objectName} at the edge`);
+            compare(button.width, cell, `${button.objectName}: half the width, space-s between`);
+        }
+        compare(buttons.map(button => button.text), ["wlan", "bluetooth", "nicht stören", "dunkel"]);
+        compare(buttons.map(button => button.icon), ["wireless", "bluetooth", "bell", "theme"]);
+        compare(at(buttons[0]).x, Tokens.spaceM);
+        compare(at(buttons[1]).x, Tokens.spaceM + cell + Tokens.spaceS);
+        compare(at(buttons[1]).y, at(buttons[0]).y);
+        compare(at(buttons[2]).x, Tokens.spaceM);
+        compare(at(buttons[2]).y, at(buttons[0]).y + buttons[0].height + Tokens.spaceS);
+        compare(at(buttons[3]).y, at(buttons[2]).y);
+        compare(at(buttons[3]).y + buttons[3].height, ground.height - Tokens.spaceL, "on the panel's padding at the bottom");
+        verify(!findChild(edge, "heading"), "no heading over them");
+        verify(!side.within(findChild(side, "scroller"), buttons[0]), "out of the scroll");
+    }
+
+    function test_a_quick_setting_whose_device_is_missing_is_gone_and_the_rest_close_up() {
+        showSettled(0);
+        verify(!control("wifi").visible, "no wireless device");
+        verify(!control("bluetooth").visible, "no adapter");
+        const quiet = control("doNotDisturb");
+        const dark = control("dark");
+        compare(dark.y, quiet.y, "nicht stören and dunkel share the first line");
+        compare(dark.x, quiet.width + Tokens.spaceS);
+        const edge = findChild(side, "edge");
+        compare(edge.height, quiet.height);
+        giveBluetooth(controls);
+        verify(control("bluetooth").visible);
+        waitForRendering(side);
+        compare(control("bluetooth").x, 0);
+        compare(quiet.x, dark.width + Tokens.spaceS, "bluetooth takes the first place");
+        compare(dark.x, 0);
+        verify(dark.y > quiet.y, "and dunkel wraps to the next line");
+    }
+
+    function test_the_switches_have_left_their_groups() {
+        giveSound(controls);
+        giveNetworks(controls);
+        giveBluetooth(controls);
+        giveDisplays(controls);
+        side.show(0);
+        const rows = item => (item instanceof PanelRow ? [item] : []).concat(...Array.from(item.children).map(rows));
+        const labels = rows(findChild(side, "scroller")).map(row => row.label);
+        for (const word of ["wlan", "bluetooth", "nicht stören", "dunkel"])
+            verify(!labels.includes(word), `no row ${word} in a group`);
+        for (const name of ["wifi", "bluetooth", "doNotDisturb", "dark"])
+            verify(!side.within(findChild(side, "scroller"), control(name)), name);
+    }
+
+    function test_nicht_stoeren_switches_with_a_press_and_follows_a_switch_from_elsewhere() {
+        showSettled(0);
+        const quiet = control("doNotDisturb");
+        mouseClick(quiet);
+        verify(controls.doNotDisturb);
+        compare(findChild(quiet, "state").text, "an");
+        controls.setDoNotDisturb(false);
+        verify(!quiet.checked, "as the Start's command does");
+        verify(!controls.doNotDisturb);
+    }
+
+    function test_the_chevron_of_wlan_unfolds_the_networks_in_verbindungen_with_the_focus_on_the_first() {
+        giveNetworks(controls);
+        showSettled(0);
+        const wifi = control("wifi");
+        const chevron = findChild(wifi, "chevron");
+        verify(chevron.visible);
+        mouseClick(wifi, chevron.x + chevron.width / 2, wifi.height / 2);
+        verify(control("wifiBranch").expanded);
+        verify(rowsOf("wifiBranch")[0].activeFocus, "on the strongest network");
+        compare(rowsOf("wifiBranch")[0].text, "Home");
+        verify(wifi.checked, "wlan stays on");
+        compare(wifiSwitches, []);
+        keyClick(Qt.Key_Escape);
+        verify(!control("wifiBranch").expanded, "Escape folds them as ever");
+        verify(control("chooseNetwork").activeFocus);
+        mouseClick(wifi, 10, 10, Qt.RightButton);
+        verify(control("wifiBranch").expanded, "a right click does the same");
+        verify(rowsOf("wifiBranch")[0].activeFocus);
+        control("wifiBranch").fold();
+        wifi.forceActiveFocus();
+        keyClick(Qt.Key_Menu);
+        verify(control("wifiBranch").expanded, "and the menu key");
+        verify(rowsOf("wifiBranch")[0].activeFocus);
+    }
+
+    function test_without_wireless_wlan_has_no_details() {
+        giveNetworks(controls);
+        controls.networking.wifiEnabled = false;
+        showSettled(0);
+        const wifi = control("wifi");
+        verify(!findChild(wifi, "chevron").visible);
+        mouseClick(wifi, 10, 10, Qt.RightButton);
+        verify(!control("wifiBranch").expanded);
+        verify(!wifi.checked, "nor does a right click switch it");
+    }
+
+    function test_a_right_click_on_bluetooth_unfolds_the_devices_with_the_focus_on_the_first() {
+        giveBluetooth(controls);
+        showSettled(0);
+        const bluetooth = control("bluetooth");
+        verify(findChild(bluetooth, "chevron").visible);
+        mouseClick(bluetooth, 10, 10, Qt.RightButton);
+        verify(control("bluetoothBranch").expanded);
+        verify(branchRows()[0].activeFocus, "on the first device");
+        compare(bluetoothSwitches, []);
+    }
+
+    // The rows show only once the branch does, a frame after it starts to unfold.
+    function test_unfolding_with_motion_the_focus_goes_to_the_first_row_once_it_shows() {
+        Prefs.motion = "on";
+        giveBluetooth(controls);
+        showSettled(0);
+        mouseClick(control("bluetooth"), 10, 10, Qt.RightButton);
+        tryVerify(() => branchRows().length > 0 && branchRows()[0].activeFocus, 4 * Tokens.durationShort);
+    }
+
+    function test_nicht_stoeren_and_dunkel_have_no_details() {
+        showSettled(0);
+        for (const name of ["doNotDisturb", "dark"]) {
+            verify(!findChild(control(name), "chevron").visible, name);
+            mouseClick(control(name), 10, 10, Qt.RightButton);
+            verify(!control(name).checked, `${name}: a right click does nothing`);
+        }
+        compare(commands, []);
     }
 
     // The panel follows the one current theme and density, so the contact sheet is drawn once per pair.

@@ -156,6 +156,7 @@ PanelWindow {
             onBluetoothChosen: on => surface.actOnSystemBus(`switch bluetooth ${on ? "on" : "off"}`, () => controls.bluetooth.enabled = on)
             onConnectionChosen: (device, connect) => surface.actOnSystemBus(`${connect ? "connect" : "disconnect"} ${device.name}`, () => connect ? device.connect() : device.disconnect())
             sheets: panel.sheets
+            edge: panel.edge
             // NetworkManager is asked only once it runs, for the same reason as BlueZ. Quickshell's models are untyped.
             networking: surface.networkManagerRunning ? Networking : null
             wifiDevice: surface.networkDevices.find(device => device.type === DeviceType.Wifi) ?? null

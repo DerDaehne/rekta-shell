@@ -27,7 +27,7 @@ QtObject {
         batteryLow ? word("battery", `akku ${batteryPercent} %`, "error", "power", powerProfiles ? "energieprofil" : "sitzung") : null,
         offline ? word("offline", "offline", "error", "connections", "verbindungen") : null,
         muted ? word("muted", "stumm", "", "sound", "ton") : null,
-        doNotDisturb ? word("doNotDisturb", "nicht stören", "", "doNotDisturb", "anzeige") : null
+        doNotDisturb ? word("doNotDisturb", "nicht stören", "", "doNotDisturb", "steuerung") : null
     ].filter(deviation => deviation !== null)
 
     // The word for the deviations a bar has no room for; it opens the controls at the top, and has the error square when

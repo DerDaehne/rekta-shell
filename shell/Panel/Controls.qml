@@ -5,11 +5,12 @@ import Rekta
 
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
 // tiles (tiles.md: a tile never changes data). The groups stand in a fixed order, ton, verbindungen, anzeige, sitzung;
-// one without rows falls away. The host runs what the rows ask for and feeds back the state they show. In ton each kind
-// has two rows, a select of its devices, then a button that mutes before the volume slider; in anzeige each display
-// that can be dimmed has a slider; in verbindungen the paired Bluetooth devices and the strongest wireless networks
-// unfold below their rows, up to five, and a level lists them all. A secured network the system does not know asks for
-// its password in a sheet.
+// one without rows falls away. The states switched most, "wlan", "bluetooth", "nicht stören" and "dunkel", are toggle
+// buttons at the panel's edge nearest the app bar (`edge`). The host runs what the rows ask for and feeds back the
+// state they show. In ton each kind has two rows, a select of its devices, then a button that mutes before the volume
+// slider; in anzeige each display that can be dimmed has a slider; in verbindungen the paired Bluetooth devices and the
+// strongest wireless networks unfold below their rows, up to five, and a level lists them all. A secured network the
+// system does not know asks for its password in a sheet.
 Column {
     id: controls
 
@@ -46,7 +47,7 @@ Column {
     // The text of kdeglobals, which names Plasma's pair of light and dark global themes.
     property string kdeglobals
     readonly property bool dark: Prefs.resolvedTheme === "dark"
-    readonly property alias doNotDisturb: quietToggle.checked
+    readonly property alias doNotDisturb: quietButton.checked
     // The power profile daemon: whether it runs, its profile (0 power saver, 1 balanced, 2 performance), and whether it
     // offers performance on this machine.
     property bool hasPowerProfiles: false
@@ -72,6 +73,8 @@ Column {
     property var wiredDevice: null
     // Where sheets stand: the host's surface over the panel.
     property Item sheets
+    // Where the quick settings stand: the host's edge nearest the app bar.
+    property Item edge
     readonly property bool bluetoothOn: bluetooth?.enabled ?? false
     readonly property bool wifiOn: networking?.wifiEnabled ?? false
     readonly property var networkList: wifiDevice?.networks.values ?? []
@@ -117,13 +120,13 @@ Column {
     // A secured network joins with the password the sheet asked for.
     signal passwordChosen(var network, string password)
 
-    // The dark and the quiet toggles do this; the Start's commands too.
+    // The dark and the quiet buttons do this; the Start's commands too.
     function setDark(on: bool) {
         run(LookAndFeel.command(on, kdeglobals));
     }
 
     function setDoNotDisturb(on: bool) {
-        quietToggle.checked = on;
+        quietButton.checked = on;
     }
 
     // So the few that show are the ones in use; each group keeps its order.
@@ -214,7 +217,7 @@ Column {
     readonly property var places: ({
             sound: soundGroup,
             connections: connectionsGroup,
-            doNotDisturb: quietRow,
+            doNotDisturb: quietButton,
             power: powerRow.present ? powerRow : sessionGroup
         })
 
@@ -292,25 +295,6 @@ Column {
                 }
             }
         ]
-
-        PanelRow {
-            label: "wlan"
-            present: controls.networking !== null && controls.wifiDevice !== null
-
-            Toggle {
-                objectName: "wifi"
-                onWord: "an"
-                offWord: "aus"
-                checked: controls.wifiOn
-                disabledReason: controls.networking?.wifiHardwareEnabled === false ? "funk gesperrt" : ""
-                Accessible.name: "wlan"
-                // It shows what the system has: a switch it did not take springs back.
-                onToggled: {
-                    controls.wifiChosen(checked);
-                    checked = Qt.binding(() => controls.wifiOn);
-                }
-            }
-        }
 
         PanelRow {
             label: controls.connectedNetwork ? `netz · ${controls.connectedNetwork.name}` : "netz"
@@ -396,25 +380,6 @@ Column {
         }
 
         PanelRow {
-            label: "bluetooth"
-            present: controls.bluetooth !== null
-
-            Toggle {
-                objectName: "bluetooth"
-                onWord: "an"
-                offWord: "aus"
-                checked: controls.bluetoothOn
-                disabledReason: controls.bluetooth?.state === Controls.Blocked ? "funk gesperrt" : ""
-                Accessible.name: "bluetooth"
-                // It shows what the adapter has: a switch the system did not take springs back.
-                onToggled: {
-                    controls.bluetoothChosen(checked);
-                    checked = Qt.binding(() => controls.bluetoothOn);
-                }
-            }
-        }
-
-        PanelRow {
             label: `geräte · ${controls.bluetoothDevices.filter(device => device.connected).length} verbunden`
             present: controls.bluetooth !== null
 
@@ -480,37 +445,6 @@ Column {
         }
 
         PanelRow {
-            label: "dunkel"
-
-            Toggle {
-                id: darkToggle
-
-                objectName: "dark"
-                onWord: "an"
-                offWord: "aus"
-                checked: controls.dark
-                Accessible.name: "dunkel"
-                onToggled: controls.setDark(checked)
-            }
-        }
-
-        // ponytail: kept in memory only, so a restart of the shell turns it off; keep it once the shell has a config.
-        PanelRow {
-            id: quietRow
-
-            label: "nicht stören"
-
-            Toggle {
-                id: quietToggle
-
-                objectName: "doNotDisturb"
-                onWord: "an"
-                offWord: "aus"
-                Accessible.name: "nicht stören"
-            }
-        }
-
-        PanelRow {
             label: "dichte"
 
             Segments {
@@ -572,7 +506,7 @@ Column {
         target: controls
 
         function onDarkChanged() {
-            darkToggle.checked = controls.dark;
+            darkButton.checked = controls.dark;
         }
 
         function onPowerProfileChanged() {
@@ -631,6 +565,88 @@ Column {
         parent: controls.sheets
         anchors.fill: parent
         onSubmitted: (network, password) => controls.passwordChosen(network, password)
+    }
+
+    // The states switched most, each a toggle button (forms.md:54–56: wireless, do not disturb, dark appearance), in two
+    // columns space-s apart as a row of buttons is (rekta.css:353). Unlike Rekta's groups (states.md:186) they have no
+    // heading and stand at the edge nearest the app bar, so the way from "steuerung" in the bar to them stays short. One
+    // whose device is missing is gone. The details of wlan and bluetooth are their lists in verbindungen, unfolded with
+    // the focus on them.
+    Grid {
+        id: quickSettings
+
+        readonly property real cellWidth: (width - spacing) / 2
+
+        objectName: "quickSettings"
+        parent: controls.edge
+        width: parent ? parent.width : 0
+        visible: controls.visible
+        columns: 2
+        spacing: Tokens.spaceS
+
+        ToggleButton {
+            objectName: "wifi"
+            width: quickSettings.cellWidth
+            visible: controls.networking !== null && controls.wifiDevice !== null
+            icon: "wireless"
+            text: "wlan"
+            onWord: "an"
+            offWord: "aus"
+            value: controls.connectedNetwork?.name ?? ""
+            checked: controls.wifiOn
+            disabledReason: controls.networking?.wifiHardwareEnabled === false ? "funk gesperrt" : ""
+            details: controls.wifiOn
+            // It shows what the system has: a switch it did not take springs back.
+            onToggled: {
+                controls.wifiChosen(checked);
+                checked = Qt.binding(() => controls.wifiOn);
+            }
+            onDetailsAsked: wifiBranch.expandFocused()
+        }
+
+        ToggleButton {
+            objectName: "bluetooth"
+            width: quickSettings.cellWidth
+            visible: controls.bluetooth !== null
+            icon: "bluetooth"
+            text: "bluetooth"
+            onWord: "an"
+            offWord: "aus"
+            checked: controls.bluetoothOn
+            disabledReason: controls.bluetooth?.state === Controls.Blocked ? "funk gesperrt" : ""
+            details: true
+            // It shows what the adapter has: a switch the system did not take springs back.
+            onToggled: {
+                controls.bluetoothChosen(checked);
+                checked = Qt.binding(() => controls.bluetoothOn);
+            }
+            onDetailsAsked: bluetoothBranch.expandFocused()
+        }
+
+        // ponytail: kept in memory only, so a restart of the shell turns it off; keep it once the shell has a config.
+        ToggleButton {
+            id: quietButton
+
+            objectName: "doNotDisturb"
+            width: quickSettings.cellWidth
+            icon: "bell"
+            text: "nicht stören"
+            onWord: "an"
+            offWord: "aus"
+        }
+
+        ToggleButton {
+            id: darkButton
+
+            objectName: "dark"
+            width: quickSettings.cellWidth
+            icon: "theme"
+            text: "dunkel"
+            onWord: "an"
+            offWord: "aus"
+            checked: controls.dark
+            onToggled: controls.setDark(checked)
+        }
     }
 
     // The default device of one kind in a select of the devices of that kind; choosing one asks for it as the default.
