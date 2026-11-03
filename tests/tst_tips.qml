@@ -190,6 +190,19 @@ TestCase {
         compare(Tips.target, null);
     }
 
+    function test_a_tip_that_changes_while_it_shows_says_its_new_words() {
+        const close = findChild(scene, "close");
+        close.forceActiveFocus();
+        close.label = "close for good";
+        compare(Tips.target, box("close"));
+        compare(Tips.text, "close for good");
+        compare(findChild(tooltip, "words").text, "close for good");
+        findChild(scene, "more").label = "more for this";
+        compare(Tips.text, "close for good", "another control's tip leaves it");
+        close.tip = "";
+        compare(Tips.target, null, "a tip that goes empty hides");
+    }
+
     function test_each_window_s_tooltip_draws_only_a_tip_from_its_own_window() {
         const other = createTemporaryObject(otherWindowComponent, testCase);
         const far = findChild(other.button, "box");

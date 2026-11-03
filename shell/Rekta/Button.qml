@@ -70,6 +70,16 @@ Row {
             Tips.leave(box);
     }
 
+    // A tip that changes while it shows, such as one naming what a press does next, says its new words.
+    onTipChanged: {
+        if (Tips.target !== box)
+            return;
+        if (tip === "")
+            Tips.hide();
+        else
+            Tips.show(box, tip);
+    }
+
     Keys.onPressed: event => {
         if (![Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
             return;

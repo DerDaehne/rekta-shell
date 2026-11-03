@@ -5,10 +5,11 @@ import Rekta
 
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
 // tiles (tiles.md: a tile never changes data). The groups stand in a fixed order, ton, verbindungen, anzeige, sitzung;
-// one without rows falls away. The host runs what the rows ask for and feeds back the state they show. In ton a select
-// chooses the default device of each kind; in anzeige each display that can be dimmed has a slider; in verbindungen the
-// paired Bluetooth devices and the strongest wireless networks unfold below their rows, up to five, and a level lists
-// them all. A secured network the system does not know asks for its password in a sheet.
+// one without rows falls away. The host runs what the rows ask for and feeds back the state they show. In ton each kind
+// has two rows, a select of its devices, then a button that mutes before the volume slider; in anzeige each display
+// that can be dimmed has a slider; in verbindungen the paired Bluetooth devices and the strongest wireless networks
+// unfold below their rows, up to five, and a level lists them all. A secured network the system does not know asks for
+// its password in a sheet.
 Column {
     id: controls
 
@@ -236,12 +237,7 @@ Column {
             node: controls.output
             kind: "output"
             name: "ausgang"
-        }
-
-        MuteRow {
-            node: controls.output
-            kind: "output"
-            name: "ausgang"
+            glyph: "speaker"
         }
 
         DeviceRow {
@@ -255,12 +251,7 @@ Column {
             node: controls.input
             kind: "input"
             name: "eingang"
-        }
-
-        MuteRow {
-            node: controls.input
-            kind: "input"
-            name: "eingang"
+            glyph: "microphone"
         }
     }
 
@@ -643,7 +634,8 @@ Column {
     }
 
     // The default device of one kind in a select of the devices of that kind; choosing one asks for it as the default.
-    // The select always shows the default PipeWire has, so a change from elsewhere shows at once.
+    // The select always shows the default PipeWire has, so a change from elsewhere shows at once. It has no words before
+    // it: the glyph of the row below says the kind, and its name is read with it.
     component DeviceRow: PanelRow {
         id: deviceRow
 
@@ -653,14 +645,13 @@ Column {
         required property string kind
         required property string name
 
-        label: name
         present: node !== null
 
         Select {
             id: picker
 
             objectName: `${deviceRow.kind}Device`
-            // As wide as the row, so it stands below its label (forms.md, "Fields"; rekta.css:388, an input is 100% wide).
+            // As wide as the row (rekta.css:388, an input is 100% wide).
             implicitWidth: deviceRow.width
             label: deviceRow.name
             options: deviceRow.devices.map(node => ({ text: controls.deviceName(node), value: node }))
@@ -673,6 +664,9 @@ Column {
         }
     }
 
+    // The volume of the default device of one kind, after the icon button that mutes it. Muted, its glyph is struck
+    // through (shell.md:13–15) and the slider rests, its value saying why (forms.md, "Disabled controls say why"). Both
+    // follow the device, so a mute from elsewhere shows at once.
     // ponytail: a volume raised above 100% shows as 100%, and moving the slider brings it back onto the scale; widen the
     // scale once a raised maximum is wanted.
     component VolumeRow: PanelRow {
@@ -681,23 +675,46 @@ Column {
         required property var node
         required property string kind
         required property string name
+        // speaker or microphone; muted, its -muted form.
+        required property string glyph
         readonly property real volume: Math.min(1, node?.audio?.volume ?? 0)
+        readonly property bool muted: node?.audio?.muted ?? false
+        // What a press does, as the button's tip; its name says the kind too (forms.md:287–292).
+        readonly property string pressWord: muted ? "ton an" : "stumm schalten"
 
-        label: "lautstärke"
         present: node !== null
         // A change from elsewhere (a key, an app) moves the slider, as moving it ends its binding.
         onVolumeChanged: volumeSlider.value = volume
 
-        Slider {
-            id: volumeSlider
-
-            objectName: `${volumeRow.kind}Volume`
-            // As wide as the row, so it stands below the words (rekta.css:510, a range is 100% wide).
+        Item {
             implicitWidth: volumeRow.width
-            value: volumeRow.volume
-            valueText: `${Math.round(value * 100)}%`
-            label: `lautstärke ${volumeRow.name}`
-            onMoved: volumeRow.node.audio.volume = value
+            implicitHeight: Math.max(muteButton.implicitHeight, volumeSlider.implicitHeight)
+
+            IconButton {
+                id: muteButton
+
+                objectName: `${volumeRow.kind}Mute`
+                anchors.verticalCenter: parent.verticalCenter
+                icon: volumeRow.muted ? `${volumeRow.glyph}-muted` : volumeRow.glyph
+                label: `${volumeRow.name} ${volumeRow.pressWord}`
+                tip: volumeRow.pressWord
+                onClicked: volumeRow.node.audio.muted = !volumeRow.muted
+            }
+
+            // The rest of the row, space-m after the button as the value is after the track (rekta.css:527).
+            Slider {
+                id: volumeSlider
+
+                objectName: `${volumeRow.kind}Volume`
+                anchors.verticalCenter: parent.verticalCenter
+                x: muteButton.implicitWidth + Tokens.spaceM
+                width: parent.width - x
+                value: volumeRow.volume
+                disabledReason: volumeRow.muted ? "stumm" : ""
+                valueText: disabledReason || `${Math.round(value * 100)}%`
+                label: `lautstärke ${volumeRow.name}`
+                onMoved: volumeRow.node.audio.volume = value
+            }
         }
     }
 
@@ -733,30 +750,6 @@ Column {
                 if (!pressed)
                     value = brightnessRow.share;
             }
-        }
-    }
-
-    component MuteRow: PanelRow {
-        id: muteRow
-
-        required property var node
-        required property string kind
-        required property string name
-        readonly property bool muted: node?.audio?.muted ?? false
-
-        label: "stumm"
-        present: node !== null
-        onMutedChanged: muteToggle.checked = muted
-
-        Toggle {
-            id: muteToggle
-
-            objectName: `${muteRow.kind}Muted`
-            onWord: "an"
-            offWord: "aus"
-            checked: muteRow.muted
-            Accessible.name: `stumm ${muteRow.name}`
-            onToggled: muteRow.node.audio.muted = checked
         }
     }
 

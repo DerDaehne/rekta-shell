@@ -440,6 +440,7 @@ TestCase {
     }
 
     function cleanup() {
+        Tips.hide();
         Prefs.motion = "system";
         Prefs.theme = "system";
         Prefs.density = "auto";
@@ -1088,45 +1089,52 @@ TestCase {
         compare(commands, [], "it runs nothing itself");
     }
 
-    function test_ton_shows_the_default_output_and_input_with_their_volume_and_stumm() {
+    // The rows of a group that show, in their order.
+    function shownRows(group: var): var {
+        return Array.from(findChild(group, "rows").children).filter(row => row instanceof PanelRow && row.visible);
+    }
+
+    function glyphOf(name: string): string {
+        return findChild(control(name), "glyph").name;
+    }
+
+    function test_each_device_has_two_rows_its_select_then_its_mute_button_before_the_volume_slider() {
         const sound = giveSound(controls);
         sound.speakers.audio.volume = 0.62;
-        sound.microphone.audio.muted = true;
-        side.show(0);
-        const group = findChild(controls, "sound");
-        verify(group.visible);
-        compare(findChild(group, "heading").text, "ton");
-        tryCompare(group, "y", 0, 1000, "the first group");
-        compare(findChild(rowOf(control("outputDevice")), "words").text, "ausgang");
-        compare(control("outputDevice").currentText, "Speakers");
-        compare(findChild(rowOf(control("inputDevice")), "words").text, "eingang");
-        compare(control("inputDevice").currentText, "Microphone");
-        compare(control("outputVolume").value, 0.62);
-        compare(findChild(control("outputVolume"), "output").text, "62%", "in tabular figures");
-        compare(findChild(control("outputVolume"), "output").font.features, { "tnum": 1 });
-        compare(control("inputVolume").value, 0.5);
-        verify(!control("outputMuted").checked);
-        verify(control("inputMuted").checked);
-        compare(findChild(rowOf(control("outputMuted")), "words").text, "stumm");
-        compare(control("outputDevice").Accessible.name, "ausgang Speakers");
-        compare(control("outputVolume").Accessible.name, "lautstärke ausgang");
-        compare(control("inputMuted").Accessible.name, "stumm eingang");
-    }
-
-    function test_the_device_select_and_the_volume_slider_stand_below_their_words_as_wide_as_the_row() {
-        giveSound(controls);
         side.show(0);
         waitForRendering(side);
-        for (const name of ["outputDevice", "outputVolume"]) {
-            const row = rowOf(control(name));
-            compare(control(name).width, row.width, name);
-            compare(findChild(row, "holder").x, 0, name);
-            compare(findChild(row, "holder").y, findChild(row, "words").height + Tokens.spaceXs, `${name} space-xs below, as a field's control below its label`);
+        const group = findChild(controls, "sound");
+        compare(findChild(group, "heading").text, "ton");
+        tryCompare(group, "y", 0, 1000, "the first group");
+        compare(shownRows(group), [rowOf(control("outputDevice")), rowOf(control("outputVolume")), rowOf(control("inputDevice")), rowOf(control("inputVolume"))], "no row of its own for stumm");
+        for (const kind of ["output", "input"]) {
+            const select = control(`${kind}Device`);
+            verify(!findChild(rowOf(select), "words").visible, `${kind}: no words before the select`);
+            compare(select.mapToItem(rowOf(select), 0, 0).x, 0, kind);
+            compare(select.width, rowOf(select).width, `${kind}: the select as wide as the row`);
+            const row = rowOf(control(`${kind}Volume`));
+            const box = findChild(control(`${kind}Mute`), "box");
+            compare(rowOf(control(`${kind}Mute`)), row, `${kind}: the button stands in the volume's row`);
+            compare(box.mapToItem(row, 0, 0).x, 0, `${kind}: the button at the start`);
+            compare(box.width, Tokens.controlHeight, `${kind}: a square icon button`);
+            const slider = control(`${kind}Volume`);
+            compare(slider.mapToItem(row, 0, 0).x, box.width + Tokens.spaceM, `${kind}: the slider space-m after it`);
+            compare(slider.mapToItem(row, slider.width, 0).x, row.width, `${kind}: to the end of the row`);
+            compare(row.height, Tokens.controlHeight, `${kind}: on one line`);
         }
-        compare(findChild(rowOf(control("outputVolume")), "words").text, "lautstärke");
+        compare(glyphOf("outputMute"), "speaker");
+        compare(glyphOf("inputMute"), "microphone");
+        compare(control("outputDevice").currentText, "Speakers");
+        compare(control("inputDevice").currentText, "Microphone");
+        compare(findChild(control("outputVolume"), "output").text, "62%");
+        compare(findChild(control("outputVolume"), "output").font.features, { "tnum": 1 }, "in tabular figures");
+        compare(control("outputDevice").Accessible.name, "ausgang Speakers", "the kind is read with the select");
+        compare(control("inputDevice").Accessible.name, "eingang Microphone");
+        compare(control("outputVolume").Accessible.name, "lautstärke ausgang");
+        compare(control("inputVolume").Accessible.name, "lautstärke eingang");
     }
 
-    function test_the_slider_and_stumm_set_the_device_and_follow_changes_from_elsewhere() {
+    function test_the_slider_sets_the_device_and_follows_changes_from_elsewhere() {
         const sound = giveSound(controls);
         showSettled(0);
         const slider = control("outputVolume");
@@ -1138,15 +1146,101 @@ TestCase {
         compare(findChild(slider, "output").text, "80%");
         sound.speakers.audio.volume = 1.4;
         compare(slider.value, 1, "a raised volume shows as the end of the scale");
-        mouseClick(control("outputMuted"));
-        verify(sound.speakers.audio.muted, "stumm mutes the device");
-        sound.speakers.audio.muted = false;
-        verify(!control("outputMuted").checked, "and follows it");
         control("inputVolume").forceActiveFocus();
         keyClick(Qt.Key_Left);
         compare(sound.microphone.audio.volume, 0.49, "the microphone the same");
-        mouseClick(control("inputMuted"));
-        verify(sound.microphone.audio.muted);
+    }
+
+    function test_the_button_mutes_its_device_strikes_its_glyph_through_and_rests_the_slider_whose_value_says_stumm() {
+        const sound = giveSound(controls);
+        sound.speakers.audio.volume = 0.62;
+        showSettled(0);
+        const slider = control("outputVolume");
+        mouseClick(findChild(control("outputMute"), "box"));
+        verify(sound.speakers.audio.muted, "a press mutes the device");
+        compare(glyphOf("outputMute"), "speaker-muted");
+        verify(slider.disabled, "the slider rests");
+        compare(findChild(slider, "output").text, "stumm", "its value says why");
+        compare(slider.Accessible.description, "stumm");
+        verify(!findChild(slider, "why").visible, "and nothing below says it again");
+        compare(rowOf(slider).height, Tokens.controlHeight);
+        slider.forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        compare(sound.speakers.audio.volume, 0.62, "a resting slider takes no step");
+        mouseClick(findChild(control("outputMute"), "box"));
+        verify(!sound.speakers.audio.muted, "a second press brings the sound back");
+        compare(glyphOf("outputMute"), "speaker");
+        verify(!slider.disabled);
+        compare(findChild(slider, "output").text, "62%");
+        mouseClick(findChild(control("inputMute"), "box"));
+        verify(sound.microphone.audio.muted, "the microphone the same");
+        compare(glyphOf("inputMute"), "microphone-muted");
+        verify(control("inputVolume").disabled);
+        verify(!sound.speakers.audio.muted, "only its own device");
+    }
+
+    function test_a_mute_from_elsewhere_shows_at_once_in_the_glyph_the_slider_and_the_name() {
+        const sound = giveSound(controls);
+        side.show(0);
+        sound.speakers.audio.muted = true;
+        compare(glyphOf("outputMute"), "speaker-muted");
+        verify(control("outputVolume").disabled);
+        compare(findChild(control("outputVolume"), "output").text, "stumm");
+        compare(control("outputMute").Accessible.name, "ausgang ton an");
+        sound.speakers.audio.muted = false;
+        compare(glyphOf("outputMute"), "speaker");
+        verify(!control("outputVolume").disabled);
+        compare(findChild(control("outputVolume"), "output").text, "50%");
+        sound.microphone.audio.muted = true;
+        compare(glyphOf("inputMute"), "microphone-muted");
+        verify(control("inputVolume").disabled);
+    }
+
+    function test_the_mute_button_is_named_and_tipped_by_what_a_press_does() {
+        const sound = giveSound(controls);
+        side.show(0);
+        const button = control("outputMute");
+        compare(button.Accessible.name, "ausgang stumm schalten");
+        compare(control("inputMute").Accessible.name, "eingang stumm schalten");
+        button.forceActiveFocus();
+        compare(Tips.target, findChild(button, "box"), "keyboard focus shows its tip");
+        compare(Tips.text, "stumm schalten");
+        keyClick(Qt.Key_Space);
+        compare(button.Accessible.name, "ausgang ton an");
+        compare(Tips.text, "ton an", "the tip that shows says the new words");
+        sound.speakers.audio.muted = false;
+        compare(button.Accessible.name, "ausgang stumm schalten", "both follow a change from elsewhere");
+        compare(Tips.text, "stumm schalten");
+    }
+
+    function test_ton_works_from_the_keyboard() {
+        const sound = giveSound(controls);
+        sound.speakers.audio.volume = 0.6;
+        side.show(0);
+        verify(control("outputDevice").activeFocus, "the first control");
+        keyClick(Qt.Key_Tab);
+        verify(control("outputMute").activeFocus, "Tab to the button");
+        keyClick(Qt.Key_Space);
+        verify(sound.speakers.audio.muted, "Space mutes");
+        keyClick(Qt.Key_Down);
+        verify(control("outputVolume").activeFocus, "↓ to the slider, which a keyboard still reaches while it rests");
+        keyClick(Qt.Key_Right);
+        compare(sound.speakers.audio.volume, 0.6);
+        keyClick(Qt.Key_Tab, Qt.ShiftModifier);
+        verify(control("outputMute").activeFocus, "Shift+Tab back to the button");
+        keyClick(Qt.Key_Return);
+        verify(!sound.speakers.audio.muted, "Enter brings the sound back");
+        keyClick(Qt.Key_Tab);
+        keyClick(Qt.Key_Right);
+        compare(sound.speakers.audio.volume, 0.61, "then the slider steps");
+        keyClick(Qt.Key_Tab);
+        verify(control("inputDevice").activeFocus, "Tab on to the input's select");
+        keyClick(Qt.Key_Tab);
+        verify(control("inputMute").activeFocus);
+        keyClick(Qt.Key_Enter);
+        verify(sound.microphone.audio.muted, "the microphone the same");
+        keyClick(Qt.Key_Up);
+        verify(control("inputDevice").activeFocus, "↑ back to its select");
     }
 
     function test_rows_follow_another_default_device() {
@@ -1237,7 +1331,6 @@ TestCase {
         verify(findChild(controls, "sound").visible);
         verify(!rowOf(control("inputDevice")).visible);
         verify(!rowOf(control("inputVolume")).visible);
-        verify(!rowOf(control("inputMuted")).visible);
         controls.output = null;
         verify(!findChild(controls, "sound").visible);
     }
@@ -1254,7 +1347,7 @@ TestCase {
         compare(options.map(row => findChild(row, "label").text), ["Speakers", "Headphones"]);
         compare(options.map(row => findChild(row, "fill").visible), [true, false], "the default in the accent");
         const growth = findChild(select, "box").height - Tokens.controlHeight;
-        tryVerify(() => volumeRow.mapToItem(controls, 0, 0).y === before + growth, 1000, "lautstärke moves down by what the select grows");
+        tryVerify(() => volumeRow.mapToItem(controls, 0, 0).y === before + growth, 1000, "the volume's row moves down by what the select grows");
         waitForRendering(side);
         mouseClick(options[1]);
         compare(chosenDevices, [sound.headphones], "a click chooses");
@@ -2434,7 +2527,9 @@ TestCase {
                 const contact = createTemporaryObject(contactComponent, testCase);
                 const panel = findChild(contact, "panel");
                 panel.controls.hasPerformanceProfile = true;
-                giveSound(panel.controls).speakers.audio.volume = 0.62;
+                const sound = giveSound(panel.controls);
+                sound.speakers.audio.volume = 0.62;
+                sound.microphone.audio.muted = true;
                 giveDisplays(panel.controls);
                 giveBluetooth(panel.controls).speaker.state = Controls.Connecting;
                 panel.show(0);

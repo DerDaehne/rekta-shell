@@ -239,6 +239,15 @@ TestCase {
         verify(slider.height > Tokens.controlHeight);
     }
 
+    function test_a_reason_the_value_already_says_stands_only_in_the_value() {
+        const slider = createTemporaryObject(sliderComponent, testCase, { disabledReason: "muted", valueText: "muted" });
+        verify(slider.disabled);
+        compare(findChild(slider, "output").text, "muted");
+        verify(!findChild(slider, "why").visible);
+        compare(slider.height, Tokens.controlHeight);
+        compare(slider.Accessible.description, "muted");
+    }
+
     function test_segments_follow_the_keys_and_slide_the_accent_over() {
         useColourfulAccent();
         const segments = createTemporaryObject(segmentsComponent, testCase);
