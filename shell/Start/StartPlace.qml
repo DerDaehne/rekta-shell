@@ -61,7 +61,7 @@ FocusScope {
     property var letterSections: []
     // The rows of tiles a section of "alle apps" holds under its heading; stacked, no letter splits.
     readonly property real letterRows: appsPanorama.sideways ? Math.max(1, Math.floor((appsPanorama.height - 2 * Tokens.spaceXl - headingMeasure.height - Tokens.spaceL + Tokens.spaceS) / unitStep)) : Infinity
-    // Stacked, a section has as many tile units across as fit, at least two (layout.md:102–104, not yet stretched).
+    // Stacked, a section has as many tile units across as fit, at least two (layout.md:112–114, not yet stretched).
     readonly property int stackedColumns: Math.max(2, Math.floor((appsPanorama.width - 2 * appsPanorama.inset + Tokens.spaceS) / unitStep))
     // Whether "läuft" stands in the panorama, the first of its sections.
     readonly property bool anyRunning: running.length > 0
@@ -607,7 +607,8 @@ FocusScope {
         moveFocus(direction);
     }
 
-    // In "alle apps" a key that prints, other than a space, jumps (rekta.js:2810); elsewhere it would search.
+    // In "alle apps" a key that prints, other than a space, jumps; elsewhere it would search.
+    // ponytail: jumping on any printing key is Rekta 0.5.0's; 0.6.0 takes letters and digits only (rekta.js:181).
     function jumpsInAllApps(event: KeyEvent): bool {
         return inAllApps() && event.text.length === 1 && /\S/.test(event.text) && (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) === 0;
     }
@@ -1006,7 +1007,7 @@ FocusScope {
             }
 
             // Loading, the line runs on the region's first hairline; without apps a sentence there says so (states.md,
-            // "Data states"; rekta.css:675). Both stand where the first section would.
+            // "Data states"; rekta.css:890). Both stand where the first section would.
             Item {
                 x: appsPanorama.inset
                 y: appsPanorama.y + Tokens.spaceXl
@@ -1035,7 +1036,7 @@ FocusScope {
             }
 
             // A section of "alle apps": its part of the apps, as wide as its units, with the start place's spaces and
-            // headings, larger than Rekta's (rekta.css:854–856, :53, :50). Stacked it is as wide as the panorama.
+            // headings, larger than Rekta's (rekta.css:1125–1127, :55, :52). Stacked it is as wide as the panorama.
             Component {
                 id: letterSection
 

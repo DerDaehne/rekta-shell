@@ -26,6 +26,8 @@ Item {
     property Pivot sectionStrip
     readonly property bool sideways: facetRow || Prefs.sizeClass(placeWidth, viewportHeight) === "sideways"
     readonly property real inset: facetRow ? 0 : sideways ? Tokens.spaceXl : Tokens.spaceM
+    // ponytail: a gap of space-xl always is Rekta 0.5.0's; 0.6.0 changes it a little, never below space-m, so that the
+    // window's edge never falls flush on a section's (layout.md:41–50; rekta.js spread(), :1043–1067).
     readonly property real gap: Tokens.spaceXl
     readonly property int currentIndex: reading.current
     // Everything fits: nothing scrolls, and no spacer lets the last section reach the left edge (rekta.css:1498).
@@ -264,6 +266,8 @@ Item {
             mark(chosen);
     }
 
+    // ponytail: at the start, the last edge within a third is Rekta 0.5.0's rule; 0.6.0 marks the first section there,
+    // however narrow the sections (rekta.js:981–983).
     function followedSection(sections: var): int {
         if (reading.jumped)
             return -1;
@@ -330,7 +334,9 @@ Item {
         if (!(event.key in moves))
             return;
         goTo(Math.max(0, Math.min(last, moves[event.key])), false, false);
-        // A key is the user's (rekta.js:1098, :1101): the scroll its jump causes is followed, only a click wins over that.
+        // A key is the user's: the scroll its jump causes is followed, only a click wins over that.
+        // ponytail: following a key's own jump is Rekta 0.5.0's; 0.6.0 keeps its target marked for the whole glide, as a
+        // click's (rekta.js:993–995).
         userScroll();
         event.accepted = true;
     }

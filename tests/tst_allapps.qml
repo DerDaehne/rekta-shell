@@ -269,7 +269,7 @@ TestCase {
         panorama.userScroll();
         panorama.scroller.contentX = panorama.mostScroll();
         compare(strip.currentIndex, sections().length - 1, "at the end, the last");
-        // Rekta's rule (rekta.js:852–866): the last section whose left edge lies within a third of the width.
+        // Rekta's rule (rekta.js:979–980): the last section whose left edge lies within a third of the width.
         const at = flushLeft(titled("l"));
         panorama.scroller.contentX = at;
         compare(strip.currentIndex, sections().filter(section => section.x - at <= panorama.width / 3).length - 1);
@@ -371,7 +371,7 @@ TestCase {
         verify(named("results").visible);
     }
 
-    // The wheel and the swipe (layout.md:42–71)
+    // The wheel and the swipe (layout.md:52–81)
 
     function test_a_vertical_wheel_moves_the_panorama_sideways_and_a_gesture_back_past_its_start_goes_to_start_once() {
         openOnAllApps(desktopApps, 1920, 1080);
@@ -534,7 +534,8 @@ TestCase {
         openOnAllApps(desktopApps, 1600, 900);
         const panorama = named("appsPanorama");
         panorama.forceActiveFocus();
-        // A key's jump is followed as it glides (rekta.js:945, :948), so the section is read once it lands.
+        // A key's jump is followed as it glides, so the section is read once it lands (Rekta 0.5.0's rule, kept by the
+        // panorama).
         keyClick(Qt.Key_End);
         tryCompare(panorama, "gliding", false);
         compare(panorama.scroller.contentX, panorama.mostScroll());
@@ -543,7 +544,7 @@ TestCase {
         keyClick(Qt.Key_Home);
         tryCompare(panorama, "gliding", false);
         compare(panorama.scroller.contentX, 0, "the first section flush left");
-        // The strip marks what Rekta's follow rule says there (rekta.js:852–866).
+        // The strip marks what Rekta 0.5.0's follow rule says there, kept by the panorama.
         compare(panorama.currentIndex, sections().filter(section => section.x <= panorama.width / 3).length - 1);
     }
 

@@ -44,7 +44,8 @@ function scopeCommand(id, command, stamp) {
 // Plasma's own apps, pinned while the user has pinned nothing.
 const defaultPinned = [{ id: "systemsettings" }, { id: "org.kde.dolphin" }, { id: "org.kde.konsole" }];
 
-// A tile spans one or two units (rekta.tokens.json:624, tile-unit).
+// A tile spans one or two units each way (tile-unit, rekta.tokens.json:838).
+// ponytail: two across at most is Rekta 0.5.0's; 0.6.0 lets a tile span up to four units across, two down.
 function span(units) {
     return Math.min(2, Math.max(1, Math.round(Number(units) || 1)));
 }
