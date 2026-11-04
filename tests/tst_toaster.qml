@@ -674,7 +674,7 @@ TestCase {
         const picture = findChild(toast, "appIcon");
         tryCompare(picture, "status", Image.Ready);
         onWholePixels(toast);
-        compare(picture.fillMode, Image.PreserveAspectCrop);
+        compare(findChild(picture, "image").fillMode, Image.PreserveAspectCrop);
         compare(picture.width, 20);
         compare(picture.height, 20);
         waitForRendering(picture);

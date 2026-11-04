@@ -57,8 +57,8 @@ FocusScope {
         }
         going.stop();
         comingIn.restart();
-        focusFirst();
         ringsHidden = byPointer;
+        focusFirst();
     }
 
     // Scrolls the facet so an item of it stands at the top, or to the top without one, and puts the focus on the item's
@@ -352,7 +352,9 @@ FocusScope {
             Tooltip {
                 id: tip
 
-                readonly property var place: target ? Placement.tip(parent.mapFromItem(target, 0, 0, target.width, target.height), Qt.size(width, height), area) : null
+                // Placed again when the facet's content changes its height (a select unfolds, a second player comes),
+                // which moves the controls in it.
+                readonly property var place: target && facetHolder.height >= 0 ? Placement.tip(parent.mapFromItem(target, 0, 0, target.width, target.height), Qt.size(width, height), area) : null
 
                 objectName: "tip"
                 area: Qt.size(parent.width, parent.height)

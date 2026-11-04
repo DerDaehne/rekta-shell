@@ -60,11 +60,12 @@ Row {
     Accessible.description: disabledReason
     Accessible.onPressAction: click()
 
-    // Focus comes only from the keyboard, so its tip shows at once.
+    // Focus the keyboard gives shows the tip at once; focus a pointer gave, behind hidden rings, does not
+    // (`:focus-visible`, rekta.js:3081).
     onActiveFocusChanged: {
         if (tip === "")
             return;
-        if (activeFocus)
+        if (activeFocus && !ring.hiddenByHost)
             Tips.show(box, tip);
         else
             Tips.leave(box);
@@ -208,6 +209,8 @@ Row {
 
         // On a status fill the ring takes the text colour, which clears AA there (rekta.css:1260).
         FocusRing {
+            id: ring
+
             objectName: "ring"
             shown: button.activeFocus
             border.color: Status.onStatusFill(button) ? button.ink : Tokens.color.focus

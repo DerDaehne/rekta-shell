@@ -148,6 +148,7 @@ ShellRoot {
         source: keys.source
         brightness: keys.brightness
         notices: notifications.board
+        media: music
         networkManagerRunning: systemState.networkManagerRunning
 
         // Under the session banner the Start waits: asked now, KWin would raise the Start over the banner.

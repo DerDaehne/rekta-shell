@@ -35,6 +35,8 @@ PanelWindow {
     // The displays powerdevil can dim, shared with the key readout.
     required property ScreenBrightness brightness
     required property NoticeBoard notices
+    // The media players, for "läuft gerade".
+    required property Media media
     // NetworkManager runs; Networking is read only then (SystemState has the one watcher).
     required property bool networkManagerRunning
     // The screen it opens on, null once that one has gone; the panel hides meanwhile.
@@ -121,6 +123,7 @@ PanelWindow {
             hasPowerProfiles: powerProfiles.registered
             powerProfile: hasPowerProfiles ? PowerProfiles.profile : PowerProfile.Balanced
             hasPerformanceProfile: hasPowerProfiles && PowerProfiles.hasPerformanceProfile
+            players: surface.media.players.values
             density: surface.settings.value("density")
             onDensityChosen: density => surface.settings.set("density", density)
             output: surface.sink

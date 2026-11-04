@@ -537,6 +537,22 @@ TestCase {
         compare(word.mapToItem(region, 0, word.baselineOffset).y, kicker.mapToItem(region, 0, kicker.baselineOffset).y, "on the kicker's baseline");
     }
 
+    function test_its_figures_stand_space_s_under_the_kicker_and_its_actions_space_m_under_the_figures() {
+        const region = findChild(createTemporaryObject(regionComponent, testCase), "region");
+        const [kicker, figures, actions] = ["kicker", "figures", "actions"].map(name => findChild(region, name));
+        const top = item => item.mapToItem(region, 0, 0).y;
+        compare(top(figures), top(kicker) + kicker.height + Tokens.spaceS);
+        compare(top(actions), top(figures) + figures.height + Tokens.spaceM);
+    }
+
+    function test_without_a_word_its_kicker_stands_alone_without_a_tag() {
+        const region = findChild(createTemporaryObject(regionComponent, testCase), "region");
+        region.word = "";
+        compare(findChild(region, "kicker").text, "nightly build");
+        verify(!findChild(region, "tag").visible);
+        compare(region.Accessible.name, "nightly build");
+    }
+
     function test_its_figures_stand_on_the_ground_with_secondary_words() {
         const region = findChild(createTemporaryObject(regionComponent, testCase), "region");
         const figures = findChild(region, "figures");

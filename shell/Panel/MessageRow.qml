@@ -119,26 +119,10 @@ Item {
             width: row.width
         }
 
-        Image {
+        Picture {
             objectName: "icon"
             y: heading.y + (heading.height - height) / 2
-            width: Geometry.iconSize
-            height: Geometry.iconSize
-            sourceSize: Qt.size(width, height)
-            fillMode: Image.PreserveAspectCrop
             source: row.icon
-        }
-
-        // A ring in the panel's ground, whose inner edge is the picture's rounded outline, as in a toast.
-        Rectangle {
-            x: -Tokens.radiusTile
-            y: heading.y + (heading.height - height) / 2
-            width: Geometry.iconSize + 2 * Tokens.radiusTile
-            height: width
-            color: "transparent"
-            radius: 2 * Tokens.radiusTile
-            border.width: Tokens.radiusTile
-            border.color: Tokens.color.bg
         }
 
         Body {

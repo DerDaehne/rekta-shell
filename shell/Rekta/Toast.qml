@@ -287,31 +287,13 @@ FocusScope {
         width: toast.icon.toString() !== "" ? Tokens.spaceM + Geometry.iconSize : 0
         height: toast.height
 
-        Image {
+        Picture {
             objectName: "appIcon"
             x: Tokens.spaceM
             anchors.verticalCenter: parent.verticalCenter
-            width: Geometry.iconSize
-            height: Geometry.iconSize
-            sourceSize: Qt.size(width, height)
-            fillMode: Image.PreserveAspectCrop
             source: toast.icon
+            ground: toast.ground
             visible: parent.width > 0
-        }
-
-        // The picture is square with the tile's corners: a ring in the strip's own ground, whose inner edge is the
-        // picture's rounded outline (its radius is the outer radius less the ring's width).
-        Rectangle {
-            objectName: "corners"
-            x: Tokens.spaceM - Tokens.radiusTile
-            anchors.verticalCenter: parent.verticalCenter
-            width: Geometry.iconSize + 2 * Tokens.radiusTile
-            height: width
-            visible: parent.width > 0
-            color: "transparent"
-            radius: 2 * Tokens.radiusTile
-            border.width: Tokens.radiusTile
-            border.color: toast.ground
         }
     }
 

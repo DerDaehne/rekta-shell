@@ -12,14 +12,20 @@ Column {
     property color ink: Tokens.color.textPrimary
     readonly property bool known: value >= 0
     readonly property string percentText: `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`
+    // What stands above the bar at its end: the percentage beside a label, or a value of its own such as a track's time;
+    // in a tile it has neither (tiles.md, "Progress").
+    property string valueText: label !== "" ? percentText : ""
+    // The fill eases to a new value over duration-moderate (rekta.css:209). A value that moves on by itself every frame
+    // (a track that plays) moves it at once: an ease restarted every frame never gets past its slow start.
+    property bool eased: true
 
     spacing: Tokens.spaceXs
     Accessible.role: Accessible.ProgressBar
     Accessible.name: label
-    Accessible.description: known ? percentText : ""
+    Accessible.description: known ? valueText || percentText : ""
 
     Item {
-        visible: progress.known && progress.label !== ""
+        visible: progress.known && progress.valueText !== ""
         width: progress.width
         height: visible ? percent.implicitHeight : 0
 
@@ -37,7 +43,7 @@ Column {
 
             objectName: "percent"
             anchors.right: parent.right
-            text: progress.percentText
+            text: progress.valueText
             font.family: Tokens.fontSans
             font.pixelSize: Tokens.fontSizeS
             font.weight: Tokens.fontWeightMedium
@@ -68,6 +74,8 @@ Column {
             color: progress.ink
 
             Behavior on width {
+                enabled: progress.eased
+
                 NumberAnimation {
                     duration: Tokens.durationModerate
                     easing.type: Easing.Bezier

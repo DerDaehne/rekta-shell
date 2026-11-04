@@ -1,0 +1,438 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtTest
+import Panel
+import Rekta
+
+TestCase {
+    id: testCase
+
+    name: "NowPlaying"
+    // Objects created inside an invisible test case are never rendered, so contact sheets would stay empty.
+    visible: true
+    when: windowShown
+    width: 900
+    height: 720
+
+    // A 40 × 40 picture, as a player hands its cover over.
+    readonly property string cover: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAHlBMVEX///86dvBEffF4ofW5zvrs8v7///9Be/GcuvdVifLlkWmGAAAAAXRSTlMAQObYZgAAAI1JREFUOMu11UkOgCAQRFGaocH7X9iFMaKW5DvV+sWANEUIS+wyoY8NA9lGzaCk0AxKCg3mOYwpFy85xTGszde0OoCT95ku4d7tZQ+rH1M1bCfYJIx+TlQwCZgUzAJmBYuARUFXefVFvEa8a/wf8cnws8bTw+eRTzi/M39c17dVcaekvu9HXs287NHzMQN/Vg0WT30WoAAAAABJRU5ErkJggg=="
+    property Item scene
+    // Untyped: qmllint stops without a word on members an Item-typed value lacks.
+    property var side
+    property var controls
+
+    // An MPRIS player as Quickshell has it. Its calls are recorded; play and pause also change its state, as a player
+    // answers them.
+    component FakePlayer: QtObject {
+        property string identity: "Elisa"
+        property int playbackState: NowPlaying.Playing
+        readonly property bool isPlaying: playbackState === NowPlaying.Playing
+        property string trackTitle: "Teardrop"
+        property string trackArtist: "Massive Attack"
+        property string trackAlbum: "Mezzanine"
+        property string trackArtUrl: ""
+        property bool positionSupported: true
+        property real position: 134
+        property bool lengthSupported: true
+        property real length: 243
+        property real rate: 1
+        property bool canGoPrevious: true
+        property bool canGoNext: true
+        property bool canTogglePlaying: true
+        property var calls: []
+
+        function previous() {
+            calls = [...calls, "previous"];
+        }
+
+        function next() {
+            calls = [...calls, "next"];
+        }
+
+        function togglePlaying() {
+            calls = [...calls, "togglePlaying"];
+            playbackState = isPlaying ? NowPlaying.Paused : NowPlaying.Playing;
+        }
+    }
+
+    Component {
+        id: playerComponent
+
+        FakePlayer {}
+    }
+
+    Component {
+        id: sceneComponent
+
+        Rectangle {
+            property alias panel: scenePanel
+
+            width: 760
+            height: 720
+            color: Tokens.color.bg
+
+            Button {
+                objectName: "opener"
+                x: Tokens.spaceL
+                y: Tokens.spaceL
+                text: "steuerung"
+            }
+
+            SidePanel {
+                id: scenePanel
+
+                property alias controls: controlsFacet
+
+                objectName: "panel"
+                anchors.fill: parent
+                titles: ["steuerung", "meldungen"]
+
+                Controls {
+                    id: controlsFacet
+
+                    objectName: "controls"
+                    sheets: scenePanel.sheets
+                    edge: scenePanel.edge
+                }
+
+                Item {
+                    objectName: "messages"
+                }
+            }
+        }
+    }
+
+    function init() {
+        failOnWarning(/TypeError|ReferenceError|Binding loop/);
+        Prefs.motion = "off";
+        scene = createTemporaryObject(sceneComponent, testCase);
+        side = findChild(scene, "panel");
+        controls = side.controls;
+        findChild(scene, "opener").forceActiveFocus();
+    }
+
+    function cleanup() {
+        Tips.hide();
+        Prefs.motion = "system";
+        Prefs.theme = "system";
+    }
+
+    function part(name: string): var {
+        return findChild(controls, name);
+    }
+
+    function player(properties: var): var {
+        return createTemporaryObject(playerComponent, testCase, properties ?? {});
+    }
+
+    // One player playing, handed to the controls as the host hands Quickshell's players.
+    function givePlayer(properties: var): var {
+        const one = player(properties);
+        controls.players = [one];
+        return one;
+    }
+
+    function showSettled() {
+        side.show(0);
+        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        waitForRendering(side);
+    }
+
+    function test_while_a_player_plays_laeuft_gerade_stands_at_the_top_of_steuerung_with_title_artist_album_and_progress() {
+        givePlayer();
+        side.show(0);
+        const region = part("nowPlaying");
+        verify(region.visible);
+        compare(controls.children[0], region, "it stands above every group");
+        compare(findChild(region, "kicker").text, "läuft gerade · Elisa", "the kicker names the player");
+        verify(!findChild(region, "tag").visible, "the region has no status tag");
+        compare(part("title").text, "Teardrop");
+        compare(part("title").font.weight, Tokens.fontWeightSemibold);
+        compare(part("byline").text, "Massive Attack · Mezzanine");
+        const progress = part("progress");
+        verify(progress.visible);
+        compare(progress.value, 134 / 243);
+        compare(findChild(progress, "percent").text, "2:14 / 4:03", "the time played and the length stand where a percentage would");
+        compare(findChild(progress, "percent").font.features.tnum, 1, "in tabular figures");
+    }
+
+    function test_as_a_status_region_it_has_no_fill_no_press_and_no_focus_and_its_parts_follow_the_regions_rhythm() {
+        givePlayer();
+        showSettled();
+        const region = findChild(part("nowPlaying"), "region");
+        verify(!region.activeFocusOnTab);
+        compare(region.Accessible.name, "läuft gerade · Elisa");
+        const kicker = findChild(region, "kicker");
+        const track = part("track");
+        const progress = part("progress");
+        const previous = part("previous");
+        const at = item => item.mapToItem(region, 0, 0).y;
+        compare(at(track), at(kicker) + kicker.height + Tokens.spaceS, "the figures stand space-s under the kicker");
+        compare(at(progress), at(track) + track.height + Tokens.spaceM, "figures stand space-m apart");
+        compare(at(previous), at(progress) + progress.height + Tokens.spaceM, "the actions space-m under the figures");
+        const image = grabImage(side);
+        const middle = track.mapToItem(side, track.width - 2, 1);
+        verify(Qt.colorEqual(image.pixel(middle.x, middle.y), Tokens.color.bg), "the ground shows through");
+    }
+
+    function test_without_a_player_the_region_is_gone_and_a_paused_one_stays_only_with_a_track() {
+        side.show(0);
+        verify(!part("nowPlaying").visible, "no player");
+        const one = givePlayer({ playbackState: NowPlaying.Stopped });
+        verify(!part("nowPlaying").visible, "a stopped player");
+        one.playbackState = NowPlaying.Paused;
+        verify(part("nowPlaying").visible, "paused with a track");
+        one.trackTitle = "";
+        verify(!part("nowPlaying").visible, "paused without a track");
+        one.playbackState = NowPlaying.Playing;
+        verify(part("nowPlaying").visible, "playing");
+        controls.players = [];
+        verify(!part("nowPlaying").visible, "the player gone");
+    }
+
+    function test_previous_play_pause_and_next_call_the_player() {
+        const one = givePlayer();
+        showSettled();
+        mouseClick(part("previous"));
+        mouseClick(part("playPause"));
+        mouseClick(part("next"));
+        compare(one.calls, ["previous", "togglePlaying", "next"]);
+    }
+
+    function test_play_pause_shows_what_a_press_does_and_follows_the_players_state() {
+        const one = givePlayer();
+        side.show(0);
+        const button = part("playPause");
+        compare(button.icon, "pause");
+        compare(button.Accessible.name, "pause");
+        compare(button.tip, "pause");
+        one.playbackState = NowPlaying.Paused;
+        compare(button.icon, "play", "a pause from elsewhere shows at once");
+        compare(button.Accessible.name, "abspielen");
+        compare(button.tip, "abspielen");
+    }
+
+    function test_the_icon_buttons_are_named_and_tipped_and_use_rektas_track_glyphs() {
+        givePlayer();
+        side.show(0);
+        compare(part("previous").icon, "previous");
+        compare(part("previous").Accessible.name, "vorheriger titel");
+        compare(part("previous").tip, "vorheriger titel");
+        compare(part("next").icon, "next");
+        compare(part("next").Accessible.name, "nächster titel");
+        compare(part("next").tip, "nächster titel");
+    }
+
+    function test_a_control_the_player_cannot_use_now_is_disabled_and_the_row_says_why() {
+        const one = givePlayer({ canGoPrevious: false });
+        showSettled();
+        verify(part("previous").disabled);
+        verify(!part("next").disabled);
+        compare(findChild(part("nowPlaying"), "actions").why, "Kein Titel davor.");
+        mouseClick(part("previous"));
+        compare(one.calls, [], "it does not act");
+        one.canTogglePlaying = false;
+        one.canGoNext = false;
+        compare(findChild(part("nowPlaying"), "actions").why, "Kein Titel davor. Der Player lässt sich nicht steuern. Kein Titel danach.");
+    }
+
+    function test_with_two_players_a_select_picks_one_and_the_one_that_started_playing_last_is_chosen() {
+        const elisa = player();
+        const browser = player({ identity: "Firefox", playbackState: NowPlaying.Paused, trackTitle: "A talk", trackArtist: "", trackAlbum: "" });
+        controls.players = [browser, elisa];
+        side.show(0);
+        const picker = part("player");
+        verify(picker.visible);
+        compare(findChild(part("nowPlaying"), "kicker").text, "läuft gerade", "the select names the player");
+        compare(picker.options.map(option => option.text), ["Firefox", "Elisa"]);
+        compare(picker.currentText, "Elisa", "the one playing");
+        compare(part("title").text, "Teardrop");
+        browser.playbackState = NowPlaying.Playing;
+        compare(picker.currentText, "Firefox", "the one that started last");
+        compare(part("title").text, "A talk");
+        compare(part("byline").visible, false, "a track without artist or album has no line for them");
+        picker.forceActiveFocus();
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        compare(picker.currentText, "Elisa", "a pick shows that player");
+        compare(part("title").text, "Teardrop");
+        elisa.playbackState = NowPlaying.Paused;
+        compare(picker.currentText, "Elisa", "the pick holds while it pauses");
+        browser.playbackState = NowPlaying.Paused;
+        browser.playbackState = NowPlaying.Playing;
+        compare(picker.currentText, "Firefox", "until another starts");
+        controls.players = [elisa];
+        verify(!picker.visible, "one player has no select");
+        compare(findChild(part("nowPlaying"), "kicker").text, "läuft gerade · Elisa");
+    }
+
+    function test_the_progress_glides_on_between_the_players_reports_without_jumps() {
+        givePlayer({ position: 10 });
+        showSettled();
+        const region = part("nowPlaying");
+        const from = region.played;
+        const start = Date.now();
+        verify(from >= 10 && from < 11);
+        let last = from;
+        for (let look = 0; look < 10; look++) {
+            wait(30);
+            const due = from + (Date.now() - start) / 1000;
+            verify(region.played > last, `it moves on between looks: ${region.played} after ${last}`);
+            verify(Math.abs(region.played - due) < 0.1, `with the clock at the player's rate, never a jump: ${region.played}, due ${due}`);
+            last = region.played;
+        }
+        compare(part("progress").value, region.played / 243);
+    }
+
+    function test_with_motion_the_fill_keeps_up_with_the_glide() {
+        Prefs.motion = "on";
+        givePlayer({ position: 134 });
+        showSettled();
+        const fill = findChild(part("progress"), "fill");
+        const bar = findChild(part("progress"), "bar");
+        for (let look = 0; look < 5; look++) {
+            wait(50);
+            verify(Math.abs(fill.width - part("progress").value * bar.width) < 1, `the fill stands at the value: ${fill.width} of ${bar.width} at ${part("progress").value}`);
+        }
+    }
+
+    function test_the_progress_holds_while_the_panel_is_closed_and_comes_back_where_the_player_is() {
+        const one = givePlayer({ position: 10 });
+        showSettled();
+        const region = part("nowPlaying");
+        side.close();
+        tryCompare(side, "open", false);
+        verify(!findChild(region, "gliding").running, "no glide while closed");
+        const held = region.played;
+        wait(100);
+        compare(region.played, held);
+        one.position = 200;
+        side.show(0);
+        verify(region.played >= 200 && region.played < 201, "it takes up where the player is");
+        verify(findChild(region, "gliding").running);
+    }
+
+    function test_a_seek_a_pause_and_another_rate_start_the_glide_again_from_the_players_report() {
+        const one = givePlayer({ position: 10 });
+        showSettled();
+        const region = part("nowPlaying");
+        one.position = 120;
+        verify(region.played >= 120 && region.played < 121, "a seek");
+        one.playbackState = NowPlaying.Paused;
+        verify(!findChild(region, "gliding").running, "paused, it stands");
+        const held = region.played;
+        wait(100);
+        compare(region.played, held);
+        one.rate = 2;
+        one.playbackState = NowPlaying.Playing;
+        const from = region.played;
+        wait(200);
+        verify(region.played - from > 0.3, `twice the rate: ${region.played - from}`);
+    }
+
+    function test_a_stream_without_a_length_shows_no_progress() {
+        givePlayer({ lengthSupported: false, length: 0 });
+        side.show(0);
+        verify(part("nowPlaying").visible);
+        verify(!part("progress").visible);
+    }
+
+    function test_the_cover_stands_in_the_icons_field_at_the_start_with_the_tiles_corners_and_the_words_beside_it() {
+        givePlayer({ trackArtUrl: testCase.cover });
+        showSettled();
+        const cover = part("cover");
+        tryCompare(cover, "status", Image.Ready);
+        verify(cover.visible);
+        compare(cover.width, Geometry.iconSize);
+        compare(cover.height, Geometry.iconSize);
+        compare(cover.x, 0);
+        compare(part("title").x, Geometry.iconSize + Tokens.spaceS);
+        compare(part("byline").x, part("title").x);
+        compare(findChild(cover, "corners").radius, 2 * Tokens.radiusTile);
+        compare(findChild(cover, "corners").border.color, Tokens.color.bg, "the corners are cut in the panel's ground");
+        controls.players[0].trackArtUrl = "";
+        verify(!cover.visible, "without a cover");
+        compare(part("title").x, 0, "the words take its place");
+    }
+
+    function test_everything_works_from_the_keyboard() {
+        const one = givePlayer();
+        side.show(0, false);
+        verify(part("previous").activeFocus, "the focus starts at previous");
+        keyClick(Qt.Key_Space);
+        keyClick(Qt.Key_Tab);
+        verify(part("playPause").activeFocus);
+        keyClick(Qt.Key_Space);
+        keyClick(Qt.Key_Down);
+        verify(part("next").activeFocus, "↓ goes on as Tab does");
+        keyClick(Qt.Key_Return);
+        compare(one.calls, ["previous", "togglePlaying", "next"]);
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Up);
+        verify(part("previous").activeFocus, "↑ goes back");
+    }
+
+    function test_with_two_players_the_keyboard_starts_at_the_select() {
+        controls.players = [player({ identity: "Firefox", playbackState: NowPlaying.Paused }), player()];
+        side.show(0, false);
+        verify(part("player").activeFocus);
+        keyClick(Qt.Key_Down);
+        verify(part("player").expanded, "↓ opens it");
+        keyClick(Qt.Key_Up);
+        keyClick(Qt.Key_Return);
+        compare(part("player").currentText, "Firefox");
+        compare(part("title").text, "Teardrop");
+        keyClick(Qt.Key_Tab);
+        verify(part("previous").activeFocus);
+    }
+
+    function test_the_tip_of_the_first_button_shows_when_the_keyboard_opened_the_panel_and_waits_for_it_after_a_pointer() {
+        givePlayer();
+        side.show(0, false);
+        compare(Tips.target, findChild(part("previous"), "box"), "opened by the keyboard, the focus brings its tip");
+        side.close();
+        tryCompare(side, "open", false);
+        Tips.hide();
+        side.show(0, true);
+        verify(part("previous").activeFocus);
+        compare(Tips.target, null, "opened by a pointer, no ring and no tip");
+        keyClick(Qt.Key_Tab);
+        compare(Tips.target, findChild(part("playPause"), "box"), "the keyboard brings the next one's tip");
+    }
+
+    function test_a_tip_stays_with_its_button_when_a_second_player_brings_the_select_above_it() {
+        const elisa = givePlayer();
+        showSettled();
+        part("previous").forceActiveFocus();
+        const tip = findChild(side, "tip");
+        const box = findChild(part("previous"), "box");
+        const above = () => box.mapToItem(tip.parent, 0, 0).y - Tokens.tipGap - tip.height;
+        verify(tip.visible);
+        compare(tip.y, Math.round(above()));
+        const before = tip.y;
+        controls.players = [player({ identity: "Firefox", playbackState: NowPlaying.Paused }), elisa];
+        waitForRendering(side);
+        verify(tip.y > before, "the button moved down");
+        compare(tip.y, Math.round(above()), "and its tip with it");
+    }
+
+    // Both themes: one player with a cover, then two with the select.
+    function test_contact_sheet_of_laeuft_gerade_in_both_themes() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const contact = createTemporaryObject(sceneComponent, testCase);
+            const shown = player({ trackArtUrl: testCase.cover, canGoPrevious: false });
+            contact.panel.controls.players = [shown];
+            contact.panel.show(0, true);
+            tryCompare(findChild(contact, "cover"), "status", Image.Ready);
+            waitForRendering(contact);
+            grabImage(contact).save(`nowplaying-sheet-${theme}.png`);
+            contact.panel.controls.players = [player({ identity: "Firefox", playbackState: NowPlaying.Paused, trackTitle: "A talk on type", trackArtist: "", trackAlbum: "" }), shown];
+            waitForRendering(contact);
+            grabImage(contact).save(`nowplaying-players-sheet-${theme}.png`);
+            verify(findChild(contact, "player").visible);
+        }
+    }
+}

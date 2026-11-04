@@ -4,13 +4,14 @@ import QtQuick
 import Rekta
 
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
-// tiles (tiles.md: a tile never changes data). The groups stand in a fixed order, ton, verbindungen, anzeige, sitzung;
-// one without rows falls away. The states switched most, "wlan", "bluetooth", "nicht stören" and "dunkel", are toggle
-// buttons at the panel's edge nearest the app bar (`edge`). The host runs what the rows ask for and feeds back the
-// state they show. In ton each kind has two rows, a select of its devices, then a button that mutes before the volume
-// slider; in anzeige each display that can be dimmed has a slider; in verbindungen the paired Bluetooth devices and the
-// strongest wireless networks unfold below their rows, up to five, and a level lists them all. A secured network the
-// system does not know asks for its password in a sheet.
+// tiles (tiles.md: a tile never changes data). What a media player plays stands at the top while it plays; the groups
+// follow in a fixed order, ton, verbindungen, anzeige, sitzung; one without rows falls away. The states switched most,
+// "wlan", "bluetooth", "nicht stören" and "dunkel", are toggle buttons at the panel's edge nearest the app bar
+// (`edge`). The host runs what the rows ask for and feeds back the state they show. In ton each kind has two rows, a
+// select of its devices, then a button that mutes before the volume slider; in anzeige each display that can be dimmed
+// has a slider; in verbindungen the paired Bluetooth devices and the strongest wireless networks unfold below their
+// rows, up to five, and a level lists them all. A secured network the system does not know asks for its password in a
+// sheet.
 Column {
     id: controls
 
@@ -91,6 +92,8 @@ Column {
     readonly property int inlineDeviceLimit: 5
     readonly property var devicesInline: connectedFirst(bluetoothDevices).slice(0, inlineDeviceLimit)
 
+    // The media players as Quickshell's Mpris has them (see NowPlaying).
+    property var players: []
     // The density as the shell has it: auto, comfortable or compact.
     property string density: "auto"
 
@@ -222,6 +225,11 @@ Column {
         })
 
     width: parent ? parent.width : 0
+
+    NowPlaying {
+        objectName: "nowPlaying"
+        players: controls.players
+    }
 
     PanelGroup {
         id: soundGroup
