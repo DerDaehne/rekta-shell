@@ -9,6 +9,11 @@ Row {
     property string word: Status.word(status)
     // Tabular figures, for a word whose digits change.
     property bool figures: false
+    // In the plain, ink toast the word takes the toast's text colour and the square an edge in it, since a status colour
+    // may sink into the ink; under more contrast the neutral square takes that colour too (rekta.css:1178–1179, :1554,
+    // :1558).
+    property bool inInkToast: false
+    readonly property color ink: inInkToast ? Tokens.color.bg : Tokens.color.textPrimary
     readonly property color mark: {
         switch (status) {
         case "info":
@@ -34,10 +39,22 @@ Row {
     Accessible.name: word
 
     Rectangle {
+        objectName: "mark"
         anchors.verticalCenter: parent.verticalCenter
         width: Geometry.tagMark
         height: Geometry.tagMark
-        color: tag.mark
+        color: tag.inInkToast && tag.status === "" && Tokens.moreContrast ? tag.ink : tag.mark
+
+        // Outside the square, as a box-shadow is drawn.
+        Rectangle {
+            objectName: "edge"
+            anchors.fill: parent
+            anchors.margins: -Geometry.tagEdge
+            visible: tag.inInkToast
+            color: "transparent"
+            border.width: Geometry.tagEdge
+            border.color: tag.ink
+        }
     }
 
     TextRole {
@@ -49,6 +66,6 @@ Row {
         font.weight: Tokens.fontWeightSemibold
         font.features: ({ "tnum": tag.figures ? 1 : 0 })
         lineHeightFactor: Tokens.lineHeightCompact
-        color: Tokens.color.textPrimary
+        color: tag.ink
     }
 }

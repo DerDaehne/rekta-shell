@@ -132,6 +132,7 @@ TestCase {
         Prefs.motion = "system";
         Prefs.theme = "system";
         Prefs.density = "auto";
+        Tokens.moreContrast = false;
     }
 
     function ending(label) {
@@ -480,6 +481,80 @@ TestCase {
     function test_an_undo_toast_announces_its_window_after_the_whole_text() {
         const toast = toaster.show("3 messages deleted", { title: "Mail", undo: undoing("delete") });
         compare(toast.announcement, "Mail. 3 messages deleted, 5 seconds to undo");
+    }
+
+    function test_a_tag_stands_at_the_end_of_the_text_before_the_action_which_stays_last() {
+        const untagged = toaster.show("lunch at noon?", { title: "anna" });
+        verify(!findChild(untagged, "tag").visible);
+        compare(findChild(untagged, "message").rightPadding, Tokens.spaceM);
+        for (const act of [null, { label: "retry", run: () => {} }]) {
+            const toast = toaster.show("the disk is full", { title: "backup", icon: testCase.appIcon, tag: "urgent", act });
+            const tag = findChild(toast, "tag");
+            const words = findChild(toast, "words");
+            const action = findChild(toast, "action");
+            const at = tag.mapToItem(toast, 0, 0);
+            verify(tag.visible);
+            compare(tag.word, "urgent");
+            compare(findChild(words, "message").rightPadding, Tokens.spaceS, "space-s between the text and the tag");
+            compare(findChild(words, "title").rightPadding, Tokens.spaceS);
+            compare(at.x, words.x + words.width, "right after the text");
+            compare(at.x + tag.width + Tokens.spaceM, action.x, "space-m before the action, or the end without one");
+            compare(action.x + action.width, toast.width, "the action stays last");
+            fuzzyCompare(at.y + tag.height / 2, toast.height / 2, 0.5, "centred on the strip");
+            compare(toast.width, words.x + words.implicitWidth + tag.width + Tokens.spaceM + action.width, "the toast makes room for it");
+        }
+    }
+
+    function contrast(a: color, b: color): real {
+        const channel = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        const luminance = colour => 0.2126 * channel(colour.r) + 0.7152 * channel(colour.g) + 0.0722 * channel(colour.b);
+        return (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
+    }
+
+    function test_in_the_ink_toast_a_neutral_tag_s_word_takes_the_toast_s_text_colour_and_its_square_an_edge_in_it() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const toast = toaster.show("lunch at noon?", { title: "anna", tag: "urgent" });
+            const tag = findChild(toast, "tag");
+            const ground = findChild(toast, "fill").color;
+            const word = findChild(tag, "word").color;
+            const mark = findChild(tag, "mark");
+            const edge = findChild(tag, "edge");
+            compare(tag.status, "", "neutral: urgency is not a status");
+            compare(word, toast.ink, theme);
+            compare(mark.color, Tokens.color.textContrastMedium, `${theme}: the neutral square`);
+            verify(edge.visible, theme);
+            compare(edge.color, Qt.color("transparent"));
+            compare(edge.border.color, toast.ink);
+            compare(edge.border.width, 1);
+            compare(edge.width, Geometry.tagMark + 2, "a ring outside the square");
+            compare(edge.mapToItem(mark, 0, 0).x, -1);
+            verify(contrast(word, ground) >= 4.5, `${theme}: the word reads on the ink`);
+            verify(contrast(mark.color, ground) >= 3, `${theme}: the square keeps 3:1 on the ink`);
+        }
+    }
+
+    function test_under_more_contrast_the_neutral_square_in_the_ink_toast_takes_the_colour_of_its_words() {
+        Tokens.moreContrast = true;
+        const toast = toaster.show("lunch at noon?", { tag: "urgent" });
+        compare(findChild(findChild(toast, "tag"), "mark").color, toast.ink);
+    }
+
+    function test_in_a_toast_with_a_status_a_tag_reads_on_the_fill_as_on_a_tile() {
+        Tokens.moreContrast = true;
+        const toast = toaster.show("could not save the schedule", { status: "error", tag: "urgent" });
+        const tag = findChild(toast, "tag");
+        compare(findChild(tag, "word").color, Tokens.color.textPrimary);
+        compare(findChild(tag, "mark").color, Tokens.color.textContrastMedium);
+        verify(!findChild(tag, "edge").visible);
+    }
+
+    function test_a_tag_is_said_first_though_it_stands_last() {
+        const toast = toaster.show("lunch at noon?", { title: "anna", tag: "urgent", open: { run: () => {} } });
+        compare(toast.Accessible.name, "urgent. anna. lunch at noon?");
+        compare(toast.announcement, toast.Accessible.name);
+        compare(findChild(toast, "open").Accessible.name, toast.Accessible.name);
+        compare(toaster.show("lunch at noon?", { tag: "urgent" }).Accessible.name, "urgent. lunch at noon?");
     }
 
     function test_a_held_key_presses_the_text_once() {
@@ -942,6 +1017,49 @@ TestCase {
                     objectName: "alert"
                     width: parent.width
                     bannerStates: ({ halted: { word: "halted", status: "error", alert: true, text: "Every run has stopped: the job server does not answer.", action: "retry now" } })
+                }
+            }
+        }
+    }
+
+    function test_contact_sheet_of_a_tagged_toast_with_and_without_an_action_in_both_themes() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const sheet = createTemporaryObject(tagSheetComponent, testCase);
+            const shown = [
+                findChild(sheet, "alone").show("lunch at noon?", { title: "anna", icon: testCase.appIcon, tag: "dringend", open: { run: () => {} }, stays: true }),
+                findChild(sheet, "acting").show("the disk is full", { title: "backup", icon: testCase.appIcon, tag: "dringend", open: { run: () => {} }, act: { label: "wiederholen", run: () => {} }, stays: true }),
+                findChild(sheet, "wrapping").show("Can we move the call to Thursday afternoon? I have the whole morning booked and the afternoon is free.", { title: "Mia", icon: testCase.widePicture, tag: "dringend", open: { run: () => {} }, act: { label: "antworten", run: () => {} }, stays: true })
+            ];
+            shown.forEach(toast => tryCompare(findChild(toast, "appIcon"), "status", Image.Ready));
+            waitForRendering(sheet);
+            grabImage(sheet).save(`toast-tag-sheet-${theme}.png`);
+            sheet.destroy();
+        }
+    }
+
+    Component {
+        id: tagSheetComponent
+
+        Rectangle {
+            width: 560
+            height: 290
+            color: Tokens.color.bg
+
+            Column {
+                width: parent.width
+                spacing: Tokens.spaceS
+
+                Repeater {
+                    model: ["alone", "acting", "wrapping"]
+
+                    Toaster {
+                        required property string modelData
+
+                        objectName: modelData
+                        width: parent.width
+                        clock: () => testCase.time
+                    }
                 }
             }
         }

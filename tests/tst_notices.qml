@@ -279,6 +279,31 @@ TestCase {
         compare(toaster.open.title, "anna");
     }
 
+    function test_a_critical_toast_says_dringend_in_a_neutral_tag_before_its_action_and_first_to_a_reader() {
+        notify({ summary: "backup", body: "the disk is full", urgency: NoticeBoard.Critical }, [["retry", "wiederholen"]]);
+        const toast = toaster.open;
+        const tag = findChild(toast, "tag");
+        compare(toast.tag, "dringend");
+        verify(tag.visible);
+        compare(tag.status, "", "neutral: urgency is not a status");
+        compare(toast.status, "", "the surface stays ink");
+        compare(toast.actionLabel, "wiederholen");
+        verify(tag.mapToItem(toast, 0, 0).x + tag.width <= findChild(toast, "action").x, "the action stays last");
+        compare(toast.Accessible.name, "dringend. backup. the disk is full");
+    }
+
+    function test_normal_and_low_toasts_carry_no_tag_and_neither_does_one_its_app_keeps_standing() {
+        for (const [summary, urgency, expireTimeout] of [["normal", NoticeBoard.Normal, -1], ["low", NoticeBoard.Low, -1], ["standing", NoticeBoard.Normal, 0]]) {
+            notify({ summary, urgency, expireTimeout });
+            compare(toaster.open.title, summary);
+            tryCompare(toaster.open, "waiting", false);
+            compare(toaster.open.tag, "", summary);
+            verify(!findChild(toaster.open, "tag").visible, summary);
+            compare(toaster.open.Accessible.name, `${summary}. lunch at noon?`);
+            toaster.dismiss();
+        }
+    }
+
     function test_an_app_s_timeout_of_zero_keeps_its_toast_standing() {
         notify({ expireTimeout: 0 });
         verify(toaster.open.stays);

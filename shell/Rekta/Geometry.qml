@@ -33,6 +33,9 @@ QtObject {
     // margin-right: 6px }` (rekta.css:407)
     readonly property real tagGap: 6
     readonly property real tagMark: 8
+    // In the ink toast: `.rk-toast:not([data-status]) .rk-tag:not(.rk-tag--soft)::before { box-shadow: 0 0 0 1px
+    // currentColor }` (rekta.css:1179)
+    readonly property real tagEdge: 1
     // `.rk-dots > i { width: 4px; height: 4px }`, five of them (rekta.css:729–733)
     readonly property int dotCount: 5
     readonly property real dotSize: 4

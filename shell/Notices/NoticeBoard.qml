@@ -188,15 +188,18 @@ QtObject {
         rows = rows.slice();
     }
 
+    // A critical one says so in a neutral tag, without a status colour: urgency is not a status (live.md:86–91).
     function show(record: var) {
         const notification = record.notification;
         const act = actionOf(notification, false);
         const words = toastWords(notification);
+        const critical = notification.urgency === NoticeBoard.Critical;
         showing = record;
         record.toast = toaster.show(words.text, {
             title: words.title,
             icon: record.icon,
-            stays: notification.urgency === NoticeBoard.Critical || notification.expireTimeout === 0,
+            tag: critical ? "dringend" : "",
+            stays: critical || notification.expireTimeout === 0,
             act: act ? { label: act.text, run: () => act.invoke() } : null,
             notification: true,
             open: { run: () => pressed(notification) },

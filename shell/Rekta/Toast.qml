@@ -17,6 +17,9 @@ FocusScope {
     // The reader still gets all of it, as in Rekta's toast from another program (rekta.css:1183–1184, :1195–1196).
     property string title
     readonly property int bodyMaxLines: 2
+    // The word of a neutral tag at the end of the text, before the action (`.rk-tag` without a status). It stands last
+    // but is said first, so that a reader hears it before the text it qualifies.
+    property string tag
     // { run }: the text is a control; pressing it calls run and ends the toast as "acted". What the press does, such as
     // bringing the app forward, is the host's. Without it the text is only text, as in Rekta.
     property var open: null
@@ -54,7 +57,7 @@ FocusScope {
     readonly property color ink: status !== "" ? Tokens.color.textPrimary : Tokens.color.bg
     readonly property color ground: Status.tileFill(status, Tokens.color, Tokens.color.textPrimary)
     readonly property string actionLabel: undoAction ? action : act?.label ?? ""
-    readonly property string spoken: title !== "" ? `${title}. ${text}` : text
+    readonly property string spoken: [tag, title, text].filter(part => part !== "").join(". ")
     // An undo toast says how long its window is.
     readonly property string announcement: undoAction ? `${spoken}, ${seconds} ${seconds === 1 ? "second" : "seconds"} to ${action}` : spoken
     // Runs from 0, toast-rise below its place and unseen, to 1 at rest, linear in time; the way down runs it back, so it
@@ -216,7 +219,7 @@ FocusScope {
     x: Math.max(Tokens.spaceM, Math.min(toaster.trailingEdge, toaster.width - Tokens.spaceM) - width)
     y: toaster.height - Tokens.spaceS - height + (1 - entry) * Geometry.toastRise
     opacity: entry
-    width: Math.min(Geometry.toastMaxWidth, toaster.width - 2 * Tokens.spaceM, front.width + words.implicitWidth + actionBox.width)
+    width: Math.min(Geometry.toastMaxWidth, toaster.width - 2 * Tokens.spaceM, front.width + words.implicitWidth + tagBox.width + actionBox.width)
     height: Math.max(Tokens.controlHeight + Tokens.spaceXs, words.height)
     visible: !waiting
     Accessible.role: status === "error" ? Accessible.AlertMessage : Accessible.Notification
@@ -318,7 +321,7 @@ FocusScope {
         objectName: "words"
         x: front.width
         anchors.verticalCenter: parent.verticalCenter
-        width: toast.width - front.width - actionBox.width
+        width: toast.width - front.width - tagBox.width - actionBox.width
         // From unwrapped copies: a wrapped Text's implicitWidth follows its width, which follows the toast's.
         implicitWidth: Math.max(heading.visible ? naturalWidth(heading, headingLine) : 0, naturalWidth(message, messageLine))
         height: message.y + message.height
@@ -354,7 +357,7 @@ FocusScope {
             elide: Text.ElideRight
             maximumLineCount: 1
             leftPadding: message.leftPadding
-            rightPadding: Tokens.spaceM
+            rightPadding: message.rightPadding
             topPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxTop
             bottomPadding: lineBoxBottom
         }
@@ -374,9 +377,29 @@ FocusScope {
             maximumLineCount: heading.visible ? toast.bodyMaxLines : 2147483647
             // Next to the app's icon the words keep the space a glyph keeps from its label (rekta.css:321).
             leftPadding: front.width > 0 ? Tokens.spaceS : Tokens.spaceM
-            rightPadding: Tokens.spaceM
+            // A tag after the words stands the gap of the text's row away (rekta.css:1191).
+            rightPadding: toast.tag !== "" ? Tokens.spaceS : Tokens.spaceM
             topPadding: heading.visible ? lineBoxTop : Tokens.spaceS + Tokens.spaceXs + lineBoxTop
             bottomPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxBottom
+        }
+    }
+
+    // At the end of the text, before the action; the text's row keeps space-m at its end (rekta.css:1180, :1191).
+    Item {
+        id: tagBox
+
+        x: toast.width - actionBox.width - width
+        width: toast.tag !== "" ? tagFace.implicitWidth + Tokens.spaceM : 0
+        height: toast.height
+        visible: width > 0
+
+        StatusTag {
+            id: tagFace
+
+            objectName: "tag"
+            anchors.verticalCenter: parent.verticalCenter
+            word: toast.tag
+            inInkToast: toast.status === ""
         }
     }
 

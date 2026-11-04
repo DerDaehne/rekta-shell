@@ -49,9 +49,9 @@ Item {
     // returns to), action ("undo", "redo" or another label), act ({ label, run }), status, windowMs, onEnd(reason); and
     // icon, an image for the app the toast speaks for, at its front; title, open ({ run }, the text as a control) and
     // stays (no window until it is dismissed); notification, a notification from another program, which its count gives
-    // way to.
+    // way to; tag, the word of a neutral tag at the end of the text.
     function show(text: string, options: var): Toast {
-        const o = Object.assign({ key: text, undo: null, from: null, action: undoWord, act: null, status: "", windowMs: 0, onEnd: null, icon: "", title: "", open: null, stays: false, notification: false }, options);
+        const o = Object.assign({ key: text, undo: null, from: null, action: undoWord, act: null, status: "", windowMs: 0, onEnd: null, icon: "", title: "", tag: "", open: null, stays: false, notification: false }, options);
         if (open && open.key === o.key && open.undoAction && o.undo) {
             open.update(text, o.undo, o.windowMs, o.onEnd);
             return open;
@@ -65,6 +65,7 @@ Item {
             status: o.status,
             icon: o.icon,
             title: o.title,
+            tag: o.tag,
             open: o.open,
             stays: o.stays,
             action: o.action,
