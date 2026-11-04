@@ -75,4 +75,12 @@ TestCase {
         for (const character of ["+", "*", ")", ",", "a", " "])
             verify(!Calc.canStart(character, "."), character);
     }
+
+    // Reading the text anew from each token on would take seconds here.
+    function test_a_calculation_twice_as_long_as_a_text_input_holds_is_worked_out_within_a_second() {
+        const text = Array(32767).fill("1").join("+");
+        const began = Date.now();
+        compare(Calc.result(text, "."), 32767);
+        verify(Date.now() - began < 1000, `${Date.now() - began} ms`);
+    }
 }

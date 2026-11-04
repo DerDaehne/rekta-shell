@@ -448,6 +448,12 @@ TestCase {
         compare(Rules.providerQuery(providerLine(1, "Query=https://system.example/?q=\\\\{@}"), providerFiles, "C"), "https://system.example/?q=\\{@}", "the system's while the user has none");
     }
 
+    function test_a_provider_s_search_address_for_the_whole_locale_comes_before_the_one_for_its_language() {
+        const all = [providerLine(0, "Query=https://user.example/?q=\\\\{@}"), providerLine(0, "Query[pt]=https://user.example/pt?q=\\\\{@}"), providerLine(0, "Query[pt_BR]=https://user.example/br?q=\\\\{@}"), ""].join("\n");
+        compare(Rules.providerQuery(all, providerFiles, "pt_BR"), "https://user.example/br?q=\\{@}");
+        compare(Rules.providerQuery(all, providerFiles, "pt_PT"), "https://user.example/pt?q=\\{@}");
+    }
+
     function test_a_provider_without_a_file_or_a_place_for_the_text_gives_no_search_address() {
         compare(Rules.providerQuery("", providerFiles, "de_DE"), "");
         compare(Rules.providerQuery(providerLine(0, "Query=https://user.example/?q=\\\\{1}"), providerFiles, "de_DE"), "");

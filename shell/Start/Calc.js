@@ -10,22 +10,23 @@ function canStart(character, decimalPoint) {
     return /^[0-9(\-\u2212]$/.test(character) || character === decimalPoint;
 }
 
-function numberPattern(decimalPoint) {
+// Spaces, then a number or any other single character. Sticky, so each match goes on where the one before ended.
+function tokenPattern(decimalPoint) {
     const separator = decimalPoint.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(`^(\\d+(${separator}\\d*)?|${separator}\\d+)`);
+    return new RegExp(`\\s*(?:(\\d+(?:${separator}\\d*)?|${separator}\\d+)|([^]))`, "y");
 }
 
 // The numbers and signs of a text, spaces left out; null when it holds anything else.
 function tokens(text, decimalPoint) {
-    const number = numberPattern(decimalPoint);
+    const pattern = tokenPattern(decimalPoint);
+    const trimmed = text.trim();
     const found = [];
-    for (let rest = text.trim(); rest !== ""; ) {
-        const digits = number.exec(rest);
-        const token = digits !== null ? Number(digits[0].replace(decimalPoint, ".")) : signs[rest[0]];
+    while (pattern.lastIndex < trimmed.length) {
+        const [, digits, other] = pattern.exec(trimmed);
+        const token = digits !== undefined ? Number(digits.replace(decimalPoint, ".")) : signs[other];
         if (token === undefined)
             return null;
         found.push(token);
-        rest = rest.slice(digits !== null ? digits[0].length : 1).replace(/^\s+/, "");
     }
     return found;
 }

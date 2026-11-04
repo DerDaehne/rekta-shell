@@ -956,6 +956,17 @@ TestCase {
         }
     }
 
+    function test_the_locale_s_decimal_separator_starts_a_search_and_a_full_stop_beside_it_does_not() {
+        start.decimalPoint = ",";
+        openWithApps();
+        keyClick(".");
+        compare(start.query, "");
+        verify(named("pivot").visible);
+        typeNow(",");
+        compare(start.query, ",");
+        verify(!named("pivot").visible);
+    }
+
     function test_enter_presses_the_first_hit_in_its_centre_launches_it_once_and_turns_the_start_out_forward_with_it_last() {
         openWithApps();
         typeNow("ko");
