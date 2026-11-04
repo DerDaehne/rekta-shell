@@ -266,6 +266,9 @@ FocusScope {
             width: parent.width - Geometry.hairline
             height: parent.height
             color: Tokens.color.bg
+            // Nothing in it paints over the hairline, as a sheet cuts its content off at its padding box (rekta.css:1066,
+            // :1101), not even the quick settings at the edge on their way in with a facet.
+            clip: true
 
             // A place's strip, the nav level; at this width it takes the facet sizes (Pivot, compact).
             Pivot {

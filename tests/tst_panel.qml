@@ -824,6 +824,36 @@ TestCase {
         compare(findChild(side, "edge").opacity, 1);
     }
 
+    function test_on_their_way_in_the_quick_settings_are_cut_off_at_the_ground_and_leave_the_hairline_a_hairline() {
+        giveNetworks(controls);
+        Prefs.motion = "on";
+        showSettled(1);
+        side.show(0);
+        // Held at the start of the way, past the ground's edge, at full opacity so that a pixel over the hairline shows.
+        findChild(side, "enter").stop();
+        findChild(side, "shift").x = -Tokens.slideDistance;
+        findChild(side, "holder").opacity = 1;
+        waitForRendering(scene);
+        const wifi = control("wifi");
+        verify(wifi.checked, "wlan on, an accent fill");
+        verify(wifi.mapToItem(findChild(side, "ground"), 0, 0).x < 0, "the row reaches past the ground");
+        const hairline = findChild(side, "panel").mapToItem(scene, 0, 0);
+        const besideWifi = wifi.mapToItem(scene, 0, wifi.height / 2);
+        verify(Qt.colorEqual(grabImage(scene).pixel(Math.floor(hairline.x), Math.floor(besideWifi.y)), Tokens.color.textContrastLow));
+    }
+
+    function test_the_focus_ring_of_a_quick_setting_at_the_grounds_padding_is_not_cut_off() {
+        giveNetworks(controls);
+        showSettled(0);
+        const wifi = control("wifi");
+        wifi.forceActiveFocus(Qt.TabFocusReason);
+        waitForRendering(scene);
+        const ring = findChild(wifi, "ring");
+        verify(ring.visible);
+        const leftStroke = ring.mapToItem(scene, Geometry.focusRingWidth / 2, ring.height / 2);
+        verify(Qt.colorEqual(grabImage(scene).pixel(Math.floor(leftStroke.x), Math.floor(leftStroke.y)), Tokens.color.focus));
+    }
+
     function test_the_pivot_picks_steuerung_or_meldungen_and_their_facet_shows() {
         side.show(0);
         verify(controls.visible);
