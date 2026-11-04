@@ -203,7 +203,8 @@ PanelWindow {
         onLoadFailed: surface.listedPins = null
     }
 
-    // A window's live preview, drawn by KWin into a PipeWire stream while the Start shows it.
+    // A window's live preview, drawn by KWin into a PipeWire stream while it has its window (StartPlace hands it over
+    // only while the Start shows).
     component WindowPreview: Item {
         id: preview
 
@@ -214,13 +215,15 @@ PanelWindow {
         TaskManager.ScreencastingRequest {
             id: request
 
-            uuid: preview.window?.uuid ?? ""
+            // KWin finds a window to stream only once it has mapped it; an earlier request fails for good.
+            uuid: preview.window?.mapped ? preview.window.uuid : ""
         }
 
+        // Visible before its first frame: kpipewire streams only into a visible item, and until a frame comes it draws
+        // nothing, so the tile's surface shows.
         PipeWire.PipeWireSourceItem {
             anchors.fill: parent
             nodeId: request.nodeId
-            visible: ready
         }
     }
 }

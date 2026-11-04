@@ -57,6 +57,8 @@ Scope {
         readonly property int stackingOrder: model.StackingOrder ?? 0
         // The window's UUID, which its live preview asks for.
         readonly property string uuid: model.WinIdList?.[0] ?? ""
+        // KWin draws it. KWin announces a window before it maps it, and can stream it only from then on.
+        readonly property bool mapped: model.IsMapped === true
         // An image URL for its app's icon from the app's desktop entry, empty without one.
         readonly property string icon: {
             const entry = DesktopEntries.heuristicLookup(model.AppId ?? "");

@@ -206,6 +206,22 @@ TestCase {
         compare(preview.height, findChild(tile, "label").mapToItem(tile, 0, 0).y - Geometry.tilePadding);
     }
 
+    // A preview streams its window while it has it, so the stream ends with the Start.
+    function test_a_preview_has_its_window_from_the_opening_until_the_start_has_gone() {
+        start.preview = previewComponent;
+        const window = () => findChild(tilesIn("running")[0], "preview").item.window;
+        compare(window(), null, "not while the Start is closed");
+        start.open();
+        compare(start.phase, "opening");
+        compare(window()?.title, "Rekta Design — docs", "from the opening, so the first frame comes as the tiles turn in");
+        tryVerify(() => start.phase === "open", 3000);
+        keyClick(Qt.Key_Escape);
+        compare(start.phase, "closing");
+        compare(window()?.title, "Rekta Design — docs", "while the tiles turn out");
+        tryVerify(() => !start.shown, 3000);
+        compare(window(), null, "not once the Start has gone");
+    }
+
     function test_pressing_a_window_tile_brings_the_window_forward_and_closes_the_start() {
         openNow();
         mouseClick(tilesIn("running")[1]);

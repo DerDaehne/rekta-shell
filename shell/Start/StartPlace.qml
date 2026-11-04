@@ -928,7 +928,8 @@ FocusScope {
 
                                 title: modelData.title
                                 icon: modelData.icon
-                                window: modelData
+                                // Its preview streams only while the Start shows, from its opening until it has gone.
+                                window: start.shown ? modelData : null
                                 unseen: start.unseen[modelData.appId] ?? 0
                                 preview: start.preview
                                 onActivated: start.press(runningTile, () => runningTile.modelData.activate())
