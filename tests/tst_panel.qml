@@ -803,6 +803,27 @@ TestCase {
         verify(findChild(side, "shift").x > 0, "forward, from the trailing edge");
     }
 
+    function test_going_to_steuerung_its_quick_settings_at_the_edge_come_in_with_it() {
+        Prefs.motion = "on";
+        showSettled(1);
+        side.show(0);
+        const edge = findChild(side, "edge");
+        compare(findChild(side, "shift").x, -Tokens.slideDistance, "the facet comes back from the leading edge");
+        compare(edge.opacity, 0, "the quick settings fade in with it");
+        const edgeShift = findChild(side, "edgeShift");
+        compare(edgeShift.x, -Tokens.slideDistance, "and travel with it");
+        tryCompare(edge, "opacity", 1, Tokens.durationModerate * 4);
+        compare(edgeShift.x, 0);
+    }
+
+    function test_under_reduced_motion_the_quick_settings_stand_at_once_with_steuerung() {
+        Prefs.motion = "off";
+        showSettled(1);
+        side.show(0);
+        compare(findChild(side, "edgeShift").x, 0);
+        compare(findChild(side, "edge").opacity, 1);
+    }
+
     function test_the_pivot_picks_steuerung_or_meldungen_and_their_facet_shows() {
         side.show(0);
         verify(controls.visible);
@@ -2724,15 +2745,31 @@ TestCase {
         compare(wifiSwitches, []);
         keyClick(Qt.Key_Escape);
         verify(!control("wifiBranch").expanded, "Escape folds them as ever");
-        verify(control("chooseNetwork").activeFocus);
+        verify(wifi.activeFocus, "and gives the focus back to wlan, which opened them");
         mouseClick(wifi, 10, 10, Qt.RightButton);
         verify(control("wifiBranch").expanded, "a right click does the same");
         verify(rowsOf("wifiBranch")[0].activeFocus);
-        control("wifiBranch").fold();
-        wifi.forceActiveFocus();
+        keyClick(Qt.Key_Escape);
+        verify(wifi.activeFocus);
         keyClick(Qt.Key_Menu);
         verify(control("wifiBranch").expanded, "and the menu key");
         verify(rowsOf("wifiBranch")[0].activeFocus);
+        keyClick(Qt.Key_Escape);
+        verify(wifi.activeFocus);
+    }
+
+    function test_unfolded_by_its_own_opener_after_the_details_escape_goes_back_to_that_opener() {
+        giveNetworks(controls);
+        showSettled(0);
+        mouseClick(control("wifi"), 10, 10, Qt.RightButton);
+        keyClick(Qt.Key_Escape);
+        const choose = control("chooseNetwork");
+        choose.forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        verify(control("wifiBranch").expanded);
+        keyClick(Qt.Key_Escape);
+        verify(!control("wifiBranch").expanded);
+        verify(choose.activeFocus);
     }
 
     function test_without_wireless_wlan_has_no_details() {
@@ -2755,6 +2792,9 @@ TestCase {
         verify(control("bluetoothBranch").expanded);
         verify(branchRows()[0].activeFocus, "on the first device");
         compare(bluetoothSwitches, []);
+        keyClick(Qt.Key_Escape);
+        verify(!control("bluetoothBranch").expanded);
+        verify(bluetooth.activeFocus, "Escape gives the focus back to bluetooth, which opened them");
     }
 
     // The rows show only once the branch does, a frame after it starts to unfold.

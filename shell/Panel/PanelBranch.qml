@@ -15,8 +15,10 @@ Item {
     property real unfolded: 0
     // From the start of an unfold until the column has placed it.
     property bool revealing: false
-    // What opened it; the focus goes back there.
+    // The control in its row that opens it.
     property Item opener
+    // What opened it last, its opener or a control elsewhere; the focus goes back there.
+    property Item openedBy
     // Opened from elsewhere than its opener: the focus goes to its first row once it shows.
     property bool focusOnShow: false
     default property alias rows: list.data
@@ -24,6 +26,7 @@ Item {
     signal activated(MenuItem row)
 
     function expand() {
+        openedBy = opener;
         expanded = true;
         revealing = true;
         settle.stop();
@@ -46,10 +49,11 @@ Item {
             expand();
     }
 
-    // Unfolds with the focus on its first row, or on its opener while it has none.
-    function expandFocused() {
+    // Opened by a control elsewhere: unfolds with the focus on its first row, or on its opener while it has none.
+    function expandFocused(control: Item) {
         focusOnShow = true;
         expand();
+        openedBy = control;
         focusFirstRowOnceShown();
     }
 
@@ -74,7 +78,7 @@ Item {
             return false;
         if (event.key === Qt.Key_Escape) {
             collapse();
-            opener?.forceActiveFocus(Qt.TabFocusReason);
+            openedBy?.forceActiveFocus(Qt.TabFocusReason);
             return true;
         }
         if (![Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space].includes(event.key))

@@ -318,7 +318,8 @@ FocusScope {
                 }
             }
 
-            // On the sheet's padding at the bottom (rekta.css:1100); as tall as what shows in it.
+            // On the sheet's padding at the bottom (rekta.css:1100); as tall as what shows in it. What stands here belongs to
+            // the facet in sight, so it comes in with it.
             Item {
                 id: edgeHolder
 
@@ -329,6 +330,11 @@ FocusScope {
                 y: parent.height - Tokens.spaceL - height
                 width: sidePanel.contentWidth
                 height: shown?.implicitHeight ?? 0
+                opacity: facetHolder.entryOpacity
+                transform: Translate {
+                    objectName: "edgeShift"
+                    x: facetHolder.entryShift
+                }
             }
 
             Item {

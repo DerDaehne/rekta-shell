@@ -18,6 +18,9 @@ Item {
     property bool shown: false
     property alias sectionWidth: panorama.sectionWidth
     readonly property bool wide: facetStrip !== null && facetStrip.level === "facet" && width >= Tokens.pivotWide
+    // Where the chosen facet is on its way in, for what belongs to it but stands outside the facets.
+    readonly property real entryShift: shift.x
+    readonly property real entryOpacity: holder.opacity
     default property alias content: holder.data
 
     function showChosen() {

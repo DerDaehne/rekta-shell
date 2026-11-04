@@ -571,7 +571,7 @@ Column {
     // columns space-s apart as a row of buttons is (rekta.css:353). Unlike Rekta's groups (states.md:186) they have no
     // heading and stand at the edge nearest the app bar, so the way from "steuerung" in the bar to them stays short. One
     // whose device is missing is gone. The details of wlan and bluetooth are their lists in verbindungen, unfolded with
-    // the focus on them.
+    // the focus on them; Escape folds them and gives the focus back to the button (behaviour.md:826).
     Grid {
         id: quickSettings
 
@@ -585,6 +585,8 @@ Column {
         spacing: Tokens.spaceS
 
         ToggleButton {
+            id: wifiButton
+
             objectName: "wifi"
             width: quickSettings.cellWidth
             visible: controls.networking !== null && controls.wifiDevice !== null
@@ -601,10 +603,12 @@ Column {
                 controls.wifiChosen(checked);
                 checked = Qt.binding(() => controls.wifiOn);
             }
-            onDetailsAsked: wifiBranch.expandFocused()
+            onDetailsAsked: wifiBranch.expandFocused(wifiButton)
         }
 
         ToggleButton {
+            id: bluetoothButton
+
             objectName: "bluetooth"
             width: quickSettings.cellWidth
             visible: controls.bluetooth !== null
@@ -620,7 +624,7 @@ Column {
                 controls.bluetoothChosen(checked);
                 checked = Qt.binding(() => controls.bluetoothOn);
             }
-            onDetailsAsked: bluetoothBranch.expandFocused()
+            onDetailsAsked: bluetoothBranch.expandFocused(bluetoothButton)
         }
 
         // ponytail: kept in memory only, so a restart of the shell turns it off; keep it once the shell has a config.
