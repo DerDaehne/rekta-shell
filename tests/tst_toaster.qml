@@ -739,6 +739,24 @@ TestCase {
         compare(back.count, 0, "it never came back between them");
     }
 
+    function test_the_count_keeps_on_its_way_out_when_a_notification_s_toast_replaces_one_still_waiting_for_it() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        const first = region.show("lunch at noon?", { notification: true });
+        // Held, so that the first still waits however late the test gets to the second.
+        findChild(region, "handOver").stop();
+        const face = findChild(count, "face");
+        tryVerify(() => face.opacity < 1, 1000, "the face is on its way out");
+        verify(first.waiting);
+        const before = face.opacity;
+        const back = createTemporaryObject(spyComponent, testCase, { target: count, signalName: "awayChanged" });
+        const second = region.show("on my way", { notification: true });
+        compare(back.count, 0, "the count never came back between them");
+        verify(face.opacity <= before, "the face does not jump back");
+        tryVerify(() => !second.waiting, 1000);
+        verify(count.away);
+    }
+
     function test_other_toasts_stand_in_the_same_place_and_the_count_stays() {
         Prefs.motion = "on";
         const { toaster: region, count } = makeCountScene({});

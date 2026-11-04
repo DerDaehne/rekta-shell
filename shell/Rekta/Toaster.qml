@@ -56,9 +56,9 @@ Item {
             open.update(text, o.undo, o.windowMs, o.onEnd);
             return open;
         }
-        if (open)
-            open.leave(false, "replaced");
-        open = toastComponent.createObject(cell, {
+        // The one open lets go once the next is known, so that its count stays away for a notification that follows.
+        const replaced = open;
+        const toast = toastComponent.createObject(cell, {
             toaster: toaster,
             key: o.key,
             text: text,
@@ -76,21 +76,28 @@ Item {
             notification: o.notification,
             waiting: true
         }) as Toast;
+        open = toast;
         if (o.notification)
             giveWay();
+        replaced?.leave(false, "replaced");
         beginNext();
-        return open;
+        return toast;
     }
 
     function dismiss() {
         open?.leave(false, "dismissed");
     }
 
-    // A toast has begun to leave over `way` ms. A notification's hands its count back turn-overlap into that way.
-    function letGo(toast: Toast, way: int) {
+    // A toast has begun to leave.
+    function letGo(toast: Toast) {
         if (open === toast)
             open = null;
         leaving++;
+    }
+
+    // A toast that began to leave over `way` ms has ended, and its end may have shown the next toast. A notification's
+    // hands its count back turn-overlap into that way.
+    function handCountBack(toast: Toast, way: int) {
         if (!toast.notification)
             return;
         countBack.interval = Math.round(Tokens.turnOverlap * way);

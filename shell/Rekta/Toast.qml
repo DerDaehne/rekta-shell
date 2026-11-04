@@ -83,8 +83,9 @@ FocusScope {
         running = false;
         tick.stop();
         const hadFocus = activeFocus;
+        const way = waiting ? 0 : sinking.duration;
         rising.stop();
-        toaster.letGo(toast, waiting ? 0 : sinking.duration);
+        toaster.letGo(toast);
         if (waiting)
             goAway();
         else
@@ -93,6 +94,7 @@ FocusScope {
             undoAction();
         if (endHandler)
             endHandler(doUndo && undoAction ? "undone" : reason);
+        toaster.handCountBack(toast, way);
         if (hadFocus)
             from?.forceActiveFocus();
     }

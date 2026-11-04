@@ -175,6 +175,19 @@ TestCase {
         tryVerify(() => !toaster.open.waiting, 1000);
     }
 
+    function test_the_count_stays_away_when_the_app_closes_a_notification_whose_toast_waits_and_another_waits_behind_it() {
+        Prefs.motion = "on";
+        toaster.countInSight = true;
+        const anna = notify({ summary: "anna" });
+        notify({ summary: "ben" });
+        verify(toaster.open.waiting, "anna's toast waits for the count");
+        const flips = createTemporaryObject(spyComponent, testCase, { target: toaster, signalName: "countAwayChanged" });
+        anna.close(NoticeBoard.CloseRequested);
+        compare(toaster.open.title, "ben");
+        compare(flips.count, 0, "the count never came back between them");
+        verify(toaster.countAway);
+    }
+
     function test_twenty_notifications_in_a_burst_toast_one_after_another_and_all_stand_in_the_list() {
         for (let i = 0; i < 20; i++)
             notify({ summary: `message ${i}` });
