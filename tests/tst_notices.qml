@@ -188,6 +188,34 @@ TestCase {
         verify(toaster.countAway);
     }
 
+    function test_the_count_waits_for_the_way_down_of_a_toast_that_ran_out_when_the_app_closes_the_next_while_it_waits() {
+        Prefs.motion = "on";
+        toaster.countInSight = true;
+        notify({ summary: "anna" });
+        tryCompare(toaster.open, "entry", 1, 1000);
+        const ben = notify({ summary: "ben" });
+        runOut();
+        verify(toaster.open.waiting, "ben waits while anna goes down");
+        ben.close(NoticeBoard.CloseRequested);
+        verify(toaster.countAway, "anna is still on her way down");
+        tryVerify(() => !toaster.countAway, 1000, "then the count comes back");
+    }
+
+    function test_the_queue_goes_on_when_a_shell_toast_takes_the_place_of_a_notification_s_toast() {
+        Prefs.motion = "on";
+        notify({ summary: "anna" });
+        tryCompare(toaster.open, "entry", 1, 1000);
+        notify({ summary: "ben" });
+        toaster.show("akku wieder ok", { key: "state" });
+        compare(toaster.open?.title, "ben", "the next in the queue takes the toaster");
+        tryVerify(() => !toaster.open.waiting, 1000);
+        runOut();
+        compare(board.showing, null);
+        tryCompare(toaster, "leaving", 0, 1000);
+        notify({ summary: "cleo" });
+        compare(toaster.open?.title, "cleo", "and the board shows what comes next");
+    }
+
     function test_twenty_notifications_in_a_burst_toast_one_after_another_and_all_stand_in_the_list() {
         for (let i = 0; i < 20; i++)
             notify({ summary: `message ${i}` });

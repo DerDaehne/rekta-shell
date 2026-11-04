@@ -757,6 +757,55 @@ TestCase {
         verify(count.away);
     }
 
+    function test_a_notification_s_toast_that_ends_while_it_waits_for_its_count_hands_the_count_back_at_once() {
+        Prefs.motion = "on";
+        for (const next of ["nothing", "undo"]) {
+            const { toaster: region, count } = makeCountScene({});
+            const toast = region.show("lunch at noon?", { notification: true });
+            // Held, so that it still waits however late the test gets to its end.
+            findChild(region, "handOver").stop();
+            verify(toast.waiting, next);
+            if (next === "undo")
+                region.show("meldung entfernt", { undo: () => {} });
+            else
+                region.dismiss();
+            verify(!count.away, `${next}: it never rose, so there is no way down to wait for`);
+            if (next === "undo")
+                verify(!region.open.waiting, "the undo toast comes in at once");
+        }
+    }
+
+    // A notification's toast stands, the next replaces it, and that one ends while it waits for the first to go down.
+    function endWhileTheOneBeforeGoesDown() {
+        const scene = makeCountScene({});
+        const first = scene.toaster.show("lunch at noon?", { notification: true });
+        tryCompare(first, "entry", 1, 1000);
+        const second = scene.toaster.show("on my way", { notification: true });
+        verify(second.waiting, "the second waits for the first to go down");
+        second.leave(false, "dismissed");
+        return Object.assign(scene, { first });
+    }
+
+    function test_a_notification_s_toast_that_ends_while_it_waits_leaves_the_count_to_the_way_down_of_the_one_before() {
+        Prefs.motion = "on";
+        const { toaster: region, count, first } = endWhileTheOneBeforeGoesDown();
+        verify(count.away, "the first is still on its way down");
+        const countBack = findChild(region, "countBack");
+        verify(countBack.running);
+        fuzzyCompare(countBack.interval, Tokens.turnOverlap * findChild(first, "sinking").duration, 1);
+        tryVerify(() => !count.away, 1000, "it comes back turn-overlap into that way");
+    }
+
+    function test_the_count_stays_away_for_a_notification_that_comes_after_one_ended_while_it_waited() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = endWhileTheOneBeforeGoesDown();
+        const back = createTemporaryObject(spyComponent, testCase, { target: count, signalName: "awayChanged" });
+        const third = region.show("see you", { notification: true });
+        tryVerify(() => !third.waiting, 1000);
+        compare(back.count, 0, "it never came back between them");
+        verify(count.away);
+    }
+
     function test_other_toasts_stand_in_the_same_place_and_the_count_stays() {
         Prefs.motion = "on";
         const { toaster: region, count } = makeCountScene({});

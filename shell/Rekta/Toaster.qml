@@ -96,9 +96,9 @@ Item {
     }
 
     // A toast that began to leave over `way` ms has ended, and its end may have shown the next toast. A notification's
-    // hands its count back turn-overlap into that way.
+    // hands its count back turn-overlap into that way; one that never rose leaves it to the toast still on its way down.
     function handCountBack(toast: Toast, way: int) {
-        if (!toast.notification)
+        if (!toast.notification || (way === 0 && countBack.running))
             return;
         countBack.interval = Math.round(Tokens.turnOverlap * way);
         if (countBack.interval > 0)
