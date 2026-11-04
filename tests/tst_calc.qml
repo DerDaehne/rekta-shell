@@ -21,8 +21,18 @@ TestCase {
     }
 
     function test_a_percent_sign_takes_a_hundredth() {
-        compare(Calc.result("50%", "."), 0.5);
-        compare(Calc.result("200*5%", "."), 10);
+        compare(Calc.result("10%", "."), 0.1);
+        compare(Calc.result("100*10%", "."), 10);
+        compare(Calc.result("200/50%", "."), 400);
+    }
+
+    function test_after_a_plus_or_minus_a_percentage_is_that_share_of_the_value_before_it() {
+        compare(Calc.result("100+10%", "."), 110);
+        compare(Calc.result("100-10%", "."), 90);
+        compare(Calc.result("100+10%+5", "."), 115, "the share of the value before, then on");
+        compare(Calc.result("2*50+10%", "."), 110, "of the whole value before");
+        compare(Calc.result("100+100+10%", "."), 220, "of all that comes before");
+        compare(Calc.result("100+10%*2", "."), 100.2, "a side that goes on after the percent sign is no share");
     }
 
     function test_the_written_signs_for_times_divided_and_minus_count_as_the_typed_ones() {

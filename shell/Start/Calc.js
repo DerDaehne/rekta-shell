@@ -43,11 +43,14 @@ function take(parser, accepted) {
     return token;
 }
 
+// A side after a plus or minus that ends in a percent sign is that share of the value before it, as calculators reckon:
+// 100 + 10% is 110, 100 - 10% is 90.
 function sum(parser) {
     let value = product(parser);
     for (let sign = take(parser, ["+", "-"]); sign !== undefined; sign = take(parser, ["+", "-"])) {
         const right = product(parser);
-        value = sign === "+" ? value + right : value - right;
+        const amount = parser.tokens[parser.at - 1] === "%" ? value * right : right;
+        value = sign === "+" ? value + amount : value - amount;
         parser.operations++;
     }
     return value;
@@ -83,7 +86,7 @@ function power(parser) {
     return Math.pow(base, signed(parser));
 }
 
-// A percent sign takes a hundredth: 50% is 0.5.
+// A percent sign takes a hundredth: 10% is 0.1, 100 * 10% is 10.
 function percent(parser) {
     let value = primary(parser);
     while (take(parser, ["%"]) !== undefined) {
