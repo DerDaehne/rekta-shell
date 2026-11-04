@@ -1,5 +1,6 @@
 .pragma library
 .import Rekta as Rekta
+.import "Calc.js" as Calc
 
 // The Start's rules as pure functions, apart from its surface, so the tests check them without a compositor.
 
@@ -70,11 +71,16 @@ function pinnedTiles(pinned, installed) {
     })).filter(tile => tile.id !== "" && installed(tile.id));
 }
 
-// Where desktop entries live, in order of precedence, as Quickshell looks for them (desktopentry.cpp, desktopPaths).
-function applicationDirs(dataHome, home, dataDirs) {
+// The data directories in order of precedence, the user's first (XDG base directories).
+function dataDirs(dataHome, home, systemDirs) {
     const first = dataHome || (home ? `${home}/.local/share` : "");
-    const rest = (dataDirs || "/usr/local/share:/usr/share").split(":").filter(dir => dir !== "");
-    return [first, ...rest].filter(dir => dir !== "").map(dir => `${dir}/applications`);
+    const rest = (systemDirs || "/usr/local/share:/usr/share").split(":").filter(dir => dir !== "");
+    return [first, ...rest].filter(dir => dir !== "");
+}
+
+// Where desktop entries live, in order of precedence, as Quickshell looks for them (desktopentry.cpp, desktopPaths).
+function applicationDirs(dataHome, home, systemDirs) {
+    return dataDirs(dataHome, home, systemDirs).map(dir => `${dir}/applications`);
 }
 
 // The desktop file ID of a file below an applications directory: its path there with "/" as "-", without ".desktop"
@@ -332,10 +338,24 @@ function windowHits(windows, text) {
     return Rekta.Match.ranked(recentFirst(windows), entry => Rekta.Match.score(entry.title, entry.app ?? "", typed));
 }
 
-// What the search finds besides apps, in the palette's groups, empty ones left out: windows, settings pages and
-// commands as rows {text, lead, icon, run, best}. The first row is the best hit when no app matches (`noApp`).
+// What was typed, worked out (Calc.js), as a row that copies the result through `copy`; none when it is no calculation.
+function calculationRows(text, decimalPoint, copy) {
+    const value = Calc.result(text, decimalPoint);
+    if (value === null)
+        return [];
+    const result = Calc.shown(value, decimalPoint);
+    return [{ text: `= ${result}`, lead: "", icon: "", run: () => copy(result) }];
+}
+
+// What the search finds besides apps, in the palette's groups, empty ones left out: a calculation's result, windows,
+// settings pages and commands as rows {text, lead, icon, run, best}. The first row is the best hit when no app matches
+// (`noApp`). `sources` also gives the locale's decimal separator and how a result is copied.
 function rowGroups(sources, text, starts, noApp) {
     const groups = [
+        {
+            name: "rechnen",
+            rows: calculationRows(text, sources.decimalPoint, sources.copy)
+        },
         {
             name: "fenster",
             rows: windowHits(sources.windows, text).map(entry => ({ text: entry.title, lead: entry.app ?? "", icon: entry.icon, run: () => entry.activate() }))
@@ -352,6 +372,63 @@ function rowGroups(sources, text, starts, noApp) {
     if (noApp && groups.length > 0)
         groups[0].rows[0].best = true;
     return groups;
+}
+
+// The ways on when nothing matches (states.md, "Empty"), as rows: a search of the web for the text through `openUrl`,
+// where the desktop has a web search (`webQuery`, see providerQuery). The first is the best hit.
+function waysOut(text, webQuery, openUrl) {
+    if (webQuery === "")
+        return [];
+    return [{ text: `„${text}“ im web suchen`, lead: "", icon: "", best: true, run: () => openUrl(webSearchUrl(webQuery, text)) }];
+}
+
+// The address that searches for `text`: the provider's search address with the text, encoded, in place of \{@}.
+function webSearchUrl(webQuery, text) {
+    return webQuery.split("\\{@}").join(encodeURIComponent(text));
+}
+
+// A KConfig value as written: \s, \t, \n and \r stand for their characters, a backslash before any other for that one.
+function unescaped(value) {
+    const named = { s: " ", t: "\t", n: "\n", r: "\r" };
+    return value.replace(/\\(.)/g, (escape, character) => named[character] ?? character);
+}
+
+// The entries of one group of a KConfig or desktop file, their values unescaped; KConfig's flags such as [$i] are
+// dropped from a key, a locale such as [de] stays part of it.
+function iniGroup(text, name) {
+    const entries = {};
+    let inGroup = false;
+    for (const rawLine of text.split("\n")) {
+        const line = rawLine.trim();
+        const at = line.indexOf("=");
+        if (line.startsWith("["))
+            inGroup = line === `[${name}]`;
+        else if (inGroup && at > 0)
+            entries[line.slice(0, at).trim().replace(/\[\$[^\]]*\]/g, "")] = unescaped(line.slice(at + 1).trim());
+    }
+    return entries;
+}
+
+// The provider KDE searches the web with when what was typed is no address (Web Search Keywords in System Settings), by
+// the name of its file: kuriikwsfilterrc's [General] DefaultWebShortcut, or "duckduckgo", KIO's own while none is set
+// (kuriikwsfiltereng.cpp, loadConfig). "" when web shortcuts are off or the user chose none.
+function defaultWebShortcut(config) {
+    const general = iniGroup(config, "General");
+    if (general.EnableWebShortcuts === "false")
+        return "";
+    return general.DefaultWebShortcut ?? "duckduckgo";
+}
+
+// A provider's search address, from what `grep -H --null '^Query'` printed over its files in `files`, the first in
+// order of precedence that is there: its Query for the locale ("de_DE", then "de"), else its own. "" when there is
+// none or it has no place for the text.
+// ponytail: \{@} only, the whole text; KIO's word and range references (\{1}, \{name,…}) appear in a few providers.
+function providerQuery(grepped, files, locale) {
+    const lines = grepped.split("\n").map(line => line.split("\0")).filter(pair => pair.length === 2);
+    const file = files.find(path => lines.some(([from]) => from === path));
+    const entries = iniGroup(["[Desktop Entry]", ...lines.filter(([from]) => from === file).map(([, line]) => line)].join("\n"), "Desktop Entry");
+    const query = entries[`Query[${locale}]`] ?? entries[`Query[${locale.split("_")[0]}]`] ?? entries.Query ?? "";
+    return query.includes("\\{@}") ? query : "";
 }
 
 const keyModifiers = [[0x10000000, "Meta"], [0x04000000, "Ctrl"], [0x08000000, "Alt"], [0x02000000, "Shift"]];

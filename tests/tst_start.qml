@@ -934,13 +934,26 @@ TestCase {
         compare(hitNames(), []);
     }
 
-    function test_a_shortcut_a_digit_or_a_space_starts_no_search() {
+    function test_a_shortcut_a_space_or_a_sign_no_calculation_starts_with_starts_no_search() {
         openWithApps();
         keyClick(Qt.Key_K, Qt.ControlModifier);
-        keyClick(Qt.Key_5);
         keyClick(Qt.Key_Space);
+        keyClick("*");
+        keyClick(")");
         compare(start.query, "");
         verify(named("pivot").visible);
+    }
+
+    function test_a_digit_a_bracket_or_a_minus_starts_a_search_as_a_calculation_starts_with_them() {
+        openWithApps();
+        for (const character of ["5", "(", "-"]) {
+            typeNow(character);
+            compare(start.query, character);
+            verify(!named("pivot").visible, `${character} shows the search`);
+            Prefs.motion = "off";
+            start.query = "";
+            Prefs.motion = "system";
+        }
     }
 
     function test_enter_presses_the_first_hit_in_its_centre_launches_it_once_and_turns_the_start_out_forward_with_it_last() {
@@ -1937,6 +1950,111 @@ TestCase {
         compare(groupNames(), []);
     }
 
+    function test_a_calculation_shows_its_result_as_the_best_hit_and_enter_copies_it_and_closes_the_start() {
+        openWithEverything();
+        start.copy = text => testCase.calls = [...testCase.calls, `copy ${text}`];
+        typeNow("2+3*4");
+        compare(groupNames(), ["rechnen"]);
+        compare(rowTexts("rechnen"), ["= 14"]);
+        const row = start.searchRows()[0];
+        verify(row.best);
+        verify(findChild(row, "enterKey").visible);
+        verify(!named("noHits").visible);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["copy 14"]);
+        verify(!turner.back, "forward");
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
+    function test_a_calculation_reads_and_writes_the_locale_s_decimal_separator() {
+        start.decimalPoint = ",";
+        openWithApps();
+        typeNow("1,5*3");
+        compare(rowTexts("rechnen"), ["= 4,5"]);
+    }
+
+    function test_a_division_by_zero_shows_no_result_and_nothing_found() {
+        openWithApps();
+        typeNow("1/0");
+        compare(groupNames(), []);
+        verify(named("noHits").visible);
+    }
+
+    // KDE's default web search, as WebSearch reads it, and the browser it opens in.
+    function openWithAWebSearch() {
+        start.webSearch = "https://search.example/?q=\\{@}&t=kde";
+        start.openUrl = url => testCase.calls = [...testCase.calls, `open ${url}`];
+        openWithEverything();
+    }
+
+    function test_with_nothing_found_a_web_search_for_the_text_without_its_outer_spaces_stands_below_rekta_s_sentence_with_enter() {
+        openWithAWebSearch();
+        typeNow("qq x ");
+        verify(named("noHits").visible);
+        compare(findChild(named("noHits"), "sentence").text, "nichts zum hingehen oder ausführen passt zu „qq x“.");
+        const rows = start.searchRows();
+        compare(rows.map(row => row.text), ["„qq x“ im web suchen"]);
+        verify(rows[0].best);
+        verify(findChild(rows[0], "enterKey").visible);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["open https://search.example/?q=qq%20x&t=kde"]);
+        verify(!turner.back, "forward");
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
+    function test_the_way_on_stands_space_s_below_the_sentence_within_the_empty_region_at_the_line_s_edge() {
+        openWithAWebSearch();
+        typeNow("qq");
+        const empty = named("noHits");
+        const sentence = findChild(empty, "sentence");
+        const row = start.searchRows()[0];
+        const top = row.mapToItem(empty, 0, 0).y;
+        compare(top, sentence.y + sentence.height + Tokens.spaceS);
+        compare(empty.height, top + row.height + Tokens.spaceM);
+        compare(row.mapToItem(start, 0, 0).x, named("typed").mapToItem(start, 0, 0).x);
+    }
+
+    function test_down_goes_from_the_line_into_the_way_on_up_back_and_enter_there_acts_on_it() {
+        openWithAWebSearch();
+        typeNow("qq");
+        const row = start.searchRows()[0];
+        keyClick(Qt.Key_Down);
+        verify(row.activeFocus);
+        keyClick(Qt.Key_Up);
+        verify(named("typed").activeFocus);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["open https://search.example/?q=qq&t=kde"]);
+    }
+
+    function test_escape_on_the_way_on_closes_the_start_without_searching_the_web() {
+        openWithAWebSearch();
+        typeNow("qq");
+        keyClick(Qt.Key_Down);
+        verify(start.searchRows()[0].activeFocus);
+        keyClick(Qt.Key_Escape);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(calls, []);
+    }
+
+    function test_a_hit_of_any_kind_takes_the_way_on_away() {
+        openWithAWebSearch();
+        typeNow("qq");
+        compare(start.searchRows().length, 1);
+        Prefs.motion = "off";
+        start.query = "";
+        Prefs.motion = "system";
+        typeNow("sp");
+        compare(start.searchRows().map(row => row.text), ["sperren"]);
+    }
+
+    function test_without_a_web_search_nothing_found_has_no_way_on() {
+        openWithEverything();
+        typeNow("qq");
+        verify(named("noHits").visible);
+        compare(start.searchRows(), []);
+    }
+
     function test_a_row_that_takes_the_focus_scrolls_into_view() {
         start.windows = Array.from({ length: 40 }, (_, i) => fakeWindow(`fenster ${i}`, i));
         openWithApps();
@@ -1988,6 +2106,32 @@ TestCase {
             waitForRendering(backdrop);
             grabImage(backdrop).save(`start-search-row-best-${theme}.png`);
             compare(sheet.query, "zeit", theme);
+        }
+    }
+
+    // The search for `text` as start-search-<name>-<theme>.png, with the first hit in focus if `focusFirst`.
+    function saveSearchSheet(theme: string, text: string, name: string, focusFirst: bool) {
+        Prefs.theme = theme;
+        const backdrop = createTemporaryObject(backdropComponent, testCase);
+        const sheet = createTemporaryObject(startComponent, backdrop);
+        sheet.apps = searchableApps();
+        sheet.webSearch = "https://search.example/?q=\\{@}";
+        Prefs.motion = "off";
+        sheet.open();
+        for (const character of text)
+            keyClick(character);
+        if (focusFirst)
+            keyClick(Qt.Key_Down);
+        Prefs.motion = "system";
+        waitForRendering(backdrop);
+        grabImage(backdrop).save(`start-search-${name}-${theme}.png`);
+        compare(sheet.query, text, `${name} ${theme}`);
+    }
+
+    function test_contact_sheet_of_a_calculation_and_of_the_way_on() {
+        for (const theme of ["light", "dark"]) {
+            saveSearchSheet(theme, "(2+3)*4", "calc", false);
+            saveSearchSheet(theme, "qq x", "way-on", true);
         }
     }
 

@@ -345,7 +345,8 @@ TestCase {
         const sources = {
             windows: [{ title: "Dateien", app: "", lastActivated: 1, stackingOrder: 0, activate: noop }],
             settings: [{ id: "kcm_x", name: "Datum", genericName: "", keywords: [], exec: "", icon: "", launch: noop }],
-            commands: [{ text: "dateien zu", keywords: [], run: noop }]
+            commands: [{ text: "dateien zu", keywords: [], run: noop }],
+            decimalPoint: "."
         };
         compare(Rules.rowGroups(sources, "da", {}, true).map(group => group.name), ["fenster", "einstellungen", "befehle"]);
         compare(Rules.rowGroups(sources, "dat", {}, true).map(group => group.name), ["fenster", "einstellungen", "befehle"]);
@@ -355,7 +356,7 @@ TestCase {
 
     function test_only_the_very_first_row_is_the_best_hit_and_only_when_no_app_matches() {
         const noop = () => {};
-        const sources = { windows: [], settings: [], commands: [{ text: "sperren", keywords: [], run: noop }, { text: "stumm an", keywords: [], run: noop }] };
+        const sources = { windows: [], settings: [], commands: [{ text: "sperren", keywords: [], run: noop }, { text: "stumm an", keywords: [], run: noop }], decimalPoint: "." };
         const without = Rules.rowGroups(sources, "s", {}, true);
         compare(without[0].rows.map(row => row.best === true), [true, false]);
         const with_ = Rules.rowGroups(sources, "s", {}, false);
@@ -389,7 +390,66 @@ TestCase {
     }
 
     function test_a_command_row_carries_the_key_of_its_command() {
-        const sources = { windows: [], settings: [], commands: [{ text: "sperren", keywords: [], key: "Meta L", run: () => {} }, { text: "stumm an", keywords: [], run: () => {} }] };
+        const sources = { windows: [], settings: [], commands: [{ text: "sperren", keywords: [], key: "Meta L", run: () => {} }, { text: "stumm an", keywords: [], run: () => {} }], decimalPoint: "." };
         compare(Rules.rowGroups(sources, "s", {}, true)[0].rows.map(row => row.key), ["Meta L", ""]);
+    }
+
+    function test_a_calculation_comes_first_as_the_best_hit_and_its_row_copies_the_result() {
+        const copied = [];
+        const sources = {
+            windows: [{ title: "table 1 5 3", app: "", lastActivated: 1, stackingOrder: 0, activate: () => {} }],
+            settings: [],
+            commands: [],
+            decimalPoint: ",",
+            copy: text => copied.push(text)
+        };
+        const groups = Rules.rowGroups(sources, "1,5 * 3", {}, true);
+        compare(groups.map(group => group.name), ["rechnen", "fenster"]);
+        compare(groups[0].rows.map(row => row.text), ["= 4,5"]);
+        compare(groups.map(group => group.rows[0].best === true), [true, false]);
+        groups[0].rows[0].run();
+        compare(copied, ["4,5"]);
+        compare(Rules.rowGroups(sources, "1/0", {}, true).map(group => group.name), [], "no row for a division by zero");
+    }
+
+    function test_without_any_hit_the_way_on_searches_the_web_for_the_text_and_is_the_best_hit() {
+        const opened = [];
+        const rows = Rules.waysOut("café & co", "https://search.example/?q=\\{@}&t=kde", url => opened.push(url));
+        compare(rows.map(row => row.text), ["„café & co“ im web suchen"]);
+        verify(rows[0].best);
+        rows[0].run();
+        compare(opened, ["https://search.example/?q=caf%C3%A9%20%26%20co&t=kde"]);
+        compare(Rules.waysOut("café", "", url => opened.push(url)), [], "none without a web search");
+    }
+
+    function test_kde_searches_the_web_with_the_default_web_shortcut_or_kio_s_own_while_none_is_set() {
+        compare(Rules.defaultWebShortcut("[General]\nDefaultWebShortcut=ecosia\n"), "ecosia");
+        compare(Rules.defaultWebShortcut("[General]\nDefaultWebShortcut[$i]=qwant\n"), "qwant", "with a KConfig flag");
+        compare(Rules.defaultWebShortcut(""), "duckduckgo");
+        compare(Rules.defaultWebShortcut("[Other]\nDefaultWebShortcut=ecosia\n"), "duckduckgo", "only [General] counts");
+    }
+
+    function test_no_web_search_while_web_shortcuts_are_off_or_the_user_chose_none() {
+        compare(Rules.defaultWebShortcut("[General]\nEnableWebShortcuts=false\nDefaultWebShortcut=ecosia\n"), "");
+        compare(Rules.defaultWebShortcut("[General]\nDefaultWebShortcut=\n"), "");
+    }
+
+    // What grep prints over a provider's files: a file, a NUL, a line, as the file writes \{@}.
+    readonly property var providerFiles: ["/u/share/kf6/searchproviders/p.desktop", "/usr/share/kf6/searchproviders/p.desktop"]
+
+    function providerLine(file: int, line: string): string {
+        return `${providerFiles[file]}\0${line}`;
+    }
+
+    function test_a_provider_s_search_address_comes_from_its_first_file_for_the_locale_else_its_own() {
+        const both = [providerLine(1, "Query=https://system.example/?q=\\\\{@}"), providerLine(0, "Query=https://user.example/?q=\\\\{@}"), providerLine(0, "Query[de]=https://user.example/de?q=\\\\{@}"), ""].join("\n");
+        compare(Rules.providerQuery(both, providerFiles, "de_DE"), "https://user.example/de?q=\\{@}", "the user's file, in German");
+        compare(Rules.providerQuery(both, providerFiles, "fr_FR"), "https://user.example/?q=\\{@}", "its own without one for the locale");
+        compare(Rules.providerQuery(providerLine(1, "Query=https://system.example/?q=\\\\{@}"), providerFiles, "C"), "https://system.example/?q=\\{@}", "the system's while the user has none");
+    }
+
+    function test_a_provider_without_a_file_or_a_place_for_the_text_gives_no_search_address() {
+        compare(Rules.providerQuery("", providerFiles, "de_DE"), "");
+        compare(Rules.providerQuery(providerLine(0, "Query=https://user.example/?q=\\\\{1}"), providerFiles, "de_DE"), "");
     }
 }

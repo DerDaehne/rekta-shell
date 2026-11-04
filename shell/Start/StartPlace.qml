@@ -9,9 +9,9 @@ import Rekta
 // panorama of the installed apps A–Z, a section for each initial, where a typed letter jumps to the next app it
 // starts. It opens once the windows are three quarters back (Rekta's hand-over between places), its parts turning in
 // as a place arrives, and closes turning them out: back the way they came, or forward after a press, the pressed tile
-// last. While it turns its places take no input. A letter typed in the start place searches the apps: what is typed
-// becomes the title, "suche" beside it, and the apps that match stand below as tiles. The title is a line edited as a
-// field is; Escape there closes the Start.
+// last. While it turns its places take no input. A letter typed in the start place searches, and so does what a
+// calculation starts with: what is typed becomes the title, "suche" beside it, and the apps that match stand below as
+// tiles, the other kinds as rows. The title is a line edited as a field is; Escape there closes the Start.
 FocusScope {
     id: start
 
@@ -31,6 +31,14 @@ FocusScope {
     property var settings: []
     // The shell's commands: {text, keywords, run}, or {word, at(n)} for one that takes an amount (Rules.commandHits).
     property var commands: []
+    // The search address of KDE's default web search, with \{@} for the text; "" without one.
+    property string webSearch: ""
+    // Opens an address in the user's browser.
+    property var openUrl: null
+    // Puts a text on the clipboard.
+    property var copy: null
+    // The locale's decimal separator, which a calculation writes its numbers with.
+    property string decimalPoint: Qt.locale().decimalPoint
     // Draws a window's preview on its tile (RunningTile.preview); null for none.
     property Component preview: null
     // closed, opening (the glass comes, then the parts turn in), open, or closing (the parts turn out, the glass goes).
@@ -71,6 +79,8 @@ FocusScope {
     property bool searching: false
     // What the search finds besides apps: [{name, rows: [{text, lead, icon, key, run, best}]}] (Rules.rowGroups).
     property var rowGroups: []
+    // Without any hit, the ways on as rows (Rules.waysOut).
+    property var waysOut: []
     // What Escape does in a search: "close" closes the Start at once, "back" clears the search first like the other ways
     // back.
     property string searchEscape: "close"
@@ -213,6 +223,7 @@ FocusScope {
         showSearchView(false);
         found.clear();
         rowGroups = [];
+        waysOut = [];
     }
 
     // The search is a view of the place, not a place (collections.md, "Search and filters"): it comes and goes without a
@@ -273,6 +284,7 @@ FocusScope {
             showSearchView(false);
             found.clear();
             rowGroups = [];
+            waysOut = [];
         }, 0);
     }
 
@@ -288,7 +300,9 @@ FocusScope {
         return Rules.rowGroups({
             windows: windows,
             settings: settings,
-            commands: commands
+            commands: commands,
+            decimalPoint: decimalPoint,
+            copy: copy
         }, query, starts, appHits.length === 0);
     }
 
@@ -314,6 +328,7 @@ FocusScope {
     // made anew; ponytail: they change without motion while typing on, give them Presence like the tiles if that shows.
     function showHits(shown: var, rows: var) {
         rowGroups = rows;
+        waysOut = shown.length === 0 && rows.length === 0 ? Rules.waysOut(query.trim(), webSearch, openUrl) : [];
         const byId = new Map(shown.map(app => [app.id, app]));
         for (const step of Rules.steps(hitTiles().map(tile => tile.appId), shown.map(app => app.id))) {
             if (step.remove !== undefined)
@@ -352,12 +367,13 @@ FocusScope {
         });
     }
 
-    // The search's rows in reading order, under their headings.
+    // The search's rows in reading order, under their headings, or the ways on below the empty sentence.
     function searchRows(): var {
+        const isRow = item => (item as SearchRow) !== null;
         const rows = [];
         for (const group of rowsColumn.children)
-            rows.push(...group.children.filter(item => (item as SearchRow) !== null));
-        return rows;
+            rows.push(...group.children.filter(isRow));
+        return rows.concat(waysOutColumn.children.filter(isRow));
     }
 
     function press(tile: Tile, act: var) {
@@ -590,14 +606,14 @@ FocusScope {
     }
 
     // Text typed without Ctrl, Alt or Meta; Shift only makes a capital. A search starts with a letter, one with a case
-    // (QML's regular expressions know no \p{L}; scripts without one come through an input method, not a single key), and
-    // goes on with any character that prints, a digit or a space too.
+    // (QML's regular expressions know no \p{L}; scripts without one come through an input method, not a single key), or
+    // with what a calculation starts with, and goes on with any character that prints, a space too.
     function typesText(event: KeyEvent): bool {
         const text = event.text;
         if (text === "" || (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) !== 0)
             return false;
         if (query === "")
-            return text.length === 1 && text.toLowerCase() !== text.toUpperCase();
+            return text.length === 1 && (text.toLowerCase() !== text.toUpperCase() || Calc.canStart(text, decimalPoint));
         return !/[\u0000-\u001f\u007f]/.test(text);
     }
 
@@ -1227,31 +1243,51 @@ FocusScope {
 
                         Repeater {
                             model: group.modelData.rows
-
-                            delegate: SearchRow {
-                                id: searchRow
-
-                                required property var modelData
-
-                                text: searchRow.modelData.text
-                                lead: searchRow.modelData.lead
-                                icon: searchRow.modelData.icon
-                                best: searchRow.modelData.best === true
-                                keyHint: searchRow.modelData.key ?? ""
-                                onActivated: start.chooseRow(searchRow.modelData)
-                            }
+                            delegate: hitRow
                         }
                     }
                 }
             }
 
-            // Without a match, a sentence on the region's first hairline says so (states.md, "Empty"; rekta.css:890).
+            // Without a match, a sentence on the region's first hairline says so, and the ways on follow it as rows
+            // (states.md, "Empty"; rekta.css:890–891).
             Empty {
+                id: noHits
+
                 objectName: "noHits"
                 y: Tokens.spaceL
                 width: start.sixUnits
                 visible: found.count === 0 && start.rowGroups.length === 0
                 text: `nichts zum hingehen oder ausführen passt zu „${start.query.trim()}“.`
+
+                Column {
+                    id: waysOutColumn
+
+                    objectName: "waysOut"
+                    width: parent.width
+
+                    Repeater {
+                        model: start.waysOut
+                        delegate: hitRow
+                    }
+                }
+            }
+
+            Component {
+                id: hitRow
+
+                SearchRow {
+                    id: searchRow
+
+                    required property var modelData
+
+                    text: searchRow.modelData.text
+                    lead: searchRow.modelData.lead
+                    icon: searchRow.modelData.icon
+                    best: searchRow.modelData.best === true
+                    keyHint: searchRow.modelData.key ?? ""
+                    onActivated: start.chooseRow(searchRow.modelData)
+                }
             }
         }
     }

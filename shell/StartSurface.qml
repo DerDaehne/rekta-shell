@@ -113,6 +113,11 @@ PanelWindow {
         apps: installed.list
         settings: installed.settings
         commands: surface.commands
+        webSearch: webSearch.query
+        openUrl: url => surface.launcher.open(url)
+        copy: text => {
+            Quickshell.clipboardText = text;
+        }
         searchEscape: surface.searchEscape
         starts: usage.starts
         unseen: surface.notices.unseenByApp
@@ -139,6 +144,10 @@ PanelWindow {
 
         launcher: surface.launcher
         usage: usage
+    }
+
+    WebSearch {
+        id: webSearch
     }
 
     // Meta opens and closes it; in Plasma's own session Meta stays with Kickoff, as there this shortcut is not present.
