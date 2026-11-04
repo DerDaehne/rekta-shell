@@ -100,6 +100,7 @@ TestCase {
     function cleanup() {
         Prefs.motion = "system";
         Prefs.theme = "system";
+        Tokens.moreContrast = false;
     }
 
     function test_a_tag_shows_each_status_square_and_word() {
@@ -116,6 +117,15 @@ TestCase {
             compare(tag.word, word, status);
             compare(tag.Accessible.name, word, status);
         }
+    }
+
+    function test_in_the_ink_toast_under_more_contrast_a_status_square_keeps_its_colour_and_its_edge() {
+        Tokens.moreContrast = true;
+        const tag = createTemporaryObject(tagComponent, testCase, { status: "warning", inInkToast: true });
+        const edge = findChild(tag, "edge");
+        compare(findChild(tag, "mark").color, Tokens.color.statusWarningFull);
+        verify(edge.visible);
+        compare(edge.border.color, tag.ink);
     }
 
     function test_a_meter_fills_in_ink_or_in_the_status_it_means() {
