@@ -343,6 +343,8 @@ Rectangle {
         }
     }
 
+    PressHidesTips {}
+
     // A control in "more" repeats its words and its reason; choosing it presses the control.
     component MovedControl: MenuItem {
         required property AppBarButton modelData

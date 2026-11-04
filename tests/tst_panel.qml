@@ -1244,6 +1244,40 @@ TestCase {
         verify(!tip.visible, "scrolling hides it");
     }
 
+    function test_escape_hides_a_tip_that_shows_and_only_a_second_escape_closes_the_panel() {
+        giveSound(controls);
+        showSettled(0);
+        const tip = named("tip");
+        control("outputMute").forceActiveFocus();
+        verify(tip.visible);
+        keyClick(Qt.Key_Escape);
+        verify(!tip.visible, "the tip takes Escape first");
+        verify(side.open, "the panel stays open");
+        verify(control("outputMute").activeFocus, "and its control keeps the focus");
+        keyClick(Qt.Key_Escape);
+        verify(!side.open, "a second Escape closes it");
+    }
+
+    function test_a_press_anywhere_in_the_panel_hides_a_tip_and_reaches_what_it_lands_on() {
+        const sound = giveSound(controls);
+        showSettled(0);
+        const tip = named("tip");
+        const slider = control("outputVolume");
+        control("outputMute").forceActiveFocus();
+        verify(tip.visible);
+        mousePress(slider, slider.width / 4, slider.height / 2);
+        verify(!tip.visible, "a press on the slider hides it");
+        verify(sound.speakers.audio.volume < 0.5, "and the slider takes the press");
+        mouseRelease(slider, slider.width / 4, slider.height / 2);
+        control("inputMute").forceActiveFocus();
+        verify(tip.visible);
+        const ground = findChild(side, "ground");
+        mousePress(ground, ground.width / 2, ground.height - Tokens.spaceL / 2, Qt.RightButton);
+        verify(!tip.visible, "a press of any button on the bare ground hides it too");
+        mouseRelease(ground, ground.width / 2, ground.height - Tokens.spaceL / 2, Qt.RightButton);
+        verify(side.open);
+    }
+
     function test_ton_works_from_the_keyboard() {
         const sound = giveSound(controls);
         sound.speakers.audio.volume = 0.6;

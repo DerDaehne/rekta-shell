@@ -53,6 +53,7 @@ MenuLabel 1.0 MenuLabel.qml
 ExpandedState 1.0 ExpandedState.qml
 Select 1.0 Select.qml
 Tooltip 1.0 Tooltip.qml
+PressHidesTips 1.0 PressHidesTips.qml
 singleton Turnstile 1.0 Turnstile.qml
 singleton FadeBack 1.0 FadeBack.qml
 Sparkline 1.0 Sparkline.qml

@@ -317,6 +317,23 @@ TestCase {
         compare(Tips.target, null, "a control that can act has no tip");
     }
 
+    function test_a_press_anywhere_on_the_bar_hides_a_tip_and_reaches_what_it_lands_on() {
+        makeScene({});
+        const middle = named("middle");
+        const box = findChild(named("messages"), "box");
+        const tapped = createTemporaryObject(spy, testCase, { target: middle, signalName: "tapped" });
+        mouseMove(testCase, 5, 5);
+        mouseMove(box);
+        tryCompare(Tips, "target", box, Tokens.durationTipDelay * 2, "a pointer resting on a control still shows its tip");
+        mouseMove(testCase, 5, 5);
+        named("messages").forceActiveFocus();
+        compare(Tips.target, box);
+        mousePress(middle);
+        compare(Tips.target, null, "a press on the middle hides it");
+        mouseRelease(middle);
+        compare(tapped.count, 1, "and the middle takes the tap");
+    }
+
     function test_a_control_s_tooltip_rises_above_it_and_stays_inside_the_window() {
         makeScene({});
         const messages = findChild(named("messages"), "box");

@@ -7,9 +7,9 @@ import Rekta
 // of its host at the trailing edge, on the ground with a hairline along its leading edge. It slides all the way in from
 // the trailing edge over duration-moderate with ease-out and leaves the way it came in 0.8 × that, as a sheet leaves
 // (motion.md, "Sheets"); nothing beside it is shaded or blocked. Its pivot picks a facet. Escape and close() send it
-// away. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move through the controls, and once the
-// panel has gone the focus goes back. A sheet a facet opens lies over the panel's ground (`sheets`); while one is open
-// the panel keeps still.
+// away; a tip that shows takes Escape first. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move
+// through the controls, and once the panel has gone the focus goes back. A sheet a facet opens lies over the panel's
+// ground (`sheets`); while one is open the panel keeps still. A press anywhere in it hides a tip, as scrolling does.
 // ponytail: this panel is the shell's own from before Rekta had one; 0.6.0's side panel is a sheet from the trailing
 // edge that shades and holds focus and arrives on ease-in (`.rk-sheet--side`, rekta.css:1095–1106).
 FocusScope {
@@ -164,14 +164,14 @@ FocusScope {
 
     visible: open
 
-    // Controls take their keys first; the rest come here, and what the panel leaves goes to the key layers, such as
-    // Ctrl+Z for an open undo toast.
+    // Controls take their keys first; the rest go to the key layers (a tip's or a sheet's Escape, Ctrl+Z for an open
+    // undo toast), and what no layer takes is the panel's.
     Keys.onPressed: event => {
-        if (!open)
+        if (!open || KeyLayers.dispatch(event, Window.activeFocusItem))
             return;
         if (sheetOpen) {
-            // The sheet's own keys (Escape) go to the layers; the arrows do not walk the panel behind it, Tab stays its own.
-            event.accepted = KeyLayers.dispatch(event, Window.activeFocusItem) || event.key === Qt.Key_Up || event.key === Qt.Key_Down;
+            // The arrows do not walk the panel behind a sheet, and Tab stays the sheet's own.
+            event.accepted = event.key === Qt.Key_Up || event.key === Qt.Key_Down;
             return;
         }
         if (event.key === Qt.Key_Escape)
@@ -179,7 +179,7 @@ FocusScope {
         else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up)
             moveFocus(event.key === Qt.Key_Down);
         else
-            return KeyLayers.dispatch(event, Window.activeFocusItem);
+            return;
         event.accepted = true;
     }
 
@@ -319,7 +319,7 @@ FocusScope {
             }
 
             // The tip of any control in the panel's window, its sheets' included, over them all; it slides with the
-            // panel, and the view scrolling hides it, as it hides every tip (rekta.js tips()).
+            // panel. The view scrolling hides it, as a press does (rekta.js tips()).
             Tooltip {
                 id: tip
 
@@ -333,4 +333,6 @@ FocusScope {
             }
         }
     }
+
+    PressHidesTips {}
 }
