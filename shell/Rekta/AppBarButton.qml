@@ -319,8 +319,8 @@ Item {
         property real phase: 1
         readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
         readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
-        readonly property real leaving: easeOut.valueForProgress(Math.min(1, phase / 0.6))
-        readonly property real rising: easeIn.valueForProgress(Math.max(0, (phase - 0.2) / 0.8))
+        readonly property real leaving: easeOut.valueForProgress(Math.min(1, phase / Geometry.peekOutShare))
+        readonly property real rising: easeIn.valueForProgress(Math.max(0, (phase - Geometry.peekInDelay) / Geometry.peekInShare))
     }
 
     NumberAnimation {

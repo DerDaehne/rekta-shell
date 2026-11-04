@@ -111,8 +111,8 @@ Item {
         property point at
         // 0 to 1 over duration-moderate, linear; each part eases its own share of it.
         property real phase: 1
-        readonly property real leaving: news.easeOut.valueForProgress(Math.min(1, phase / 0.6))
-        readonly property real rising: news.easeIn.valueForProgress(Math.max(0, (phase - 0.2) / 0.8))
+        readonly property real leaving: news.easeOut.valueForProgress(Math.min(1, phase / Geometry.peekOutShare))
+        readonly property real rising: news.easeIn.valueForProgress(Math.max(0, (phase - Geometry.peekInDelay) / Geometry.peekInShare))
     }
 
     NumberAnimation {

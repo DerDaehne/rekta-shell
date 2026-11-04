@@ -132,7 +132,7 @@ Item {
         visible: alone.mapped
         width: parent.width
         height: Tokens.appbarHeight
-        y: (1 - alone.progress) * Geometry.readoutRise
+        y: (1 - alone.progress) * Geometry.toastRise
         opacity: alone.progress
         color: Tokens.color.glass
 

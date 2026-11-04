@@ -162,12 +162,11 @@ QtObject {
     readonly property real leaveTileScale: 0.9
     readonly property real leaveRowDrift: 12
     readonly property int presenceAtOnceAbove: 60
-    // The old content of a peek leaves over `d * 0.6` of duration-moderate (rekta.js:4211)
+    // A peek over d, duration-moderate: the old content leaves over `d * 0.6` (rekta.js:4211), the new one comes over
+    // `d * 0.8` after `delay: d * 0.2` (rekta.js:4212)
     readonly property real peekOutShare: 0.6
-    // A display alone rises 12px from below its glass edge, as the bar's mode change does (`@keyframes rk-ab-in { from {
-    // opacity: 0; transform: translateY(12px); } }`, rekta.css:981) and a compact toast from its edge (rekta.css:1235–1236,
-    // :1407)
-    readonly property real readoutRise: 12
+    readonly property real peekInDelay: 0.2
+    readonly property real peekInShare: 0.8
     // `.rk-spark polyline { stroke-width: 2; stroke-linejoin: round }` in the sparkline's 200 × 28 box (rekta.css:222,
     // :225); `[data-rk-live='stale'] .rk-spark { opacity: 0.35 }` (rekta.css:660)
     readonly property real sparkBoxWidth: 200
@@ -183,7 +182,8 @@ QtObject {
     // `.rk-toast { max-width: 32rem }` sideways (rekta.css:1418)
     readonly property real toastMaxWidth: 512
     // A toast rises 12px from the app bar, compact: `.rk-toasts { --_rk-from: 12px }` (rekta.css:1407) in `@keyframes
-    // rk-toast-in { from { opacity: 0; transform: translateY(var(--_rk-from)) } }` (rekta.css:1235)
+    // rk-toast-in { from { opacity: 0; transform: translateY(var(--_rk-from)) } }` (rekta.css:1235). A level display is a
+    // toast (`.rk-toast--level`, rekta.css:1229) and arrives as one (motion.md:37), so a display alone rises the same.
     readonly property real toastRise: 12
     // The action's divider: `border-left: 1px solid color-mix(in srgb, currentColor 20%, transparent)` (rekta.css:1213)
     readonly property real toastDividerOpacity: 0.2

@@ -99,7 +99,7 @@ TestCase {
         compare(alone.glass.color, Tokens.color.glass);
         compare(findChild(alone, "hairline").height, Geometry.hairline);
         compare(alone.height, Tokens.appbarHeight);
-        compare(Geometry.readoutRise, 12);
+        compare(Geometry.toastRise, 12);
     }
 
     function test_it_stays_the_hold_and_then_goes_and_is_unmapped_after_the_way_out() {
@@ -151,12 +151,12 @@ TestCase {
         stopAt(0);
         compare(alone.progress, 0);
         compare(alone.glass.opacity, 0);
-        compare(alone.glass.y, restingY + Geometry.readoutRise);
+        compare(alone.glass.y, restingY + Geometry.toastRise);
         stopAt(0.4);
         const eased = alone.ease.valueForProgress(0.4);
         verify(eased > 0 && eased < 1);
         fuzzyCompare(alone.glass.opacity, eased, 1e-9);
-        fuzzyCompare(alone.glass.y, restingY + (1 - eased) * Geometry.readoutRise, 1e-9);
+        fuzzyCompare(alone.glass.y, restingY + (1 - eased) * Geometry.toastRise, 1e-9);
         compare(alone.ease.bezierCurve.toString(), Tokens.easeIn.toString());
         verify(!alone.settled);
         stopAt(1);
@@ -174,7 +174,7 @@ TestCase {
         const eased = alone.ease.valueForProgress(0.8);
         verify(eased > 0.9);
         fuzzyCompare(alone.glass.opacity, eased, 1e-9);
-        fuzzyCompare(alone.glass.y, restingY + (1 - eased) * Geometry.readoutRise, 1e-9);
+        fuzzyCompare(alone.glass.y, restingY + (1 - eased) * Geometry.toastRise, 1e-9);
         verify(!alone.settled);
     }
 
