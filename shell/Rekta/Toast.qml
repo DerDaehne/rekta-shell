@@ -60,11 +60,19 @@ FocusScope {
     readonly property string spoken: [tag, title, text].filter(part => part !== "").join(". ")
     // An undo toast says how long its window is.
     readonly property string announcement: undoAction ? `${spoken}, ${seconds} ${seconds === 1 ? "second" : "seconds"} to ${action}` : spoken
-    // Runs from 0, toast-rise below its place and unseen, to 1 at rest, linear in time; the way down runs it back, so it
-    // plays the same curve backwards, as the stylesheet's reversed keyframes do (rekta.css:1169, :1172, :1235).
+    // Runs from 0, its travel below its place and unseen, to 1 at rest, linear in time. A toast of the product's own goes
+    // down by running it back, so it plays the same curve backwards, as the stylesheet's reversed keyframes do
+    // (rekta.css:1169, :1172, :1235).
     property real phase: 0
     readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
     readonly property real entry: easeIn.valueForProgress(phase)
+    // A notification came from outside: its toast travels whole from behind the bar and back, without a fade, and the
+    // surface's edge at the bar cuts it there (rekta.css:1197–1203, :1407).
+    readonly property real travel: notification ? height + Tokens.appbarHeight + Tokens.spaceS : Geometry.toastRise
+    // A notification's way down, from 0 at rest to 1 out of sight.
+    property real down: 0
+    // How far below its place the toast stands, as a share of its travel.
+    readonly property real below: notification && done ? down : 1 - entry
 
     function begin() {
         waiting = false;
@@ -82,17 +90,20 @@ FocusScope {
     function leave(doUndo: bool, reason: string) {
         if (done)
             return;
+        // A notification's way down goes on from wherever its way up had got to.
+        down = 1 - entry;
         done = true;
         running = false;
         tick.stop();
         const hadFocus = activeFocus;
-        const way = waiting ? 0 : sinking.duration;
+        const goingDown = notification ? gliding : sinking;
+        const way = waiting ? 0 : goingDown.duration;
         rising.stop();
         toaster.letGo(toast);
         if (waiting)
             goAway();
         else
-            sinking.start();
+            goingDown.start();
         if (doUndo && undoAction)
             undoAction();
         if (endHandler)
@@ -217,8 +228,8 @@ FocusScope {
 
     // Flush with the trailing edge it is given, space-m inside the region's sides (rekta.css:1159), space-s above the bar.
     x: Math.max(Tokens.spaceM, Math.min(toaster.trailingEdge, toaster.width - Tokens.spaceM) - width)
-    y: toaster.height - Tokens.spaceS - height + (1 - entry) * Geometry.toastRise
-    opacity: entry
+    y: toaster.height - Tokens.spaceS - height + below * travel
+    opacity: notification ? 1 : entry
     width: Math.min(Geometry.toastMaxWidth, toaster.width - 2 * Tokens.spaceM, front.width + words.implicitWidth + tagBox.width + actionBox.width)
     height: Math.max(Tokens.controlHeight + Tokens.spaceXs, words.height)
     visible: !waiting
@@ -250,6 +261,20 @@ FocusScope {
         property: "phase"
         to: 0
         duration: Tokens.durationShort
+        onFinished: toast.goAway()
+    }
+
+    // A notification's toast leaves back out the way it came, over 0.6 × duration-short on ease-out (rekta.css:1201).
+    NumberAnimation {
+        id: gliding
+
+        objectName: "gliding"
+        target: toast
+        property: "down"
+        to: 1
+        duration: Geometry.toastEdgeOutShare * Tokens.durationShort
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Tokens.easeOut
         onFinished: toast.goAway()
     }
 

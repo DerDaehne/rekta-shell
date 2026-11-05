@@ -117,6 +117,7 @@ TestCase {
     }
 
     readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
@@ -153,9 +154,9 @@ TestCase {
         toast.step();
     }
 
-    // Where a toast rests: space-s above the toaster's foot, which stands on the bar.
+    // Where a toast rests: space-s above its toaster's foot, which stands on the bar.
     function restingY(toast: Toast): real {
-        return toaster.height - Tokens.spaceS - toast.height;
+        return toast.toaster.height - Tokens.spaceS - toast.height;
     }
 
     function test_a_toast_stands_space_s_above_the_bar_flush_with_the_trailing_edge_it_is_given() {
@@ -802,7 +803,7 @@ TestCase {
         verify(count.away, "still away as the toast starts down");
         const countBack = findChild(region, "countBack");
         verify(countBack.running);
-        fuzzyCompare(countBack.interval, Tokens.turnOverlap * findChild(toast, "sinking").duration, 1);
+        compare(countBack.interval, 113, "turn-overlap into its way down, 0.75 × 150ms");
         tryVerify(() => !count.away, 1000);
         verify(findChild(count, "giveWayRun").running, "it comes back");
     }
@@ -900,7 +901,7 @@ TestCase {
         verify(count.away, "the first is still on its way down");
         const countBack = findChild(region, "countBack");
         verify(countBack.running);
-        fuzzyCompare(countBack.interval, Tokens.turnOverlap * findChild(first, "sinking").duration, 1);
+        fuzzyCompare(countBack.interval, Tokens.turnOverlap * findChild(first, "gliding").duration, 1);
         tryVerify(() => !count.away, 1000, "it comes back turn-overlap into that way");
     }
 
@@ -924,6 +925,72 @@ TestCase {
         compare(toast.x + toast.width, count.x + count.width, "over the count, flush with its trailing edge");
     }
 
+    // A notification's toast travels its own height, the bar's and space-s: from below the bar to its place.
+    function edgeTravel(toast: Toast): real {
+        return toast.height + Tokens.appbarHeight + Tokens.spaceS;
+    }
+
+    function test_a_notification_s_toast_comes_whole_from_behind_the_bar_without_a_fade_over_duration_short_on_ease_in() {
+        Prefs.motion = "on";
+        const { toaster: region } = makeCountScene({ countInSight: false });
+        const toast = region.show("lunch at noon?", { title: "anna", notification: true });
+        const rising = findChild(toast, "rising");
+        verify(rising.running);
+        compare(rising.duration, Tokens.durationShort);
+        compare(rising.easing.type, Easing.Linear, "its phase runs evenly in time");
+        rising.pause();
+        compare(toast.phase, 0);
+        verify(toast.y >= region.height + Tokens.appbarHeight, "it starts below the bar, wholly out of sight");
+        for (const phase of [0, 0.25, 0.5, 0.75, 1]) {
+            toast.phase = phase;
+            fuzzyCompare(toast.y, restingY(toast) + (1 - easeIn.valueForProgress(phase)) * edgeTravel(toast), 0.001, `at ${phase}`);
+            compare(toast.opacity, 1, `at ${phase}: no fade`);
+        }
+    }
+
+    function test_a_notification_s_toast_goes_whole_behind_the_bar_without_a_fade_over_0_6_of_duration_short_on_ease_out_whether_it_runs_out_or_is_pressed() {
+        Prefs.motion = "on";
+        for (const end of ["runs out", "pressed"]) {
+            const { toaster: region } = makeCountScene({ countInSight: false });
+            const toast = region.show("lunch at noon?", { title: "anna", notification: true, open: { run: () => {} } });
+            findChild(toast, "rising").complete();
+            if (end === "pressed")
+                toast.pressText();
+            else
+                at(Tokens.durationToast, toast);
+            const gliding = findChild(toast, "gliding");
+            verify(gliding.running, `${end}: it glides`);
+            verify(!findChild(toast, "sinking").running, `${end}: it does not play its way in backwards`);
+            compare(gliding.duration, 150, `${end}: 0.6 × duration-short`);
+            gliding.pause();
+            compare(toast.down, 0, `${end}: from its place`);
+            for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
+                toast.down = gliding.easing.valueForProgress(progress);
+                fuzzyCompare(toast.y, restingY(toast) + easeOut.valueForProgress(progress) * edgeTravel(toast), 0.001, `${end} at ${progress}`);
+                compare(toast.opacity, 1, `${end} at ${progress}: no fade`);
+            }
+            verify(toast.y >= region.height + Tokens.appbarHeight, `${end}: it ends below the bar, wholly out of sight`);
+            gliding.resume();
+            tryCompare(region, "leaving", 0, 1000, end);
+        }
+    }
+
+    function test_a_notification_s_toast_replaced_while_it_comes_in_goes_back_down_from_where_it_had_got_to() {
+        Prefs.motion = "on";
+        const { toaster: region } = makeCountScene({ countInSight: false });
+        const first = region.show("lunch at noon?", { notification: true });
+        findChild(first, "rising").pause();
+        first.phase = 0.5;
+        const halfway = first.y;
+        region.show("on my way", { notification: true });
+        const gliding = findChild(first, "gliding");
+        verify(gliding.running);
+        gliding.pause();
+        fuzzyCompare(first.y, halfway, 0.001, "it does not jump");
+        gliding.resume();
+        tryCompare(region, "leaving", 0, 1000);
+    }
+
     function test_a_notification_s_toast_comes_in_at_once_when_its_count_is_not_in_sight() {
         Prefs.motion = "on";
         const { toaster: region, count } = makeCountScene({ countInSight: false });
@@ -939,6 +1006,7 @@ TestCase {
         compare(findChild(count, "face").opacity, 0, "gone at once");
         verify(!toast.waiting, "the toast is in at once");
         compare(toast.entry, 1);
+        compare(toast.y, restingY(toast), "in its place at once");
         compare(toast.total, Tokens.durationToast, "it still stands duration-toast");
         region.dismiss();
         verify(!count.away, "back at once");
@@ -1098,8 +1166,8 @@ TestCase {
         }
     }
 
-    // The way of a notification's toast, held at six moments: at rest, the count halfway out, the toast halfway up, at
-    // rest above the bar, halfway down, and the count halfway back with the toast counted.
+    // The way of a notification's toast, held at six moments: at rest, the count halfway out, the toast halfway in from
+    // behind the bar, at rest above the bar, halfway out behind it, and the count halfway back with the toast counted.
     function test_contact_sheet_of_a_notification_rising_from_its_count_and_falling_into_it_in_both_themes() {
         Prefs.motion = "on";
         for (const theme of ["light", "dark"]) {
@@ -1137,13 +1205,13 @@ TestCase {
             return;
         toast.leave(false, "expired");
         findChild(region, "countBack").stop();
-        const sinking = findChild(toast, "sinking");
+        const gliding = findChild(toast, "gliding");
         if (moment === 4) {
-            sinking.pause();
-            toast.phase = 0.5;
+            gliding.pause();
+            toast.down = gliding.easing.valueForProgress(0.5);
             return;
         }
-        sinking.complete();
+        gliding.complete();
         region.takeCountBack();
         giveWay.pause();
         findChild(count, "giveWay").phase = 0.5;
@@ -1181,10 +1249,12 @@ TestCase {
                             color: Tokens.color.textContrastHigh
                         }
 
+                        // Cut at the bar's edge, as the shell's surface is.
                         Toaster {
                             id: region
 
                             objectName: `toaster ${moment.index}`
+                            clip: true
                             y: bar.y - height
                             width: parent.width
                             clock: () => testCase.time

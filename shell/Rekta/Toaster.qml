@@ -9,14 +9,14 @@ import QtQuick
 // below sheets, which sit in the modal layer above everything (states.md, "Layers"; platforms.md, "Layer"). The host
 // puts it along the top of the app bar and gives it its width; it is as high as its toast needs.
 //
-// A notification's toast rises from its count: the count gives way (`countAway`), the toast comes in once the count is
+// A notification's toast comes from its count: the count gives way (`countAway`), the toast comes in once the count is
 // turn-overlap through its way out, and the count comes back once the toast is turn-overlap through its way down, unless
-// another notification's toast comes next (motion.md:14, the place change's hand-over; rekta.js:594).
-// A deliberate deviation: sideways Rekta hangs toasts from the top centre (rekta.css:1158, :1417), and a notification
-// from another program glides in whole from the window's edge without a fade, compact from the bottom edge
-// (states.md:84–88; motion.md:36; rekta.css:1197–1203). Here every toast, a notification's too, rises from the bar as a
-// compact toast of the product's own does (rekta.css:1169, :1172, :1407), so that a notification rises from the control
-// that counts it.
+// another notification's toast comes next (motion.md:14, the place change's hand-over; rekta.js:594). It came from
+// another program, so it glides whole from behind the bar and back without a fade, as Rekta's compact one does
+// (states.md:84–88; motion.md:36; rekta.css:1197–1203, :1407); a toast of the product's own rises 12px with a fade.
+// A deliberate deviation: sideways Rekta hangs toasts from the top centre (rekta.css:1158, :1417), a notification's
+// from the top edge. Here every toast comes from the bar, as a compact one does, so that a notification comes from the
+// control that counts it.
 Item {
     id: toaster
 

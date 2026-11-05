@@ -188,6 +188,8 @@ QtObject {
     // rk-toast-in { from { opacity: 0; transform: translateY(var(--_rk-from)) } }` (rekta.css:1235). A level display is a
     // toast (`.rk-toast--level`, rekta.css:1229) and arrives as one (motion.md:37), so a display alone rises the same.
     readonly property real toastRise: 12
+    // A notification's toast leaves over `calc(0.6 * var(--rk-duration-short))` (rekta.css:1201)
+    readonly property real toastEdgeOutShare: 0.6
     // The action's divider: `border-left: 1px solid color-mix(in srgb, currentColor 20%, transparent)` (rekta.css:1213)
     readonly property real toastDividerOpacity: 0.2
     // `.rk-toast-act:focus-visible { outline: 2px solid currentColor; outline-offset: -10px }` (rekta.css:1216)
