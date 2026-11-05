@@ -684,6 +684,39 @@ TestCase {
             compare(shot.pixel(origin.x + x, origin.y + y), Qt.color("#3a76f0"), `pixel ${x},${y} is from the middle stripe`);
     }
 
+    // A blue 16 × 16 square.
+    readonly property string smallPicture: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mOwKvtAEmIY1TCqYfhqAAByVKAQbSDPuAAAAABJRU5ErkJggg=="
+
+    function test_a_picture_smaller_than_the_icon_field_stands_at_its_own_size_in_its_middle_with_the_corners_at_its_edge() {
+        const toast = toaster.show("see you soon", { icon: testCase.smallPicture });
+        const icon = findChild(toast, "appIcon");
+        tryCompare(icon, "status", Image.Ready);
+        onWholePixels(toast);
+        compare(icon.width, 20, "the field keeps its size");
+        const picture = findChild(icon, "picture");
+        verify(picture.visible);
+        compare(picture.width, 16);
+        compare(picture.height, 16);
+        compare(picture.mapToItem(icon, 0, 0), Qt.point(2, 2));
+        compare(findChild(icon, "corners").width, 16 + 2 * Tokens.radiusTile);
+        waitForRendering(icon);
+        const shot = grabImage(scene);
+        const origin = icon.mapToItem(scene, 0, 0);
+        for (const [x, y] of [[2, 2], [17, 2], [2, 17], [17, 17], [1, 10], [10, 1], [18, 10]])
+            verify(shot.pixel(origin.x + x, origin.y + y).g < 0.25, `pixel ${x},${y} is the ground: a cut corner or the field beside the picture`);
+        for (const [x, y] of [[4, 4], [10, 2], [2, 10], [17, 10], [10, 17], [15, 15]])
+            compare(shot.pixel(origin.x + x, origin.y + y), Qt.color("#3a76f0"), `pixel ${x},${y} is picture`);
+    }
+
+    function test_a_larger_picture_fills_the_field_with_the_corners_at_the_field_s_edge() {
+        const toast = toaster.show("see you soon", { icon: testCase.widePicture });
+        const icon = findChild(toast, "appIcon");
+        tryCompare(icon, "status", Image.Ready);
+        verify(!findChild(icon, "picture").visible, "the picture at its own size gives way to the cropped one");
+        compare(findChild(icon, "image").status, Image.Ready, "the cropped one shows");
+        compare(findChild(icon, "corners").width, 20 + 2 * Tokens.radiusTile);
+    }
+
     function test_the_picture_has_the_tile_s_corners_in_the_strip_s_own_ground() {
         const toast = toaster.show("see you soon", { icon: testCase.widePicture });
         const picture = findChild(toast, "appIcon");

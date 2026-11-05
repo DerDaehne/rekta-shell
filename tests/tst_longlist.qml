@@ -91,6 +91,25 @@ TestCase {
         compare(words.color, Tokens.color.textPrimary);
     }
 
+    function test_a_picture_smaller_than_the_icon_field_stands_at_its_own_size_in_its_middle_and_a_larger_one_comes_down_to_it() {
+        // Blue squares of 16 and 32px as PNG.
+        const small = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mOwKvtAEmIY1TCqYfhqAAByVKAQbSDPuAAAAABJRU5ErkJggg==";
+        const large = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR42mOwKvtAU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULAIMpgFuqhFcIAAAAAElFTkSuQmCC";
+        list.rows = [{ text: "small", icon: small }, { text: "large", icon: large }];
+        for (const at of [0, 1])
+            tryCompare(findChild(row(at), "icon"), "status", Image.Ready);
+        const shown = at => {
+            const picture = findChild(row(at), "picture");
+            const field = findChild(row(at), "icon");
+            const place = picture.mapToItem(field, 0, 0);
+            return [place.x, place.y, picture.width, picture.height, field.width];
+        };
+        compare(shown(0), [2, 2, 16, 16, 20], "the small one in the middle of its 20px field");
+        compare(shown(1), [0, 0, 20, 20, 20]);
+        for (const at of [0, 1])
+            compare(findChild(row(at), "text").x, Geometry.listRowLead + Tokens.spaceS + Geometry.iconSize + Tokens.spaceM, "the words keep their edge");
+    }
+
     function test_only_the_rows_in_view_and_six_either_side_exist() {
         list.rows = rowsOf(10000);
         // Rows beyond the view come a moment later, as Qt makes them while idle.

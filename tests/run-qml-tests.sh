@@ -11,3 +11,5 @@ dbus-run-session ${DBUS_SESSION_CONFIG:+--config-file="$DBUS_SESSION_CONFIG"} --
 	"$runner" -import "$root/shell" -input "$root/tests"
 # Week numbers count days across a daylight saving change, which a build zone of UTC has none of.
 TZ=Europe/Berlin "$runner" -import "$root/shell" -input "$root/tests/tst_clock.qml"
+# A picture icon's own size counts in logical px on a scaled display too.
+QT_SCALE_FACTOR=2 "$runner" -import "$root/shell" -input "$root/tests/tst_pictureicon.qml"

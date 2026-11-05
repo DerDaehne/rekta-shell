@@ -82,13 +82,10 @@ Item {
         border.color: item.ink
     }
 
-    Image {
+    PictureIcon {
         objectName: "icon"
         x: item.inset + item.checkSpace
         anchors.verticalCenter: parent.verticalCenter
-        width: Geometry.iconSize
-        height: Geometry.iconSize
-        sourceSize: Qt.size(width, height)
         source: item.icon
         visible: item.icon.toString() !== ""
     }

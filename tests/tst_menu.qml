@@ -531,6 +531,42 @@ TestCase {
             compare(part(name, "label").x, edge, `${name} starts its words at the same edge`);
     }
 
+    // Blue squares of 16 and 32px and a blue 40 × 20 picture as PNG.
+    readonly property string smallPicture: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mOwKvtAEmIY1TCqYfhqAAByVKAQbSDPuAAAAABJRU5ErkJggg=="
+    readonly property string largePicture: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR42mOwKvtAU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULAIMpgFuqhFcIAAAAAElFTkSuQmCC"
+    readonly property string widePicture: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAUCAIAAABwJOjsAAAAJElEQVR42mOwKvswIIhh1OJRi0ctHrV41OJRi0ctHrV45FgMAMClFExPdwFpAAAAAElFTkSuQmCC"
+
+    Component {
+        id: picturesComponent
+
+        Menu {
+            MenuItem { objectName: "small"; text: "contacts"; icon: testCase.smallPicture }
+            MenuItem { objectName: "large"; text: "calendar"; icon: testCase.largePicture }
+            MenuItem { objectName: "wide"; text: "mail"; icon: testCase.widePicture }
+            MenuItem { objectName: "plain"; text: "quit" }
+        }
+    }
+
+    function test_a_picture_smaller_than_the_icon_field_stands_at_its_own_size_in_its_middle_and_a_larger_one_comes_down_to_it() {
+        const pictured = createTemporaryObject(picturesComponent, testCase);
+        pictured.open = true;
+        const part = (name, child) => findChild(findChild(pictured, name), child);
+        for (const name of ["small", "large", "wide"])
+            tryCompare(part(name, "icon"), "status", Image.Ready);
+        const shown = name => {
+            const picture = part(name, "picture");
+            const at = picture.mapToItem(part(name, "icon"), 0, 0);
+            return [at.x, at.y, picture.width, picture.height];
+        };
+        compare(shown("small"), [2, 2, 16, 16], "the small one in the middle of its 20px field");
+        compare(shown("large"), [0, 0, 20, 20]);
+        compare(shown("wide"), [0, 5, 20, 10], "its proportions kept");
+        for (const name of ["small", "large", "wide", "plain"]) {
+            compare(part(name, "icon").width, Geometry.iconSize, name);
+            compare(part(name, "label").x, Tokens.spaceM + Geometry.iconSize + Tokens.spaceS, `${name} starts its words at the edge`);
+        }
+    }
+
     function test_a_hidden_box_with_an_icon_leaves_no_room_behind() {
         const boxed = createTemporaryObject(boxWithIconComponent, testCase);
         boxed.open = true;

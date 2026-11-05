@@ -16,6 +16,7 @@ GroupHeading 1.0 GroupHeading.qml
 Empty 1.0 Empty.qml
 Hairline 1.0 Hairline.qml
 Picture 1.0 Picture.qml
+PictureIcon 1.0 PictureIcon.qml
 FocusRing 1.0 FocusRing.qml
 StatusTag 1.0 StatusTag.qml
 Meter 1.0 Meter.qml

@@ -130,15 +130,12 @@ Item {
         }
     }
 
-    Image {
+    PictureIcon {
         id: icon
 
         objectName: "icon"
         x: Geometry.listRowLead + Tokens.spaceS
         anchors.verticalCenter: parent.verticalCenter
-        width: Geometry.iconSize
-        height: Geometry.iconSize
-        sourceSize: Qt.size(width, height)
         source: row.icon
     }
 
