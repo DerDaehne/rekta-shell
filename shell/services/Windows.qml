@@ -45,6 +45,7 @@ Scope {
         required property TaskManager.TasksModel tasks
         readonly property bool isWindow: model.IsWindow === true
         readonly property bool active: model.IsActive === true
+        readonly property bool minimized: model.IsMinimized === true
         readonly property string app: model.AppName || model.AppId || ""
         // The ID of its app's desktop entry, as "org.kde.konsole".
         readonly property string appId: model.AppId ?? ""

@@ -15,7 +15,7 @@ import Rekta
 FocusScope {
     id: start
 
-    // The open windows: {title, icon, lastActivated, stackingOrder, active, activate()}.
+    // The open windows: {title, icon, lastActivated, stackingOrder, active, minimized, activate()}.
     property var windows: []
     // The window that had the keyboard when the Start opened; it gets it back unless a press chose where to go.
     property var returnTo: null
@@ -196,9 +196,17 @@ FocusScope {
             glassOut.restart();
         else
             hide();
-        if (windows.includes(returnTo))
-            returnTo.activate();
+        if (returnTo !== null)
+            giveKeyboardBack();
         returnTo = null;
+    }
+
+    // To the window that had it; when that one has closed or been minimised meanwhile, to the most recent window that
+    // still shows, as KWin hands it on when the active window goes. Activating a minimised window would bring it back.
+    // ponytail: windows on other virtual desktops count too; the shell follows no virtual desktops yet.
+    function giveKeyboardBack() {
+        const shown = running.filter(window => !window.minimized);
+        (shown.includes(returnTo) ? returnTo : shown[0])?.activate();
     }
 
     function showPlace(index: int) {

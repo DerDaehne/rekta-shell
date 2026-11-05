@@ -274,6 +274,40 @@ TestCase {
         compare(calls, ["activate Rekta Design — docs"]);
     }
 
+    function test_a_window_that_minimises_itself_while_the_start_is_open_stays_minimised_and_the_most_recent_shown_window_gets_the_keyboard() {
+        start.windows = [...windowsWithTheDocsActive(), fakeWindow("player", 20)];
+        openNow();
+        start.windows.find(window => window.title === "Rekta Design — docs").minimized = true;
+        keyClick(Qt.Key_Escape);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(calls, ["activate player"]);
+    }
+
+    function test_a_window_that_closes_while_the_start_is_open_leaves_the_keyboard_to_the_most_recent_window_that_shows() {
+        start.windows = windowsWithTheDocsActive();
+        openNow();
+        start.windows = start.windows.filter(window => window.title !== "Rekta Design — docs");
+        keyClick(Qt.Key_Escape);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(calls, ["activate konsole: build"]);
+    }
+
+    function test_when_no_window_shows_any_more_closing_activates_none() {
+        start.windows = windowsWithTheDocsActive();
+        openNow();
+        start.windows.forEach(window => window.minimized = true);
+        keyClick(Qt.Key_Escape);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(calls, []);
+    }
+
+    function test_without_a_window_that_had_the_keyboard_closing_activates_none() {
+        openNow();
+        keyClick(Qt.Key_Escape);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(calls, []);
+    }
+
     function test_after_a_launch_or_a_window_choice_the_window_that_had_the_keyboard_is_not_activated() {
         start.windows = windowsWithTheDocsActive();
         Prefs.motion = "off";
