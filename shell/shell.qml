@@ -143,7 +143,6 @@ ShellRoot {
         settings: settingsFiles
         launcher: appLauncher
         primaryScreen: primary.screen
-        startInFront: start.inFront
         sink: keys.sink
         source: keys.source
         brightness: keys.brightness
@@ -151,7 +150,7 @@ ShellRoot {
         media: music
         networkManagerRunning: systemState.networkManagerRunning
 
-        // Under the session banner the Start waits: asked now, KWin would raise the Start over the banner.
+        // Under the session banner the Start waits: asked now, KWin would hand it the banner's keyboard.
         onPanelClosed: {
             if (!sessionBanner.visible)
                 start.takeKeyboardBack();
@@ -226,7 +225,6 @@ ShellRoot {
         onCleanUp: notifications.board.cleanUp()
     }
 
-    // After the Start, so a toast stands above it.
     Toasts {
         id: toasts
 

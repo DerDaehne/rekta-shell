@@ -15,9 +15,9 @@ import Panel
 import "services"
 
 // The side panel's surface at the trailing edge of the screen it opens on: as wide as the panel, from the top down to
-// the app bar, over the windows, which keep their size; on the app bar's layer, so a full-screen window lies above it.
-// It is mapped only while the panel shows and takes the keyboard as it opens; a click into a window takes the keyboard
-// without closing the panel. While the Start stands in front, up to its hand-over, it rises to the Start's layer.
+// the app bar, over the windows, which keep their size; on the app bar's layer, so a full-screen window lies above it and
+// a toast covers its foot. It is mapped only while the panel shows and takes the keyboard as it opens, which raises it
+// above the open Start on that layer; a click into a window takes the keyboard without closing the panel.
 // ponytail: a new layer surface takes some 60ms to its first frame, so the first frames of the way in may not show;
 // keep the surface mapped, as the Start does, should that show.
 PanelWindow {
@@ -27,8 +27,6 @@ PanelWindow {
     // Opens its write gate for the density only.
     required property Layers settings
     required property ShellScreen primaryScreen
-    // The Start stands in front, from its opening to its hand-over; it stands on the primary screen.
-    required property bool startInFront
     // The default audio devices, bound by their tracker so their volume and muted are valid.
     required property PwNode sink
     required property PwNode source
@@ -105,7 +103,7 @@ PanelWindow {
     visible: shownOn !== null && panel.open
     // A dock to KWin: a namespace it does not know makes a normal window, which tiling scripts move like an app's.
     WlrLayershell.namespace: "dock"
-    WlrLayershell.layer: startInFront && shownOn === primaryScreen ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
     SidePanel {

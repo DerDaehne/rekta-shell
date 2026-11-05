@@ -11,8 +11,8 @@ import Start
 import Notices
 import "services"
 
-// The Start's surface: full screen on the primary screen, above the windows and the app bar. Without windows the Start
-// stands.
+// The Start's surface: full screen on the primary screen, above the windows and the app bar, below the toasts. Without
+// windows the Start stands.
 PanelWindow {
     id: surface
 
@@ -28,8 +28,6 @@ PanelWindow {
     property bool drawn: false
     // What Escape does in a search: "close" or "back" (the setting searchEscape).
     property string searchEscape: "close"
-    // From its opening to its hand-over, when the glass starts to go: in front of everything on the primary screen.
-    readonly property alias inFront: place.holdsKeyboard
     // From the moment it opens until it starts to close.
     readonly property alias opened: place.wanted
     // The shell's commands, see StartPlace.commands.
@@ -96,7 +94,13 @@ PanelWindow {
         item: place.shown ? place : null
     }
     WlrLayershell.namespace: "rekta-start"
-    WlrLayershell.layer: WlrLayer.Overlay
+    // A place lies below the toasts (Rekta's layers), so the Start keeps to the top layer: on one layer KWin raises the
+    // surface that takes the keyboard over the others, as the Start when it opens. A full-screen window that has the
+    // keyboard lies above that layer, so the Start rises over the one it hands over to as it closes. Not while it is
+    // open: then no window has the keyboard, and the app bar coming back over a full-screen window maps below it.
+    // ponytail: over a full-screen window, a toast that stood before the Start opened lies below the glass while it
+    // fades; map the toasts anew as the Start rises, should that show.
+    WlrLayershell.layer: !place.wanted && windows.fullScreenOn(primaryScreen) ? WlrLayer.Overlay : WlrLayer.Top
     WlrLayershell.keyboardFocus: place.holdsKeyboard && !askingAgain ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     // A deliberate deviation, as for the app bar: KWin blurs at the strength of its blur effect, not glass's blur(12px).
     BackgroundEffect.blurRegion: Region {
