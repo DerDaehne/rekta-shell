@@ -292,9 +292,9 @@ TestCase {
         compare(toast.Accessible.name, "dringend. backup. the disk is full");
     }
 
-    function test_normal_and_low_toasts_carry_no_tag_and_neither_does_one_its_app_keeps_standing() {
-        for (const [summary, urgency, expireTimeout] of [["normal", NoticeBoard.Normal, -1], ["low", NoticeBoard.Low, -1], ["standing", NoticeBoard.Normal, 0]]) {
-            notify({ summary, urgency, expireTimeout });
+    function test_normal_toasts_carry_no_tag_and_neither_does_one_its_app_keeps_standing() {
+        for (const [summary, expireTimeout] of [["normal", -1], ["standing", 0]]) {
+            notify({ summary, expireTimeout });
             compare(toaster.open.title, summary);
             tryCompare(toaster.open, "waiting", false);
             compare(toaster.open.tag, "", summary);
@@ -316,16 +316,36 @@ TestCase {
         compare(toaster.open.total, Tokens.durationToast);
     }
 
-    function test_low_and_transient_notifications_toast_but_stay_out_of_the_list_and_the_count() {
-        notify({ summary: "low", urgency: NoticeBoard.Low });
-        compare(shownTitles(), "low: lunch at noon?");
-        runOut();
+    function test_transient_notifications_toast_but_stay_out_of_the_list_and_the_count() {
         notify({ summary: "transient", transient: true });
-        compare(toaster.open.title, "transient");
+        compare(shownTitles(), "transient: lunch at noon?");
         runOut();
-        compare(calls, ["low closed 1", "transient closed 1"]);
+        compare(calls, ["transient closed 1"]);
         compare(board.rows.length, 0);
         compare(board.unseen, 0);
+    }
+
+    function test_a_low_notification_shows_no_toast_and_no_sound_and_stands_open_at_the_top_of_the_list() {
+        notify({ summary: "anna" });
+        const low = notify({ summary: "update ready", urgency: NoticeBoard.Low }, [["default", "open"], ["install", "install"]]);
+        compare(rowNames(), ["update ready", "anna"]);
+        runOut();
+        compare(toaster.open, null, "no toast follows anna's");
+        compare(sounding.count, 1, "only anna's toast sounded");
+        compare(board.rows[0].notification, low, "it has not expired");
+        compare(board.actionsOf(board.rows[0]), [{ identifier: "install", text: "install" }]);
+        board.press(board.rows[0]);
+        compare(calls, ["anna closed 1", "update ready invoked default", "update ready closed 2"]);
+    }
+
+    function test_a_low_notification_counts_neither_in_meldungen_nor_for_its_app_even_while_toasts_are_quiet() {
+        for (const quiet of [false, true]) {
+            board.quiet = quiet;
+            notify({ summary: `quiet ${quiet}`, urgency: NoticeBoard.Low });
+            compare(board.unseen, 0, `quiet: ${quiet}`);
+            compare(Object.keys(board.unseenByApp), [], `quiet: ${quiet}`);
+        }
+        compare(rowNames(), ["quiet true", "quiet false"]);
     }
 
     function test_in_full_screen_normal_ones_collect_quietly_in_the_list_and_critical_ones_still_show() {
@@ -337,8 +357,11 @@ TestCase {
         compare(board.unseen, 1);
         verify(board.actionOf(board.rows[0].notification, true), "it is still open, so its default action still runs");
         notify({ summary: "low", urgency: NoticeBoard.Low });
+        compare(rowNames(), ["low", "anna"], "a low one stands in the list, as it does outside full screen");
+        compare(board.unseen, 1, "it does not count");
+        notify({ summary: "transient", transient: true });
         compare(toaster.open, null);
-        compare(calls, ["low closed 1"], "a low one nobody sees has expired");
+        compare(calls, ["transient closed 1"], "a transient one nobody sees has expired; the low one stays open");
         notify({ summary: "battery low", urgency: NoticeBoard.Critical });
         compare(toaster.open.title, "battery low");
         compare(sounding.count, 1);
@@ -528,9 +551,9 @@ TestCase {
         notify({ summary: "low", urgency: NoticeBoard.Low });
         board.remove(board.rows);
         compare(board.rows.length, 0);
-        compare(toaster.open.text, "2 meldungen entfernt");
+        compare(toaster.open.text, "3 meldungen entfernt");
         runOut();
-        compare(calls, ["anna closed 1", "low closed 1", "ben closed 2"], "the expired one only leaves the list; ben is dismissed");
+        compare(calls, ["anna closed 1", "low closed 2", "ben closed 2"], "the expired one only leaves the list; the open ones are dismissed");
     }
 
     function test_a_removed_notification_its_app_closes_or_replaces_in_the_window_is_gone_without_undo() {
@@ -551,15 +574,15 @@ TestCase {
     function test_the_undo_toast_takes_the_place_of_a_notification_s_toast_and_the_queue_waits_for_it() {
         notify({ summary: "anna" });
         notify({ summary: "ben" });
-        notify({ summary: "low", urgency: NoticeBoard.Low });
+        notify({ summary: "cleo" });
         compare(toaster.open.title, "anna");
-        board.remove([board.rows[0]]);
+        board.remove([board.rows[1]]);
         compare(toaster.open.text, "meldung entfernt", "in place of anna's toast");
         compare(calls, [], "anna stays open in the list");
         runOut();
         compare(calls, ["ben closed 2"]);
-        compare(toaster.open.title, "low", "then the queue goes on, without ben");
-        compare(rowNames(), ["anna"]);
+        compare(toaster.open.title, "cleo", "then the queue goes on, without ben");
+        compare(rowNames(), ["cleo", "anna"]);
     }
 
     function test_pressing_a_row_does_what_pressing_its_toast_does_and_a_row_that_ran_out_brings_its_app_forward() {

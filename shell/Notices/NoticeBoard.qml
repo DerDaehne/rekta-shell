@@ -4,11 +4,12 @@ import State
 
 // Where the notifications the server receives go: one toast at a time, each after the one before has gone
 // (platforms.md, "Behaviours to rebuild"), and the list of the notification centre, newest first. A toast runs
-// duration-toast; a critical one, or one its app gives no timeout, stays until it is pressed. Low and transient ones
-// toast but stay out of the list, as Plasma's defaults have it. While `quiet` only critical ones toast; the others go
-// into the list unseen, and none follows as a toast later. A toast that ran out unseen stays in the list too, without
-// its actions, as Plasma keeps an expired one in its history. N counts the unseen ones; opening the list sees them all,
-// and what comes into the list while it is in sight is seen there.
+// duration-toast; a critical one, or one its app gives no timeout, stays until it is pressed. A low one goes to the list
+// only, open and without a toast (live.md:86), and is never unseen; a transient one toasts but stays out of the list,
+// as Plasma's defaults have it. While `quiet` only critical ones toast; the others go into the list unseen, and none
+// follows as a toast later. A toast that ran out unseen stays in the list too, without its actions, as Plasma keeps an
+// expired one in its history. N counts the unseen ones; opening the list sees them all, and what comes into the list
+// while it is in sight is seen there.
 // Rows removed from the list leave it at once and offer undo in a toast, which takes the place of a notification's
 // toast; their notifications close only once that window has run out, as a closed notification cannot come back.
 // A notification here is the server's: appName, appIcon, summary, body, urgency, actions ({ identifier, text,
@@ -93,8 +94,8 @@ QtObject {
         notification.bodyChanged.connect(() => refresh(record));
         if (listed(notification))
             rows = [record, ...rows];
-        // Carried over a reload of the shell: it toasted before.
-        if (notification.lastGeneration)
+        // Carried over a reload of the shell, it toasted before; a low one never has a toast.
+        if (notification.lastGeneration || notification.urgency === NoticeBoard.Low)
             return;
         waiting = [...waiting, record];
         next();
@@ -137,7 +138,7 @@ QtObject {
     }
 
     function listed(notification: var): bool {
-        return notification.urgency !== NoticeBoard.Low && !notification.transient;
+        return !notification.transient;
     }
 
     // Some apps send their words as the body alone.
