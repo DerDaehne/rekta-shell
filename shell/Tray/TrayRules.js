@@ -26,13 +26,14 @@ function state(status, tooltipTitle, tooltipDescription) {
     return cut !== "" ? `wartet · ${cut}` : "wartet";
 }
 
-// A theme icon as Quickshell names it: image://icon/<name>, perhaps followed by ?path=<the app's own icon directory>.
-const themeIcon = /^image:\/\/icon\/([^?]*)/;
+// An icon name as Quickshell hands it over without the app's own icon directory: image://icon/<name>. With one
+// (?path=<directory>) its provider also loads <directory>/<name> with any image suffix, as libappindicator apps expect.
+const themeIcon = /^image:\/\/icon\/([^?]*)$/;
 
 // The icon a row shows: none for a name the icon theme does not know (`known` asks it), where Quickshell's provider
-// would draw a checkerboard; any other picture as it comes.
-// ponytail: an icon found only as a file of exactly its name in the app's own icon directory, which the provider would
-// load, counts as missing; apps name icons without the extension, so such a file is rare. A check of the file keeps it.
+// would draw a checkerboard; any other picture, a name with the app's own directory among them, as it comes.
+// ponytail: a name found neither in the theme nor in the app's directory still shows the checkerboard; telling it apart
+// needs a look into that directory.
 function shownIcon(url, known) {
     const named = themeIcon.exec(url);
     return named === null || known(named[1]) ? url : "";

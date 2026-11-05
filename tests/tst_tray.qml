@@ -164,8 +164,10 @@ TestCase {
     // A 16 × 16 one, as a DBusMenu hands over the PNG of an entry at its own size.
     readonly property string smallIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mOwKvtAEmIY1TCqYfhqAAByVKAQbSDPuAAAAABJRU5ErkJggg=="
     // Icon names as Quickshell hands them over; the stand-in for the icon theme knows only mail-client.
-    readonly property string knownIcon: "image://icon/mail-client?path=/opt/mail/icons"
-    readonly property string unknownIcon: "image://icon/no-such-icon?path=/opt/mail/icons"
+    readonly property string knownIcon: "image://icon/mail-client"
+    readonly property string unknownIcon: "image://icon/no-such-icon"
+    // The same name with the app's own icon directory, where Quickshell's provider looks too.
+    readonly property string unknownIconInAppDirectory: "image://icon/no-such-icon?path=/opt/mail/icons"
 
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var scene
@@ -644,11 +646,15 @@ TestCase {
     function test_only_an_icon_name_is_checked_against_the_theme_and_by_its_name_alone() {
         compare(TrayRules.shownIcon(knownIcon, themeKnows), knownIcon);
         compare(TrayRules.shownIcon(unknownIcon, themeKnows), "");
-        compare(TrayRules.shownIcon("image://icon/no-such-icon", themeKnows), "");
-        compare(asked, ["mail-client", "no-such-icon", "no-such-icon"]);
+        compare(asked, ["mail-client", "no-such-icon"]);
         for (const picture of ["image://qsimage/3", "image://qspixmap/4/0", smallIcon, ""])
             compare(TrayRules.shownIcon(picture, themeKnows), picture, "an app's own picture stays as it comes");
-        compare(asked.length, 3, "without asking the theme");
+        compare(asked.length, 2, "without asking the theme");
+    }
+
+    function test_an_unknown_icon_name_with_the_app_s_own_icon_directory_keeps_its_picture_as_the_provider_looks_there_too() {
+        compare(TrayRules.shownIcon(unknownIconInAppDirectory, themeKnows), unknownIconInAppDirectory);
+        compare(asked, [], "the theme alone cannot tell");
     }
 
     function test_contact_sheet() {
