@@ -531,6 +531,16 @@ TestCase {
             compare(part(name, "label").x, edge, `${name} starts its words at the same edge`);
     }
 
+    function test_a_hidden_box_with_an_icon_leaves_no_room_behind() {
+        const boxed = createTemporaryObject(boxWithIconComponent, testCase);
+        boxed.open = true;
+        findChild(boxed, "synced").visible = false;
+        const part = (name, child) => findChild(findChild(boxed, name), child);
+        for (const name of ["hidden", "pictured", "plain"])
+            compare(part(name, "label").x, Tokens.spaceM + 20 + Tokens.spaceS, name);
+        compare(part("hidden", "check").x, Tokens.spaceM + (20 - 10) / 2, "the box stands where the icons do again");
+    }
+
     function test_a_lead_word_is_semibold_and_sits_space_s_before_the_text() {
         const level = openedLevel();
         const backups = findChild(level, "backups");
