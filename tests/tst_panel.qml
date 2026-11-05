@@ -1912,6 +1912,10 @@ TestCase {
         verify(select.activeFocus, "the first control, from the keyboard");
         compare(Tips.target, findChild(select, "chosen"));
         compare(Tips.text, long);
+        control("density").forceActiveFocus();
+        compare(Tips.target, null, "the focus leaving takes it away");
+        select.forceActiveFocus();
+        compare(Tips.target, findChild(select, "chosen"), "and coming back by keyboard brings it again");
         keyClick(Qt.Key_Down);
         verify(select.expanded);
         compare(Tips.target, null, "expanded, the options stand over it");

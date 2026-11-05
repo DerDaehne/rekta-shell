@@ -456,7 +456,6 @@ TestCase {
         compare(tip.y, Math.round(above()), "and its tip with it");
     }
 
-    // Both themes: one player with a cover, then two with the select.
     // The words a pointer coming to rest on a text brings up, "" for none; coming on from another tip, they show at once.
     function tipOver(text: var): string {
         mouseMove(scene, 1, 1);
@@ -478,6 +477,7 @@ TestCase {
         compare(tipOver(part("title")), "", "a title that fits");
     }
 
+    // Both themes: one player with a cover, then two with the select.
     function test_contact_sheet_of_laeuft_gerade_in_both_themes() {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;

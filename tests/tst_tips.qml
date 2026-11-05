@@ -435,6 +435,16 @@ TestCase {
         compare(Tips.target, null, "words that fit by the end of tip-delay bring no tip");
     }
 
+    function test_new_words_while_a_cut_text_s_tip_waits_do_not_start_tip_delay_again() {
+        const cut = findChild(scene, "cut");
+        mouseMove(cut);
+        wait(Tokens.durationTipDelay - 150);
+        cut.text = "another name far too long for its box";
+        wait(300);
+        compare(Tips.target, cut, "it shows once the pointer has rested for tip-delay");
+        compare(Tips.text, "another name far too long for its box");
+    }
+
     function test_outside_a_host_that_offers_them_a_cut_text_leaves_the_tips_alone() {
         const unhosted = findChild(scene, "unhosted");
         verify(unhosted.truncated);

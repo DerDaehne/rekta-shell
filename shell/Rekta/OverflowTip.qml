@@ -36,6 +36,8 @@ Item {
             Tips.leave(words);
         else if (Tips.target === words)
             Tips.show(words, tip);
+        else if (Tips.waiting === words)
+            Tips.waitingText = tip;
         else if (pointer.hovered)
             Tips.rest(words, tip);
     }
