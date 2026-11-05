@@ -503,6 +503,8 @@ TestCase {
                 pictureSize: Qt.size(1600, 900)
             }), Object.assign(fakeWindow("portrait", 10), {
                 pictureSize: Qt.size(900, 1600)
+            }), Object.assign(fakeWindow("odd", 5), {
+                pictureSize: Qt.size(641, 361)
             })];
         openNow();
         for (const tile of tilesIn("running")) {
@@ -517,7 +519,7 @@ TestCase {
             fuzzyCompare(preview.x + preview.width / 2, upper.width / 2, 0.5, `${what}: in the middle across`);
             fuzzyCompare(preview.y + preview.height / 2, upper.height / 2, 0.5, `${what}: in the middle down`);
             fuzzyCompare(preview.width / preview.height, picture.width / picture.height, 0.01, `${what}: in its picture's proportions`);
-            verify(preview.width - upper.width < 1 || preview.height - upper.height < 1, `${what}: no larger than covers it`);
+            verify(preview.width - upper.width <= 1 || preview.height - upper.height <= 1, `${what}: no larger than covers it, rounded up to whole pixels`);
         }
     }
 

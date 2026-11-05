@@ -97,6 +97,7 @@ Item {
         // A part that is gone after the change has no new number to bring in.
         if (!part.visible || said(part) === was)
             return;
+        peek.to = part.mapToItem(news, 0, 0);
         peek.target = part;
         peekRun.restart();
     }
@@ -131,8 +132,10 @@ Item {
         objectName: "peek"
         property Item target: null
         readonly property bool ofStat: (target as Stat) !== null
-        // Where the part stands in the tile.
+        // Where the part stood in the tile before the change, and where it stands after it: a count at the tile's
+        // trailing edge moves when it gains or loses a digit.
         property point at
+        property point to
         // 0 to 1 over duration-moderate, linear; each part eases its own share of it.
         property real phase: 1
         readonly property real leaving: news.easeOut.valueForProgress(Math.min(1, phase / Geometry.peekOutShare))
@@ -180,14 +183,14 @@ Item {
         }
     }
 
-    // The new one, drawn in its place while it rises; the part itself stays where its tile puts it.
+    // The new one, rising where it now stands (rekta.js:4212); the part itself stays where its tile puts it.
     ShaderEffectSource {
         objectName: "incoming"
         visible: news.peeking
         sourceItem: peek.target
         hideSource: news.peeking
-        x: peek.at.x
-        y: peek.at.y + Tokens.peekTravel * height * (1 - peek.rising)
+        x: peek.to.x
+        y: peek.to.y + Tokens.peekTravel * height * (1 - peek.rising)
         width: peek.target?.width ?? 0
         height: peek.target?.height ?? 0
         opacity: peek.rising

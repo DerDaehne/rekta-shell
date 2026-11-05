@@ -218,6 +218,26 @@ TestCase {
         tryCompare(ghost, "visible", false, Tokens.durationModerate * 3);
     }
 
+    function test_a_count_that_gains_or_loses_a_digit_rises_in_its_own_new_place_while_the_old_one_leaves_from_where_it_stood_data() {
+        return [
+            { tag: "9 to 10", from: 9, to: 10 },
+            { tag: "99 to 100", from: 99, to: 100 },
+            { tag: "10 to 9", from: 10, to: 9 }
+        ];
+    }
+
+    function test_a_count_that_gains_or_loses_a_digit_rises_in_its_own_new_place_while_the_old_one_leaves_from_where_it_stood(data) {
+        const tile = createTemporaryObject(tileComponent, testCase, { unseen: data.from });
+        waitForRendering(tile);
+        const news = part(tile, "news");
+        const before = count(tile).mapToItem(news, 0, 0);
+        tile.unseen = data.to;
+        const after = count(tile).mapToItem(news, 0, 0);
+        verify(after.x !== before.x, "the count moved along the trailing edge");
+        compare(part(tile, "markedGhost").x, before.x, "the old one leaves from where it stood");
+        compare(part(tile, "incoming").x, after.x, "the new one rises where it stays when the peek ends");
+    }
+
     function test_the_first_count_is_no_news() {
         const tile = createTemporaryObject(tileComponent, testCase, { unseen: 2 });
         verify(!part(tile, "markedGhost").visible);
