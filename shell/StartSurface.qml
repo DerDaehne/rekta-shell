@@ -30,6 +30,8 @@ PanelWindow {
     property string searchEscape: "close"
     // From the moment it opens until it starts to close.
     readonly property alias opened: place.wanted
+    // The window that had the keyboard as the Start opened is full screen: back the way it came, the Start hands it back.
+    property bool handsToFullScreen: false
     // The shell's commands, see StartPlace.commands.
     property var commands: []
     // The list in start.json, null without a usable one.
@@ -96,11 +98,13 @@ PanelWindow {
     WlrLayershell.namespace: "rekta-start"
     // A place lies below the toasts (Rekta's layers), so the Start keeps to the top layer: on one layer KWin raises the
     // surface that takes the keyboard over the others, as the Start when it opens. A full-screen window that has the
-    // keyboard lies above that layer, so the Start rises over the one it hands over to as it closes. Not while it is
-    // open: then no window has the keyboard, and the app bar coming back over a full-screen window maps below it.
-    // ponytail: over a full-screen window, a toast that stood before the Start opened lies below the glass while it
-    // fades; map the toasts anew as the Start rises, should that show.
-    WlrLayershell.layer: !place.wanted && windows.fullScreenOn(primaryScreen) ? WlrLayer.Overlay : WlrLayer.Top
+    // keyboard lies above that layer, so the Start rises as it starts to close when it may hand the keyboard back to one,
+    // ahead of KWin activating it, and when KWin reports one active otherwise. Not while it is open: then no window has
+    // the keyboard, and the app bar coming back over a full-screen window maps below it.
+    // ponytail: over a full-screen window, a toast that stood before the Start opened lies below the glass from the close
+    // on, and a full-screen window chosen in the Start lies above it until KWin reports it active; map the toasts anew
+    // as the Start rises and tell the surface the chosen window, should either show.
+    WlrLayershell.layer: !place.wanted && (handsToFullScreen || windows.fullScreenOn(primaryScreen)) ? WlrLayer.Overlay : WlrLayer.Top
     WlrLayershell.keyboardFocus: place.holdsKeyboard && !askingAgain ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     // A deliberate deviation, as for the app bar: KWin blurs at the strength of its blur effect, not glass's blur(12px).
     BackgroundEffect.blurRegion: Region {
@@ -132,6 +136,10 @@ PanelWindow {
                 Component.onCompleted: surface.previews = [...surface.previews, windowPreview]
                 Component.onDestruction: surface.previews = surface.previews.filter(other => other !== windowPreview)
             }
+        }
+        onWantedChanged: {
+            if (place.wanted)
+                surface.handsToFullScreen = surface.windows.fullScreenOn(surface.primaryScreen);
         }
         onHoldsKeyboardChanged: {
             if (!place.holdsKeyboard && place.shown)
