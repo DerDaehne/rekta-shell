@@ -698,7 +698,8 @@ TestCase {
         compare(panel.x, 900 - panel.width / 2, "it moves, never fades or scales");
         compare(panel.opacity, 1);
         compare(panel.y, 0);
-        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        tryCompare(comingIn, "running", false, Tokens.durationModerate * 4);
+        compare(side.entry, 1);
         compare(panel.x, 900 - panel.width, "and stands at the trailing edge");
     }
 
