@@ -120,6 +120,7 @@ TestCase {
         Prefs.theme = "system";
         Prefs.density = "auto";
         Prefs.startPace = "fast";
+        Tokens.moreContrast = false;
     }
 
     function named(name: string): var {
@@ -1106,7 +1107,7 @@ TestCase {
         compare(typed.color, Tokens.color.textPrimary);
         compare(suche.text, "suche");
         compare(suche.font.pixelSize, Math.round(named("pivot").inactiveSize));
-        compare(suche.color, Tokens.color.textContrastMedium);
+        compare(suche.color, Tokens.color.textContrastHigh, "an inactive title on glass");
         compare(suche.x, typed.width + Tokens.spaceL);
         compare(suche.y + suche.baselineOffset, typed.y + typed.baselineOffset, "on one baseline");
         const word = findChild(named("pivot"), "word");
@@ -1833,23 +1834,49 @@ TestCase {
         compare(start.hitTiles().length, 0);
     }
 
-    // The headings and the active title take the primary text colour; the inactive title (text-contrast-medium) is large
-    // text, at least 24px on a sideways Start, where WCAG asks 3:1 (1.4.3).
-    function test_text_on_the_glass_keeps_its_contrast_before_a_white_and_a_black_window() {
+    function wordOf(strip: string, index: int): var {
+        return findChild(findChild(named(strip), `title-${index}`), "word");
+    }
+
+    function test_on_the_glass_inactive_titles_take_text_contrast_high_and_active_ones_and_those_under_the_pointer_text_primary() {
+        openWithApps();
+        mouseMove(testCase, testCase.width - 1, testCase.height - 1);
+        for (const strip of ["pivot", "sectionStrip", "appsStrip"]) {
+            compare(wordOf(strip, 0).color, Tokens.color.textPrimary, `${strip}: the active title`);
+            compare(wordOf(strip, 1).color, Tokens.color.textContrastHigh, `${strip}: an inactive title`);
+        }
+        mouseMove(findChild(named("pivot"), "title-1"));
+        tryCompare(wordOf("pivot", 1), "color", Tokens.color.textPrimary, Tokens.durationShort * 3);
+    }
+
+    // [name, item] of the titles on the glass: each strip's active and an inactive title, what was typed and "suche".
+    function titlesOnTheGlass(): var {
+        const titles = [["typed", named("typed")], ["suche", named("suche")]];
+        for (const strip of ["pivot", "sectionStrip", "appsStrip"])
+            titles.push([`${strip} active`, wordOf(strip, 0)], [`${strip} inactive`, wordOf(strip, 1)]);
+        return titles;
+    }
+
+    // Whatever the windows show lies under the glass, its blur averaging it, so white and black are the limits; Rekta
+    // asks 4.5:1 there, 7:1 under more contrast, large type too (colour.md:65–75). Measured at each title's own colour.
+    function test_every_title_on_the_glass_keeps_4_5_to_1_over_white_and_black_and_7_to_1_under_more_contrast() {
         const luminance = colour => {
             const channel = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
             return 0.2126 * channel(colour.r) + 0.7152 * channel(colour.g) + 0.0722 * channel(colour.b);
         };
         const over = (top, below) => Qt.rgba(top.r * top.a + below.r * (1 - top.a), top.g * top.a + below.g * (1 - top.a), top.b * top.a + below.b * (1 - top.a), 1);
         const ratio = (a, b) => (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
-        openNow();
-        verify(named("pivot").inactiveSize >= 24, "large text");
-        for (const theme of ["light", "dark"]) {
-            const colours = theme === "light" ? Tokens.light : Tokens.dark;
-            for (const window of [Qt.rgba(1, 1, 1, 1), Qt.rgba(0, 0, 0, 1)]) {
-                const ground = over(colours.glass, window);
-                verify(ratio(colours.textPrimary, ground) >= 4.5, `${theme}: headings on glass over ${window}`);
-                verify(ratio(colours.textContrastMedium, ground) >= 3, `${theme}: the inactive title on glass over ${window}`);
+        mouseMove(testCase, testCase.width - 1, testCase.height - 1);
+        for (const [theme, moreContrast] of [["light", false], ["dark", false], ["light", true], ["dark", true]]) {
+            Prefs.theme = theme;
+            Tokens.moreContrast = moreContrast;
+            // A Start made in the scheme: its colours stand at once, with no change to ease.
+            start = createTemporaryObject(startComponent, testCase);
+            openWithApps();
+            const glass = named("glass").color;
+            for (const [title, item] of titlesOnTheGlass()) {
+                const measured = Math.min(ratio(item.color, over(glass, Qt.rgba(1, 1, 1, 1))), ratio(item.color, over(glass, Qt.rgba(0, 0, 0, 1))));
+                verify(measured >= (moreContrast ? 7 : 4.5), `${theme}${moreContrast ? " under more contrast" : ""}: ${title} at ${measured.toFixed(2)}:1 on glass over white or black`);
             }
         }
     }

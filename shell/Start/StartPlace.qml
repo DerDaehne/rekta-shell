@@ -859,6 +859,7 @@ FocusScope {
             width: parent.width - 2 * start.stripInset
             enabled: start.wanted && !start.searching
             level: "nav"
+            onGlass: true
             activeToken: Tokens.fontSizeNavActive
             inactiveToken: Tokens.fontSizeTitle
             titles: ["start", "alle apps"]
@@ -879,6 +880,7 @@ FocusScope {
                 id: strip
 
                 objectName: "sectionStrip"
+                onGlass: true
                 x: start.stripInset
                 y: start.placeTop
                 width: parent.width - 2 * start.stripInset
@@ -1012,6 +1014,7 @@ FocusScope {
                 id: appsStrip
 
                 objectName: "appsStrip"
+                onGlass: true
                 x: start.stripInset
                 y: start.placeTop
                 width: parent.width - 2 * start.stripInset
@@ -1189,6 +1192,7 @@ FocusScope {
                 x: line.width + Tokens.spaceL
                 anchors.baseline: lineBox.baseline
                 active: false
+                onGlass: true
                 text: "suche"
                 font.pixelSize: pivot.inactiveSize
             }

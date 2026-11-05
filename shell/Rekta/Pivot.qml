@@ -14,6 +14,9 @@ Item {
     // "nav" picks the place, "facet" a facet of it.
     property string level: "facet"
     property bool side: false
+    // On glass an inactive title takes text-contrast-high: text-contrast-medium falls to about 3.3:1 there, and Rekta
+    // makes no exception for large type (colour.md:65–75).
+    property bool onGlass: false
     property real placeWidth: Window.width
     property real viewportHeight: Window.height
     readonly property bool compact: Prefs.sizeClass(placeWidth, viewportHeight) === "compact"
@@ -226,7 +229,7 @@ Item {
             font.pixelSize: pivot.down ? Tokens.fluid(Tokens.fontSizePivotActive, pivot.placeWidth) : pivot.activeSize
             font.weight: Tokens.fontWeightLight
             lineHeightFactor: Tokens.lineHeightNav
-            color: title.lit ? Tokens.color.textPrimary : Tokens.color.textContrastMedium
+            color: title.lit ? Tokens.color.textPrimary : pivot.onGlass ? Tokens.color.textContrastHigh : Tokens.color.textContrastMedium
 
             Behavior on x {
                 NumberAnimation {

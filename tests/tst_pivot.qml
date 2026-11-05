@@ -423,6 +423,15 @@ TestCase {
         compare(hover.cursorShape, Qt.PointingHandCursor, "the pointer becomes a hand");
     }
 
+    function test_on_glass_an_inactive_title_takes_text_contrast_high_and_darkens_under_the_pointer() {
+        const pivot = createTemporaryObject(pivotComponent, testCase, { onGlass: true });
+        const word = findChild(titleOf(pivot, 2), "word");
+        compare(findChild(titleOf(pivot, 0), "word").color, Tokens.color.textPrimary, "the active title");
+        compare(word.color, Tokens.color.textContrastHigh);
+        mouseMove(titleOf(pivot, 2));
+        tryCompare(word, "color", Tokens.color.textPrimary, Tokens.durationShort * 3);
+    }
+
     function test_a_click_picks_its_title() {
         const pivot = createTemporaryObject(pivotComponent, testCase);
         mouseClick(titleOf(pivot, 1));

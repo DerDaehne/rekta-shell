@@ -685,6 +685,12 @@ TestCase {
         compare(findChild(side, "scroller").y, under.y + Geometry.hairline);
     }
 
+    // Its ground is bg, not glass, so an inactive title keeps the pivot colour of Rekta (rekta.css:244).
+    function test_on_its_ground_the_pivots_inactive_title_keeps_text_contrast_medium() {
+        side.show(0);
+        compare(findChild(findChild(findChild(side, "pivot"), "title-1"), "word").color, Tokens.color.textContrastMedium);
+    }
+
     function test_it_slides_all_the_way_in_from_the_trailing_edge_over_duration_moderate_with_ease_out() {
         Prefs.motion = "on";
         const comingIn = findChild(side, "comingIn");
