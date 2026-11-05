@@ -315,6 +315,7 @@ TestCase {
             runOut();
             compare(toaster.open, null, `${summary}: then it goes`);
         }
+        compare(calls, ["short closed 1", "long closed 1"], "only no timeout at all keeps its notification open");
     }
 
     function test_a_notification_its_app_gives_no_timeout_does_not_expire_with_its_toast_but_stays_open_and_unseen_in_the_list() {
@@ -438,11 +439,13 @@ TestCase {
         compare(toaster.open.actionLabel, "", "only default: no act");
     }
 
-    function test_escape_or_a_dismissed_toast_dismisses_its_notification() {
-        const fake = notify({});
-        toaster.dismiss();
-        compare(fake.closedWith, NoticeBoard.Dismissed);
-        compare(board.rows.length, 0);
+    function test_escape_or_a_dismissed_toast_dismisses_its_notification_whatever_timeout_its_app_gives() {
+        for (const expireTimeout of [-1, 0]) {
+            const fake = notify({ expireTimeout });
+            toaster.dismiss();
+            compare(fake.closedWith, NoticeBoard.Dismissed, `timeout ${expireTimeout}`);
+            compare(board.rows.length, 0, `timeout ${expireTimeout}`);
+        }
     }
 
     function test_a_notification_its_app_closes_leaves_the_toast_the_queue_and_the_list() {
