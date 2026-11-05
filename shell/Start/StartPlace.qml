@@ -58,10 +58,15 @@ FocusScope {
     readonly property Item focusItem: Window.activeFocusItem
     // A tile unit and the space after it: a section is as wide as its units (site/site.css:78).
     readonly property real unitStep: Tokens.tileUnit + Tokens.spaceS
-    // A search under the place pivot, and the loading line of "alle apps", keep to the leading edge, six units wide.
+    // The loading line of "alle apps" keeps to the leading edge, at most six units wide.
     readonly property real sixUnits: 6 * Tokens.tileUnit + 5 * Tokens.spaceS
     // The strips stand as far in as the sections: space-xl sideways, space-m compact (rekta.css:1499, :1139).
     readonly property real stripInset: panorama.inset
+    // The search keeps between the sections' edges. Sideways it is as many whole tile units as fit there, at most six,
+    // in fixed cells (layout.md:115–116); compact it takes the whole width between them, its grid stretched as the
+    // sections' grids are (layout.md:112–114).
+    readonly property int searchUnits: Math.min(6, Math.floor((width - 2 * stripInset + Tokens.spaceS) / unitStep))
+    readonly property real searchWidth: panorama.sideways ? searchUnits * unitStep - Tokens.spaceS : width - 2 * stripInset
     readonly property real placeTop: pivot.height
     readonly property real placeHeight: height - placeTop
     // The panorama and the strip of the place the pivot has chosen.
@@ -1136,13 +1141,13 @@ FocusScope {
 
         // The search's title where the pivot stands, as a place's strip is its title (navigation.md, "Pivot"): what was
         // typed, light, and "suche" beside it as an inactive title, on one baseline, space-l apart (rekta.css:234). A
-        // title never shrinks (typography.md); one too long for the six units is cut at its edge, as the strip is.
+        // title never shrinks (typography.md); one too long for the search is cut at its edge, as the strip is.
         Item {
             id: searchTitle
 
             objectName: "searchTitle"
             x: pivot.x
-            width: start.sixUnits
+            width: start.searchWidth
             height: pivot.height
             visible: false
             clip: true
@@ -1161,8 +1166,8 @@ FocusScope {
             // (`caret-color: currentColor` on `.rk-input`, rekta.css:395–398; rekta-core field.c:472, :503), as high and
             // blinking as the platform draws it, as on the web. Its selection takes the accent with on-accent text, as any
             // selection does (rekta.css:399; field.c:497–498).
-            // ponytail: past the six units' edge the caret goes out of sight with the text; cap the width at them
-            // and let the line scroll if queries get that long.
+            // ponytail: past the search's edge the caret goes out of sight with the text; cap the width at it and
+            // let the line scroll if queries get that long.
             TextInput {
                 id: line
 
@@ -1189,8 +1194,7 @@ FocusScope {
             }
         }
 
-        // The apps that match, as tiles one unit square in the six units' grid, space-l above and below as a section
-        // (rekta.css:1125).
+        // The apps that match, as tiles in the search's grid, space-l above and below as a section (rekta.css:1125).
         Flickable {
             id: results
 
@@ -1198,11 +1202,11 @@ FocusScope {
             objectName: "results"
             x: pivot.x - ringRoom
             y: start.placeTop
-            width: start.sixUnits + 2 * ringRoom
+            width: start.searchWidth + 2 * ringRoom
             height: start.placeHeight
             visible: false
             enabled: !start.turning
-            // The focus ring of a row, outside it, is not clipped at the six units' edge.
+            // The focus ring of a row, outside it, is not clipped at the search's edge.
             leftMargin: ringRoom
             rightMargin: ringRoom
             clip: true
@@ -1215,7 +1219,10 @@ FocusScope {
 
                 objectName: "hits"
                 y: Tokens.spaceL
-                columns: 6
+                width: start.searchWidth
+                columns: start.searchUnits
+                placeWidth: start.width
+                viewportHeight: start.height
 
                 Repeater {
                     model: ListModel {
@@ -1247,7 +1254,7 @@ FocusScope {
 
                 objectName: "rows"
                 y: hitsGrid.y + hitsGrid.height + (found.count > 0 ? Tokens.spaceL : 0)
-                width: start.sixUnits
+                width: start.searchWidth
 
                 Repeater {
                     model: start.rowGroups
@@ -1282,7 +1289,7 @@ FocusScope {
 
                 objectName: "noHits"
                 y: Tokens.spaceL
-                width: start.sixUnits
+                width: start.searchWidth
                 visible: found.count === 0 && start.rowGroups.length === 0
                 text: `nichts zum hingehen oder ausführen passt zu „${start.query.trim()}“.`
 

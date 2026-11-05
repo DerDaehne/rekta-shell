@@ -114,6 +114,8 @@ TestCase {
     }
 
     function cleanup() {
+        testCase.width = 1600;
+        testCase.height = 900;
         Prefs.motion = "system";
         Prefs.theme = "system";
         Prefs.density = "auto";
@@ -1112,13 +1114,13 @@ TestCase {
         compare(baselineOf(typed), baselineOf(word), "the pivot's");
     }
 
-    function test_a_title_too_long_for_six_units_keeps_its_size_and_is_cut_at_their_edge() {
+    function test_a_title_too_long_for_the_search_keeps_its_size_and_is_cut_at_its_edge() {
         openWithApps();
         typeNow("firefox firefox firefox firefox firefox firefox");
         const title = named("searchTitle");
         compare(named("typed").font.pixelSize, findChild(named("pivot"), "word").font.pixelSize);
         verify(named("typed").width > title.width);
-        compare(title.width, start.sixUnits);
+        compare(title.width, start.searchWidth);
         verify(title.clip);
     }
 
@@ -1145,6 +1147,97 @@ TestCase {
         compare(named("noHits").y, Tokens.spaceL);
         compare(findChild(named("noHits"), "line").y, 0);
         compare(sentence.y, Geometry.hairline + Tokens.spaceM);
+    }
+
+    // The searchable apps and four more that "k" finds, A–Z: seven hits, more than six units hold in a row.
+    function manyKApps(): var {
+        return [
+            ...searchableApps(),
+            searchableApp("KCalc", "Scientific Calculator", ["calculator"]),
+            searchableApp("KDE Connect", "Device Synchronization", ["phone"]),
+            searchableApp("Kdenlive", "Video Editor", ["video"]),
+            searchableApp("Krita", "Digital Painting", ["paint"])
+        ].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+    }
+
+    // The Start at `width` × `height`, open with those apps and a window "k" finds, searching for `text`.
+    function searchAt(width: real, height: real, text: string) {
+        start.width = width;
+        start.height = height;
+        start.apps = manyKApps();
+        start.webSearch = "https://search.example/?q=\\{@}";
+        openNow();
+        typeNow(text);
+    }
+
+    // The search's parts: its title, the hits, the rows and the sentence for no match.
+    function searchParts(): var {
+        return [named("searchTitle"), ...start.hitTiles(), ...start.searchRows(), named("noHits")];
+    }
+
+    // Whether an item lies whole between the sections' edges, as far in from either side of the Start as the strips.
+    function withinTheEdges(item: Item): bool {
+        const left = item.mapToItem(start, 0, 0).x;
+        return left >= start.stripInset - 0.001 && left + item.width <= start.width - start.stripInset + 0.001;
+    }
+
+    function outsideTheEdges(): var {
+        return searchParts().filter(part => !withinTheEdges(part)).map(part => `${part.objectName} ${part.text ?? part.name ?? ""}`);
+    }
+
+    function test_compact_the_search_takes_the_width_between_the_sections_edges_and_its_grid_stretches_as_theirs_three_columns_at_720() {
+        searchAt(720, 1280, "k");
+        verify(!named("panorama").sideways);
+        const edges = 720 - 2 * Tokens.spaceM;
+        const cell = (edges - 2 * Tokens.spaceS) / 3;
+        compare(cell, 224);
+        compare([named("searchTitle").width, named("hits").width, named("rows").width, named("noHits").width], [edges, edges, edges, edges]);
+        const tiles = start.hitTiles();
+        compare(tiles.length, 7);
+        compare(named("hits").across, 3);
+        compare(Qt.rect(tiles[0].x, tiles[0].y, tiles[0].width, tiles[0].height), Qt.rect(0, 0, 2 * cell + Tokens.spaceS, Tokens.tileUnit), "the best hit over two columns");
+        compare(Qt.rect(tiles[1].x, tiles[1].y, tiles[1].width, tiles[1].height), Qt.rect(2 * (cell + Tokens.spaceS), 0, cell, Tokens.tileUnit), "stretched to the edge");
+        compare(tiles[2].x, 0, "three to a row");
+        verify(start.searchRows().length > 0, "a window's row");
+        compare(outsideTheEdges(), []);
+        start.query = "";
+        typeNow("q");
+        verify(findChild(named("noHits"), "sentence").visible);
+        compare(start.searchRows().length, 1, "the web's way on");
+        compare(outsideTheEdges(), []);
+    }
+
+    function test_sideways_the_search_is_as_many_whole_tile_units_as_fit_between_the_edges_at_most_six() {
+        searchAt(1920, 1080, "k");
+        const units = count => count * Tokens.tileUnit + (count - 1) * Tokens.spaceS;
+        compare([named("searchTitle").width, named("hits").width, named("rows").width], [units(6), units(6), units(6)]);
+        const tiles = start.hitTiles();
+        verify(tiles.slice(1).every(tile => tile.width === Tokens.tileUnit && tile.height === Tokens.tileUnit), "fixed cells");
+        compare(tiles[4].mapToItem(named("hits"), 0, 0), Qt.point(units(6) - Tokens.tileUnit, 0), "six units in a row");
+        start.width = 1080;
+        start.height = 1920;
+        verify(named("panorama").sideways);
+        compare(units(5), 882);
+        compare([named("searchTitle").width, named("hits").width, named("rows").width, named("noHits").width], [units(5), units(5), units(5), units(5)]);
+        compare(tiles[4].mapToItem(named("hits"), 0, 0), Qt.point(0, Tokens.tileUnit + Tokens.spaceS), "five units in a row");
+        verify(tiles.slice(1).every(tile => tile.width === Tokens.tileUnit), "never wider tiles");
+        compare(outsideTheEdges(), []);
+        start.width = 2 * Tokens.spaceXl + units(6);
+        compare(named("hits").width, units(6), "six units from 1156 on");
+        start.width -= 1;
+        compare(named("hits").width, units(5));
+    }
+
+    function test_from_720_to_1600_wide_no_part_of_the_search_runs_past_the_sections_edges() {
+        searchAt(720, 1000, "k");
+        compare(start.hitTiles().length, 7);
+        const results = named("results");
+        for (let width = 720; width <= 1600; width++) {
+            start.width = width;
+            compare(outsideTheEdges(), [], `at ${width}`);
+            verify(results.x >= 0 && results.x + results.width <= width, `the hits' view inside the Start at ${width}`);
+        }
+        compare(named("hits").across, 6, "at most six");
     }
 
     function test_typing_on_or_erasing_changes_the_hits_and_a_digit_or_a_space_types_on() {
@@ -1872,6 +1965,35 @@ TestCase {
             waitForRendering(backdrop);
             grabImage(backdrop).save(`start-search-best-${theme}.png`);
             compare(sheet.query, "k", theme);
+        }
+    }
+
+    // The search for "k", seven hits and a window's row: compact at 720 × 1280 between the sections' edges, its grid
+    // stretched; sideways at 1080 × 1920 five whole units, as many as fit there.
+    function test_contact_sheets_of_the_search_compact_and_sideways_at_1080_by_1920() {
+        const sizes = [["compact", Qt.size(720, 1280)], ["1080x1920", Qt.size(1080, 1920)]];
+        for (const theme of ["light", "dark"]) {
+            for (const [name, size] of sizes) {
+                Prefs.theme = theme;
+                // The window takes the surface's size, as the grab shows only what the window holds.
+                testCase.width = size.width;
+                testCase.height = size.height;
+                const backdrop = createTemporaryObject(backdropComponent, testCase);
+                const sheet = createTemporaryObject(startComponent, backdrop, {
+                    apps: manyKApps(),
+                    unseen: {
+                        "org.example.KWrite": 4
+                    }
+                });
+                mouseMove(backdrop, backdrop.width - 1, backdrop.height - 1);
+                Prefs.motion = "off";
+                sheet.open();
+                keyClick("k");
+                Prefs.motion = "system";
+                waitForRendering(backdrop);
+                grabImage(backdrop).save(`start-search-${name}-${theme}.png`);
+                compare(findChild(sheet, "hits").across, name === "compact" ? 3 : 5, `${theme} ${name}`);
+            }
         }
     }
     // The caret inside "fire|fox", then "fire" selected. Each is taken right after a key, which lights the caret.

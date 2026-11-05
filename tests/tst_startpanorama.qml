@@ -743,8 +743,8 @@ TestCase {
         verify(!named("startPlace").visible);
         verify(named("results").visible);
         compare(named("searchTitle").x, named("pivot").x);
-        compare(named("searchTitle").width, start.sixUnits);
-        compare(named("results").width, start.sixUnits + 2 * named("results").ringRoom);
+        compare(named("searchTitle").width, 6 * start.unitStep - Tokens.spaceS, "six units at 1600");
+        compare(named("results").width, named("searchTitle").width + 2 * named("results").ringRoom);
         keyClick(Qt.Key_Escape);
         tryVerify(() => !start.searching);
         tryVerify(() => named("sectionStrip").visible);
