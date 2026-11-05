@@ -1,21 +1,19 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
+import State
 
-// What plays, for every surface that shows it: the first MPRIS player that is playing, none while all are paused or
-// stopped.
+// What plays, for every surface that shows it: one choice among the MPRIS players for the bar's middle and
+// "läuft gerade". `player` is the bar's, none while all are paused or stopped.
 Scope {
     id: media
 
     // Untyped: the linter sees no `values` on the model.
     readonly property var players: Mpris.players
-    readonly property MprisPlayer player: {
-        for (const candidate of media.players.values) {
-            if (candidate.isPlaying)
-                return candidate;
-        }
-        return null;
+    readonly property PlayerChoice choice: PlayerChoice {
+        players: media.players.values
     }
+    readonly property MprisPlayer player: choice.playingPlayer
     readonly property string title: player?.trackTitle ?? ""
     readonly property string artist: player?.trackArtist ?? ""
     // In seconds; MPRIS sends no change of position while a track plays, so it is asked once a second.

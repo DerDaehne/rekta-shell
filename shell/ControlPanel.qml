@@ -123,7 +123,7 @@ PanelWindow {
             hasPowerProfiles: powerProfiles.registered
             powerProfile: hasPowerProfiles ? PowerProfiles.profile : PowerProfile.Balanced
             hasPerformanceProfile: hasPowerProfiles && PowerProfiles.hasPerformanceProfile
-            players: surface.media.players.values
+            choice: surface.media.choice
             density: surface.settings.value("density")
             onDensityChosen: density => surface.settings.set("density", density)
             output: surface.sink

@@ -2,3 +2,4 @@ module State
 StatusWords 1.0 StatusWords.qml
 Sources 1.0 Sources.js
 SystemBanners 1.0 SystemBanners.qml
+PlayerChoice 1.0 PlayerChoice.qml

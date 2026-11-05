@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Rekta
+import State
 
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
 // tiles (tiles.md: a tile never changes data). What a media player plays stands at the top while it plays; the groups
@@ -92,8 +93,8 @@ Column {
     readonly property int inlineDeviceLimit: 5
     readonly property var devicesInline: connectedFirst(bluetoothDevices).slice(0, inlineDeviceLimit)
 
-    // The media players as Quickshell's Mpris has them (see NowPlaying).
-    property var players: []
+    // The shell's choice among the media players, which the bar's middle shares.
+    property PlayerChoice choice: PlayerChoice {}
     // The density as the shell has it: auto, comfortable or compact.
     property string density: "auto"
 
@@ -228,7 +229,7 @@ Column {
 
     NowPlaying {
         objectName: "nowPlaying"
-        players: controls.players
+        choice: controls.choice
     }
 
     PanelGroup {

@@ -1,35 +1,24 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQml.Models
 import Rekta
+import State
 
 // "läuft gerade": what a media player plays, as a status region at the top of the controls (tiles.md, "Status region"),
-// a part of the facet as a group is. The kicker names the player; with several a select picks one, and the one that
-// started playing last is chosen until another is picked or starts. The figures are the track's cover in the icon's
-// field, its title in semibold and "artist · album" below, as a toast holds a picture beside its title and text
+// a part of the facet as a group is. It shows the shell's choice of player, which the bar's middle shares; the kicker
+// names the player, and with several a select picks one. The figures are the track's cover in the icon's field, its
+// title in semibold and "artist · album" below, as a toast holds a picture beside its title and text
 // (states.md:89–98); then its progress with the time played and its length. Below stand previous, play or pause, and
 // next. It shows while a player plays or holds a track paused, and is gone without one.
 // The progress glides on from what the player last reported at its rate, and only while it is in sight.
 Column {
     id: nowPlaying
 
-    // Quickshell's MprisPlaybackState, as this module goes without Quickshell.
-    enum PlaybackState {
-        Stopped = 0,
-        Playing = 1,
-        Paused = 2
-    }
-
-    // The MPRIS players as Quickshell has them: identity, playbackState, isPlaying, the track's title, artist, album and
-    // art, position and length in seconds (each only where supported), rate, what it can do, and its calls.
-    property var players: []
-    // The player that started playing last, or the one picked since.
-    property var latest: null
-    // The players as they were before their last change, to tell one that has just come.
-    property var known: []
-    readonly property var present: players.filter(player => player.isPlaying || (player.playbackState === NowPlaying.Paused && player.trackTitle !== ""))
-    readonly property var player: present.includes(latest) ? latest : present.find(player => player.isPlaying) ?? present[0] ?? null
+    // Its players are Quickshell's MPRIS players: identity, playbackState, isPlaying, the track's title, artist, album
+    // and art, position and length in seconds (each only where supported), rate, what it can do, and its calls.
+    required property PlayerChoice choice
+    readonly property var present: choice.present
+    readonly property var player: choice.player
     readonly property real length: player?.lengthSupported ? player.length : 0
     // Seconds into the track.
     property real played: 0
@@ -53,14 +42,6 @@ Column {
     onPlayerChanged: follow()
     onVisibleChanged: follow()
     onLengthChanged: follow()
-    // Quickshell lists a player only once it has read its state, so one that comes playing never changes isPlaying:
-    // its coming is its start.
-    onPlayersChanged: {
-        const newcomer = players.find(player => player.isPlaying && !known.includes(player));
-        known = players;
-        if (newcomer)
-            latest = newcomer;
-    }
 
     NumberAnimation {
         id: gliding
@@ -68,22 +49,6 @@ Column {
         objectName: "gliding"
         target: nowPlaying
         property: "played"
-    }
-
-    // Each player that starts playing becomes the one shown.
-    Instantiator {
-        model: nowPlaying.players
-
-        delegate: Connections {
-            required property var modelData
-
-            target: modelData
-
-            function onIsPlayingChanged() {
-                if (modelData.isPlaying)
-                    nowPlaying.latest = modelData;
-            }
-        }
     }
 
     // A seek, a new track, a pause or another rate: the player's report is where the glide starts again.
@@ -120,7 +85,7 @@ Column {
                 currentIndex: nowPlaying.present.indexOf(nowPlaying.player)
                 // The pick ends that binding: it comes back, so the select shows whichever player is shown.
                 onActivated: index => {
-                    nowPlaying.latest = nowPlaying.present[index];
+                    nowPlaying.choice.pick(nowPlaying.present[index]);
                     currentIndex = Qt.binding(() => nowPlaying.present.indexOf(nowPlaying.player));
                 }
             },

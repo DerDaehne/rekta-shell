@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Panel
 import Rekta
+import State
 
 TestCase {
     id: testCase
@@ -26,8 +27,8 @@ TestCase {
     // answers them.
     component FakePlayer: QtObject {
         property string identity: "Elisa"
-        property int playbackState: NowPlaying.Playing
-        readonly property bool isPlaying: playbackState === NowPlaying.Playing
+        property int playbackState: PlayerChoice.Playing
+        readonly property bool isPlaying: playbackState === PlayerChoice.Playing
         property string trackTitle: "Teardrop"
         property string trackArtist: "Massive Attack"
         property string trackAlbum: "Mezzanine"
@@ -52,7 +53,7 @@ TestCase {
 
         function togglePlaying() {
             calls = [...calls, "togglePlaying"];
-            playbackState = isPlaying ? NowPlaying.Paused : NowPlaying.Playing;
+            playbackState = isPlaying ? PlayerChoice.Paused : PlayerChoice.Playing;
         }
     }
 
@@ -129,7 +130,7 @@ TestCase {
     // One player playing, handed to the controls as the host hands Quickshell's players.
     function givePlayer(properties: var): var {
         const one = player(properties);
-        controls.players = [one];
+        controls.choice.players = [one];
         return one;
     }
 
@@ -179,15 +180,15 @@ TestCase {
     function test_without_a_player_the_region_is_gone_and_a_paused_one_stays_only_with_a_track() {
         side.show(0);
         verify(!part("nowPlaying").visible, "no player");
-        const one = givePlayer({ playbackState: NowPlaying.Stopped });
+        const one = givePlayer({ playbackState: PlayerChoice.Stopped });
         verify(!part("nowPlaying").visible, "a stopped player");
-        one.playbackState = NowPlaying.Paused;
+        one.playbackState = PlayerChoice.Paused;
         verify(part("nowPlaying").visible, "paused with a track");
         one.trackTitle = "";
         verify(!part("nowPlaying").visible, "paused without a track");
-        one.playbackState = NowPlaying.Playing;
+        one.playbackState = PlayerChoice.Playing;
         verify(part("nowPlaying").visible, "playing");
-        controls.players = [];
+        controls.choice.players = [];
         verify(!part("nowPlaying").visible, "the player gone");
     }
 
@@ -207,7 +208,7 @@ TestCase {
         compare(button.icon, "pause");
         compare(button.Accessible.name, "pause");
         compare(button.tip, "pause");
-        one.playbackState = NowPlaying.Paused;
+        one.playbackState = PlayerChoice.Paused;
         compare(button.icon, "play", "a pause from elsewhere shows at once");
         compare(button.Accessible.name, "abspielen");
         compare(button.tip, "abspielen");
@@ -239,8 +240,8 @@ TestCase {
 
     function test_with_two_players_a_select_picks_one_and_the_one_that_started_playing_last_is_chosen() {
         const elisa = player();
-        const browser = player({ identity: "Firefox", playbackState: NowPlaying.Paused, trackTitle: "A talk", trackArtist: "", trackAlbum: "" });
-        controls.players = [browser, elisa];
+        const browser = player({ identity: "Firefox", playbackState: PlayerChoice.Paused, trackTitle: "A talk", trackArtist: "", trackAlbum: "" });
+        controls.choice.players = [browser, elisa];
         side.show(0);
         const picker = part("player");
         verify(picker.visible);
@@ -248,7 +249,7 @@ TestCase {
         compare(picker.options.map(option => option.text), ["Firefox", "Elisa"]);
         compare(picker.currentText, "Elisa", "the one playing");
         compare(part("title").text, "Teardrop");
-        browser.playbackState = NowPlaying.Playing;
+        browser.playbackState = PlayerChoice.Playing;
         compare(picker.currentText, "Firefox", "the one that started last");
         compare(part("title").text, "A talk");
         compare(part("byline").visible, false, "a track without artist or album has no line for them");
@@ -258,12 +259,12 @@ TestCase {
         keyClick(Qt.Key_Return);
         compare(picker.currentText, "Elisa", "a pick shows that player");
         compare(part("title").text, "Teardrop");
-        elisa.playbackState = NowPlaying.Paused;
+        elisa.playbackState = PlayerChoice.Paused;
         compare(picker.currentText, "Elisa", "the pick holds while it pauses");
-        browser.playbackState = NowPlaying.Paused;
-        browser.playbackState = NowPlaying.Playing;
+        browser.playbackState = PlayerChoice.Paused;
+        browser.playbackState = PlayerChoice.Playing;
         compare(picker.currentText, "Firefox", "until another starts");
-        controls.players = [elisa];
+        controls.choice.players = [elisa];
         verify(!picker.visible, "one player has no select");
         compare(findChild(part("nowPlaying"), "kicker").text, "läuft gerade · Elisa");
     }
@@ -272,10 +273,10 @@ TestCase {
     function test_a_player_that_comes_already_playing_is_chosen_over_a_paused_one_that_started_before() {
         const elisa = givePlayer();
         side.show(0);
-        elisa.playbackState = NowPlaying.Paused;
-        elisa.playbackState = NowPlaying.Playing;
-        elisa.playbackState = NowPlaying.Paused;
-        controls.players = [elisa, player({ identity: "Firefox", trackTitle: "A talk" })];
+        elisa.playbackState = PlayerChoice.Paused;
+        elisa.playbackState = PlayerChoice.Playing;
+        elisa.playbackState = PlayerChoice.Paused;
+        controls.choice.players = [elisa, player({ identity: "Firefox", trackTitle: "A talk" })];
         compare(part("player").currentText, "Firefox", "the one that started playing last");
         compare(part("title").text, "A talk");
     }
@@ -283,15 +284,74 @@ TestCase {
     function test_a_player_that_comes_already_playing_is_chosen_over_one_that_plays_since_before() {
         const elisa = givePlayer();
         side.show(0);
-        elisa.playbackState = NowPlaying.Paused;
-        elisa.playbackState = NowPlaying.Playing;
-        controls.players = [elisa, player({ identity: "Firefox", trackTitle: "A talk" })];
+        elisa.playbackState = PlayerChoice.Paused;
+        elisa.playbackState = PlayerChoice.Playing;
+        controls.choice.players = [elisa, player({ identity: "Firefox", trackTitle: "A talk" })];
         compare(part("player").currentText, "Firefox", "the one that started playing last");
-        controls.players = [...controls.players];
+        controls.choice.players = [...controls.choice.players];
         compare(part("player").currentText, "Firefox", "a change of the list keeps it");
-        elisa.playbackState = NowPlaying.Paused;
-        elisa.playbackState = NowPlaying.Playing;
+        elisa.playbackState = PlayerChoice.Paused;
+        elisa.playbackState = PlayerChoice.Playing;
         compare(part("player").currentText, "Elisa", "until another starts");
+    }
+
+    // The player the bar's middle shows: the shell's Media hands it on as its player.
+    function barPlayer(): var {
+        return controls.choice.playingPlayer;
+    }
+
+    function pickSecondPlayer() {
+        part("player").forceActiveFocus();
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+    }
+
+    function test_with_two_players_playing_the_bar_and_laeuft_gerade_show_the_same_one_the_one_that_started_last() {
+        const elisa = player();
+        const browser = player({ identity: "Firefox", playbackState: PlayerChoice.Paused, trackTitle: "A talk" });
+        controls.choice.players = [elisa, browser];
+        side.show(0);
+        browser.playbackState = PlayerChoice.Playing;
+        compare(part("title").text, "A talk", "läuft gerade shows the one that started last");
+        compare(barPlayer(), browser, "and the bar shows it too");
+        elisa.playbackState = PlayerChoice.Paused;
+        elisa.playbackState = PlayerChoice.Playing;
+        compare(part("title").text, "Teardrop");
+        compare(barPlayer(), elisa, "both follow the next start");
+    }
+
+    function test_a_pick_in_the_select_moves_the_bar_too_while_the_picked_player_plays() {
+        const elisa = player();
+        const browser = player({ identity: "Firefox", trackTitle: "A talk" });
+        controls.choice.players = [elisa, browser];
+        side.show(0);
+        compare(part("player").currentText, "Elisa");
+        pickSecondPlayer();
+        compare(part("title").text, "A talk", "läuft gerade shows the pick");
+        compare(barPlayer(), browser, "and so does the bar");
+    }
+
+    function test_a_player_that_comes_already_playing_counts_as_started_last_for_the_bar_too() {
+        const elisa = givePlayer();
+        side.show(0);
+        const browser = player({ identity: "Firefox", trackTitle: "A talk" });
+        controls.choice.players = [elisa, browser];
+        compare(part("title").text, "A talk");
+        compare(barPlayer(), browser, "the bar shows the newcomer as well");
+    }
+
+    function test_a_paused_player_picked_in_the_panel_leaves_the_bar_with_the_one_that_plays() {
+        const elisa = player();
+        const browser = player({ identity: "Firefox", playbackState: PlayerChoice.Paused, trackTitle: "A talk" });
+        controls.choice.players = [elisa, browser];
+        side.show(0);
+        pickSecondPlayer();
+        compare(part("title").text, "A talk", "läuft gerade shows the paused pick");
+        compare(barPlayer(), elisa, "the bar shows only what plays");
+        elisa.playbackState = PlayerChoice.Paused;
+        compare(barPlayer(), null, "with nothing playing the bar has no player");
+        compare(part("title").text, "A talk");
     }
 
     function test_the_progress_glides_on_between_the_players_reports_without_jumps() {
@@ -346,13 +406,13 @@ TestCase {
         const region = part("nowPlaying");
         one.position = 120;
         verify(region.played >= 120 && region.played < 121, "a seek");
-        one.playbackState = NowPlaying.Paused;
+        one.playbackState = PlayerChoice.Paused;
         verify(!findChild(region, "gliding").running, "paused, it stands");
         const held = region.played;
         wait(100);
         compare(region.played, held);
         one.rate = 2;
-        one.playbackState = NowPlaying.Playing;
+        one.playbackState = PlayerChoice.Playing;
         const from = region.played;
         wait(200);
         verify(region.played - from > 0.3, `twice the rate: ${region.played - from}`);
@@ -390,7 +450,7 @@ TestCase {
         compare(part("byline").x, part("title").x);
         compare(findChild(cover, "corners").radius, 2 * Tokens.radiusTile);
         compare(findChild(cover, "corners").border.color, Tokens.color.bg, "the corners are cut in the panel's ground");
-        controls.players[0].trackArtUrl = "";
+        controls.choice.players[0].trackArtUrl = "";
         verify(!cover.visible, "without a cover");
         compare(part("title").x, 0, "the words take its place");
     }
@@ -413,7 +473,7 @@ TestCase {
     }
 
     function test_with_two_players_the_keyboard_starts_at_the_select() {
-        controls.players = [player({ identity: "Firefox", playbackState: NowPlaying.Paused }), player()];
+        controls.choice.players = [player({ identity: "Firefox", playbackState: PlayerChoice.Paused }), player()];
         side.show(0, false);
         verify(part("player").activeFocus);
         keyClick(Qt.Key_Down);
@@ -450,7 +510,7 @@ TestCase {
         verify(tip.visible);
         compare(tip.y, Math.round(above()));
         const before = tip.y;
-        controls.players = [player({ identity: "Firefox", playbackState: NowPlaying.Paused }), elisa];
+        controls.choice.players = [player({ identity: "Firefox", playbackState: PlayerChoice.Paused }), elisa];
         waitForRendering(side);
         verify(tip.y > before, "the button moved down");
         compare(tip.y, Math.round(above()), "and its tip with it");
@@ -483,12 +543,12 @@ TestCase {
             Prefs.theme = theme;
             const contact = createTemporaryObject(sceneComponent, testCase);
             const shown = player({ trackArtUrl: testCase.cover, canGoPrevious: false });
-            contact.panel.controls.players = [shown];
+            contact.panel.controls.choice.players = [shown];
             contact.panel.show(0, true);
             tryCompare(findChild(contact, "cover"), "status", Image.Ready);
             waitForRendering(contact);
             grabImage(contact).save(`nowplaying-sheet-${theme}.png`);
-            contact.panel.controls.players = [player({ identity: "Firefox", playbackState: NowPlaying.Paused, trackTitle: "A talk on type", trackArtist: "", trackAlbum: "" }), shown];
+            contact.panel.controls.choice.players = [player({ identity: "Firefox", playbackState: PlayerChoice.Paused, trackTitle: "A talk on type", trackArtist: "", trackAlbum: "" }), shown];
             waitForRendering(contact);
             grabImage(contact).save(`nowplaying-players-sheet-${theme}.png`);
             verify(findChild(contact, "player").visible);
