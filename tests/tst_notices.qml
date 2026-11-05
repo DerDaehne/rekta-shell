@@ -668,28 +668,33 @@ TestCase {
     function test_after_a_notification_took_the_undo_toasts_place_ctrl_z_brings_the_rows_back_until_their_window_ends_and_closes_nothing() {
         removeBenAndLetDoraTakeTheUndoToastsPlace();
         time = toaster.undoWindow - 1;
-        board.waitOutUndo();
-        compare(calls, [], "the window is still open");
-        keyClick(Qt.Key_Z, Qt.ControlModifier);
-        compare(rowNames(), ["dora", "cleo", "ben", "anna"], "ben is back in his place");
-        compare(calls, []);
-        compare(toaster.open.title, "dora", "dora's toast stays");
+        board.undoLeft.triggered();
+        compare(calls, [], "an early timer: the window is still open");
         const below = [];
         const removeBelow = KeyLayers.on(3, event => {
             below.push(event.key);
             return false;
         });
+        keyClick(Qt.Key_Escape);
+        keyClick(Qt.Key_Z, Qt.ControlModifier | Qt.ShiftModifier);
+        compare(rowNames(), ["dora", "cleo", "anna"], "neither Escape nor Ctrl+Shift+Z brings ben back");
+        keyClick(Qt.Key_Z, Qt.ControlModifier);
+        compare(rowNames(), ["dora", "cleo", "ben", "anna"], "Ctrl+Z brings ben back in his place");
+        compare(calls, []);
+        compare(toaster.open.title, "dora", "dora's toast stays");
         keyClick(Qt.Key_Z, Qt.ControlModifier);
         removeBelow();
-        verify(below.includes(Qt.Key_Z), "with nothing left to bring back, Ctrl+Z goes on to the layers below");
+        compare(below.filter(key => key === Qt.Key_Escape || key === Qt.Key_Z), [Qt.Key_Escape, Qt.Key_Z, Qt.Key_Z], "Escape, Ctrl+Shift+Z and a Ctrl+Z with nothing left to bring back go on to the layers below");
     }
 
     function test_after_a_notification_took_the_undo_toasts_place_the_removed_notifications_close_once_their_window_has_run_out() {
         removeBenAndLetDoraTakeTheUndoToastsPlace();
+        verify(board.undoLeft.running, "the rest of the window runs");
+        compare(board.undoLeft.interval, toaster.undoWindow - 2000, "what the figure showed");
         time = toaster.undoWindow;
         keyClick(Qt.Key_Z, Qt.ControlModifier);
         compare(rowNames(), ["dora", "cleo", "anna"], "a late timer: the window has run out all the same");
-        board.waitOutUndo();
+        board.undoLeft.triggered();
         compare(calls, ["ben closed 2"]);
         compare(toaster.open.title, "dora");
     }
@@ -719,7 +724,7 @@ TestCase {
         compare(toaster.open.text, "2 meldungen entfernt");
         compare(toaster.open.total, toaster.undoWindow);
         time = toaster.undoWindow;
-        board.waitOutUndo();
+        board.undoLeft.triggered();
         compare(calls, [], "ben's first window has run out, but the new toast holds him");
         toaster.open.undo();
         compare(rowNames(), ["dora", "cleo", "ben", "anna"]);
