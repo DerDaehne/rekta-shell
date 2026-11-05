@@ -601,6 +601,133 @@ TestCase {
         compare(named("panorama").scroller.contentX, 0);
     }
 
+    // Compact
+
+    function windowsCount(count: int): var {
+        return Array.from({
+            length: count
+        }, (_, i) => fakeWindow(`window ${i}`, i));
+    }
+
+    // A compact Start that holds more than its height: six windows and fifteen pinned apps at 720 × 1280.
+    function openCompactAndTall() {
+        testCase.width = 720;
+        testCase.height = 1280;
+        openAt(720, 1280, {
+            windows: windowsCount(6),
+            pinned: appsPinned(15)
+        });
+    }
+
+    function shownInPanorama(item: Item): bool {
+        const top = item.mapToItem(named("panorama"), 0, 0).y;
+        return top >= 0 && top + item.height <= named("panorama").height + 1;
+    }
+
+    function test_compact_at_720_by_1280_the_sections_stack_and_the_strip_stays_on_top_as_the_panorama_scrolls() {
+        openCompactAndTall();
+        const panorama = named("panorama");
+        const strip = named("sectionStrip");
+        const running = named("running");
+        const pinned = named("pinned");
+        verify(!panorama.sideways);
+        compare(panorama.inset, Tokens.spaceM);
+        verify([running, pinned].every(section => section.x === Tokens.spaceM && section.width === 720 - 2 * Tokens.spaceM), "as wide as the panorama");
+        compare(pinned.y, running.y + running.height, "one below the other");
+        verify(pinned.separated && !running.separated, "a hairline between them");
+        verify(panorama.mostScroll() > 0);
+        const stripAt = strip.mapToItem(start, 0, 0);
+        panorama.userScroll();
+        panorama.scroller.contentY = panorama.mostScroll();
+        compare(strip.mapToItem(start, 0, 0), stripAt, "the strip stands where it stood");
+        verify(strip.visible && strip.y + strip.height <= panorama.y, "above the panorama");
+        compare(strip.currentIndex, 1, "and marks the section scrolled to");
+    }
+
+    function test_compact_the_strips_stand_space_m_in_with_a_hairline_under_the_section_strip_and_sideways_neither() {
+        openCompactAndTall();
+        const line = named("stripLine");
+        compare(named("pivot").x, Tokens.spaceM);
+        compare(named("sectionStrip").x, Tokens.spaceM);
+        verify(line.visible);
+        compare(Qt.rect(line.x, line.y + line.height, line.width, line.height), Qt.rect(0, named("panorama").y, 720, Geometry.hairline));
+        start.width = 1600;
+        start.height = 900;
+        verify(named("panorama").sideways);
+        compare(named("pivot").x, Tokens.spaceXl);
+        compare(named("sectionStrip").x, Tokens.spaceXl);
+        verify(!line.visible);
+    }
+
+    function test_compact_a_vertical_wheel_scrolls_the_stacked_panorama_and_changes_no_place_even_at_its_end() {
+        openCompactAndTall();
+        const panorama = named("panorama");
+        verify(!panorama.handleWheel(wheelEvent(120), 0), "the panorama leaves the wheel alone");
+        mouseWheel(panorama, 300, 300, 0, -120);
+        tryVerify(() => panorama.scroller.contentY > 0, 1000, "the wheel scrolls it down");
+        panorama.scroller.contentY = panorama.mostScroll();
+        for (let i = 0; i < 3; i++)
+            mouseWheel(panorama, 300, 300, 0, -120);
+        compare(named("pivot").currentIndex, 0, "past its end the place stays");
+        compare(pastEndSpy.count, 0);
+        compare(panorama.scroller.contentX, 0);
+    }
+
+    function test_compact_the_grids_fill_their_sections_with_as_many_tile_units_as_fit_stretched_and_wide_tiles_span_two() {
+        openCompactAndTall();
+        const width = 720 - 2 * Tokens.spaceM;
+        const cell = (width - 2 * Tokens.spaceS) / 3;
+        const running = tilesIn("running");
+        const pinned = tilesIn("pinned");
+        compare(findChild(named("pinned"), "grid").across, 3, "three tile units fit in 688 px, four do not");
+        compare(pinned[2].x + pinned[2].width, width, "three to a row, stretched to fill it");
+        compare(pinned[3].y, Tokens.tileUnit + Tokens.spaceS, "rows a tile unit high");
+        compare(running[0].width, 2 * cell + Tokens.spaceS);
+        compare(running[1].y, running[0].y + Tokens.tileUnit + Tokens.spaceS, "two units wide, one to a row of three");
+    }
+
+    function test_compact_a_narrow_start_still_has_two_columns() {
+        openAt(360, 800, {
+            pinned: appsPinned(3)
+        });
+        const width = 360 - 2 * Tokens.spaceM;
+        compare(findChild(named("pinned"), "grid").across, 2);
+        compare(tilesIn("pinned")[0].width, (width - Tokens.spaceS) / 2, "narrower than a tile unit");
+        compare(tilesIn("running")[0].width, width, "a running tile takes the whole row");
+    }
+
+    function test_compact_arrows_go_down_through_the_stacked_sections_and_the_focused_tile_rolls_into_view() {
+        openCompactAndTall();
+        const panorama = named("panorama");
+        const running = tilesIn("running");
+        const pinned = tilesIn("pinned");
+        keyClick(Qt.Key_Down);
+        verify(running[0].activeFocus);
+        for (let i = 1; i < running.length; i++) {
+            keyClick(Qt.Key_Down);
+            verify(running[i].activeFocus, `running ${i}`);
+            verify(shownInPanorama(running[i]), `running ${i} in view`);
+        }
+        keyClick(Qt.Key_Down);
+        verify(pinned[0].activeFocus, "on into the next section");
+        for (let i = 0; i < 4; i++)
+            keyClick(Qt.Key_Down);
+        verify(pinned[12].activeFocus, "the last row");
+        verify(shownInPanorama(pinned[12]));
+        compare(named("sectionStrip").currentIndex, 1, "the strip follows");
+        for (let i = 0; i < 4; i++)
+            keyClick(Qt.Key_Up);
+        verify(pinned[0].activeFocus);
+        keyClick(Qt.Key_Up);
+        verify(running[5].activeFocus, "up into the section above");
+        verify(shownInPanorama(running[5]));
+        for (let i = 0; i < 5; i++)
+            keyClick(Qt.Key_Up);
+        verify(running[0].activeFocus);
+        verify(shownInPanorama(running[0]), "back at the top");
+        compare(named("sectionStrip").currentIndex, 0);
+    }
+
     // The search, Escape and back
 
     function test_typing_replaces_the_strip_and_the_panorama_with_the_search_and_clearing_brings_them_back() {
@@ -718,6 +845,30 @@ TestCase {
                 grabImage(backdrop).save(`start-panorama-${theme}-${size.width}x${size.height}.png`);
                 verify(sheet.wanted, `${theme} ${size.width}`);
             }
+        }
+    }
+
+    function test_contact_sheets_of_the_compact_start_in_both_themes_at_720_by_1280() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            testCase.width = 720;
+            testCase.height = 1280;
+            const backdrop = createTemporaryObject(backdropComponent, testCase, {
+                width: 720,
+                height: 1280
+            });
+            const sheet = createTemporaryObject(startComponent, backdrop, {
+                width: 720,
+                height: 1280,
+                pinned: [fakeApp("systemsettings", 1), fakeApp("dolphin", 2), fakeApp("konsole", 1), fakeApp("kate", 1), fakeApp("okular", 2), fakeApp("gwenview", 1)]
+            });
+            Prefs.motion = "off";
+            sheet.open();
+            Prefs.motion = "system";
+            waitForRendering(backdrop);
+            wait(Tokens.durationShort);
+            grabImage(backdrop).save(`start-compact-${theme}.png`);
+            verify(!findChild(sheet, "panorama").sideways, theme);
         }
     }
 }

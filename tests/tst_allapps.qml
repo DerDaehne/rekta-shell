@@ -181,6 +181,8 @@ TestCase {
         compare(panorama.height, start.height - panorama.y);
         verify(panorama.sideways);
         compare(sections()[0].x, Tokens.spaceXl);
+        compare(strip.x, Tokens.spaceXl);
+        verify(!named("appsStripLine").visible, "no hairline under a sideways strip");
     }
 
     function test_there_is_a_section_for_each_initial_a_to_z_an_accent_under_its_letter_and_digits_and_signs_first_in_hash() {
@@ -622,7 +624,7 @@ TestCase {
 
     // Compact
 
-    function test_compact_each_letter_is_one_section_unsplit_stacked_and_the_wheel_is_not_redirected() {
+    function test_compact_each_letter_is_one_section_unsplit_stacked_its_tiles_stretched_and_the_wheel_is_not_redirected() {
         openOnAllApps(desktopApps, 720, 1280);
         const panorama = named("appsPanorama");
         verify(!panorama.sideways);
@@ -633,7 +635,11 @@ TestCase {
         const all = sections();
         verify(all.every(section => section.x === panorama.inset && section.width === panorama.width - 2 * panorama.inset), "stacked, as wide as the panorama");
         verify(all[1].y >= all[0].y + all[0].height);
-        compare(findChild(k, "grid").columns, Math.max(2, Math.floor((panorama.width - 2 * panorama.inset + Tokens.spaceS) / unit(1))));
+        const across = Math.max(2, Math.floor((k.width + Tokens.spaceS) / unit(1)));
+        compare(findChild(k, "grid").across, across);
+        compare(k.tiles()[across - 1].x + k.tiles()[across - 1].width, k.width, "stretched to fill the row");
+        compare(named("appsStrip").x, Tokens.spaceM, "the strip as far in as the sections");
+        verify(named("appsStripLine").visible, "a hairline under it");
         verify(!panorama.handleWheel(wheelEvent(120), 0), "the wheel is left alone");
         compare(pastEndSpy.count, 0);
         compare(panorama.scroller.contentX, 0);

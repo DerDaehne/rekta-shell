@@ -42,6 +42,22 @@ TestCase {
         }
     }
 
+    // In a compact place: 700 px wide, the viewport tall enough.
+    Component {
+        id: compactComponent
+
+        TileGrid {
+            columns: 4
+            placeWidth: 700
+            viewportHeight: 900
+
+            Tile { objectName: "wide"; columns: 2 }
+            Tile { objectName: "small1" }
+            Tile { objectName: "big"; columns: 2; rows: 2 }
+            Tile { objectName: "small2" }
+        }
+    }
+
     property TileGrid grid
 
     function init() {
@@ -93,5 +109,76 @@ TestCase {
         compare(grid.implicitWidth, 3 * Tokens.tileUnit + 2 * Tokens.spaceS);
         compare(grid.rows, 3);
         compare(grid.implicitHeight, 3 * Tokens.tileUnit + 2 * Tokens.spaceS);
+    }
+
+    function test_sideways_the_cells_stay_a_tile_unit_however_wide_the_grid_is() {
+        grid.width = 900;
+        verify(!grid.stretched);
+        compare(grid.across, 3);
+        compare(findChild(grid, "small1").width, Tokens.tileUnit);
+        compare(findChild(grid, "wide").width, 2 * Tokens.tileUnit + Tokens.spaceS);
+    }
+
+    // Compact
+
+    function test_compact_a_grid_has_as_many_tile_unit_columns_as_fit_its_width_stretched_to_fill_it() {
+        grid = createTemporaryObject(compactComponent, testCase, {
+            width: 600
+        });
+        verify(grid.stretched);
+        compare(grid.across, 3, "three units and their gaps fit in 600 px, four do not");
+        const cell = (600 - 2 * Tokens.spaceS) / 3;
+        compare(grid.cellWidth, cell);
+        const small1 = findChild(grid, "small1");
+        compare(Qt.rect(small1.x, small1.y, small1.width, small1.height), Qt.rect(2 * (cell + Tokens.spaceS), 0, cell, Tokens.tileUnit));
+        compare(small1.x + small1.width, 600, "the row is full");
+    }
+
+    function test_compact_a_grid_narrower_than_two_units_still_has_two_columns_each_half_of_it() {
+        grid = createTemporaryObject(compactComponent, testCase, {
+            width: 300
+        });
+        compare(grid.across, 2);
+        compare(findChild(grid, "small1").width, (300 - Tokens.spaceS) / 2);
+        compare(findChild(grid, "wide").width, 300, "two units wide is the whole row");
+    }
+
+    function test_compact_wide_and_big_tiles_span_their_stretched_cells_and_rows_stay_a_tile_unit_high() {
+        grid = createTemporaryObject(compactComponent, testCase, {
+            width: 600
+        });
+        const cell = grid.cellWidth;
+        const big = findChild(grid, "big");
+        compare(findChild(grid, "wide").width, 2 * cell + Tokens.spaceS);
+        compare(Qt.rect(big.x, big.y, big.width, big.height), Qt.rect(0, Tokens.tileUnit + Tokens.spaceS, 2 * cell + Tokens.spaceS, 2 * Tokens.tileUnit + Tokens.spaceS));
+        const small2 = findChild(grid, "small2");
+        compare(Qt.point(small2.x, small2.y), Qt.point(2 * (cell + Tokens.spaceS), Tokens.tileUnit + Tokens.spaceS), "beside the big one");
+        compare(grid.implicitHeight, 3 * Tokens.tileUnit + 2 * Tokens.spaceS);
+    }
+
+    function test_compact_a_wider_grid_takes_another_column_and_the_cells_narrow_again() {
+        grid = createTemporaryObject(compactComponent, testCase, {
+            width: 600
+        });
+        grid.width = 4 * Tokens.tileUnit + 3 * Tokens.spaceS;
+        compare(grid.across, 4);
+        compare(findChild(grid, "small1").width, Tokens.tileUnit);
+        compare(Qt.point(findChild(grid, "big").x, findChild(grid, "big").y), Qt.point(0, Tokens.tileUnit + Tokens.spaceS), "the cell left in the first row is too narrow for it");
+    }
+
+    function test_a_short_viewport_is_compact_too_and_a_tall_wide_one_gives_the_tiles_their_unit_again() {
+        grid = createTemporaryObject(compactComponent, testCase, {
+            width: 900,
+            placeWidth: 1600,
+            viewportHeight: Tokens.bpShortHeight
+        });
+        verify(grid.stretched, "a viewport 480 px high is compact");
+        compare(grid.across, 5);
+        verify(findChild(grid, "small1").width > Tokens.tileUnit);
+        grid.viewportHeight = 900;
+        verify(!grid.stretched);
+        compare(grid.across, 4);
+        compare(findChild(grid, "small1").width, Tokens.tileUnit);
+        compare(findChild(grid, "big").width, 2 * Tokens.tileUnit + Tokens.spaceS);
     }
 }

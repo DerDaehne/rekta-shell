@@ -60,6 +60,8 @@ FocusScope {
     readonly property real unitStep: Tokens.tileUnit + Tokens.spaceS
     // A search under the place pivot, and the loading line of "alle apps", keep to the leading edge, six units wide.
     readonly property real sixUnits: 6 * Tokens.tileUnit + 5 * Tokens.spaceS
+    // The strips stand as far in as the sections: space-xl sideways, space-m compact (rekta.css:1499, :1139).
+    readonly property real stripInset: panorama.inset
     readonly property real placeTop: pivot.height
     readonly property real placeHeight: height - placeTop
     // The panorama and the strip of the place the pivot has chosen.
@@ -69,8 +71,6 @@ FocusScope {
     property var letterSections: []
     // The rows of tiles a section of "alle apps" holds under its heading; stacked, no letter splits.
     readonly property real letterRows: appsPanorama.sideways ? Math.max(1, Math.floor((appsPanorama.height - 2 * Tokens.spaceXl - headingMeasure.height - Tokens.spaceL + Tokens.spaceS) / unitStep)) : Infinity
-    // Stacked, a section has as many tile units across as fit, at least two (layout.md:112–114, not yet stretched).
-    readonly property int stackedColumns: Math.max(2, Math.floor((appsPanorama.width - 2 * appsPanorama.inset + Tokens.spaceS) / unitStep))
     // Whether "läuft" stands in the panorama, the first of its sections.
     readonly property bool anyRunning: running.length > 0
     // What was typed: the text of the search's line.
@@ -843,14 +843,15 @@ FocusScope {
             onWheel: event => start.wheel(event)
         }
 
-        // The place's strip along the top, the space-xl in from the edge of a sideways place (rekta.css:1499). Its inactive
-        // title is one step up from Rekta's (rekta.css:55), so both titles stay above the section headings.
+        // The place's strip along the top. Its titles are larger than Rekta's, the inactive one at the title size
+        // (rekta.css:52), also compact where Rekta takes the facet sizes (rekta.css:1141–1142): both titles stay above
+        // the section headings.
         Pivot {
             id: pivot
 
             objectName: "pivot"
-            x: Tokens.spaceXl
-            width: parent.width - 2 * Tokens.spaceXl
+            x: start.stripInset
+            width: parent.width - 2 * start.stripInset
             enabled: start.wanted && !start.searching
             level: "nav"
             activeToken: Tokens.fontSizeNavActive
@@ -873,9 +874,9 @@ FocusScope {
                 id: strip
 
                 objectName: "sectionStrip"
-                x: Tokens.spaceXl
+                x: start.stripInset
                 y: start.placeTop
-                width: parent.width - 2 * Tokens.spaceXl
+                width: parent.width - 2 * start.stripInset
                 enabled: start.wanted
                 titles: start.running.length > 0 ? ["läuft", "angeheftet"] : ["angeheftet"]
                 placeWidth: start.width
@@ -916,7 +917,10 @@ FocusScope {
                         id: runningGrid
 
                         objectName: "grid"
+                        width: parent.width
                         columns: 2
+                        placeWidth: start.width
+                        viewportHeight: start.height
 
                         Repeater {
                             model: start.running
@@ -954,7 +958,10 @@ FocusScope {
                         id: pinnedGrid
 
                         objectName: "grid"
+                        width: parent.width
                         columns: 4
+                        placeWidth: start.width
+                        viewportHeight: start.height
 
                         Repeater {
                             model: start.pinned
@@ -975,12 +982,19 @@ FocusScope {
                     }
                 }
             }
+
+            // Compact the strip stays above the stacked sections with a hairline under it (rekta.css:1134–1140).
+            Hairline {
+                objectName: "stripLine"
+                y: panorama.y - height
+                visible: !panorama.sideways
+            }
         }
 
         // "alle apps": the installed apps A–Z as a panorama under the strip of its sections' titles, as wide as the
         // surface (layout.md:19–40). A section for each initial, as many tile units wide as its apps need in the rows the
         // panorama holds, at most six; a letter with more apps splits into near equal parts (Rules.letterSections). Its
-        // tiles are one unit square, row by row, and the sections have the start place's spaces and headings.
+        // tiles are one unit, row by row, and the sections have the start place's spaces and headings.
         // ponytail: a tile for every app, made anew whenever the apps or the rows change; a view that makes only the
         // tiles in sight if hundreds of apps make the Start slow.
         Item {
@@ -994,9 +1008,9 @@ FocusScope {
                 id: appsStrip
 
                 objectName: "appsStrip"
-                x: Tokens.spaceXl
+                x: start.stripInset
                 y: start.placeTop
-                width: parent.width - 2 * Tokens.spaceXl
+                width: parent.width - 2 * start.stripInset
                 // As high as the start place's strip, which always has a title: a strip without titles is lower, and the
                 // rows its sections hold would change as their titles came.
                 height: strip.height
@@ -1021,6 +1035,12 @@ FocusScope {
                     if (!forward && start.wanted && !start.searching)
                         pivot.select(0);
                 }
+            }
+
+            Hairline {
+                objectName: "appsStripLine"
+                y: appsPanorama.y - height
+                visible: !appsPanorama.sideways
             }
 
             // Loading, the line runs on the region's first hairline; without apps a sentence there says so (states.md,
@@ -1053,7 +1073,8 @@ FocusScope {
             }
 
             // A section of "alle apps": its part of the apps, as wide as its units, with the start place's spaces and
-            // headings, larger than Rekta's (rekta.css:1125–1127, :55, :52). Stacked it is as wide as the panorama.
+            // headings, larger than Rekta's (rekta.css:1125–1127, :55, :52). Stacked it is as wide as the panorama, its
+            // tiles stretched.
             Component {
                 id: letterSection
 
@@ -1080,7 +1101,10 @@ FocusScope {
                         id: letterGrid
 
                         objectName: "grid"
-                        columns: appsPanorama.sideways ? letterPart.part.units : start.stackedColumns
+                        width: parent.width
+                        columns: letterPart.part.units
+                        placeWidth: start.width
+                        viewportHeight: start.height
 
                         Repeater {
                             model: letterPart.partApps
@@ -1172,7 +1196,7 @@ FocusScope {
 
             readonly property real ringRoom: Geometry.focusRingOffset + Geometry.focusRingWidth
             objectName: "results"
-            x: Tokens.spaceXl - ringRoom
+            x: pivot.x - ringRoom
             y: start.placeTop
             width: start.sixUnits + 2 * ringRoom
             height: start.placeHeight
