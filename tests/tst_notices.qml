@@ -292,8 +292,8 @@ TestCase {
         compare(toast.Accessible.name, "dringend. backup. the disk is full");
     }
 
-    function test_normal_toasts_carry_no_tag_and_neither_does_one_its_app_keeps_standing() {
-        for (const [summary, expireTimeout] of [["normal", -1], ["standing", 0]]) {
+    function test_normal_toasts_carry_no_tag_whatever_timeout_their_app_gives() {
+        for (const [summary, expireTimeout] of [["normal", -1], ["no timeout", 0]]) {
             notify({ summary, expireTimeout });
             compare(toaster.open.title, summary);
             tryCompare(toaster.open, "waiting", false);
@@ -304,16 +304,38 @@ TestCase {
         }
     }
 
-    function test_an_app_s_timeout_of_zero_keeps_its_toast_standing() {
-        notify({ expireTimeout: 0 });
-        verify(toaster.open.stays);
-        notify({ summary: "ben", expireTimeout: 2000 });
-        time = 100 * Tokens.durationToast;
-        toaster.open.step();
-        verify(toaster.open.stays, "it has no window to run out");
-        toaster.dismiss();
-        verify(!toaster.open.stays, "any other timeout of the app runs duration-toast");
-        compare(toaster.open.total, Tokens.durationToast);
+    function test_a_toast_runs_duration_toast_and_goes_whatever_timeout_its_app_gives_even_none() {
+        for (const [summary, expireTimeout] of [["none", 0], ["short", 2000], ["long", 20000]]) {
+            notify({ summary, expireTimeout });
+            verify(!toaster.open.stays, summary);
+            compare(toaster.open.total, Tokens.durationToast, summary);
+            time += Tokens.durationToast - 1;
+            toaster.open.step();
+            compare(toaster.open?.title, summary, `${summary}: still within its window`);
+            runOut();
+            compare(toaster.open, null, `${summary}: then it goes`);
+        }
+    }
+
+    function test_a_notification_its_app_gives_no_timeout_does_not_expire_with_its_toast_but_stays_open_and_unseen_in_the_list() {
+        const fake = notify({ expireTimeout: 0 }, [["default", "open"], ["accept", "annehmen"]]);
+        runOut();
+        compare(calls, [], "no expire(): the app hears nothing");
+        compare(board.rows[0].notification, fake, "it is still open");
+        compare(board.actionsOf(board.rows[0]), [{ identifier: "accept", text: "annehmen" }]);
+        verify(board.rows[0].unseen);
+        compare(board.unseen, 1);
+        compare(board.unseenByApp, { "org.example.chat": 1 });
+        board.invokeAction(board.rows[0], "accept");
+        compare(calls, ["anna invoked accept", "anna closed 2"]);
+    }
+
+    function test_a_transient_notification_its_app_gives_no_timeout_expires_once_its_toast_has_gone() {
+        notify({ summary: "transient", transient: true, expireTimeout: 0 });
+        verify(!toaster.open.stays);
+        runOut();
+        compare(calls, ["transient closed 1"]);
+        compare(board.rows.length, 0);
     }
 
     function test_transient_notifications_toast_but_stay_out_of_the_list_and_the_count() {
