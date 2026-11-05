@@ -504,6 +504,33 @@ TestCase {
         compare(findChild(row("open"), "icon").visible, false);
     }
 
+    Component {
+        id: boxWithIconComponent
+
+        Menu {
+            MenuItem { objectName: "synced"; kind: "checkbox"; checked: true; text: "sync"; icon: testCase.picture }
+            MenuItem { objectName: "hidden"; kind: "checkbox"; text: "show hidden" }
+            MenuItem { objectName: "pictured"; text: "open"; icon: testCase.picture }
+            MenuItem { objectName: "plain"; text: "quit" }
+        }
+    }
+
+    function test_a_box_with_its_own_icon_stands_before_it_and_every_row_keeps_the_box_s_room() {
+        const boxed = createTemporaryObject(boxWithIconComponent, testCase);
+        boxed.open = true;
+        const part = (name, child) => findChild(findChild(boxed, name), child);
+        const iconEdge = Tokens.spaceM + 10 + Tokens.spaceS;
+        const edge = iconEdge + 20 + Tokens.spaceS;
+        compare(part("synced", "check").x, Tokens.spaceM, "the box first");
+        compare(part("synced", "icon").x, iconEdge, "then the icon, which a chosen row keeps");
+        verify(part("synced", "icon").visible);
+        compare(part("synced", "label").x, edge, "then the words");
+        compare(part("hidden", "check").x, Tokens.spaceM, "a box without an icon stands where the other box does");
+        compare(part("pictured", "icon").x, iconEdge);
+        for (const name of ["hidden", "pictured", "plain"])
+            compare(part(name, "label").x, edge, `${name} starts its words at the same edge`);
+    }
+
     function test_a_lead_word_is_semibold_and_sits_space_s_before_the_text() {
         const level = openedLevel();
         const backups = findChild(level, "backups");

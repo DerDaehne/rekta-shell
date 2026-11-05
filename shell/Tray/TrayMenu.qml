@@ -170,7 +170,7 @@ Menu {
         Accessible.name: keyHint !== "" ? `${text}, ${keyHint}` : text
     }
 
-    // An entry of an app's menu; its words are the app's own.
+    // An entry of an app's menu; its words and its icon, if it has one, are the app's own.
     component EntryRow: MenuItem {
         id: row
 
@@ -178,6 +178,7 @@ Menu {
         readonly property var entry: tray.shown[at] ?? null
 
         text: entry?.text ?? ""
+        icon: entry?.icon ?? ""
         kind: entry?.buttonType === 1 ? "checkbox" : entry?.buttonType === 2 ? "radio" : "item"
         checked: entry?.checkState === Qt.Checked
         dimmed: !(entry?.enabled ?? true)

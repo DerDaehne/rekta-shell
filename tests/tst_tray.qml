@@ -27,6 +27,8 @@ TestCase {
         id: entry
 
         property string text
+        // An image URL, empty when the entry has none.
+        property string icon
         property bool enabled: true
         property bool isSeparator: false
         // 0 none, 1 checkbox, 2 radio
@@ -192,6 +194,11 @@ TestCase {
         ];
     }
 
+    // One app whose menu has the given entries.
+    function mail(entries: var): var {
+        return [app("Mail", { menu: menuOf(entries) })];
+    }
+
     function open(apps: var): var {
         scene = createTemporaryObject(sceneComponent, testCase, { apps });
         const control = scene.control;
@@ -288,6 +295,32 @@ TestCase {
         compare(pause.kind, "checkbox");
         compare(textEdge(pause), textEdge(rowAt(menu, "Open folder")));
         verify(findChild(pause, "check").x + findChild(pause, "check").width <= textEdge(pause), "the box stands before the text");
+    }
+
+    function test_an_entry_with_an_icon_shows_it_first_and_every_entry_starts_its_words_at_one_edge() {
+        const menu = open(mail([entry("Compose", { icon: blueIcon }), entry("Settings"), entry("Notify", { buttonType: 1 })]));
+        keyClick(Qt.Key_Right);
+        const icon = findChild(rowAt(menu, "Compose"), "icon");
+        verify(icon.visible);
+        compare(icon.source, blueIcon);
+        compare(icon.x, Tokens.spaceM);
+        compare(icon.width, 20);
+        compare(icon.height, 20);
+        const edge = icon.x + icon.width + Tokens.spaceS;
+        for (const text of ["Compose", "Settings", "Notify", "zurück · Mail"])
+            compare(findChild(rowAt(menu, text), "label").x, edge, `${text} starts its words at the edge`);
+        verify(!findChild(rowAt(menu, "Settings"), "icon").visible, "an entry without an icon gets none");
+    }
+
+    function test_an_apps_menu_without_icons_shows_none_and_keeps_its_words_and_boxes_where_they_were() {
+        const menu = open(threeApps());
+        keyClick(Qt.Key_Right);
+        const edge = Tokens.spaceM + 20 + Tokens.spaceS;
+        for (const text of ["Open folder", "Pause", "Devices"]) {
+            verify(!findChild(rowAt(menu, text), "icon").visible, text);
+            compare(findChild(rowAt(menu, text), "label").x, edge, text);
+        }
+        compare(findChild(rowAt(menu, "Pause"), "check").x, Tokens.spaceM + (20 - 10) / 2, "the box stands where the back row's icon does");
     }
 
     function test_a_separator_entry_is_a_hairline_not_a_row() {
@@ -554,11 +587,17 @@ TestCase {
     }
 
     function test_contact_sheet() {
+        const sheets = {
+            "list": threeApps,
+            "menu": threeApps,
+            "menu-icons": () => mail([entry("Compose", { icon: blueIcon }), entry("Settings", { icon: blueIcon }), entry("Notify", { buttonType: 1, checkState: Qt.Checked, icon: blueIcon })]),
+            "menu-mixed": () => mail([entry("Compose", { icon: blueIcon }), entry("Settings"), entry("Notify", { buttonType: 1, checkState: Qt.Checked }), entry("Sync", { buttonType: 1, icon: blueIcon })])
+        };
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
-            for (const level of ["list", "menu"]) {
-                const menu = open(threeApps());
-                if (level === "menu") {
+            for (const [level, apps] of Object.entries(sheets)) {
+                const menu = open(apps());
+                if (level !== "list") {
                     keyClick(Qt.Key_Right);
                     keyClick(Qt.Key_Down);
                 }

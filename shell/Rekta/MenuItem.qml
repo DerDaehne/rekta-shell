@@ -37,11 +37,16 @@ Item {
     readonly property bool checkable: kind !== "item"
     readonly property string label: disabledReason !== "" ? `${text} (${disabledReason})` : text
     readonly property color ink: disabled ? Tokens.color.disabled : Tokens.color.textPrimary
-    readonly property real checkSpace: checkable && !checkInIconSlot ? Geometry.menuCheck + Tokens.spaceS : 0
+    readonly property real checkSpace: (checkable && !checkInIconSlot) || menuHasCheckWithIcon ? Geometry.menuCheck + Tokens.spaceS : 0
     readonly property bool hasIcon: icon.toString() !== "" || glyph !== ""
-    readonly property bool menuHasIcons: Array.from(parent?.children ?? []).some(row => row.hasIcon === true && (row.visible || !item.visible))
-    // In a menu with icons a row without one has its box where the icons stand, so every text starts at one edge.
-    readonly property bool checkInIconSlot: checkable && menuHasIcons && !hasIcon
+    readonly property var menuRows: Array.from(parent?.children ?? []).filter(row => row.visible || !item.visible)
+    readonly property bool menuHasIcons: menuRows.some(row => row.hasIcon === true)
+    // A row with a box and an icon has the box first (states.md:138–141); every row keeps the box's room, so all texts
+    // start at one edge.
+    readonly property bool menuHasCheckWithIcon: menuRows.some(row => row.hasIcon === true && row.checkable === true)
+    // Otherwise, in a menu with icons, a row without one has its box where the icons stand, so every text starts at one
+    // edge.
+    readonly property bool checkInIconSlot: checkable && menuHasIcons && !hasIcon && !menuHasCheckWithIcon
     readonly property real iconSpace: menuHasIcons || iconSlot ? Geometry.iconSize + Tokens.spaceS : 0
     readonly property real leadSpace: lead !== "" ? leadWords.implicitWidth + Tokens.spaceS : 0
     readonly property real textEdge: inset + checkSpace + iconSpace + leadSpace
