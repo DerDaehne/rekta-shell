@@ -23,6 +23,9 @@ Item {
     property int buildIndex: 0
     // True while its live region holds still: news waits (live.md, "Holding still").
     property bool held: false
+    // The part that peeks with news, as a page marks one `data-rk-peek` (rekta.js:4200; behaviour.md:229): a count.
+    // Without one, the first visible stat peeks.
+    property TextRole peekPart: null
     // On a status fill only the primary text colour clears AA; Status.secondaryInk() reads this (rekta.css:68–70).
     readonly property bool statusFill: status !== ""
     // A place turn keeps the tile that opened the next place pressed until it turns away (rekta.js turn.leave()).
@@ -189,6 +192,7 @@ Item {
         objectName: "news"
         anchors.fill: parent
         content: column
+        marked: tile.peekPart
         held: tile.held
     }
 

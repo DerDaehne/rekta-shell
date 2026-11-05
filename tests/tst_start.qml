@@ -21,6 +21,8 @@ TestCase {
     // Coloured 20 × 20 squares as PNG (the check has no SVG image plugin), as an app's own icon is coloured.
     readonly property string blueIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGOQnfmZbMQwqnlU86jmUc0DqxkAaSeYL8S+KvQAAAAASUVORK5CYII="
     readonly property string pinkIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGN4aTWLbMQwqnlU86jmUc0DqxkAreu3b+7dCC4AAAAASUVORK5CYII="
+    // 128 × 128, larger than a launch tile's largest icon, as an icon theme offers it.
+    readonly property string largeIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAACWElEQVR42u3dUU7DQAwEUJ+ME3JQbgG/VCBoaRJsz6vk/92Z1wjRZFNvL6910LybS+eQ3pQejkHx4RAUHw5B8eEQlB+OQPnhCJQfjkD54QiUH44AAACUn4wAAACUn4wAAACUn4wAAAAASAcgiOABAAAhAGAAMACsnkc/AASVnYyilJ6NoRSfDaGUno2hlJ+NoBSfDaEUnw2hlJ+NoJSfjaCUn42glJ+NoJSfjaBSyp++ntUAJgS8FUFtK996BwGYHOQWBDW9/C1XMAAG/yEFQHD50/c0EsDWf19HANj+69q0/ZVwsvc5BkDSnUsALLnxEoDg8qfsGwAAhJC8fwAA6BmA5xWXAEj/9nfPoXz7s68CAAAAAAAAAKD8TAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgR+DAAAAAAAAAMBNoW4KdRVwW7irgAdDAAAAAg+HAgAABA6IcESMI2IcEuWQKAgcEwfBxH05KjZ8Tw6LDt+L4+LD9+GFEYFrbwPg6CCvCHPaetsDOCPUM4KdsMaxAM4K+Jmwu61nPYArQu/y6ZS5V8cGl98SwGYEHbP2+vjg8lsD2ISgc8atAWxA0D3f9gCmQpiS6xgAUyBMy3McgM4IJmY5EkAnDNPzGw/gvyBsyW0NgCswbMxqJYAjUKTkEgPAAGAAMAAYAMwtAAhypwAAAAAAIIgsHwAAbgBAEFY+AAB8AQBBUPkAAPAtAAhCyv8JAAQB5f8GAILl5d8DAILF5d8LAIKl5T8CAIRlxf8VAAhLin8WAAjDiz8KAAwDS/88H4wqiKkZ03rgAAAAAElFTkSuQmCC"
 
     function fakeWindow(title: string, lastActivated: real): var {
         return {
@@ -42,6 +44,7 @@ TestCase {
 
     function fakeApp(name: string, columns: int): var {
         return {
+            id: `org.example.${name}`,
             name: name,
             icon: testCase.pinkIcon,
             columns: columns,
@@ -61,14 +64,33 @@ TestCase {
         }
     }
 
-    // Stands where a window's preview goes; it knows the window it shows.
+    // Stands where a window's preview goes; it knows the window it shows and reports the size of the window's picture
+    // once there is one, as kpipewire does. A bar along its top and a ring in its middle show how it is cut.
     Component {
         id: previewComponent
 
         Rectangle {
             property var window
+            readonly property size pictureSize: window?.pictureSize ?? Qt.size(0, 0)
+
             objectName: `preview of ${window?.title}`
             color: "steelblue"
+
+            Rectangle {
+                width: parent.width
+                height: parent.height / 8
+                color: "midnightblue"
+            }
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: Math.min(parent.width, parent.height) / 2
+                height: width
+                radius: width / 2
+                color: "transparent"
+                border.color: "white"
+                border.width: 4
+            }
         }
     }
 
@@ -159,7 +181,7 @@ TestCase {
         const heading = findChild(named("pinned"), "heading");
         compare(active.font.weight, Tokens.fontWeightLight);
         compare(heading.font.pixelSize, Math.floor(Tokens.fluid(Tokens.fontSizeXl, start.width)));
-        compare(names[0].font.pixelSize, Tokens.fontSizeS);
+        compare(names[0].font.pixelSize, Tokens.fontSizeXs);
         verify(pivot.inactiveSize > heading.font.pixelSize, "the inactive title above the heading");
         verify(active.font.pixelSize > pivot.inactiveSize, "the active title above the inactive one");
         verify(heading.font.pixelSize > names[0].font.pixelSize, "the heading above the tile names");
@@ -175,9 +197,9 @@ TestCase {
         compare(tiles[0].columns, 2);
         compare(tiles[0].width, 2 * Tokens.tileUnit + Tokens.spaceS);
         compare(findChild(tiles[0], "title").text, "Rekta Design — docs");
-        compare(findChild(tiles[0], "title").maximumLineCount, 1);
+        compare(findChild(tiles[0], "title").lineCount, 1);
         compare(findChild(tiles[0], "title").color, Tokens.color.textPrimary);
-        compare(findChild(tiles[0], "icon").width, 2 * Geometry.iconSize);
+        compare(findChild(tiles[0], "icon").width, Geometry.iconSize);
     }
 
     function test_without_windows_the_running_section_is_gone() {
@@ -195,15 +217,18 @@ TestCase {
         compare(findChild(tile, "fill").color, Tokens.color.surface);
     }
 
-    function test_a_preview_fills_the_upper_part_above_the_icon_and_title() {
+    function test_a_preview_fills_the_whole_width_down_to_the_foot_without_padding() {
         start.preview = previewComponent;
         openNow();
         const tile = tilesIn("running")[0];
-        const preview = findChild(tile, "preview").item;
-        compare(preview.window.title, "Rekta Design — docs");
-        compare(preview.width, tile.width);
-        compare(preview.y, 0);
-        compare(preview.height, findChild(tile, "label").mapToItem(tile, 0, 0).y - Geometry.tilePadding);
+        const upper = findChild(tile, "upper");
+        const foot = findChild(tile, "foot");
+        compare(Qt.rect(upper.x, upper.y, upper.width, upper.height), Qt.rect(0, 0, tile.width, foot.y));
+        compare(foot.y + foot.height, tile.height, "the foot ends with the tile");
+        const preview = findChild(tile, "preview");
+        compare(preview.item.window.title, "Rekta Design — docs");
+        compare(Qt.rect(preview.x, preview.y, preview.width, preview.height), Qt.rect(0, 0, upper.width, upper.height), "before its first picture it covers the upper part");
+        compare(preview.item.width, preview.width);
     }
 
     // A preview streams its window while it has it, so the stream ends with the Start.
@@ -305,8 +330,195 @@ TestCase {
         compare(findChild(dolphin, "name").text, "dolphin");
         const icon = findChild(dolphin, "icon");
         compare(Qt.point(icon.x, icon.y), Qt.point(Geometry.tilePadding, Geometry.tilePadding));
-        compare(icon.width, 2 * Geometry.iconSize);
+        compare(icon.width, Tokens.tileIcon);
         compare(findChild(dolphin, "name").color, Tokens.color.textPrimary);
+    }
+
+    // The launch tile (tiles.md:141–156; rekta.css:176–187).
+
+    function test_an_app_tile_has_its_icon_at_tile_icon_in_its_padding_and_its_name_at_the_foot_in_xs_semibold() {
+        start.pinned = [Object.assign(fakeApp("dolphin", 1), { icon: largeIcon })];
+        openNow();
+        const tile = tilesIn("pinned")[0];
+        const icon = findChild(tile, "icon");
+        compare(Qt.rect(icon.x, icon.y, icon.width, icon.height), Qt.rect(Geometry.tilePadding, Geometry.tilePadding, Tokens.tileIcon, Tokens.tileIcon));
+        const name = findChild(tile, "name");
+        compare(name.text, "dolphin", "as the app writes it");
+        compare(name.font.pixelSize, Tokens.fontSizeXs);
+        compare(name.font.weight, Tokens.fontWeightSemibold);
+        compare(name.font.letterSpacing, 0, "no kicker's tracking");
+        compare(name.lineHeight, Tokens.fontSizeXs * Tokens.lineHeightCompact);
+        compare(name.color, Tokens.color.textPrimary);
+        compare(name.mapToItem(tile, 0, 0).x, Geometry.tilePadding);
+        compare(name.mapToItem(tile, 0, name.height).y, tile.height - Geometry.tilePadding, "at the foot");
+        compare(findChild(tile, "fill").color, Tokens.color.surface);
+    }
+
+    function test_an_app_tile_two_units_high_has_its_icon_at_tile_icon_large_and_one_unit_high_at_tile_icon() {
+        start.pinned = [Object.assign(fakeApp("kate", 2), { rows: 2, icon: largeIcon }), Object.assign(fakeApp("dolphin", 2), { icon: largeIcon })];
+        openNow();
+        const [kate, dolphin] = tilesIn("pinned").map(tile => findChild(tile, "icon"));
+        compare(Qt.size(kate.width, kate.height), Qt.size(Tokens.tileIconLarge, Tokens.tileIconLarge));
+        compare(Qt.size(dolphin.width, dolphin.height), Qt.size(Tokens.tileIcon, Tokens.tileIcon), "two units wide, one high");
+    }
+
+    function test_an_app_icon_is_asked_of_its_source_at_its_size_and_never_stretched_up() {
+        start.pinned = [Object.assign(fakeApp("kate", 2), { rows: 2, icon: largeIcon }), fakeApp("konsole", 1)];
+        openNow();
+        const [kate, konsole] = tilesIn("pinned").map(tile => findChild(tile, "icon"));
+        const large = findChild(kate, "picture");
+        const small = findChild(konsole, "picture");
+        tryCompare(large, "status", Image.Ready);
+        tryCompare(small, "status", Image.Ready);
+        compare(large.sourceSize, Qt.size(Tokens.tileIconLarge, Tokens.tileIconLarge));
+        compare(Qt.size(large.width, large.height), Qt.size(Tokens.tileIconLarge, Tokens.tileIconLarge), "a larger picture comes down to its size");
+        compare(small.sourceSize, Qt.size(Tokens.tileIcon, Tokens.tileIcon));
+        compare(Qt.size(small.width, small.height), Qt.size(20, 20), "a 20px picture stays 20px");
+        compare(small.mapToItem(konsole, 0, 0), Qt.point((Tokens.tileIcon - 20) / 2, (Tokens.tileIcon - 20) / 2), "in the middle of its place");
+    }
+
+    function test_a_long_app_name_stays_on_one_line_cut_at_its_end() {
+        start.pinned = [fakeApp("Systemeinstellungen und noch viel mehr", 1)];
+        openNow();
+        const tile = tilesIn("pinned")[0];
+        const name = findChild(tile, "name");
+        compare(name.lineCount, 1);
+        compare(name.elide, Text.ElideRight);
+        verify(name.truncated);
+        compare(name.width, tile.width - 2 * Geometry.tilePadding);
+    }
+
+    function countOn(tile: var): string {
+        const count = findChild(tile, "count");
+        return count.visible ? count.text : "";
+    }
+
+    function test_a_pinned_tile_carries_its_apps_count_at_its_top_trailing_corner_and_none_at_zero() {
+        start.pinned = [fakeApp("Konsole", 1), fakeApp("Kate", 2)];
+        start.unseen = { "org.example.Konsole": 4 };
+        openNow();
+        const [konsole, kate] = tilesIn("pinned");
+        compare([countOn(konsole), countOn(kate)], ["4", ""]);
+        const count = findChild(konsole, "count");
+        compare(count.mapToItem(konsole, count.width, 0), Qt.point(konsole.width - Geometry.tilePadding, Geometry.tilePadding));
+        compare(konsole.Accessible.name, "Konsole, 4 ungelesen");
+        compare(kate.Accessible.name, "Kate");
+    }
+
+    function test_an_app_tile_in_alle_apps_carries_its_apps_count() {
+        start.unseen = { "org.example.Konsole": 4 };
+        openOnAllApps(["Kate", "Konsole"]);
+        compare(start.letterTiles().map(tile => [tile.name, countOn(tile)]), [["Kate", ""], ["Konsole", "4"]]);
+    }
+
+    function test_an_app_tile_among_the_hits_carries_its_apps_count_the_best_hit_too() {
+        start.unseen = { "org.example.Konsole": 4, "org.example.Kate": 1 };
+        openWithApps();
+        typeNow("k");
+        const counts = start.hitTiles().reduce((all, tile) => Object.assign(all, {
+                [tile.name]: countOn(tile)
+            }), {});
+        compare(counts, { "Kate": "1", "Konsole": "4", "KWrite": "" });
+        verify(start.hitTiles()[0].best);
+        compare(countOn(start.hitTiles()[0]), counts[start.hitTiles()[0].name]);
+    }
+
+    function test_a_new_count_on_a_tile_in_the_start_peeks_and_under_reduced_motion_stands_at_once() {
+        mouseMove(testCase, testCase.width - 1, testCase.height - 1);
+        start.pinned = [fakeApp("Konsole", 1)];
+        start.unseen = { "org.example.Konsole": 2 };
+        openNow();
+        const tile = tilesIn("pinned")[0];
+        const ghost = findChild(tile, "markedGhost");
+        start.unseen = { "org.example.Konsole": 3 };
+        compare(countOn(tile), "3");
+        verify(ghost.visible, "a number replacing a number peeks");
+        compare(ghost.text, "2");
+        tryCompare(ghost, "visible", false, 3 * Tokens.durationModerate);
+        Prefs.motion = "off";
+        start.unseen = { "org.example.Konsole": 5 };
+        compare(countOn(tile), "5");
+        verify(!ghost.visible, "under reduced motion it stands at once");
+    }
+
+    function test_the_best_hit_carries_enter_and_bester_treffer_after_its_name_cut_short() {
+        start.apps = [searchableApp("Kontrollzentrum für alle Einstellungen des Systems", "Settings", [])];
+        start.unseen = { "org.example.Kontrollzentrum für alle Einstellungen des Systems": 2 };
+        openNow();
+        typeNow("kontroll");
+        const best = start.hitTiles()[0];
+        verify(best.best);
+        const name = findChild(best, "name");
+        const hint = findChild(best, "bestHit");
+        verify(name.truncated, "the name is cut, never the hint");
+        compare(hint.x, name.width + Tokens.spaceS);
+        compare(hint.x + hint.width, best.width - 2 * Geometry.tilePadding);
+        compare(hint.mapToItem(best, 0, hint.height).y, name.mapToItem(best, 0, name.height).y, "in the foot beside the name");
+        compare(best.Accessible.name, "Kontrollzentrum für alle Einstellungen des Systems, 2 ungelesen");
+        compare(best.Accessible.description, "bester treffer");
+    }
+
+    // The preview tile (tiles.md:123–132; rekta.css:132–136).
+
+    function test_a_running_tiles_foot_holds_the_apps_icon_at_20_and_the_title_in_s_on_the_tile_surface_without_a_count() {
+        start.windows = [Object.assign(fakeWindow("Rekta Design — docs, a title longer than the tile", 30), { icon: largeIcon })];
+        openNow();
+        const tile = tilesIn("running")[0];
+        const foot = findChild(tile, "foot");
+        const icon = findChild(tile, "icon");
+        const title = findChild(tile, "title");
+        compare(Qt.size(icon.width, icon.height), Qt.size(Geometry.iconSize, Geometry.iconSize));
+        tryCompare(findChild(icon, "picture"), "status", Image.Ready);
+        compare(findChild(icon, "picture").width, Geometry.iconSize, "a larger picture comes down to 20px");
+        compare(icon.mapToItem(tile, 0, 0).x, Geometry.tilePadding);
+        compare(title.mapToItem(tile, 0, 0).x, Geometry.tilePadding + Geometry.iconSize + Tokens.spaceS);
+        compare(title.mapToItem(tile, title.width, 0).x, tile.width - Geometry.tilePadding);
+        compare(foot.height, 2 * Tokens.spaceS + Math.max(Geometry.iconSize, title.height));
+        fuzzyCompare(icon.y + icon.height / 2, title.y + title.height / 2, 0.5, "both in the middle of the foot, to the pixel");
+        compare(title.font.pixelSize, Tokens.fontSizeS);
+        compare(title.font.weight, Tokens.fontWeightRegular);
+        compare(title.lineHeight, Tokens.fontSizeS * Tokens.lineHeightCompact);
+        compare(title.color, Tokens.color.textPrimary);
+        compare(title.lineCount, 1);
+        verify(title.truncated, "one line, cut at its end");
+        compare(findChild(tile, "count"), null, "the count stands on the app's launch tile");
+        compare(findChild(tile, "fill").color, Tokens.color.surface);
+        compare(tile.Accessible.name, "Rekta Design — docs, a title longer than the tile");
+    }
+
+    function test_the_focus_ring_of_a_running_tile_lies_over_its_preview() {
+        start.preview = previewComponent;
+        openNow();
+        const tile = tilesIn("running")[0];
+        const ring = tile.children.find(item => (item as FocusRing) !== null);
+        verify(ring.z > findChild(tile, "upper").z);
+    }
+
+    // object-fit: cover (rekta.css:134)
+    function test_a_preview_in_other_proportions_than_its_place_fills_it_whole_from_its_middle_and_the_rest_is_cut_off() {
+        start.preview = previewComponent;
+        start.windows = [Object.assign(fakeWindow("wide", 30), {
+                pictureSize: Qt.size(4000, 1000)
+            }), Object.assign(fakeWindow("landscape", 20), {
+                pictureSize: Qt.size(1600, 900)
+            }), Object.assign(fakeWindow("portrait", 10), {
+                pictureSize: Qt.size(900, 1600)
+            })];
+        openNow();
+        for (const tile of tilesIn("running")) {
+            const upper = findChild(tile, "upper");
+            const preview = findChild(tile, "preview");
+            const picture = preview.item.pictureSize;
+            const what = tile.title;
+            compare(preview.item.width, preview.width, what);
+            verify(upper.clip, `${what}: what stands out is cut off`);
+            verify(preview.x <= 0 && preview.y <= 0, `${what}: from the top leading corner`);
+            verify(preview.x + preview.width >= upper.width && preview.y + preview.height >= upper.height, `${what}: to the bottom trailing one`);
+            fuzzyCompare(preview.x + preview.width / 2, upper.width / 2, 0.5, `${what}: in the middle across`);
+            fuzzyCompare(preview.y + preview.height / 2, upper.height / 2, 0.5, `${what}: in the middle down`);
+            fuzzyCompare(preview.width / preview.height, picture.width / picture.height, 0.01, `${what}: in its picture's proportions`);
+            verify(preview.width - upper.width < 1 || preview.height - upper.height < 1, `${what}: no larger than covers it`);
+        }
     }
 
     function test_a_section_scrolls_down_when_its_tiles_are_longer_than_the_screen() {
@@ -1547,14 +1759,43 @@ TestCase {
         }
     }
 
+    // Launch tiles 1 × 1, 2 × 1 and 2 × 2, with and without a count, and preview tiles cut from a tall and a wide window.
+    function sheetStart(backdrop: Item): var {
+        return createTemporaryObject(startComponent, backdrop, {
+            width: backdrop.width,
+            height: backdrop.height,
+            windows: [Object.assign(fakeWindow("konsole: build", 10), {
+                    pictureSize: Qt.size(900, 1600),
+                    icon: largeIcon
+                }), Object.assign(fakeWindow("Rekta Design — docs", 30), {
+                    pictureSize: Qt.size(1600, 900)
+                })],
+            pinned: [Object.assign(fakeApp("Systemeinstellungen", 1), {
+                    icon: largeIcon
+                }), Object.assign(fakeApp("Dolphin", 2), {
+                    icon: largeIcon
+                }), fakeApp("Konsole", 1), Object.assign(fakeApp("Kate", 2), {
+                    rows: 2,
+                    icon: largeIcon
+                }), Object.assign(fakeApp("Elisa", 1), {
+                    icon: largeIcon
+                })],
+            unseen: {
+                "org.example.Systemeinstellungen": 3,
+                "org.example.Kate": 12,
+                "org.example.Elisa": 128
+            },
+            preview: previewComponent
+        });
+    }
+
     function test_contact_sheet() {
         for (const theme of ["light", "dark"]) {
             for (const density of ["compact", "comfortable"]) {
                 Prefs.theme = theme;
                 Prefs.density = density;
                 const backdrop = createTemporaryObject(backdropComponent, testCase);
-                const sheet = createTemporaryObject(startComponent, backdrop);
-                sheet.preview = previewComponent;
+                const sheet = sheetStart(backdrop);
                 Prefs.motion = "off";
                 sheet.open();
                 Prefs.motion = "system";
@@ -1565,6 +1806,26 @@ TestCase {
                 verify(sheet.wanted, `${theme} ${density}`);
             }
         }
+    }
+
+    function test_contact_sheet_of_the_compact_start_at_720_by_1280() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            // The window takes the surface's size, as the grab shows only what the window holds.
+            testCase.width = 720;
+            testCase.height = 1280;
+            const backdrop = createTemporaryObject(backdropComponent, testCase);
+            const sheet = sheetStart(backdrop);
+            Prefs.motion = "off";
+            sheet.open();
+            Prefs.motion = "system";
+            wait(Tokens.durationShort);
+            waitForRendering(backdrop);
+            grabImage(backdrop).save(`start-sheet-${theme}-720x1280.png`);
+            verify(!findChild(sheet, "panorama").sideways, theme);
+        }
+        testCase.width = 1600;
+        testCase.height = 900;
     }
 
     function test_contact_sheet_of_the_search() {
@@ -1591,7 +1852,13 @@ TestCase {
             Prefs.theme = theme;
             const backdrop = createTemporaryObject(backdropComponent, testCase);
             const sheet = createTemporaryObject(startComponent, backdrop);
-            sheet.apps = searchableApps();
+            sheet.apps = searchableApps().map(app => app.name === "Konsole" ? Object.assign(app, {
+                    icon: largeIcon
+                }) : app);
+            sheet.unseen = {
+                "org.example.Kate": 2,
+                "org.example.KWrite": 14
+            };
             Prefs.motion = "off";
             sheet.open();
             keyClick("k");

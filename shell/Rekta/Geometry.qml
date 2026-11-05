@@ -77,7 +77,8 @@ QtObject {
     readonly property real pendingLineBelow: 6
     // `.rk-btn--icon > svg { width: 20px; height: 20px }` (rekta.css:350)
     readonly property real buttonGlyph: 20
-    // `.rk-tile { padding: 12px }` (rekta.css:91)
+    // `.rk-tile { padding: 12px }` (rekta.css:91); a preview tile's foot, `.rk-tile-foot { padding: var(--rk-space-s) 12px }`
+    // (rekta.css:135)
     readonly property real tilePadding: 12
     // `.rk-tile-word { top: 10px; right: 12px }` (rekta.css:108)
     readonly property real tileWordTop: 10
@@ -87,6 +88,8 @@ QtObject {
     readonly property real pressSlopTouch: 8
     // `.rk-stat b { line-height: 1 }` (rekta.css:109)
     readonly property real statLineHeight: 1
+    // `.rk-launch-count { line-height: 1 }` (rekta.css:181)
+    readonly property real launchCountLineHeight: 1
     // `.rk-tile-msg { line-clamp: 4 }`, `.rk-w2 > .rk-tile-msg { line-clamp: 6 }` (rekta.css:122, :125)
     readonly property int tileMessageLines: 4
     readonly property int tileMessageLinesWide: 6
@@ -179,9 +182,6 @@ QtObject {
 
     // `.rk-icon { width: 20px; height: 20px }` (rekta.css:580)
     readonly property real iconSize: 20
-    // ponytail: an app's own icon on a Start tile is twice the icon grid, as the Start chose before Rekta had a launch
-    // tile; 0.6.0 draws it at tile-icon, tile-icon-large on a tile two units high (tiles.md:141–151).
-    readonly property real appIconSize: 2 * iconSize
     // `.rk-toast { max-width: 32rem }` sideways (rekta.css:1418)
     readonly property real toastMaxWidth: 512
     // A toast rises 12px from the app bar, compact: `.rk-toasts { --_rk-from: 12px }` (rekta.css:1407) in `@keyframes

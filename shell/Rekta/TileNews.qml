@@ -1,15 +1,17 @@
 import QtQuick
 
 // Live tile news (motion.md, "Live tile news"; rekta.js tileUpdate(), :4181–4215), over duration-moderate. A peek, for a
-// new number: the stat as it was leaves upwards over 0.6 × that while the new one rises from below over 0.8 ×, after
-// 0.2 ×. A flip, for a new status: the tile turns away around its horizontal axis over the first half, changes, and
+// new number: the part that peeks as it was leaves upwards over 0.6 × that while the new one rises from below over 0.8 ×,
+// after 0.2 ×. A flip, for a new status: the tile turns away around its horizontal axis over the first half, changes, and
 // turns back. A continuous reading is no news and changes in place. While held, news waits, and comes in one step when
 // the tile is let go (live.md, "Holding still").
 Item {
     id: news
 
-    // The tile's content; its first visible stat is what a peek moves.
+    // The tile's content; its first visible stat is what a peek moves, unless the tile marks a part.
     required property Item content
+    // The part the tile marks to peek (rekta.js:4200), a count.
+    property TextRole marked: null
     property bool held: false
     readonly property bool peeking: peek.target !== null
     // How far the flip has turned the tile around its horizontal axis, in degrees (as CSS rotateX).
@@ -59,22 +61,43 @@ Item {
         return null;
     }
 
+    // What a part says, to tell whether the news changed it.
+    function said(part: Item): string {
+        const stat = part as Stat;
+        return stat ? `${stat.value}\n${stat.label}` : (part as TextRole).text;
+    }
+
+    // The part as it was, to leave in its place.
+    function copy(part: Item) {
+        const stat = part as Stat;
+        if (stat) {
+            ghost.value = stat.value;
+            ghost.label = stat.label;
+            ghost.placeWidth = stat.placeWidth;
+            ghost.width = stat.width;
+            return;
+        }
+        markedGhost.text = marked.text;
+        markedGhost.font = marked.font;
+        markedGhost.color = marked.color;
+        markedGhost.lineHeightFactor = marked.lineHeightFactor;
+        markedGhost.width = marked.width;
+    }
+
     function startPeek(change: var) {
-        const stat = firstStat();
-        if (!stat) {
+        const part = marked ?? firstStat();
+        if (!part) {
             change();
             return;
         }
-        ghost.value = stat.value;
-        ghost.label = stat.label;
-        ghost.placeWidth = stat.placeWidth;
-        ghost.width = stat.width;
-        peek.at = stat.mapToItem(news, 0, 0);
+        const was = said(part);
+        copy(part);
+        peek.at = part.mapToItem(news, 0, 0);
         change();
-        // A stat that is gone after the change has no new number to bring in.
-        if (!stat.visible || (stat.value === ghost.value && stat.label === ghost.label))
+        // A part that is gone after the change has no new number to bring in.
+        if (!part.visible || said(part) === was)
             return;
-        peek.target = stat;
+        peek.target = part;
         peekRun.restart();
     }
 
@@ -106,8 +129,9 @@ Item {
         id: peek
 
         objectName: "peek"
-        property Stat target: null
-        // Where the stat stands in the tile.
+        property Item target: null
+        readonly property bool ofStat: (target as Stat) !== null
+        // Where the part stands in the tile.
         property point at
         // 0 to 1 over duration-moderate, linear; each part eases its own share of it.
         property real phase: 1
@@ -127,12 +151,12 @@ Item {
         onFinished: peek.target = null
     }
 
-    // The stat as it was, where it was, leaving through the tile's edge.
+    // The stat or the marked part as it was, where it was, leaving through the tile's edge.
     Stat {
         id: ghost
 
         objectName: "ghost"
-        visible: news.peeking
+        visible: news.peeking && peek.ofStat
         x: peek.at.x
         y: peek.at.y
         opacity: 1 - peek.leaving
@@ -142,7 +166,21 @@ Item {
         }
     }
 
-    // The new stat, drawn in its place while it rises; the stat itself stays where its column puts it.
+    TextRole {
+        id: markedGhost
+
+        objectName: "markedGhost"
+        visible: news.peeking && !peek.ofStat
+        x: peek.at.x
+        y: peek.at.y
+        opacity: 1 - peek.leaving
+        Accessible.ignored: true
+        transform: Translate {
+            y: -Tokens.peekTravel * markedGhost.height * peek.leaving
+        }
+    }
+
+    // The new one, drawn in its place while it rises; the part itself stays where its tile puts it.
     ShaderEffectSource {
         objectName: "incoming"
         visible: news.peeking

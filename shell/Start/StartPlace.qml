@@ -934,7 +934,6 @@ FocusScope {
                                 icon: modelData.icon
                                 // Its preview streams only while the Start shows, from its opening until it has gone.
                                 window: start.shown ? modelData : null
-                                unseen: start.unseen[modelData.appId] ?? 0
                                 preview: start.preview
                                 onActivated: start.press(runningTile, () => runningTile.modelData.activate())
                             }
@@ -1116,6 +1115,7 @@ FocusScope {
 
                                 name: modelData.name
                                 icon: modelData.icon
+                                unseen: start.unseen[modelData.id] ?? 0
                                 onActivated: start.press(letterTile, () => letterTile.modelData.launch())
                             }
                         }
@@ -1232,6 +1232,7 @@ FocusScope {
 
                         name: label
                         icon: image
+                        unseen: start.unseen[appId] ?? 0
                         best: index === 0
                         columns: best ? 2 : 1
                         onActivated: start.press(hitTile, () => start.launchApp(hitTile.appId))

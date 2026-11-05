@@ -211,6 +211,8 @@ PanelWindow {
         property var window
         // KWin's PipeWire node for this window, 0 until it streams.
         readonly property int node: request.nodeId
+        // The size of the window's picture, 0 × 0 until its first frame; the tile crops it to fill.
+        readonly property size pictureSize: stream.streamSize
 
         TaskManager.ScreencastingRequest {
             id: request
@@ -222,6 +224,8 @@ PanelWindow {
         // Visible before its first frame: kpipewire streams only into a visible item, and until a frame comes it draws
         // nothing, so the tile's surface shows.
         PipeWire.PipeWireSourceItem {
+            id: stream
+
             anchors.fill: parent
             nodeId: request.nodeId
         }

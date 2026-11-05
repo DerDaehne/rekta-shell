@@ -1,10 +1,10 @@
 import QtQuick
 import Rekta
 
-// An app in the Start, pinned or found by a search: its icon top left, its name along the bottom, neutral; a press
-// starts it. It follows the shell's decision for the Start (an icon top left in every size). The best hit of a search
-// is wide and says which key starts it (navigation.md, "a command shows its key").
-// ponytail: this tile is the shell's own from before Rekta had one; 0.6.0 has the launch tile (tiles.md:141–163).
+// An app in the Start, pinned, in "alle apps" or found by a search, as Rekta's launch tile (tiles.md:141–156;
+// rekta.css:176–187): its icon at the top leading corner, the count of its unseen notifications at the top trailing one,
+// its name at the foot. It stays neutral, as a count is no status; a press starts the app. The best hit of a search is
+// wide and says which key starts it (navigation.md, "a command shows its key").
 Tile {
     id: tile
 
@@ -15,49 +15,63 @@ Tile {
     property bool best: false
     // How many unseen notifications the app has.
     property int unseen: 0
+    // The count the tile shows, which follows `unseen` through the tile's news.
+    property int shown: 0
 
     opens: true
-    Accessible.name: name
-    Accessible.description: best ? "bester treffer" : (count.showing ? count.shown + " ungelesen" : "")
+    peekPart: count
+    // The name is read first, then the count (tiles.md:154–156).
+    Accessible.name: shown > 0 ? `${name}, ${shown} ungelesen` : name
+    Accessible.description: best ? "bester treffer" : ""
     held: hovered || activeFocus
 
-    UnseenStat {
-        id: count
+    // Only a number replacing a number peeks; one that comes or goes has no old or new number to move, and ends a peek
+    // still running. The first count is no news.
+    onUnseenChanged: news(unseen > 0 && shown > 0 ? "peek" : "", () => tile.shown = tile.unseen)
+    Component.onCompleted: shown = unseen
 
-        owner: tile
-        app: tile.name
-        count: tile.unseen
-    }
-
-    Image {
+    // About a third of the tile's height, at its padding (tiles.md:147–150; rekta.css:179–180).
+    PictureIcon {
         objectName: "icon"
         parent: tile
         x: Geometry.tilePadding
         y: Geometry.tilePadding
-        width: Geometry.appIconSize
-        height: Geometry.appIconSize
-        sourceSize: Qt.size(width, height)
+        width: tile.rows > 1 ? Tokens.tileIconLarge : Tokens.tileIcon
+        height: width
         source: tile.icon
+    }
+
+    // None at zero (tiles.md:143–144; rekta.css:181).
+    Body {
+        id: count
+
+        objectName: "count"
+        parent: tile
+        x: tile.width - Geometry.tilePadding - width
+        y: Geometry.tilePadding
+        visible: tile.shown > 0
+        text: String(tile.shown)
+        font.pixelSize: Tokens.fontSizeM
+        font.weight: Tokens.fontWeightMedium
+        font.features: ({ "tnum": 1 })
+        lineHeightFactor: Geometry.launchCountLineHeight
+        wrapMode: Text.NoWrap
     }
 
     Item {
         width: parent.width
         height: nameText.height
-        visible: !count.showing
 
-        // A kicker names a tile (tiles.md, "Message"), in a tile's line height (rekta.css:94); one line, cut at its end.
-        // Size s instead of the kicker's xs (rekta.css:52): the Start is larger than a compact panorama.
-        Kicker {
+        // As the app writes it, in the tile's type and semibold (rekta.css:94, :187); one line, cut at its end.
+        Body {
             id: nameText
 
             objectName: "name"
-            font.pixelSize: Tokens.fontSizeS
-            font.letterSpacing: Geometry.kickerLetterSpacing * Tokens.fontSizeS
             width: Math.min(implicitWidth, parent.width - (tile.best ? hint.width + Tokens.spaceS : 0))
             text: tile.name
-            color: Tokens.color.textPrimary
+            font.pixelSize: Tokens.fontSizeXs
+            font.weight: Tokens.fontWeightSemibold
             lineHeightFactor: Tokens.lineHeightCompact
-            maximumLineCount: 1
             wrapMode: Text.NoWrap
             elide: Text.ElideRight
         }
