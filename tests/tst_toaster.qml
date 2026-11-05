@@ -964,15 +964,20 @@ TestCase {
             compare(gliding.duration, 150, `${end}: 0.6 × duration-short`);
             gliding.pause();
             compare(toast.down, 0, `${end}: from its place`);
-            for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
-                toast.down = gliding.easing.valueForProgress(progress);
-                fuzzyCompare(toast.y, restingY(toast) + easeOut.valueForProgress(progress) * edgeTravel(toast), 0.001, `${end} at ${progress}`);
-                compare(toast.opacity, 1, `${end} at ${progress}: no fade`);
-            }
-            verify(toast.y >= region.height + Tokens.appbarHeight, `${end}: it ends below the bar, wholly out of sight`);
-            gliding.resume();
-            tryCompare(region, "leaving", 0, 1000, end);
+            compare(toast.y, restingY(toast), end);
+            for (const progress of [0.25, 0.5, 0.75])
+                fuzzyCompare(gliding.easing.valueForProgress(progress), easeOut.valueForProgress(progress), 0.001, `${end}: ease-out at ${progress}`);
+            gliding.complete();
+            checkGoneBehindTheBar(toast, end);
+            compare(region.leaving, 0, end);
         }
+    }
+
+    // A notification's toast at the end of its way down: its whole travel below its place, still without a fade.
+    function checkGoneBehindTheBar(toast: Toast, label: string) {
+        compare(toast.down, 1, `${label}: all the way down`);
+        fuzzyCompare(toast.y, restingY(toast) + edgeTravel(toast), 0.001, `${label}: wholly below the bar`);
+        compare(toast.opacity, 1, `${label}: no fade`);
     }
 
     function test_a_notification_s_toast_replaced_while_it_comes_in_goes_back_down_from_where_it_had_got_to() {
@@ -987,8 +992,9 @@ TestCase {
         verify(gliding.running);
         gliding.pause();
         fuzzyCompare(first.y, halfway, 0.001, "it does not jump");
-        gliding.resume();
-        tryCompare(region, "leaving", 0, 1000);
+        gliding.complete();
+        checkGoneBehindTheBar(first, "replaced");
+        compare(region.leaving, 0);
     }
 
     function test_a_notification_s_toast_comes_in_at_once_when_its_count_is_not_in_sight() {

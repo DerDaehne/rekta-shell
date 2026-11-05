@@ -66,8 +66,8 @@ FocusScope {
     property real phase: 0
     readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
     readonly property real entry: easeIn.valueForProgress(phase)
-    // A notification came from outside: its toast travels whole from behind the bar and back, without a fade, and the
-    // surface's edge at the bar cuts it there (rekta.css:1197–1203, :1407).
+    // A notification came from outside: its toast travels whole from the bottom edge and back, without a fade
+    // (rekta.css:1197–1203, :1407). The host's surface ends at the bar, which hides it behind the bar.
     readonly property real travel: notification ? height + Tokens.appbarHeight + Tokens.spaceS : Geometry.toastRise
     // A notification's way down, from 0 at rest to 1 out of sight.
     property real down: 0

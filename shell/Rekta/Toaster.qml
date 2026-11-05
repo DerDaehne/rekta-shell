@@ -12,11 +12,13 @@ import QtQuick
 // A notification's toast comes from its count: the count gives way (`countAway`), the toast comes in once the count is
 // turn-overlap through its way out, and the count comes back once the toast is turn-overlap through its way down, unless
 // another notification's toast comes next (motion.md:14, the place change's hand-over; rekta.js:594). It came from
-// another program, so it glides whole from behind the bar and back without a fade, as Rekta's compact one does
-// (states.md:84–88; motion.md:36; rekta.css:1197–1203, :1407); a toast of the product's own rises 12px with a fade.
-// A deliberate deviation: sideways Rekta hangs toasts from the top centre (rekta.css:1158, :1417), a notification's
-// from the top edge. Here every toast comes from the bar, as a compact one does, so that a notification comes from the
-// control that counts it.
+// another program, so it glides whole from the bottom edge and back without a fade (states.md:84–88; motion.md:36;
+// rekta.css:1197–1203, :1407); a toast of the product's own rises 12px with a fade.
+// Deliberate deviations: sideways Rekta hangs toasts from the top centre (rekta.css:1158, :1417), a notification's from
+// the top edge; here every toast comes from the bar, as a compact one does, so that a notification comes from the
+// control that counts it. Rekta's toast layer lies above the app bar (states.md:225–227), so its notification glides
+// over the bar; here the toasts' surface ends at the bar's top edge, and a notification comes from behind the bar.
+// A toast that has to leave while it still comes in goes from where it stands, where Rekta's jumps to its place first.
 Item {
     id: toaster
 
