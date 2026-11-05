@@ -268,6 +268,32 @@ TestCase {
         compare(findChild(part("nowPlaying"), "kicker").text, "läuft gerade · Elisa");
     }
 
+    // Quickshell lists a player only once it has read its state, so one that comes playing never changes isPlaying.
+    function test_a_player_that_comes_already_playing_is_chosen_over_a_paused_one_that_started_before() {
+        const elisa = givePlayer();
+        side.show(0);
+        elisa.playbackState = NowPlaying.Paused;
+        elisa.playbackState = NowPlaying.Playing;
+        elisa.playbackState = NowPlaying.Paused;
+        controls.players = [elisa, player({ identity: "Firefox", trackTitle: "A talk" })];
+        compare(part("player").currentText, "Firefox", "the one that started playing last");
+        compare(part("title").text, "A talk");
+    }
+
+    function test_a_player_that_comes_already_playing_is_chosen_over_one_that_plays_since_before() {
+        const elisa = givePlayer();
+        side.show(0);
+        elisa.playbackState = NowPlaying.Paused;
+        elisa.playbackState = NowPlaying.Playing;
+        controls.players = [elisa, player({ identity: "Firefox", trackTitle: "A talk" })];
+        compare(part("player").currentText, "Firefox", "the one that started playing last");
+        controls.players = [...controls.players];
+        compare(part("player").currentText, "Firefox", "a change of the list keeps it");
+        elisa.playbackState = NowPlaying.Paused;
+        elisa.playbackState = NowPlaying.Playing;
+        compare(part("player").currentText, "Elisa", "until another starts");
+    }
+
     function test_the_progress_glides_on_between_the_players_reports_without_jumps() {
         givePlayer({ position: 10 });
         showSettled();
@@ -330,6 +356,18 @@ TestCase {
         const from = region.played;
         wait(200);
         verify(region.played - from > 0.3, `twice the rate: ${region.played - from}`);
+    }
+
+    function test_a_length_that_comes_after_the_position_lets_the_progress_glide_to_it() {
+        const one = givePlayer({ position: 10, lengthSupported: false, length: 0 });
+        showSettled();
+        const gliding = findChild(part("nowPlaying"), "gliding");
+        verify(!gliding.running, "no length, nothing to glide to");
+        one.length = 243;
+        one.lengthSupported = true;
+        verify(part("progress").visible);
+        verify(gliding.running, "it glides once the length is known");
+        compare(gliding.to, 243);
     }
 
     function test_a_stream_without_a_length_shows_no_progress() {

@@ -26,6 +26,8 @@ Column {
     property var players: []
     // The player that started playing last, or the one picked since.
     property var latest: null
+    // The players as they were before their last change, to tell one that has just come.
+    property var known: []
     readonly property var present: players.filter(player => player.isPlaying || (player.playbackState === NowPlaying.Paused && player.trackTitle !== ""))
     readonly property var player: present.includes(latest) ? latest : present.find(player => player.isPlaying) ?? present[0] ?? null
     readonly property real length: player?.lengthSupported ? player.length : 0
@@ -50,6 +52,15 @@ Column {
     bottomPadding: Tokens.spaceL
     onPlayerChanged: follow()
     onVisibleChanged: follow()
+    onLengthChanged: follow()
+    // Quickshell lists a player only once it has read its state, so one that comes playing never changes isPlaying:
+    // its coming is its start.
+    onPlayersChanged: {
+        const newcomer = players.find(player => player.isPlaying && !known.includes(player));
+        known = players;
+        if (newcomer)
+            latest = newcomer;
+    }
 
     NumberAnimation {
         id: gliding
@@ -84,10 +95,6 @@ Column {
         }
 
         function onIsPlayingChanged() {
-            nowPlaying.follow();
-        }
-
-        function onLengthChanged() {
             nowPlaying.follow();
         }
 
