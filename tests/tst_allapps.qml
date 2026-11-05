@@ -670,6 +670,53 @@ TestCase {
         compare(strip.titles[strip.currentIndex], "z");
     }
 
+    // A change of class
+
+    // The Start and its window resized one size after another; after each every app has one tile, in the app model's
+    // order, the strip names the sections, and their tiles are a unit wide sideways and stretched compact.
+    function resizeThrough(sizes: var) {
+        const panorama = named("appsPanorama");
+        for (const size of sizes) {
+            const label = `${size.width} × ${size.height}`;
+            testCase.width = size.width;
+            testCase.height = size.height;
+            start.width = size.width;
+            start.height = size.height;
+            wait(0);
+            compare(panorama.sideways, Prefs.sizeClass(size.width, size.height) === "sideways", label);
+            compare(start.letterTiles().map(tile => tile.name), desktopApps, label);
+            compare(named("appsStrip").titles, sections().map(section => section.title), label);
+            sections().forEach(section => verifyTilesFit(section, label));
+        }
+    }
+
+    function verifyTilesFit(section: var, label: string) {
+        const grid = findChild(section, "grid");
+        const sideways = named("appsPanorama").sideways;
+        compare(grid.stretched, !sideways, label);
+        compare(grid.across, sideways ? section.part.units : Math.max(2, Math.floor((grid.width + Tokens.spaceS) / unit(1))), `${label}, ${section.title}`);
+        const cell = sideways ? Tokens.tileUnit : (grid.width - (grid.across - 1) * Tokens.spaceS) / grid.across;
+        for (const tile of section.tiles()) {
+            fuzzyCompare(tile.width, cell, 0.01, `${label}, ${tile.name}`);
+            verify(tile.x + tile.width <= grid.width + 0.5, `${label}: ${tile.name} inside its grid`);
+        }
+    }
+
+    function test_alle_apps_open_compact_turning_sideways_over_the_width_and_back_files_every_app_once() {
+        openOnAllApps(desktopApps, 720, 1280);
+        resizeThrough([Qt.size(1600, 900), Qt.size(720, 1280), Qt.size(760, 1280), Qt.size(759, 1280), Qt.size(761, 1280), Qt.size(740, 1280)]);
+    }
+
+    function test_alle_apps_open_compact_turning_sideways_over_the_height_and_back_files_every_app_once() {
+        openOnAllApps(desktopApps, 1600, 480);
+        resizeThrough([Qt.size(1600, 481), Qt.size(1600, 480), Qt.size(1600, 900), Qt.size(1600, 470), Qt.size(1600, 490)]);
+    }
+
+    function test_alle_apps_open_sideways_turning_compact_and_back_files_every_app_once() {
+        openOnAllApps(desktopApps, 1920, 1080);
+        resizeThrough([Qt.size(720, 1280), Qt.size(1920, 1080), Qt.size(1600, 480), Qt.size(1600, 900), Qt.size(759, 1080), Qt.size(2560, 1440)]);
+    }
+
     // Contact sheets
 
     function test_contact_sheets_of_alle_apps_in_both_themes_at_four_sizes() {

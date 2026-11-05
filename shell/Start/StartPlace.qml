@@ -844,7 +844,7 @@ FocusScope {
         }
 
         // The place's strip along the top. Its titles are larger than Rekta's, the inactive one at the title size
-        // (rekta.css:52), also compact where Rekta takes the facet sizes (rekta.css:1141–1142): both titles stay above
+        // (rekta.css:53), also compact where Rekta takes the facet sizes (rekta.css:1141–1142): both titles stay above
         // the section headings.
         Pivot {
             id: pivot

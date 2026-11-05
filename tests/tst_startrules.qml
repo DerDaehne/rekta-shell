@@ -272,11 +272,12 @@ TestCase {
         compare(Rules.letterSections(["K3b", ...kde.slice(1), "KÖnig"], 4).map(part => part.title), ["kb–km", "ko–ko"], "letters only, lower case, accents dropped");
     }
 
-    function test_stacked_every_initial_is_one_section_and_none_splits() {
+    function test_stacked_every_initial_is_one_section_one_unit_wide_and_none_splits() {
         const sections = Rules.letterSections(names("k", 60), Infinity);
         compare(sections.length, 1);
         compare(sections[0].title, "k");
         compare(sections[0].count, 60);
+        compare(sections[0].units, 1, "one column holds them all");
     }
 
     function test_running_windows_come_most_recently_active_first_then_topmost_first() {

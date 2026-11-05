@@ -6,17 +6,18 @@ import QtQuick
 // width: as many tile-unit columns as fit, at least two, each stretched to fill the row, rows a tile unit high.
 // ponytail: a compact row stays a tile unit high, where Rekta's grows with content taller than that (minmax(tile-unit,
 // auto)), and a tile three or four units wide would take a whole compact row (rekta.css:170–172); no tile here has
-// either. The product keeps one tile-unit for every width, ultrawide included.
+// either; add them once a tile's content outgrows a unit or a tile spans three units. The product keeps one tile-unit
+// for every width, ultrawide included.
 Item {
     id: grid
 
-    // The columns sideways.
+    // The columns sideways. The tiles take at least one: in none a tile would look for a place forever.
     property int columns: 4
     property real placeWidth: Window.width
     property real viewportHeight: Window.height
     readonly property bool stretched: Prefs.sizeClass(placeWidth, viewportHeight) === "compact"
     // repeat(auto-fill, minmax(min(tile-unit, (100% - gap) / 2), 1fr)) (rekta.css:86)
-    readonly property int across: stretched ? Math.max(2, Math.floor((width + Tokens.spaceS) / (Tokens.tileUnit + Tokens.spaceS))) : columns
+    readonly property int across: stretched ? Math.max(2, Math.floor((width + Tokens.spaceS) / (Tokens.tileUnit + Tokens.spaceS))) : Math.max(1, columns)
     readonly property real cellWidth: stretched ? Math.max(0, (width - (across - 1) * Tokens.spaceS) / across) : Tokens.tileUnit
     // Where each visible tile sits, in cells: [{tile, column, row}], in the order of the children.
     readonly property var placed: pack()

@@ -119,6 +119,31 @@ TestCase {
         compare(findChild(grid, "wide").width, 2 * Tokens.tileUnit + Tokens.spaceS);
     }
 
+    function test_sideways_a_grid_without_columns_sets_its_tiles_in_one_column() {
+        for (const columns of [0, -2]) {
+            grid.columns = columns;
+            compare(grid.across, 1, `${columns} columns`);
+            compare(cellOf("wide"), Qt.point(0, 0), "wider than the grid, it still takes the first column");
+            compare(cellOf("tall"), Qt.point(0, 1));
+            compare(cellOf("small3"), Qt.point(0, 5));
+            compare(grid.rows, 6);
+        }
+    }
+
+    function test_a_compact_grid_without_columns_turning_sideways_sets_its_tiles_in_one_column() {
+        grid = createTemporaryObject(compactComponent, testCase, {
+            width: 600,
+            columns: 0
+        });
+        compare(grid.across, 3);
+        grid.placeWidth = 1600;
+        verify(!grid.stretched);
+        compare(grid.across, 1);
+        compare(cellOf("big"), Qt.point(0, 2));
+        compare(cellOf("small2"), Qt.point(0, 4));
+        compare(findChild(grid, "small2").width, Tokens.tileUnit);
+    }
+
     // Compact
 
     function test_compact_a_grid_has_as_many_tile_unit_columns_as_fit_its_width_stretched_to_fill_it() {
