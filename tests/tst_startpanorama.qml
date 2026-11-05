@@ -650,7 +650,8 @@ TestCase {
         compare(named("pivot").x, Tokens.spaceM);
         compare(named("sectionStrip").x, Tokens.spaceM);
         verify(line.visible);
-        compare(Qt.rect(line.x, line.y + line.height, line.width, line.height), Qt.rect(0, named("panorama").y, 720, Geometry.hairline));
+        compare(line.y, named("sectionStrip").y + named("sectionStrip").height, "under the strip");
+        compare(Qt.rect(line.x, line.y + line.height, line.width, line.height), Qt.rect(0, named("panorama").y, 720, Geometry.hairline), "the sections below it");
         start.width = 1600;
         start.height = 900;
         verify(named("panorama").sideways);

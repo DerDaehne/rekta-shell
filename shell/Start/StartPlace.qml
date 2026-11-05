@@ -887,7 +887,7 @@ FocusScope {
                 id: panorama
 
                 objectName: "panorama"
-                y: strip.y + strip.height
+                y: strip.y + strip.height + (panorama.sideways ? 0 : Geometry.hairline)
                 width: parent.width
                 height: parent.height - y
                 placeWidth: start.width
@@ -986,7 +986,7 @@ FocusScope {
             // Compact the strip stays above the stacked sections with a hairline under it (rekta.css:1134–1140).
             Hairline {
                 objectName: "stripLine"
-                y: panorama.y - height
+                y: strip.y + strip.height
                 visible: !panorama.sideways
             }
         }
@@ -1024,7 +1024,7 @@ FocusScope {
                 id: appsPanorama
 
                 objectName: "appsPanorama"
-                y: appsStrip.y + appsStrip.height
+                y: appsStrip.y + appsStrip.height + (appsPanorama.sideways ? 0 : Geometry.hairline)
                 width: parent.width
                 height: parent.height - y
                 placeWidth: start.width
@@ -1039,7 +1039,7 @@ FocusScope {
 
             Hairline {
                 objectName: "appsStripLine"
-                y: appsPanorama.y - height
+                y: appsStrip.y + appsStrip.height
                 visible: !appsPanorama.sideways
             }
 

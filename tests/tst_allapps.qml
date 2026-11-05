@@ -640,6 +640,8 @@ TestCase {
         compare(k.tiles()[across - 1].x + k.tiles()[across - 1].width, k.width, "stretched to fill the row");
         compare(named("appsStrip").x, Tokens.spaceM, "the strip as far in as the sections");
         verify(named("appsStripLine").visible, "a hairline under it");
+        compare(named("appsStripLine").y, named("appsStrip").y + named("appsStrip").height);
+        compare(panorama.y, named("appsStripLine").y + Geometry.hairline, "the sections below the hairline");
         verify(!panorama.handleWheel(wheelEvent(120), 0), "the wheel is left alone");
         compare(pastEndSpy.count, 0);
         compare(panorama.scroller.contentX, 0);
