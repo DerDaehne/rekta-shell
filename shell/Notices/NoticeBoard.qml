@@ -94,11 +94,18 @@ QtObject {
         notification.bodyChanged.connect(() => refresh(record));
         if (listed(notification))
             rows = [record, ...rows];
-        // Carried over a reload of the shell, it toasted before; a low one never has a toast.
-        if (notification.lastGeneration || notification.urgency === NoticeBoard.Low)
-            return;
-        waiting = [...waiting, record];
-        next();
+        if (toasts(notification)) {
+            waiting = [...waiting, record];
+            next();
+        } else if (!listed(notification)) {
+            // Neither toast nor row: nobody sees it.
+            notification.expire();
+        }
+    }
+
+    // Carried over a reload of the shell, it toasted before; a low one never has a toast.
+    function toasts(notification: var): bool {
+        return !notification.lastGeneration && notification.urgency !== NoticeBoard.Low;
     }
 
     function holdStorage(notification: var) {

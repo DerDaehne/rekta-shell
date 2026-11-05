@@ -325,6 +325,13 @@ TestCase {
         compare(board.unseen, 0);
     }
 
+    function test_a_low_transient_notification_has_neither_toast_nor_row_and_expires_at_once() {
+        notify({ summary: "lt", urgency: NoticeBoard.Low, transient: true });
+        compare(toaster.open, null);
+        compare(board.rows.length, 0);
+        compare(calls, ["lt closed 1"]);
+    }
+
     function test_a_low_notification_shows_no_toast_and_no_sound_and_stands_open_at_the_top_of_the_list() {
         notify({ summary: "anna" });
         const low = notify({ summary: "update ready", urgency: NoticeBoard.Low }, [["default", "open"], ["install", "install"]]);
@@ -456,6 +463,13 @@ TestCase {
         compare(toaster.open, null);
         compare(rowNames(), ["anna"]);
         compare(board.unseen, 0);
+    }
+
+    function test_a_transient_notification_carried_over_a_reload_has_neither_toast_nor_row_and_expires_at_once() {
+        notify({ summary: "carried", transient: true, lastGeneration: true });
+        compare(toaster.open, null);
+        compare(board.rows.length, 0);
+        compare(calls, ["carried closed 1"]);
     }
 
     function test_the_count_shows_only_unseen_ones_and_seeing_the_list_sets_it_to_zero() {
