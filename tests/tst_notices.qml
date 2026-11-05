@@ -31,10 +31,12 @@ TestCase {
     Component {
         id: sceneComponent
 
+        // A host: it routes the keys nobody took to the key layers, as the shell does from its root.
         Rectangle {
             width: 900
             height: 640
             color: Tokens.color.bg
+            Keys.onPressed: event => KeyLayers.dispatch(event, Window.activeFocusItem)
 
             Toaster {
                 id: region
@@ -144,14 +146,13 @@ TestCase {
         return board.rows.map(row => row.summary);
     }
 
-    function test_one_toast_shows_at_a_time_and_the_next_comes_once_the_one_before_has_gone() {
+    function test_a_notification_s_toast_takes_the_place_of_the_open_one_at_once_and_none_follows_once_it_has_gone() {
         notify({ summary: "anna", body: "lunch?" });
         notify({ summary: "ben", body: "call me" });
-        compare(shownTitles(), "anna: lunch?");
-        runOut();
         compare(shownTitles(), "ben: call me");
         runOut();
-        compare(toaster.open, null);
+        compare(toaster.open, null, "anna's does not come back");
+        compare(rowNames(), ["ben", "anna"]);
     }
 
     function test_a_notification_s_toast_rises_from_its_count_and_the_undo_toast_of_a_removal_does_not() {
@@ -162,71 +163,92 @@ TestCase {
         verify(!toaster.open.notification, "the count stays for the shell's own toast");
     }
 
-    function test_a_toast_waits_while_the_one_before_slides_away() {
+    function test_a_toast_that_takes_the_place_of_another_comes_in_once_that_one_has_slid_away() {
         Prefs.motion = "on";
         notify({ summary: "anna" });
         const first = toaster.open;
-        notify({ summary: "ben" });
-        compare(toaster.open, first, "the second waits in the queue, not in the toaster");
         tryCompare(first, "entry", 1, 1000);
-        runOut();
-        verify(toaster.open.waiting, "it comes once the first has gone");
-        compare(toaster.open.title, "ben");
+        notify({ summary: "ben" });
+        compare(toaster.open.title, "ben", "it takes the place at once");
+        verify(first.done, "anna's goes");
+        verify(toaster.open.waiting, "ben's comes in once anna's has gone");
         tryVerify(() => !toaster.open.waiting, 1000);
     }
 
-    function test_the_count_stays_away_when_the_app_closes_a_notification_whose_toast_waits_and_another_waits_behind_it() {
+    function test_the_count_stays_away_when_a_notification_takes_the_place_of_one_whose_toast_waits_for_it() {
         Prefs.motion = "on";
         toaster.countInSight = true;
-        const anna = notify({ summary: "anna" });
-        notify({ summary: "ben" });
+        notify({ summary: "anna" });
         verify(toaster.open.waiting, "anna's toast waits for the count");
         const flips = createTemporaryObject(spyComponent, testCase, { target: toaster, signalName: "countAwayChanged" });
-        anna.close(NoticeBoard.CloseRequested);
+        notify({ summary: "ben" });
         compare(toaster.open.title, "ben");
         compare(flips.count, 0, "the count never came back between them");
         verify(toaster.countAway);
     }
 
-    function test_the_count_waits_for_the_way_down_of_a_toast_that_ran_out_when_the_app_closes_the_next_while_it_waits() {
+    function test_the_count_waits_for_the_way_down_of_a_replaced_toast_when_the_app_closes_the_one_that_took_its_place() {
         Prefs.motion = "on";
         toaster.countInSight = true;
         notify({ summary: "anna" });
         tryCompare(toaster.open, "entry", 1, 1000);
         const ben = notify({ summary: "ben" });
-        runOut();
         verify(toaster.open.waiting, "ben waits while anna goes down");
         ben.close(NoticeBoard.CloseRequested);
         verify(toaster.countAway, "anna is still on her way down");
         tryVerify(() => !toaster.countAway, 1000, "then the count comes back");
     }
 
-    function test_the_queue_goes_on_when_a_shell_toast_takes_the_place_of_a_notification_s_toast() {
+    function test_a_shell_toast_that_takes_the_place_of_a_notification_s_toast_rises_and_stands_its_time_with_meldungen_back() {
         Prefs.motion = "on";
-        notify({ summary: "anna" });
-        tryCompare(toaster.open, "entry", 1, 1000);
-        notify({ summary: "ben" });
-        toaster.show("akku wieder ok", { key: "state" });
-        compare(toaster.open?.title, "ben", "the next in the queue takes the toaster");
-        tryVerify(() => !toaster.open.waiting, 1000);
-        runOut();
-        compare(board.showing, null);
-        tryCompare(toaster, "leaving", 0, 1000);
-        notify({ summary: "cleo" });
-        compare(toaster.open?.title, "cleo", "and the board shows what comes next");
+        toaster.countInSight = true;
+        // A banner's state that ends, and a failure of the shell's own.
+        for (const options of [{ key: "state" }, { status: "error" }]) {
+            notify({ summary: "anna" });
+            tryCompare(toaster.open, "entry", 1, 1000);
+            const shell = toaster.show("akku wieder ok", options);
+            tryCompare(shell, "entry", 1, 1000, "it rises, announced as it begins");
+            tryVerify(() => !toaster.countAway, 1000, "meldungen is back while it stands");
+            verify(toaster.open === shell, "nothing takes its place");
+            compare(sounding.count, 1, "nothing toasts after anna");
+            runOut();
+            verify(shell.done, "it went when its window ran out");
+            tryCompare(toaster, "leaving", 0, 1000);
+            compare(toaster.open, null);
+            sounding.clear();
+        }
     }
 
-    function test_twenty_notifications_in_a_burst_toast_one_after_another_and_all_stand_in_the_list() {
+    function test_twenty_notifications_in_a_burst_leave_the_last_as_the_toast_and_all_in_the_list_with_the_nineteen_replaced_unseen() {
         for (let i = 0; i < 20; i++)
             notify({ summary: `message ${i}` });
-        const shown = [];
-        while (toaster.open) {
-            shown.push(toaster.open.title);
-            runOut();
-        }
-        compare(shown, Array.from({ length: 20 }, (_, i) => `message ${i}`));
+        compare(toaster.open.title, "message 19");
+        compare(sounding.count, 20, "each sounded with its toast");
         compare(board.rows.length, 20);
         compare(board.rows[0].summary, "message 19", "newest first");
+        compare(board.unseen, 19);
+        verify(!board.rows[0].unseen, "the one on screen is seen");
+        runOut();
+        compare(toaster.open, null, "none follows");
+        compare(board.unseen, 20);
+    }
+
+    function test_a_notification_whose_toast_another_or_a_shell_toast_replaced_stays_open_in_the_list_unseen_unless_the_list_is_in_sight() {
+        const anna = notify({ summary: "anna" }, [["default", "open"], ["reply", "antworten"]]);
+        notify({ summary: "ben" });
+        toaster.show("akku wieder ok", { key: "state" });
+        compare(calls, [], "neither has closed");
+        compare(board.rows.map(row => [row.summary, row.unseen]), [["ben", true], ["anna", true]]);
+        compare(board.rows[1].notification, anna, "anna is still open");
+        compare(board.actionsOf(board.rows[1]), [{ identifier: "reply", text: "antworten" }]);
+        board.listInSight = true;
+        notify({ summary: "cleo" });
+        notify({ summary: "dora" });
+        verify(!board.rows[1].unseen, "replaced while the list is in sight, cleo is seen");
+        board.listInSight = false;
+        notify({ summary: "transient", transient: true });
+        notify({ summary: "emil" });
+        compare(calls, ["transient closed 1"], "a transient one nobody sees any more has expired");
     }
 
     function test_a_summary_stands_over_the_body_and_either_alone_is_the_toast_s_one_sentence() {
@@ -266,9 +288,8 @@ TestCase {
         compare(board.rows[0].notification, null, "an expired notification has no actions left");
     }
 
-    function test_a_critical_toast_stays_until_it_is_pressed_and_later_ones_wait() {
+    function test_a_critical_toast_stays_until_it_is_pressed() {
         notify({ summary: "battery low", urgency: NoticeBoard.Critical });
-        notify({ summary: "anna" });
         const critical = toaster.open;
         verify(critical.stays);
         compare(critical.status, "", "no status fill: the failure is not the shell's own");
@@ -276,7 +297,28 @@ TestCase {
         critical.step();
         compare(toaster.open, critical);
         critical.pressText();
-        compare(toaster.open.title, "anna");
+        verify(critical.done);
+    }
+
+    function test_behind_a_critical_toast_every_later_notification_goes_to_the_list_only_unseen_without_toast_or_sound_even_after_the_press() {
+        for (const quiet of [false, true]) {
+            init();
+            board.quiet = quiet;
+            notify({ summary: "battery low", urgency: NoticeBoard.Critical });
+            const critical = toaster.open;
+            const anna = notify({ summary: "anna" });
+            notify({ summary: "disk failing", urgency: NoticeBoard.Critical });
+            notify({ summary: "transient", transient: true });
+            verify(toaster.open === critical, `quiet ${quiet}: it keeps its place`);
+            compare(sounding.count, 1, `quiet ${quiet}: only the critical one sounded`);
+            compare(rowNames(), ["disk failing", "anna", "battery low"], `quiet ${quiet}`);
+            compare(board.unseen, 2, `quiet ${quiet}: they count`);
+            compare(calls, ["transient closed 1"], `quiet ${quiet}: a transient one nobody sees has expired, the others are open`);
+            critical.pressText();
+            compare(toaster.open, null, `quiet ${quiet}: none follows the press`);
+            compare(sounding.count, 1, `quiet ${quiet}`);
+            verify(anna.closedWith === 0, `quiet ${quiet}`);
+        }
     }
 
     function test_a_critical_toast_says_dringend_in_a_neutral_tag_before_its_action_and_first_to_a_reader() {
@@ -448,19 +490,17 @@ TestCase {
         }
     }
 
-    function test_a_notification_its_app_closes_leaves_the_toast_the_queue_and_the_list() {
-        const first = notify({ summary: "anna" });
-        const second = notify({ summary: "ben" });
-        const third = notify({ summary: "cleo" });
-        second.close(NoticeBoard.CloseRequested);
-        compare(rowNames(), ["cleo", "anna"]);
+    function test_a_notification_its_app_closes_leaves_its_toast_and_the_list() {
+        const anna = notify({ summary: "anna" });
+        const ben = notify({ summary: "ben" });
+        anna.close(NoticeBoard.CloseRequested);
+        compare(rowNames(), ["ben"]);
+        compare(toaster.open.title, "ben", "ben's toast stays");
         const toast = toaster.open;
-        first.close(NoticeBoard.CloseRequested);
+        ben.close(NoticeBoard.CloseRequested);
         verify(toast.done, "its toast goes");
-        compare(rowNames(), ["cleo"]);
-        compare(toaster.open.title, "cleo", "the one taken from the queue never shows");
-        compare(calls, ["ben closed 3", "anna closed 3"], "nothing closes them a second time");
-        verify(third.closedWith === 0);
+        compare(rowNames(), []);
+        compare(calls, ["anna closed 3", "ben closed 3"], "nothing closes them a second time");
     }
 
     function test_replacing_a_notification_updates_its_open_toast_and_its_row() {
@@ -474,13 +514,11 @@ TestCase {
         compare(rowNames(), ["anna (2)"]);
     }
 
-    function test_a_toast_sounds_as_it_begins() {
-        const first = notify({ summary: "anna" });
+    function test_each_toast_sounds_as_it_takes_the_place_of_the_one_before() {
+        notify({ summary: "anna" });
         notify({ summary: "ben" });
-        compare(sounding.count, 1, "the waiting one sounds when its toast comes");
-        compare(sounding.signalArguments[0][0].summary, first.summary);
-        runOut();
         compare(sounding.count, 2);
+        compare(sounding.signalArguments.map(args => args[0].summary), ["anna", "ben"]);
     }
 
     function test_notifications_carried_over_a_reload_go_into_the_list_without_a_toast() {
@@ -610,18 +648,82 @@ TestCase {
         compare(rowNames(), ["cleo"]);
     }
 
-    function test_the_undo_toast_takes_the_place_of_a_notification_s_toast_and_the_queue_waits_for_it() {
+    // anna, ben and cleo stand in the list; ben is removed at 0, and at 2000 dora's toast takes the place of the undo
+    // toast, whose figure then showed 3 of its 5 seconds.
+    function removeBenAndLetDoraTakeTheUndoToastsPlace() {
+        board.quiet = true;
         notify({ summary: "anna" });
         notify({ summary: "ben" });
         notify({ summary: "cleo" });
-        compare(toaster.open.title, "anna");
+        board.quiet = false;
         board.remove([board.rows[1]]);
-        compare(toaster.open.text, "meldung entfernt", "in place of anna's toast");
-        compare(calls, [], "anna stays open in the list");
-        runOut();
+        time = 2000;
+        toaster.open.step();
+        notify({ summary: "dora" });
+        compare(toaster.open.title, "dora");
+        compare(calls, [], "nothing closes yet");
+        scene.forceActiveFocus();
+    }
+
+    function test_after_a_notification_took_the_undo_toasts_place_ctrl_z_brings_the_rows_back_until_their_window_ends_and_closes_nothing() {
+        removeBenAndLetDoraTakeTheUndoToastsPlace();
+        time = toaster.undoWindow - 1;
+        board.waitOutUndo();
+        compare(calls, [], "the window is still open");
+        keyClick(Qt.Key_Z, Qt.ControlModifier);
+        compare(rowNames(), ["dora", "cleo", "ben", "anna"], "ben is back in his place");
+        compare(calls, []);
+        compare(toaster.open.title, "dora", "dora's toast stays");
+        const below = [];
+        const removeBelow = KeyLayers.on(3, event => {
+            below.push(event.key);
+            return false;
+        });
+        keyClick(Qt.Key_Z, Qt.ControlModifier);
+        removeBelow();
+        verify(below.includes(Qt.Key_Z), "with nothing left to bring back, Ctrl+Z goes on to the layers below");
+    }
+
+    function test_after_a_notification_took_the_undo_toasts_place_the_removed_notifications_close_once_their_window_has_run_out() {
+        removeBenAndLetDoraTakeTheUndoToastsPlace();
+        time = toaster.undoWindow;
+        keyClick(Qt.Key_Z, Qt.ControlModifier);
+        compare(rowNames(), ["dora", "cleo", "anna"], "a late timer: the window has run out all the same");
+        board.waitOutUndo();
         compare(calls, ["ben closed 2"]);
-        compare(toaster.open.title, "cleo", "then the queue goes on, without ben");
-        compare(rowNames(), ["cleo", "anna"]);
+        compare(toaster.open.title, "dora");
+    }
+
+    function test_removed_notifications_their_app_closes_after_another_toast_took_the_undo_toasts_place_leave_that_toast_alone() {
+        board.quiet = true;
+        const anna = notify({ summary: "anna" });
+        const ben = notify({ summary: "ben" });
+        board.quiet = false;
+        board.remove(board.rows);
+        notify({ summary: "cleo", body: "call me" });
+        const toast = toaster.open;
+        ben.close(NoticeBoard.CloseRequested);
+        anna.close(NoticeBoard.CloseRequested);
+        verify(!toast.done);
+        compare(shownTitles(), "cleo: call me");
+        compare(calls, ["ben closed 3", "anna closed 3"]);
+        scene.forceActiveFocus();
+        keyClick(Qt.Key_Z, Qt.ControlModifier);
+        compare(rowNames(), ["cleo"], "nothing is left to bring back");
+    }
+
+    function test_a_removal_while_a_replaced_undo_toasts_window_runs_takes_its_rows_into_the_new_undo_toast_with_a_new_window() {
+        removeBenAndLetDoraTakeTheUndoToastsPlace();
+        time = 3000;
+        board.remove([board.rows[2]]);
+        compare(toaster.open.text, "2 meldungen entfernt");
+        compare(toaster.open.total, toaster.undoWindow);
+        time = toaster.undoWindow;
+        board.waitOutUndo();
+        compare(calls, [], "ben's first window has run out, but the new toast holds him");
+        toaster.open.undo();
+        compare(rowNames(), ["dora", "cleo", "ben", "anna"]);
+        compare(calls, []);
     }
 
     function test_pressing_a_row_does_what_pressing_its_toast_does_and_a_row_that_ran_out_brings_its_app_forward() {
