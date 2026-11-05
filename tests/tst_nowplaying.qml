@@ -457,6 +457,27 @@ TestCase {
     }
 
     // Both themes: one player with a cover, then two with the select.
+    // The words a pointer coming to rest on a text brings up, "" for none; coming on from another tip, they show at once.
+    function tipOver(text: var): string {
+        mouseMove(scene, 1, 1);
+        Tips.hiddenAt = Date.now();
+        mouseMove(text);
+        return Tips.target === text ? Tips.text : "";
+    }
+
+    function test_a_cut_title_or_byline_shows_whole_in_a_tip_and_the_keyboard_brings_only_the_buttons_tips() {
+        const one = givePlayer({ trackTitle: "Teardrop (Mad Professor Remix of the Mezzanine Sessions, 1998)" });
+        showSettled();
+        compare(Tips.text, "vorheriger titel", "the first control's own tip, not the title's");
+        compare(tipOver(part("title")), "Teardrop (Mad Professor Remix of the Mezzanine Sessions, 1998)", "the title");
+        compare(tipOver(part("byline")), "", "artist · album fit");
+        one.trackAlbum = "Mezzanine (Deluxe Edition, remastered with the Mad Professor Remixes)";
+        compare(tipOver(part("byline")), "Massive Attack · Mezzanine (Deluxe Edition, remastered with the Mad Professor Remixes)", "the line below");
+        verify(findChild(side, "tip").visible, "drawn in the panel");
+        one.trackTitle = "Teardrop";
+        compare(tipOver(part("title")), "", "a title that fits");
+    }
+
     function test_contact_sheet_of_laeuft_gerade_in_both_themes() {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;

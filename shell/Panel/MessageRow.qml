@@ -136,6 +136,8 @@ Item {
             font.weight: Tokens.fontWeightSemibold
             wrapMode: Text.NoWrap
             elide: Text.ElideRight
+
+            OverflowTip {}
         }
 
         Meta {
@@ -162,6 +164,8 @@ Item {
             wrapMode: Text.NoWrap
             maximumLineCount: 1
             elide: Text.ElideRight
+
+            OverflowTip {}
         }
 
         // Hover and press lay `hover` over the row, as over a toast's text (rekta.css:1215).

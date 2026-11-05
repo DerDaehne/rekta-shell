@@ -23,6 +23,8 @@ FocusScope {
     property bool open: false
     // Opened by a pointer: no focus ring shows until a key is pressed (`:focus-visible`).
     property bool ringsHidden: false
+    // A text cut short in it shows whole in its tip (states.md:179–180), which its own tooltip draws.
+    readonly property bool overflowTips: true
     // The item of the facet that stays at the top of the view, until a hand moves it.
     property Item revealed: null
     property real settledHeight: 0

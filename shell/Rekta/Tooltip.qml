@@ -61,6 +61,9 @@ Rectangle {
         y: Geometry.tipPaddingY
         width: tooltip.width - 2 * Tokens.spaceS
         text: tooltip.text
+        // Its words as they are written, as rekta.js puts them in as text (:3045): a cut text's words never turn into
+        // markup in its tip.
+        textFormat: Text.PlainText
         wrapMode: Text.Wrap
         font.pixelSize: Tokens.fontSizeXs
         font.weight: Tokens.fontWeightSemibold

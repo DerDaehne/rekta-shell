@@ -63,6 +63,15 @@ Item {
     Accessible.checkable: checkable
     Accessible.checked: checked
 
+    // Focus the keyboard gives shows the whole of a cut label at once; focus a pointer gave does not (`:focus-visible`,
+    // rekta.js:3081).
+    onActiveFocusChanged: {
+        if (activeFocus && !ring.hiddenByHost)
+            labelTip.show();
+        else
+            Tips.leave(words);
+    }
+
     Rectangle {
         objectName: "tint"
         anchors.fill: parent
@@ -126,6 +135,10 @@ Item {
         font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeS
         color: item.ink
+
+        OverflowTip {
+            id: labelTip
+        }
     }
 
     Row {
@@ -154,6 +167,8 @@ Item {
 
     // Inside a row with room of its own, outside one that has none (rekta.css:44, :463).
     FocusRing {
+        id: ring
+
         objectName: "ring"
         offset: item.inset > 0 ? -Geometry.focusRingInsetInRow : Geometry.focusRingOffset
     }

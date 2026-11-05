@@ -32,6 +32,8 @@ Item {
         text: row.label
         wrapMode: Text.NoWrap
         elide: Text.ElideRight
+
+        OverflowTip {}
     }
 
     Item {

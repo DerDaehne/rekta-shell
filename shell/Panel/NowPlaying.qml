@@ -197,6 +197,8 @@ Column {
             font.weight: Tokens.fontWeightSemibold
             wrapMode: Text.NoWrap
             elide: Text.ElideRight
+
+            OverflowTip {}
         }
 
         Body {
@@ -211,6 +213,8 @@ Column {
             textFormat: Text.PlainText
             wrapMode: Text.NoWrap
             elide: Text.ElideRight
+
+            OverflowTip {}
         }
     }
 }

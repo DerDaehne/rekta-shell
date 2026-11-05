@@ -18,6 +18,9 @@ TestCase {
 
     // A 40px app icon: a blue rounded square with a white dot.
     readonly property string picture: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAHlBMVEX///86dvBEffF4ofW5zvrs8v7///9Be/GcuvdVifLlkWmGAAAAAXRSTlMAQObYZgAAAI1JREFUOMu11UkOgCAQRFGaocH7X9iFMaKW5DvV+sWANEUIS+wyoY8NA9lGzaCk0AxKCg3mOYwpFy85xTGszde0OoCT95ku4d7tZQ+rH1M1bCfYJIx+TlQwCZgUzAJmBYuARUFXefVFvEa8a/wf8cnws8bTw+eRTzi/M39c17dVcaekvu9HXs287NHzMQN/Vg0WT30WoAAAAABJRU5ErkJggg=="
+    // A title and a text of three lines, both too long for a row.
+    readonly property string longSummary: "invoice 2026-10 for the build minutes and the storage of every project"
+    readonly property string longBody: "Your invoice for October is ready.\nIt lists every build minute and every gigabyte of storage you used.\nPay by the 15th."
     // The wall clock the toasts run against, in ms.
     property double time: 0
     // What the fake notifications were asked to do and told, oldest first.
@@ -645,6 +648,50 @@ TestCase {
         compare(rows()[0].y, 0, "the gap closed with the next layout");
         compare(toaster.open.total, toaster.undoWindow, "the window is the user's time, not motion");
         verify(toaster.undoWindow > 0);
+    }
+
+    // The words a pointer coming to rest on a text brings up, "" for none; coming on from another tip, they show at once.
+    function tipOver(text: var): string {
+        mouseMove(scene, 1, 1);
+        Tips.hiddenAt = Date.now();
+        mouseMove(text);
+        return Tips.target === text ? Tips.text : "";
+    }
+
+    function test_a_cut_title_or_text_of_a_row_shows_whole_in_a_tip_the_text_with_all_its_lines() {
+        notify({ summary: "anna", body: "lunch at noon?" });
+        notify({ summary: testCase.longSummary, body: testCase.longBody });
+        openOnMessages();
+        const [cut, fits] = rows();
+        compare(tipOver(findChild(cut, "body")), testCase.longBody, "the whole text");
+        const tip = findChild(side, "tip");
+        verify(tip.visible, "drawn in the panel");
+        compare(findChild(tip, "words").lineCount, 4, "all its lines, the long one wrapped");
+        compare(tipOver(findChild(cut, "summary")), testCase.longSummary, "the whole title");
+        compare(tipOver(findChild(fits, "summary")), "");
+        compare(tipOver(findChild(fits, "body")), "");
+    }
+
+    function test_keyboard_focus_on_a_row_with_a_cut_title_and_text_shows_no_tip() {
+        notify({ summary: testCase.longSummary, body: testCase.longBody });
+        openOnMessages();
+        verify(rows()[0].activeFocus, "the newest row, from the keyboard");
+        compare(Tips.target, null);
+    }
+
+    // Both themes: the tip of a long, cut text, drawn whole over its row.
+    function test_contact_sheet_of_the_whole_text_of_a_cut_row_in_its_tip_in_both_themes() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            init();
+            notify({ summary: "Mia", body: "Can we move the call to Thursday afternoon?" });
+            notify({ summary: testCase.longSummary, body: testCase.longBody });
+            openOnMessages();
+            compare(tipOver(findChild(rows()[0], "body")), testCase.longBody);
+            tryVerify(() => rows().every(row => findChild(row, "icon").status !== Image.Loading));
+            waitForRendering(scene);
+            grabImage(scene).save(`messages-tip-sheet-${theme}.png`);
+        }
     }
 
     // Both themes: the panel open on meldungen, with a picture, a long body and a row without body.

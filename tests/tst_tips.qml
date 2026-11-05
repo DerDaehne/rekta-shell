@@ -45,6 +45,59 @@ TestCase {
                 text: "save"
             }
 
+            Text {
+                objectName: "unhosted"
+                x: 600
+                y: 200
+                width: 120
+                text: "a network name far too long for its box"
+                elide: Text.ElideRight
+
+                OverflowTip {}
+            }
+
+            // A host that shows a cut text whole in its tip, as the side panel does; a press anywhere in it hides a tip.
+            Item {
+                readonly property bool overflowTips: true
+
+                y: 300
+                width: 1000
+                height: 300
+
+                Text {
+                    objectName: "cut"
+                    x: 100
+                    width: 120
+                    text: "a network name far too long for its box"
+                    elide: Text.ElideRight
+
+                    OverflowTip {}
+                }
+
+                Text {
+                    objectName: "fits"
+                    x: 400
+                    width: 200
+                    text: "home"
+                    elide: Text.ElideRight
+
+                    OverflowTip {}
+                }
+
+                Text {
+                    objectName: "lines"
+                    x: 700
+                    width: 250
+                    text: "the first line\nand the second\n"
+                    maximumLineCount: 1
+                    elide: Text.ElideRight
+
+                    OverflowTip {}
+                }
+
+                PressHidesTips {}
+            }
+
             Tooltip {
                 objectName: "tooltip"
                 readonly property var at: target ? Placement.tip(parent.mapFromItem(target, 0, 0, target.width, target.height), Qt.size(width, height), area) : null
@@ -274,6 +327,121 @@ TestCase {
         verify(!tooltip.visible, "it leaves at once");
         wait(Tokens.durationFloat / 3);
         verify(!tooltip.visible);
+    }
+
+    function test_a_tip_shows_its_words_as_written_never_as_markup() {
+        Tips.show(box("close"), "one<br>two");
+        compare(findChild(tooltip, "words").lineCount, 1);
+    }
+
+    function test_a_pointer_resting_on_a_cut_text_shows_its_whole_text_after_tip_delay() {
+        const cut = findChild(scene, "cut");
+        verify(cut.truncated);
+        mouseMove(cut);
+        wait(Tokens.durationTipDelay - 200);
+        compare(Tips.target, null, "not before tip-delay");
+        tryCompare(Tips, "target", cut, Tokens.durationTipDelay);
+        compare(Tips.text, "a network name far too long for its box");
+        verify(tooltip.visible);
+        compare(findChild(tooltip, "words").text, "a network name far too long for its box");
+    }
+
+    function test_a_text_that_fits_has_no_tip() {
+        mouseMove(findChild(scene, "fits"));
+        compare(Tips.waiting, null);
+        wait(Tokens.durationTipDelay * 2);
+        compare(Tips.target, null);
+    }
+
+    function test_a_text_cut_at_its_line_count_shows_all_its_lines_in_its_tip() {
+        const lines = findChild(scene, "lines");
+        verify(lines.truncated);
+        mouseMove(lines);
+        tryCompare(Tips, "target", lines, Tokens.durationTipDelay * 2);
+        compare(Tips.text, "the first line\nand the second", "without the space around them");
+        compare(findChild(tooltip, "words").lineCount, 2, "line for line");
+    }
+
+    function test_moving_on_from_another_tip_a_cut_text_shows_its_tip_at_once() {
+        mouseMove(box("close"));
+        tryCompare(Tips, "target", box("close"), Tokens.durationTipDelay * 2);
+        mouseMove(findChild(scene, "cut"));
+        compare(Tips.target, findChild(scene, "cut"));
+    }
+
+    function test_touch_never_shows_the_tip_of_a_cut_text() {
+        const cut = findChild(scene, "cut");
+        touchEvent(cut).press(0, cut, cut.width / 2, cut.height / 2).commit();
+        touchEvent(cut).release(0, cut, cut.width / 2, cut.height / 2).commit();
+        wait(Tokens.durationTipDelay * 2);
+        compare(Tips.target, null);
+    }
+
+    function test_escape_a_press_and_leaving_hide_the_tip_of_a_cut_text() {
+        const cut = findChild(scene, "cut");
+        let lower = 0;
+        const off = KeyLayers.on(10, event => {
+            lower++;
+            return event.key === Qt.Key_Escape;
+        });
+        scene.forceActiveFocus();
+        mouseMove(cut);
+        tryCompare(Tips, "target", cut, Tokens.durationTipDelay * 2);
+        keyClick(Qt.Key_Escape);
+        compare(Tips.target, null, "Escape");
+        compare(lower, 0, "the tip used it");
+        off();
+        mouseMove(scene, 5, 5);
+        mouseMove(cut);
+        compare(Tips.target, cut);
+        mousePress(cut);
+        compare(Tips.target, null, "a press");
+        mouseRelease(cut);
+        mouseMove(scene, 5, 5);
+        mouseMove(cut);
+        compare(Tips.target, cut);
+        mouseMove(scene, 5, 5);
+        compare(Tips.target, null, "leaving");
+    }
+
+    function test_a_text_that_comes_to_be_cut_brings_its_tip_and_one_that_fits_again_takes_it_away() {
+        const fits = findChild(scene, "fits");
+        mouseMove(fits);
+        wait(Tokens.durationTipDelay * 2);
+        fits.text = "a name that has grown too long for its box";
+        tryCompare(Tips, "target", fits, Tokens.durationTipDelay * 2);
+        compare(Tips.text, "a name that has grown too long for its box");
+        fits.text = "a new name, again too long for its box";
+        compare(Tips.text, "a new name, again too long for its box", "a tip that shows says the new words");
+        compare(findChild(tooltip, "words").text, "a new name, again too long for its box");
+        fits.width = 900;
+        compare(Tips.target, null, "once the words fit, the tip goes");
+    }
+
+    function test_a_cut_text_s_waiting_tip_follows_its_words_and_never_shows_once_they_fit() {
+        const cut = findChild(scene, "cut");
+        mouseMove(cut);
+        compare(Tips.waiting, cut);
+        cut.text = "another name far too long for its box";
+        tryCompare(Tips, "target", cut, Tokens.durationTipDelay * 2);
+        compare(Tips.text, "another name far too long for its box");
+        mouseMove(scene, 5, 5);
+        Tips.hiddenAt = -Infinity;
+        mouseMove(cut);
+        compare(Tips.waiting, cut);
+        cut.width = 900;
+        compare(Tips.waiting, null);
+        wait(Tokens.durationTipDelay * 2);
+        compare(Tips.target, null, "words that fit by the end of tip-delay bring no tip");
+    }
+
+    function test_outside_a_host_that_offers_them_a_cut_text_leaves_the_tips_alone() {
+        const unhosted = findChild(scene, "unhosted");
+        verify(unhosted.truncated);
+        mouseMove(unhosted);
+        compare(Tips.waiting, null);
+        wait(Tokens.durationTipDelay * 2);
+        compare(Tips.target, null);
     }
 
     function test_under_reduced_motion_a_tip_is_there_at_once() {

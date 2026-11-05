@@ -588,6 +588,14 @@ TestCase {
         return Array.from(level.children).filter(row => row instanceof MenuItem);
     }
 
+    // The words a pointer coming to rest on a text brings up, "" for none; coming on from another tip, they show at once.
+    function tipOver(text: var): string {
+        mouseMove(scene, 1, 1);
+        Tips.hiddenAt = Date.now();
+        mouseMove(text);
+        return Tips.target === text ? Tips.text : "";
+    }
+
     // The option rows of a select, in order.
     function optionRows(select: var): var {
         return Array.from(findChild(select, "options").children).filter(row => row.objectName === "option");
@@ -1825,6 +1833,127 @@ TestCase {
         const label = findChild(row, "label");
         verify(label.truncated);
         verify(label.x + label.width <= row.width - Tokens.spaceM);
+    }
+
+    function test_a_cut_option_of_a_level_shows_whole_in_a_tip_under_the_pointer_and_at_once_for_keyboard_focus() {
+        const long = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) guest network";
+        const panel = showLevelPanel();
+        const level = findChild(panel, "level");
+        level.options = ["home", long];
+        findChild(panel, "chooseNetwork").forceActiveFocus();
+        keyClick(Qt.Key_Space);
+        verify(level.open);
+        waitForRendering(panel);
+        const rows = levelRows(level);
+        verify(rows[1].activeFocus);
+        compare(Tips.target, null, "home fits");
+        keyClick(Qt.Key_Down);
+        compare(Tips.target, findChild(rows[2], "label"), "keyboard focus on a cut option");
+        compare(Tips.text, long);
+        verify(findChild(panel, "tip").visible, "drawn in the panel");
+        keyClick(Qt.Key_Up);
+        compare(Tips.target, null, "the focus leaving takes it away");
+        compare(tipOver(findChild(rows[2], "label")), long, "a resting pointer");
+        compare(tipOver(findChild(rows[1], "label")), "");
+        mouseMove(scene, 1, 1);
+        Tips.hide();
+        panel.ringsHidden = true;
+        rows[2].forceActiveFocus();
+        compare(Tips.target, null, "focus a pointer gave shows none");
+    }
+
+    function test_a_cut_network_name_in_verbindungen_shows_whole_in_a_tip_under_the_pointer_and_for_keyboard_focus() {
+        const long = "the guest network of the house by the lake, second floor, room two";
+        const networks = giveNetworks(controls);
+        networks.office.name = long;
+        showSettled(0);
+        control("chooseNetwork").forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        waitForRendering(side);
+        const office = findChild(rowsOf("wifiBranch")[1], "label");
+        verify(office.truncated);
+        compare(tipOver(office), long, "a resting pointer");
+        compare(tipOver(findChild(rowsOf("wifiBranch")[0], "label")), "", "Home fits");
+        mouseMove(scene, 1, 1);
+        Tips.hide();
+        keyClick(Qt.Key_Down);
+        compare(Tips.target, null);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        verify(rowsOf("wifiBranch")[1].activeFocus);
+        compare(Tips.target, office, "keyboard focus shows it at once");
+        compare(Tips.text, long);
+    }
+
+    function test_a_cut_device_name_shows_whole_in_a_tip_over_the_select_and_over_its_option_and_scrolling_hides_it() {
+        const long = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) of the monitor on the left";
+        giveSound(controls).speakers.description = long;
+        showSettled(0);
+        const select = control("outputDevice");
+        const chosen = findChild(select, "chosen");
+        compare(tipOver(chosen), long, "over the select");
+        compare(findChild(named("tip"), "words").text, long, "drawn in the panel");
+        named("scroller").contentY = 1;
+        compare(Tips.target, null, "scrolling hides it");
+        named("scroller").contentY = 0;
+        mouseClick(findChild(select, "box"));
+        waitForRendering(side);
+        const options = optionRows(select);
+        compare(tipOver(findChild(options[0], "label")), long, "over its option");
+        compare(tipOver(findChild(options[1], "label")), "", "Headphones fits");
+        compare(tipOver(chosen), "", "the box's own words lie under the options");
+    }
+
+    function test_keyboard_focus_on_a_select_shows_its_cut_choice_at_once_and_its_options_and_pointer_focus_show_none() {
+        const long = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) of the monitor on the left";
+        giveSound(controls).speakers.description = long;
+        showSettled(0);
+        const select = control("outputDevice");
+        verify(select.activeFocus, "the first control, from the keyboard");
+        compare(Tips.target, findChild(select, "chosen"));
+        compare(Tips.text, long);
+        keyClick(Qt.Key_Down);
+        verify(select.expanded);
+        compare(Tips.target, null, "expanded, the options stand over it");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Up);
+        compare(Tips.target, null, "the keys move only the highlight");
+        keyClick(Qt.Key_Escape);
+        side.close();
+        tryVerify(() => !side.open);
+        side.show(0, true);
+        verify(select.activeFocus);
+        compare(Tips.target, null, "focus a pointer gave shows none");
+    }
+
+    function test_the_cut_word_or_state_of_a_quick_setting_shows_whole_in_a_tip_and_keyboard_focus_shows_neither() {
+        const long = "the guest network of the house by the lake, second floor";
+        giveNetworks(controls).home.name = long;
+        showSettled(0);
+        const wifi = control("wifi");
+        compare(tipOver(findChild(wifi, "state")), long, "its state");
+        compare(tipOver(findChild(wifi, "word")), "", "wlan fits");
+        wifi.text = "the wireless network of the house";
+        compare(tipOver(findChild(wifi, "word")), "the wireless network of the house", "its word");
+        mouseMove(scene, 1, 1);
+        Tips.hide();
+        wifi.forceActiveFocus();
+        compare(Tips.target, null);
+    }
+
+    function test_the_cut_words_of_a_row_show_whole_in_a_tip_and_keyboard_focus_on_its_control_shows_none() {
+        const long = "the density of every surface of the shell, from comfortable to compact";
+        showSettled(0);
+        const density = control("density");
+        const words = findChild(rowOf(density), "words");
+        compare(tipOver(words), "", "dichte fits");
+        rowOf(density).label = long;
+        waitForRendering(side);
+        compare(tipOver(words), long);
+        mouseMove(scene, 1, 1);
+        Tips.hide();
+        density.forceActiveFocus();
+        compare(Tips.target, null);
     }
 
     function test_the_bluetooth_button_switches_the_adapter_and_shows_what_the_adapter_has() {

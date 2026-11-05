@@ -157,6 +157,8 @@ Item {
                 font.pixelSize: Tokens.fontSizeS
                 font.weight: Tokens.fontWeightSemibold
                 color: toggleButton.ink
+
+                OverflowTip {}
             }
 
             TextRole {
@@ -170,6 +172,8 @@ Item {
                 font.pixelSize: Tokens.fontSizeXs
                 font.weight: Tokens.fontWeightRegular
                 color: toggleButton.ink
+
+                OverflowTip {}
             }
         }
 

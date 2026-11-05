@@ -105,7 +105,13 @@ Item {
         collapse();
         folding.complete();
     }
+    // Focus the keyboard gives shows the whole of a cut choice at once; focus a pointer gave does not (`:focus-visible`,
+    // rekta.js:3081). Expanded, the focus stays here and the keys only move the highlight.
     onActiveFocusChanged: {
+        if (activeFocus && !ring.hiddenByHost)
+            choiceTip.show();
+        else
+            Tips.leave(choice);
         if (!activeFocus)
             collapse();
     }
@@ -171,6 +177,8 @@ Item {
             opacity: 1 - select.unfolded
 
             Text {
+                id: choice
+
                 objectName: "chosen"
                 x: Geometry.inputPadding
                 anchors.verticalCenter: parent.verticalCenter
@@ -180,6 +188,13 @@ Item {
                 font.family: Tokens.fontSans
                 font.pixelSize: Tokens.fontSizeS
                 color: select.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
+
+                // Expanded, the options stand over it.
+                OverflowTip {
+                    id: choiceTip
+
+                    enabled: !select.expanded
+                }
             }
 
             // Drawn in the padding box, as a background is.
@@ -272,6 +287,8 @@ Item {
                             font.family: Tokens.fontSans
                             font.pixelSize: Tokens.fontSizeS
                             color: option.chosen ? Tokens.color.textOnAccent : Tokens.color.textPrimary
+
+                            OverflowTip {}
                         }
 
                         FocusRing {
@@ -299,6 +316,8 @@ Item {
         }
 
         FocusRing {
+            id: ring
+
             objectName: "ring"
             shown: select.activeFocus
         }

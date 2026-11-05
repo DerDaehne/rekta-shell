@@ -411,6 +411,28 @@ TestCase {
         verify(!menu.open, "Escape on the list closes");
     }
 
+    // No tooltip is drawn outside the side panel, so a tip held here would only take the menu's Escape.
+    function test_a_cut_row_brings_no_tip_and_the_first_escape_does_what_the_menu_does_with_it() {
+        const longWord = "Synchronisation of every folder of the account with the server, the shared ones too";
+        const longEntry = "Open the folder of the account in the file manager, with the shared folders beside it";
+        const menu = open([app(longWord, { menu: menuOf([entry(longEntry)]) })]);
+        const word = findChild(rowAt(menu, longWord), "label");
+        verify(word.truncated);
+        verify(rowAt(menu, longWord).activeFocus, "the keyboard is on it");
+        mouseMove(word);
+        wait(Tokens.durationTipDelay * 2);
+        compare(Tips.target, null);
+        keyClick(Qt.Key_Right);
+        tryVerify(() => rowAt(menu, longEntry).activeFocus);
+        verify(findChild(rowAt(menu, longEntry), "label").truncated);
+        compare(Tips.target, null);
+        keyClick(Qt.Key_Escape);
+        compare(rowNames(menu), [longWord], "the first Escape goes back a level");
+        tryVerify(() => rowAt(menu, longWord).activeFocus);
+        keyClick(Qt.Key_Escape);
+        verify(!menu.open, "and on the list closes it");
+    }
+
     function test_left_goes_back_one_level_like_escape() {
         const menu = open(threeApps());
         keyClick(Qt.Key_Right);
