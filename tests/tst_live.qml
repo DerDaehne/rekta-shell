@@ -37,6 +37,25 @@ TestCase {
         }
     }
 
+    // A count the tile marks to peek, as a page marks one `data-rk-peek` (rekta.js:4200).
+    Component {
+        id: countTile
+
+        Tile {
+            x: 100
+            y: 100
+            peekPart: count
+
+            Body {
+                id: count
+
+                objectName: "count"
+                text: "3"
+                font.pixelSize: Tokens.fontSizeM
+            }
+        }
+    }
+
     Component {
         id: messageTile
 
@@ -352,6 +371,50 @@ TestCase {
         message.news("peek", () => part(message, "message").text = "Three failed.");
         compare(part(message, "message").text, "Three failed.");
         verify(!part(message, "ghost").visible);
+    }
+
+    function test_a_part_the_tile_marks_peeks_its_new_number_as_a_stat_does() {
+        const tile = createTemporaryObject(countTile, testCase);
+        const count = part(tile, "count");
+        waitForRendering(tile);
+        const countY = count.mapToItem(tile, 0, 0).y;
+        const width = count.width;
+        tile.news("peek", () => count.text = "4");
+        compare(count.text, "4");
+        const ghost = part(tile, "markedGhost");
+        const incoming = part(tile, "incoming");
+        verify(ghost.visible);
+        verify(!part(tile, "ghost").visible, "no stat leaves");
+        compare(ghost.text, "3");
+        compare(ghost.font.pixelSize, Tokens.fontSizeM);
+        compare(ghost.width, width, "as wide as the old number");
+        verify(tile.clip, "the old number leaves through the tile's edge");
+        seek(tile, "peek", "phase", 0.2);
+        waitForRendering(tile);
+        compare(ghost.height, count.height);
+        compare(incoming.opacity, 0);
+        near(incoming.y - countY, 0.4 * count.height, "the new one starts 40% below");
+        seek(tile, "peek", "phase", 0.6);
+        compare(ghost.opacity, 0);
+        near(ghost.mapToItem(tile, 0, 0).y - countY, -0.4 * ghost.height, "the old one ends 40% above");
+        seek(tile, "peek", "phase", 1);
+        compare(incoming.opacity, 1);
+        near(incoming.y, countY, "the new one ends in its place");
+    }
+
+    function test_news_that_leaves_the_marked_part_as_it_was_does_not_peek() {
+        const tile = createTemporaryObject(countTile, testCase);
+        tile.news("peek", () => part(tile, "count").text = "3");
+        verify(!part(tile, "markedGhost").visible);
+        verify(!tile.clip);
+    }
+
+    function test_under_reduced_motion_a_marked_part_changes_at_once() {
+        Prefs.motion = "off";
+        const tile = createTemporaryObject(countTile, testCase);
+        tile.news("peek", () => part(tile, "count").text = "4");
+        compare(part(tile, "count").text, "4");
+        verify(!part(tile, "markedGhost").visible);
     }
 
     function test_a_new_status_flips_the_tile_away_changes_it_halfway_and_turns_it_back() {
