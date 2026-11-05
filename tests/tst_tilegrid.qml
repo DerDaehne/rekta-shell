@@ -156,6 +156,17 @@ TestCase {
         compare(grid.implicitHeight, 3 * Tokens.tileUnit + 2 * Tokens.spaceS);
     }
 
+    function test_compact_a_grid_that_widens_without_room_for_another_column_stretches_its_cells_along() {
+        grid = createTemporaryObject(compactComponent, testCase, {
+            width: 600
+        });
+        grid.width = 650;
+        compare(grid.across, 3);
+        const small1 = findChild(grid, "small1");
+        compare(small1.width, (650 - 2 * Tokens.spaceS) / 3);
+        compare(small1.x + small1.width, 650);
+    }
+
     function test_compact_a_wider_grid_takes_another_column_and_the_cells_narrow_again() {
         grid = createTemporaryObject(compactComponent, testCase, {
             width: 600
