@@ -117,6 +117,7 @@ PanelWindow {
             opener: Component {
                 QsMenuOpener {}
             }
+            iconKnown: name => Quickshell.iconPath(name, true) !== ""
         }
 
         AppBarButton {

@@ -17,6 +17,8 @@ TestCase {
 
     // What the fake apps and entries were asked to do, oldest first.
     property var calls: []
+    // The icon names the stand-in for the icon theme was asked about, oldest first.
+    property var asked: []
 
     // A DBusMenu's entries, as the opener lists them.
     component FakeMenu: QtObject {
@@ -159,12 +161,19 @@ TestCase {
     // A coloured 20 × 20 square as PNG, as an app's own icon is coloured.
     readonly property string blueIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGOQnfmZbMQwqnlU86jmUc0DqxkAaSeYL8S+KvQAAAAASUVORK5CYII="
 
+    // A 16 × 16 one, as a DBusMenu hands over the PNG of an entry at its own size.
+    readonly property string smallIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mOwKvtAEmIY1TCqYfhqAAByVKAQbSDPuAAAAABJRU5ErkJggg=="
+    // Icon names as Quickshell hands them over; the stand-in for the icon theme knows only mail-client.
+    readonly property string knownIcon: "image://icon/mail-client?path=/opt/mail/icons"
+    readonly property string unknownIcon: "image://icon/no-such-icon?path=/opt/mail/icons"
+
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var scene
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         calls = [];
+        asked = [];
     }
 
     function cleanup() {
@@ -199,9 +208,16 @@ TestCase {
         return [app("Mail", { menu: menuOf(entries) })];
     }
 
+    // The stand-in for the icon theme. The rows ask it in their bindings, so it adds to the list in place.
+    function themeKnows(name: string): bool {
+        asked.push(name);
+        return name === "mail-client";
+    }
+
     function open(apps: var): var {
         scene = createTemporaryObject(sceneComponent, testCase, { apps });
         const control = scene.control;
+        control.iconKnown = themeKnows;
         control.forceActiveFocus();
         control.menu.openAt(0);
         return control.menu;
@@ -321,6 +337,45 @@ TestCase {
             compare(findChild(rowAt(menu, text), "label").x, edge, text);
         }
         compare(findChild(rowAt(menu, "Pause"), "check").x, Tokens.spaceM + (20 - 10) / 2, "the box stands where the back row's icon does");
+    }
+
+    function test_an_app_whose_icon_name_the_theme_does_not_know_shows_no_picture_and_its_word_stands_at_the_common_edge() {
+        const menu = open([app("Nextcloud", { icon: unknownIcon }), app("Mail", {}), app("Steam", { icon: "" })]);
+        const nextcloud = rowAt(menu, "Nextcloud");
+        verify(asked.includes("no-such-icon"), "the host's icon theme is asked");
+        compare(nextcloud.icon.toString(), "", "no picture, not the checkerboard of a missing icon");
+        verify(!findChild(nextcloud, "icon").visible);
+        for (const word of ["Nextcloud", "Steam"])
+            compare(findChild(rowAt(menu, word), "label").x, findChild(rowAt(menu, "Mail"), "label").x, word);
+    }
+
+    function test_an_app_whose_icon_name_is_unknown_indents_nothing_when_no_other_row_has_an_icon() {
+        const menu = open([app("Nextcloud", { icon: unknownIcon }), app("Steam", { icon: "" })]);
+        for (const word of ["Nextcloud", "Steam"])
+            compare(findChild(rowAt(menu, word), "label").x, Tokens.spaceM, word);
+    }
+
+    function test_an_entry_whose_icon_name_the_theme_does_not_know_shows_no_picture_and_its_words_stand_at_the_common_edge() {
+        const menu = open(mail([entry("Compose", { icon: blueIcon }), entry("Calendar", { icon: unknownIcon }), entry("Settings")]));
+        keyClick(Qt.Key_Right);
+        const calendar = rowAt(menu, "Calendar");
+        verify(asked.includes("no-such-icon"), "the host's icon theme is asked");
+        compare(calendar.icon.toString(), "");
+        verify(!findChild(calendar, "icon").visible);
+        compare(findChild(calendar, "label").x, findChild(rowAt(menu, "Compose"), "label").x);
+    }
+
+    function test_an_entry_s_small_picture_stands_at_its_own_size_in_the_middle_of_the_icon_field() {
+        const menu = open(mail([entry("Compose", { icon: blueIcon }), entry("Contacts", { icon: smallIcon })]));
+        keyClick(Qt.Key_Right);
+        const field = findChild(rowAt(menu, "Contacts"), "icon");
+        tryCompare(field, "status", Image.Ready);
+        const picture = findChild(field, "picture");
+        compare(field.width, 20);
+        compare(picture.width, 16);
+        compare(picture.x, 2);
+        compare(picture.y, 2);
+        compare(findChild(rowAt(menu, "Contacts"), "label").x, findChild(rowAt(menu, "Compose"), "label").x);
     }
 
     function test_a_separator_entry_is_a_hairline_not_a_row() {
@@ -586,12 +641,23 @@ TestCase {
         compare(TrayRules.state(1, "kurz", ""), "kurz");
     }
 
+    function test_only_an_icon_name_is_checked_against_the_theme_and_by_its_name_alone() {
+        compare(TrayRules.shownIcon(knownIcon, themeKnows), knownIcon);
+        compare(TrayRules.shownIcon(unknownIcon, themeKnows), "");
+        compare(TrayRules.shownIcon("image://icon/no-such-icon", themeKnows), "");
+        compare(asked, ["mail-client", "no-such-icon", "no-such-icon"]);
+        for (const picture of ["image://qsimage/3", "image://qspixmap/4/0", smallIcon, ""])
+            compare(TrayRules.shownIcon(picture, themeKnows), picture, "an app's own picture stays as it comes");
+        compare(asked.length, 3, "without asking the theme");
+    }
+
     function test_contact_sheet() {
         const sheets = {
             "list": threeApps,
             "menu": threeApps,
             "menu-icons": () => mail([entry("Compose", { icon: blueIcon }), entry("Settings", { icon: blueIcon }), entry("Notify", { buttonType: 1, checkState: Qt.Checked, icon: blueIcon })]),
-            "menu-mixed": () => mail([entry("Compose", { icon: blueIcon }), entry("Settings"), entry("Notify", { buttonType: 1, checkState: Qt.Checked }), entry("Sync", { buttonType: 1, icon: blueIcon })])
+            "menu-mixed": () => mail([entry("Compose", { icon: blueIcon }), entry("Settings"), entry("Notify", { buttonType: 1, checkState: Qt.Checked }), entry("Sync", { buttonType: 1, icon: blueIcon })]),
+            "menu-pictures": () => mail([entry("Compose", { icon: blueIcon }), entry("Calendar", { icon: unknownIcon }), entry("Contacts", { icon: smallIcon }), entry("Settings", { icon: blueIcon })])
         };
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;

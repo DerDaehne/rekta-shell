@@ -9,6 +9,7 @@ AppBarButton {
 
     property var apps: []
     property alias opener: list.opener
+    property alias iconKnown: list.iconKnown
     property alias area: list.area
     readonly property alias menu: list
 

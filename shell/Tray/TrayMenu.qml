@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Qt.labs.qmlmodels
 import Rekta
+import "TrayRules.js" as TrayRules
 
 // The menu of the background apps, in one floating surface (ADR: in place). It lists the apps, one row each: their icon,
 // word and state. A row's menu replaces the list, headed by a back row; an entry with children opens the next level the
@@ -15,6 +16,8 @@ Menu {
 
     property var apps: []
     property Component opener
+    // Whether the icon theme has an icon of this name, as the host learns from its theme; until it says, none.
+    property var iconKnown: name => false
     // One frame per level in view: the app, its opener, the index of the row that opened the level, and that row's words.
     property var levels: []
     readonly property var current: levels.length > 0 ? levels[levels.length - 1].opener.children.values : apps
@@ -164,7 +167,7 @@ Menu {
         readonly property var app: tray.shown[at] ?? null
 
         text: app?.word ?? ""
-        icon: app?.icon ?? ""
+        icon: TrayRules.shownIcon(app?.icon ?? "", tray.iconKnown)
         keyHint: app?.state ?? ""
         opensLevel: app?.onlyMenu ?? false
         Accessible.name: keyHint !== "" ? `${text}, ${keyHint}` : text
@@ -178,7 +181,7 @@ Menu {
         readonly property var entry: tray.shown[at] ?? null
 
         text: entry?.text ?? ""
-        icon: entry?.icon ?? ""
+        icon: TrayRules.shownIcon(entry?.icon ?? "", tray.iconKnown)
         kind: entry?.buttonType === 1 ? "checkbox" : entry?.buttonType === 2 ? "radio" : "item"
         checked: entry?.checkState === Qt.Checked
         dimmed: !(entry?.enabled ?? true)
