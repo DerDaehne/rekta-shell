@@ -1796,6 +1796,8 @@ TestCase {
                 Prefs.density = density;
                 const backdrop = createTemporaryObject(backdropComponent, testCase);
                 const sheet = sheetStart(backdrop);
+                // No pointer left over a tile: the focus ring shows the keyboard, not a hover tint.
+                mouseMove(backdrop, backdrop.width - 1, backdrop.height - 1);
                 Prefs.motion = "off";
                 sheet.open();
                 Prefs.motion = "system";
@@ -1816,6 +1818,7 @@ TestCase {
             testCase.height = 1280;
             const backdrop = createTemporaryObject(backdropComponent, testCase);
             const sheet = sheetStart(backdrop);
+            mouseMove(backdrop, backdrop.width - 1, backdrop.height - 1);
             Prefs.motion = "off";
             sheet.open();
             Prefs.motion = "system";
