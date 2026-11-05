@@ -4,12 +4,12 @@ import QtQuick
 import Rekta
 
 // One notification in the centre, a row on a hairline (rekta.css:73–75): the picture or the app's icon, square with a
-// tile's corners, the summary in semibold with how long ago at the end, one line of the body, cut, and under it up to two
-// of the notification's actions as quiet buttons. A click, Enter or Space presses the row, tinted on hover and press like
-// a toast's text. While the pointer is on the row or the focus is in it, a quiet "entfernen" button takes the place of
-// the time; Delete, or pulling the row towards the trailing edge, are shortcuts to it. Let go past half its width the pulled
-// row leaves, else it glides back. Leaving, it drifts and fades as a row that leaves a list does (motion.md, "Arriving,
-// leaving"); then it has gone.
+// tile's corners, the summary in semibold, how long ago and a quiet "entfernen" button at the end, one line of the
+// body, cut, and under it up to two of the notification's actions as quiet buttons. A click, Enter or Space presses the
+// row, tinted on hover and press like a toast's text. The button is always there; Delete, or pulling the row towards
+// the trailing edge, are shortcuts to it (collections.md:164–166). Let go past half its width the pulled row leaves,
+// else it glides back. Leaving, it drifts and fades as a row that leaves a list does (motion.md, "Arriving, leaving");
+// then it has gone.
 Item {
     id: row
 
@@ -27,8 +27,7 @@ Item {
     property var locale: Qt.locale()
     readonly property string time: Calendar.ago(new Date(stamp), now, locale)
     readonly property var actionList: JSON.parse(actions)
-    // The pointer is on it, or the focus is in it (also on a button of its own).
-    readonly property bool engaged: hover.hovered || holdsFocus
+    // The focus is in it, also on a button of its own.
     readonly property bool holdsFocus: {
         let item = Window.window?.activeFocusItem;
         while (item && item !== row)
@@ -131,7 +130,7 @@ Item {
             objectName: "summary"
             x: Geometry.iconSize + Tokens.spaceS
             y: Geometry.hairline + Tokens.spaceS
-            width: row.width - x - when.width - Tokens.spaceM
+            width: when.x - Tokens.spaceM - x
             text: row.summary
             textFormat: Text.PlainText
             font.weight: Tokens.fontWeightSemibold
@@ -143,9 +142,9 @@ Item {
             id: when
 
             objectName: "time"
-            x: row.width - width
+            // The parts of a row stand space-m apart (rekta.css:74).
+            x: remove.x - Tokens.spaceM - width
             anchors.baseline: heading.baseline
-            visible: !row.engaged
             text: row.time
             wrapMode: Text.NoWrap
         }
@@ -182,10 +181,11 @@ Item {
         }
 
         IconButton {
+            id: remove
+
             objectName: "remove"
             x: row.width - width
             y: heading.y + (heading.height - height) / 2
-            visible: row.engaged
             variant: "quiet"
             icon: "close"
             label: "entfernen"

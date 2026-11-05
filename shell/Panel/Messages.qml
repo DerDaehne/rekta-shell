@@ -5,12 +5,13 @@ import Notices
 import Rekta
 
 // The facet "meldungen", the notification centre: the board's list, newest first, a row each (live.md, "A growing
-// list"). In sight, it has seen them all. A press on a row does what a press on its toast does, and the panel goes.
-// A row pulled away past half its width, Delete on it, or its "entfernen" button is removed, and the focus goes to the
-// next row; "alle entfernen", a quiet button in the head above the rows beside their count, removes them all. The board
-// offers undo for each removal. Rows that leave drift and fade, then the rest close the gap; rows that arrive or come
-// back slide in from above while the rest make room (motion.md, "Arriving, leaving", "Reordering"). Home and End go to
-// the first and the last row. The times in the rows are told against `now`, which is renewed once a minute, and only while the list is in sight.
+// list"). In sight, it has seen them all. A press on a row does what a press on its toast does, and the panel goes. A
+// row pulled away past half its width, Delete on it, or its "entfernen" button is removed, and the focus goes to the
+// next row; "alle entfernen", a quiet button at the end of the list, removes them all (live.md:96–101). A head above
+// the rows counts them. The board offers undo for each removal. Rows that leave drift and fade, then the rest close the
+// gap; rows that arrive or come back slide in from above while the rest make room (motion.md, "Arriving, leaving",
+// "Reordering"). Home and End go to the first and the last row. The times in the rows are told against `now`, which is
+// renewed once a minute, and only while the list is in sight.
 // ponytail: a row arriving on top pushes the rows down also while the panel is scrolled away from the top; hold the
 // rows read in place (or hold new ones back behind a count) once lists that long show up.
 Column {
@@ -198,10 +199,26 @@ Column {
         id: filled
 
         width: messages.width
-        height: head.height + Tokens.spaceM + stack.height
+        height: clearAll.y + clearAll.height
         visible: messages.hasRows
         x: messages.allLeaving * Geometry.rowLeaveDrift
         opacity: 1 - messages.allLeaving
+
+        // As tall as a control although only words stand in it: the shell's spacing above the rows.
+        Item {
+            id: head
+
+            objectName: "head"
+            width: parent.width
+            height: Tokens.controlHeight
+
+            Body {
+                objectName: "count"
+                anchors.verticalCenter: parent.verticalCenter
+                text: messages.board.rows.length === 1 ? "1 meldung" : `${messages.board.rows.length} meldungen`
+                color: Tokens.color.textContrastHigh
+            }
+        }
 
         Column {
             id: stack
@@ -286,31 +303,14 @@ Column {
             }
         }
 
-        // Declared after the rows, so the first focus stays on the newest row and not on "alle entfernen".
-        Item {
-            id: head
+        Button {
+            id: clearAll
 
-            objectName: "head"
-            width: parent.width
-            height: Tokens.controlHeight
-
-            Body {
-                objectName: "count"
-                anchors.verticalCenter: parent.verticalCenter
-                text: messages.board.rows.length === 1 ? "1 meldung" : `${messages.board.rows.length} meldungen`
-                color: Tokens.color.textContrastHigh
-            }
-
-            Button {
-                id: clearAll
-
-                objectName: "clear"
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                variant: "quiet"
-                text: "alle entfernen"
-                onClicked: messages.removeAll()
-            }
+            objectName: "clear"
+            y: stack.y + stack.height + Tokens.spaceM
+            variant: "quiet"
+            text: "alle entfernen"
+            onClicked: messages.removeAll()
         }
     }
 }

@@ -216,7 +216,7 @@ TestCase {
         const body = findChild(first, "body");
         compare(body.lineCount, 1, "one line of the body");
         verify(body.truncated, "cut");
-        verify(findChild(first, "time").x + findChild(first, "time").width <= first.width, "the time at the end");
+        compare(findChild(first, "time").x + findChild(first, "time").width + Tokens.spaceM, findChild(first, "remove").x, "the time at the end, before the remove button");
     }
 
     function test_rows_stand_on_hairlines_and_the_list_ends_with_one() {
@@ -232,6 +232,7 @@ TestCase {
         verify(named("empty").visible);
         compare(rows().length, 0);
         verify(!named("head").visible);
+        verify(!named("clear").visible);
         verify(findChild(side, "pivot").activeFocus, "nothing to focus in the list");
     }
 
@@ -266,7 +267,7 @@ TestCase {
         compare(board.unseen, 1, "on the other facet it counts");
     }
 
-    function test_focus_starts_at_the_newest_row_and_up_down_home_end_move_through_the_rows() {
+    function test_focus_starts_at_the_newest_row_moves_through_the_rows_and_down_or_tab_after_the_last_reach_alle_entfernen() {
         three();
         openOnMessages();
         const list = rows();
@@ -276,10 +277,14 @@ TestCase {
         keyClick(Qt.Key_End);
         verify(list[2].activeFocus);
         keyClick(Qt.Key_Down);
-        verify(named("clear").activeFocus, "after the rows, alle entfernen");
-        keyClick(Qt.Key_Up);
+        verify(named("clear").activeFocus, "down from the last row, alle entfernen");
         keyClick(Qt.Key_Home);
         verify(list[0].activeFocus);
+        keyClick(Qt.Key_End);
+        keyClick(Qt.Key_Tab);
+        verify(findChild(list[2], "remove").activeFocus, "the last row's remove button");
+        keyClick(Qt.Key_Tab);
+        verify(named("clear").activeFocus, "tab after the rows, alle entfernen");
         keyClick(Qt.Key_Escape);
         verify(!side.open, "Escape closes the panel");
     }
@@ -379,6 +384,31 @@ TestCase {
         compare(calls, ["cleo closed 2", "ben closed 2", "anna closed 2"]);
     }
 
+    function test_alle_entfernen_stands_quiet_below_the_last_hairline_at_the_leading_edge_and_ends_the_list() {
+        three();
+        openOnMessages();
+        const clear = named("clear");
+        const list = named("rows");
+        const at = clear.mapToItem(messages, 0, 0);
+        compare(clear.text, "alle entfernen");
+        compare(clear.variant, "quiet");
+        compare(at.x, rows()[0].mapToItem(messages, 0, 0).x, "at the leading edge, where the rows begin");
+        compare(at.y, list.mapToItem(messages, 0, 0).y + list.height + Geometry.hairline + Tokens.spaceM, "space-m below the last hairline");
+        compare(messages.height, at.y + clear.height + Tokens.spaceL, "nothing below it");
+    }
+
+    function test_pressed_from_the_keyboard_alle_entfernen_hands_the_focus_to_what_comes_before_the_list() {
+        three();
+        openOnMessages();
+        keyClick(Qt.Key_End);
+        keyClick(Qt.Key_Down);
+        verify(named("clear").activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(summaries(), []);
+        verify(findChild(side, "pivot").activeFocus);
+        compare(toaster.open.text, "3 meldungen entfernt");
+    }
+
     // The first row arrived at the given date; the clock tells the given date.
     function tellTime(arrived: date, now: date): string {
         board.rows[0].time = arrived;
@@ -412,24 +442,33 @@ TestCase {
         verify(!tick.running, "closed again");
     }
 
-    function test_the_remove_button_shows_with_the_pointer_or_the_focus_and_removes_with_undo() {
+    function test_every_row_shows_its_time_and_then_its_remove_button_always_and_the_button_removes_with_undo() {
         three();
         openOnMessages();
-        const [cleo, ben] = rows();
-        const remove = findChild(ben, "remove");
         mouseMove(scene, 1, 1);
-        tryVerify(() => !remove.visible, 1000, "not on a row at rest");
-        verify(findChild(ben, "time").visible);
+        findChild(side, "pivot").forceActiveFocus(Qt.TabFocusReason);
+        const ben = rows()[1];
+        const stillThere = what => {
+            for (const row of rows()) {
+                const remove = findChild(row, "remove");
+                const time = findChild(row, "time");
+                const summary = findChild(row, "summary");
+                verify(remove.visible && time.visible, `${row.summary}, ${what}: the time and the remove button`);
+                compare(remove.x + remove.width, row.width, "the button at the end of the summary's line");
+                compare(remove.y + remove.height / 2, summary.y + summary.height / 2, "centred on it");
+                compare(time.x + time.width + Tokens.spaceM, remove.x, "the time space-m before the button");
+                compare(summary.x + summary.width + Tokens.spaceM, time.x, "the summary cut space-m before the time");
+            }
+        };
+        stillThere("no pointer and no focus on it");
         mouseMove(ben, 40, 10);
-        verify(remove.visible, "on a row under the pointer");
-        verify(!findChild(ben, "time").visible, "in the place of the time");
+        stillThere("the pointer on ben");
+        ben.forceActiveFocus(Qt.TabFocusReason);
+        stillThere("the focus on ben");
+        const remove = findChild(ben, "remove");
         compare(remove.label, "entfernen");
         compare(remove.icon, "close");
-        verify(!findChild(cleo, "remove").visible || cleo.activeFocus, "only on that row");
-        mouseMove(scene, 1, 1);
-        verify(!remove.visible);
-        ben.forceActiveFocus(Qt.TabFocusReason);
-        verify(remove.visible, "on a row with the focus");
+        compare(remove.variant, "quiet");
         mouseClick(remove);
         compare(summaries(), ["cleo", "anna"]);
         compare(toaster.open.text, "meldung entfernt");
@@ -521,7 +560,7 @@ TestCase {
         compare(calls, ["anna invoked default", "anna closed 2"]);
     }
 
-    function test_the_head_above_the_rows_counts_them_and_removes_them_all_with_undo() {
+    function test_the_head_above_the_rows_only_counts_them_at_a_controls_height() {
         notify({ summary: "anna" });
         openOnMessages();
         compare(named("count").text, "1 meldung");
@@ -530,24 +569,9 @@ TestCase {
         compare(named("count").text, "4 meldungen");
         const head = named("head");
         verify(head.visible);
-        verify(head.mapToItem(scene, 0, 0).y + head.height <= rows()[0].mapToItem(scene, 0, 0).y, "above the rows");
-        verify(named("clear").x + named("clear").width <= head.width && named("clear").x > named("count").width, "the count first, the button at the end");
-        compare(named("clear").text, "alle entfernen");
-        mouseClick(named("clear"));
-        compare(summaries(), []);
-        compare(toaster.open.text, "4 meldungen entfernt");
-        toaster.open.press();
-        compare(summaries().length, 4, "undo for all");
-    }
-
-    function test_nothing_stands_below_the_last_row_but_its_hairline() {
-        three();
-        openOnMessages();
-        const last = rows()[2];
-        const list = findChild(messages, "rows");
-        verify(named("clear").mapToItem(messages, 0, 0).y < list.mapToItem(messages, 0, 0).y, "the button is not at the end");
-        verify(messages.height <= list.mapToItem(messages, 0, 0).y + list.height + Geometry.hairline + Tokens.spaceL + 1);
-        verify(last.y >= 0);
+        compare(head.height, Tokens.controlHeight);
+        compare(rows()[0].mapToItem(head, 0, 0).y, head.height + Tokens.spaceM, "the rows space-m below it");
+        compare(findChild(head, "clear"), null, "nothing to press in it");
     }
 
     function test_a_press_on_a_row_runs_its_default_action_and_the_panel_goes() {
