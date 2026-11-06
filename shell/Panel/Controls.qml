@@ -70,8 +70,8 @@ Column {
     property int ownProcessId: -1
     // The picture of an icon theme's icon by its name, or "" where the theme has none; the host asks its theme.
     property var iconFor: name => ""
-    // The streams other programs play, in the order they came; recording, video and the shell's own are left out.
-    readonly property var playing: streams.filter(node => node.properties["media.class"] === "Stream/Output/Audio" && Number(node.properties["application.process.id"]) !== ownProcessId)
+    // The streams other programs play, in the order they came.
+    readonly property var playing: streams.filter(node => playsAlong(node))
     // Once one stream has an icon, the words of all start at one edge.
     readonly property bool streamIcons: playing.some(node => streamIcon(node) !== "")
     // The ids of the streams the rows show or are about to show.
@@ -156,6 +156,16 @@ Column {
         return node?.description || node?.name || "";
     }
 
+    // Playback of another program that lasts: recording, video, the shell's own and event sounds are left out. An event
+    // sound (libcanberra's, the shell's own among them, played by a process of its own) lasts a moment and would only
+    // flicker in and out; pavucontrol leaves them out too.
+    function playsAlong(node: var): bool {
+        const role = (node.properties["media.role"] ?? "").toLowerCase();
+        return node.properties["media.class"] === "Stream/Output/Audio"
+            && Number(node.properties["application.process.id"]) !== ownProcessId
+            && role !== "event" && role !== "notification";
+    }
+
     // The program's icon by the name it gave its stream; none where it gave none or the theme lacks it.
     // ponytail: a program that names no icon shows none; look up its desktop entry by application.process.binary
     // should many do so.
@@ -183,6 +193,8 @@ Column {
     // The rows follow the streams by id: rows that stay keep their item and its focus, new ones are appended in the
     // order they came, so nothing moves under the pointer. They come and go as rows do, and what lies below makes room
     // or closes the gap (motion.md:24).
+    // ponytail: the focus in a row that leaves goes with it; hand it on to the next control as Messages.remove() does,
+    // should that strand a keyboard user.
     function followStreams() {
         const ids = playing.map(node => node.id);
         if (String(ids) === String(streamIds))

@@ -1578,11 +1578,13 @@ TestCase {
             stream(73, { "media.class": "Stream/Output/Video", "application.name": "KWin" }, 0.5),
             stream(74, { "application.name": "Shell", "application.process.id": "1000" }, 0.5),
             stream(75, { "media.class": "Audio/Sink", "application.name": "Card" }, 0.5),
+            stream(78, { "application.name": "canberra-gtk-play", "media.role": "event" }, 0.5),
+            stream(79, { "application.name": "Chat", "media.role": "Notification" }, 0.5),
             Object.assign(stream(76, {}, 0.5), { properties: {} }),
             stream(77, { "application.name": "Player" }, 0.5)
         ];
         side.show(0);
-        compare(streamRows().map(row => row.label), ["Player"], "no recording, monitor, video, own, device or untracked stream");
+        compare(streamRows().map(row => row.label), ["Player"], "no recording, monitor, video, own, device, untracked or event stream");
     }
 
     function test_a_streams_button_and_slider_set_that_stream_alone_and_follow_changes_from_elsewhere() {
@@ -1697,6 +1699,26 @@ TestCase {
         verify(closing, "the next row glides up");
         compare(closing.from.y, gap, "from where it stood, the gone row and its space lower");
         compare(closing.curve, Tokens.easeBase);
+    }
+
+    function test_a_stream_that_names_a_new_track_while_another_leaves_shows_it_and_the_leaving_goes_on() {
+        giveSound(controls);
+        const streams = giveStreams(controls);
+        showSettled(0);
+        Prefs.motion = "on";
+        const presence = findChild(controls, "streamPresence");
+        const leaving = streamRows()[0];
+        controls.streams = [streams.otherTab, streams.music];
+        verify(presence.moving.some(motion => motion.item === leaving), "the tab leaves");
+        // Quickshell hands the same node with new properties; the stand-in is a new object with the same id.
+        const renamed = Object.assign({}, streams.music, {
+            properties: Object.assign({}, streams.music.properties, { "media.name": "Gnossienne No. 1" })
+        });
+        controls.streams = [streams.otherTab, renamed];
+        verify(presence.moving.some(motion => motion.item === leaving), "the tab goes on leaving");
+        compare(streamRows().length, 3, "in its place meanwhile");
+        compare(streamRows()[2].label, "Elisa · Gnossienne No. 1", "the player shows its new track");
+        tryVerify(() => streamRows().length === 2, Tokens.durationShort * 4, "then the tab is gone");
     }
 
     function test_under_reduced_motion_streams_come_and_go_at_once() {
