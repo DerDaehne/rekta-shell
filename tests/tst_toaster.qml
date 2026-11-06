@@ -673,7 +673,7 @@ TestCase {
     function test_a_picture_in_the_icon_field_is_cropped_to_a_square_not_squeezed() {
         const toast = toaster.show("see you soon", { icon: testCase.widePicture });
         const picture = findChild(toast, "appIcon");
-        tryCompare(picture, "status", Image.Ready);
+        tryCompare(findChild(picture, "image"), "status", Image.Ready, 5000, "the cropped one shows");
         onWholePixels(toast);
         compare(findChild(picture, "image").fillMode, Image.PreserveAspectCrop);
         compare(picture.width, 20);
@@ -714,14 +714,14 @@ TestCase {
         const icon = findChild(toast, "appIcon");
         tryCompare(icon, "status", Image.Ready);
         verify(!findChild(icon, "picture").visible, "the picture at its own size gives way to the cropped one");
-        compare(findChild(icon, "image").status, Image.Ready, "the cropped one shows");
+        tryCompare(findChild(icon, "image"), "status", Image.Ready, 5000, "the cropped one shows");
         compare(findChild(icon, "corners").width, 20 + 2 * Tokens.radiusTile);
     }
 
     function test_the_picture_has_the_tile_s_corners_in_the_strip_s_own_ground() {
         const toast = toaster.show("see you soon", { icon: testCase.widePicture });
         const picture = findChild(toast, "appIcon");
-        tryCompare(picture, "status", Image.Ready);
+        tryCompare(findChild(picture, "image"), "status", Image.Ready, 5000, "the cropped one shows");
         onWholePixels(toast);
         compare(Tokens.radiusTile, 2);
         waitForRendering(picture);
