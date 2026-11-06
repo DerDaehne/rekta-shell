@@ -49,6 +49,32 @@ QtObject {
         latest = player;
     }
 
+    // The media keys act on what "läuft gerade" shows, as far as that player lets itself be controlled so.
+    function togglePlaying() {
+        if (player?.canTogglePlaying)
+            player.togglePlaying();
+    }
+
+    function pause() {
+        if (player?.canPause)
+            player.pause();
+    }
+
+    function stop() {
+        if (player?.canControl)
+            player.stop();
+    }
+
+    function next() {
+        if (player?.canGoNext)
+            player.next();
+    }
+
+    function previous() {
+        if (player?.canGoPrevious)
+            player.previous();
+    }
+
     // Quickshell lists a player only once it has read its state, so one that comes playing never changes isPlaying:
     // its coming is its start.
     onPlayersChanged: {

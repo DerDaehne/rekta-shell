@@ -23,8 +23,8 @@ TestCase {
     property var side
     property var controls
 
-    // An MPRIS player as Quickshell has it. Its calls are recorded; play and pause also change its state, as a player
-    // answers them.
+    // An MPRIS player as Quickshell has it. Its calls are recorded; play, pause and stop also change its state, as a
+    // player answers them.
     component FakePlayer: QtObject {
         property string identity: "Elisa"
         property int playbackState: PlayerChoice.Playing
@@ -41,6 +41,8 @@ TestCase {
         property bool canGoPrevious: true
         property bool canGoNext: true
         property bool canTogglePlaying: true
+        property bool canPause: true
+        property bool canControl: true
         property var calls: []
 
         function previous() {
@@ -54,6 +56,16 @@ TestCase {
         function togglePlaying() {
             calls = [...calls, "togglePlaying"];
             playbackState = isPlaying ? PlayerChoice.Paused : PlayerChoice.Playing;
+        }
+
+        function pause() {
+            calls = [...calls, "pause"];
+            playbackState = PlayerChoice.Paused;
+        }
+
+        function stop() {
+            calls = [...calls, "stop"];
+            playbackState = PlayerChoice.Stopped;
         }
     }
 
@@ -352,6 +364,74 @@ TestCase {
         elisa.playbackState = PlayerChoice.Paused;
         compare(barPlayer(), null, "with nothing playing the bar has no player");
         compare(part("title").text, "A talk");
+    }
+
+    // Every media key once, as kglobalaccel hands them to the shell's Media.
+    function pressEveryMediaKey() {
+        controls.choice.next();
+        controls.choice.previous();
+        controls.choice.togglePlaying();
+        controls.choice.togglePlaying();
+        controls.choice.pause();
+        controls.choice.stop();
+    }
+
+    function test_the_media_keys_act_on_the_player_laeuft_gerade_shows() {
+        const elisa = givePlayer();
+        side.show(0);
+        compare(part("title").text, "Teardrop");
+        pressEveryMediaKey();
+        compare(elisa.calls, ["next", "previous", "togglePlaying", "togglePlaying", "pause", "stop"]);
+    }
+
+    function test_with_two_players_playing_a_media_key_acts_on_the_one_shown_the_one_that_started_last() {
+        const elisa = player();
+        const browser = player({ identity: "Firefox", playbackState: PlayerChoice.Paused, trackTitle: "A talk" });
+        controls.choice.players = [elisa, browser];
+        side.show(0);
+        browser.playbackState = PlayerChoice.Playing;
+        compare(part("title").text, "A talk");
+        controls.choice.togglePlaying();
+        compare(browser.calls, ["togglePlaying"], "the key pauses the one shown");
+        compare(elisa.calls, [], "and leaves the one that started first playing");
+        verify(elisa.isPlaying);
+    }
+
+    function test_after_a_pick_in_the_panel_a_media_key_acts_on_the_picked_player() {
+        const elisa = player();
+        const browser = player({ identity: "Firefox", trackTitle: "A talk" });
+        controls.choice.players = [elisa, browser];
+        side.show(0);
+        compare(part("title").text, "Teardrop");
+        pickSecondPlayer();
+        controls.choice.next();
+        compare(browser.calls, ["next"]);
+        compare(elisa.calls, []);
+    }
+
+    function test_a_media_key_acts_on_a_paused_pick_not_on_the_player_the_bar_shows() {
+        const elisa = player();
+        const browser = player({ identity: "Firefox", playbackState: PlayerChoice.Paused, trackTitle: "A talk" });
+        controls.choice.players = [elisa, browser];
+        side.show(0);
+        pickSecondPlayer();
+        compare(barPlayer(), elisa);
+        controls.choice.togglePlaying();
+        compare(browser.calls, ["togglePlaying"], "the key plays what läuft gerade shows");
+        compare(elisa.calls, []);
+    }
+
+    function test_without_a_player_shown_the_media_keys_do_nothing() {
+        pressEveryMediaKey();
+        const stopped = givePlayer({ playbackState: PlayerChoice.Stopped });
+        pressEveryMediaKey();
+        compare(stopped.calls, [], "a stopped player is not shown, so the keys leave it alone");
+    }
+
+    function test_a_media_key_the_player_cannot_follow_now_is_not_sent_to_it() {
+        const elisa = givePlayer({ canGoNext: false, canGoPrevious: false, canTogglePlaying: false, canPause: false, canControl: false });
+        pressEveryMediaKey();
+        compare(elisa.calls, []);
     }
 
     function test_the_progress_glides_on_between_the_players_reports_without_jumps() {

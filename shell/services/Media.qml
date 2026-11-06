@@ -3,8 +3,8 @@ import Quickshell
 import Quickshell.Services.Mpris
 import State
 
-// What plays, for every surface that shows it: one choice among the MPRIS players for the bar's middle and
-// "läuft gerade". `player` is the bar's, none while all are paused or stopped.
+// What plays, for every surface that shows it: one choice among the MPRIS players for the bar's middle, "läuft gerade"
+// and the media keys. `player` is the bar's, none while all are paused or stopped.
 Scope {
     id: media
 
@@ -25,5 +25,42 @@ Scope {
         repeat: true
         running: media.player?.positionSupported ?? false
         onTriggered: media.player.positionChanged()
+    }
+
+    // The media keys, for what "läuft gerade" shows. They reach the shell alone, as the rekta session keeps KDE's media
+    // controller in kded6 unloaded; as there, Play plays or pauses.
+    GlobalShortcut {
+        name: "play-pause"
+        text: "Play or pause media"
+        keys: [Qt.Key_MediaPlay]
+        onPressed: media.choice.togglePlaying()
+    }
+
+    GlobalShortcut {
+        name: "pause"
+        text: "Pause media"
+        keys: [Qt.Key_MediaPause]
+        onPressed: media.choice.pause()
+    }
+
+    GlobalShortcut {
+        name: "stop"
+        text: "Stop media"
+        keys: [Qt.Key_MediaStop]
+        onPressed: media.choice.stop()
+    }
+
+    GlobalShortcut {
+        name: "next"
+        text: "Next track"
+        keys: [Qt.Key_MediaNext]
+        onPressed: media.choice.next()
+    }
+
+    GlobalShortcut {
+        name: "previous"
+        text: "Previous track"
+        keys: [Qt.Key_MediaPrevious]
+        onPressed: media.choice.previous()
     }
 }
