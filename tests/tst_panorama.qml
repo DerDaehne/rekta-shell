@@ -817,6 +817,71 @@ TestCase {
         compare(place.strip.currentIndex, 3);
     }
 
+    function test_at_the_start_the_strip_marks_the_first_section_however_narrow_the_sections_are() {
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        for (let k = 0; k < 5; k++)
+            sectionComponent.createObject(place.panorama.sectionParent, {
+                title: `section ${k}`,
+                tall: 100,
+                sectionWidth: 300
+            });
+        verify(sectionAt(place.panorama, 1).x <= place.panorama.width / 3, "two leading edges lie in the first third");
+        place.panorama.scroller.contentX = 100;
+        compare(place.strip.currentIndex, 1);
+        place.panorama.scroller.contentX = 0;
+        compare(place.strip.currentIndex, 0);
+    }
+
+    function test_a_section_that_shows_while_the_view_stands_at_the_start_takes_the_mark_from_a_jump() {
+        Prefs.motion = "off";
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        for (let k = 0; k < 3; k++)
+            sectionComponent.createObject(place.panorama.sectionParent, {
+                title: `section ${k}`,
+                tall: 100
+            });
+        sectionAt(place.panorama, 0).visible = false;
+        verify(place.panorama.fit);
+        place.strip.select(1);
+        compare(place.panorama.currentIndex, 1);
+        sectionAt(place.panorama, 0).visible = true;
+        compare(place.panorama.scroller.contentX, 0);
+        compare(place.panorama.currentIndex, 0);
+        compare(place.strip.currentIndex, 0);
+    }
+
+    function test_a_section_that_hides_before_the_one_read_leaves_the_view_and_marks_the_section_now_in_it() {
+        Prefs.motion = "off";
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        for (let k = 0; k < 5; k++)
+            sectionComponent.createObject(place.panorama.sectionParent, {
+                title: `section ${k}`,
+                tall: 100
+            });
+        place.strip.select(2);
+        const read = place.panorama.scroller.contentX;
+        sectionAt(place.panorama, 0).visible = false;
+        compare(place.panorama.scroller.contentX, read);
+        compare(place.panorama.sectionItems()[place.strip.currentIndex], sectionAt(place.panorama, 3));
+    }
+
+    function test_a_section_that_hides_during_a_jump_leaves_the_mark_on_the_section_where_the_glide_ends() {
+        Prefs.motion = "on";
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        for (let k = 0; k < 5; k++)
+            sectionComponent.createObject(place.panorama.sectionParent, {
+                title: `section ${k}`,
+                tall: 100
+            });
+        waitForRendering(place);
+        place.strip.select(3);
+        verify(place.panorama.gliding);
+        sectionAt(place.panorama, 0).visible = false;
+        tryCompare(place.panorama, "gliding", false, 2 * Tokens.durationPivotGlide);
+        compare(place.panorama.scroller.contentX, place.panorama.mostScroll(), "the glide ends where it was going");
+        compare(place.panorama.sectionItems()[place.strip.currentIndex], sectionAt(place.panorama, 4));
+    }
+
     function test_a_press_on_the_strip_scrolls_there_in_the_glide_time_and_the_title_stays_chosen() {
         Prefs.motion = "on";
         const place = createTemporaryObject(stripAndPanoramaComponent, testCase);

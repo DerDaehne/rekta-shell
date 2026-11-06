@@ -76,8 +76,6 @@ FocusScope {
     property var letterSections: []
     // The rows of tiles a section of "alle apps" holds under its heading; stacked, no letter splits.
     readonly property real letterRows: appsPanorama.sideways ? Math.max(1, Math.floor((appsPanorama.height - 2 * Tokens.spaceXl - headingMeasure.height - Tokens.spaceL + Tokens.spaceS) / unitStep)) : Infinity
-    // Whether "läuft" stands in the panorama, the first of its sections.
-    readonly property bool anyRunning: running.length > 0
     // What was typed: the text of the search's line.
     property alias query: line.text
     // The search shows, or is on its way, in place of the pivot and the places.
@@ -755,8 +753,6 @@ FocusScope {
 
     onFocusItemChanged: reveal(focusItem)
     onQueryChanged: refresh()
-    // The section being read stays the one read when "läuft" comes before it or goes.
-    onAnyRunningChanged: panorama.mark(Math.max(0, panorama.currentIndex + (anyRunning ? 1 : -1)))
     onAppsChanged: {
         refresh();
         regroup();

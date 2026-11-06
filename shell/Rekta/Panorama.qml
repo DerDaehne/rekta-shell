@@ -244,6 +244,19 @@ Item {
         }
         reading.reach = sections.length ? along - gap : inset;
         reading.stackHeight = top;
+        markInSight(sections);
+    }
+
+    // A section that comes or goes moves the others under a still view, so the mark goes to the section the view now
+    // shows, whatever jump held it (behaviour.md:491–494). Only a panorama that shows knows which sections are in sight.
+    // ponytail: a glide under way goes on to its old offset, the mark following; re-aim it at its section if that shows.
+    function markInSight(sections: var) {
+        const same = sections.length === reading.inSight.length && sections.every((section, k) => section === reading.inSight[k]);
+        if (same || facetRow || !row.visible || !sections.length)
+            return;
+        reading.inSight = sections;
+        userScroll();
+        mark(sectionAtEdge(sections));
     }
 
     function wire(section: var) {
@@ -261,18 +274,18 @@ Item {
         const sections = sectionItems();
         if (fit || !sections.length)
             return;
-        const chosen = facetRow ? followedFacet(sections) : followedSection(sections);
+        const chosen = facetRow ? followedFacet(sections) : reading.jumped ? -1 : sectionAtEdge(sections);
         if (chosen >= 0 && chosen !== reading.current)
             mark(chosen);
     }
 
-    // ponytail: at the start, the last edge within a third is Rekta 0.5.0's rule; 0.6.0 marks the first section there,
-    // however narrow the sections (rekta.js:981–983).
-    function followedSection(sections: var): int {
-        if (reading.jumped)
-            return -1;
+    // The last section whose leading edge lies within a third of the view; sideways at the start the first and at the
+    // end the last, however narrow the sections (rekta.js follow(), :973–990).
+    function sectionAtEdge(sections: var): int {
         const reach = (sideways ? flick.width : flick.height) / 3;
         const here = sideways ? flick.contentX : flick.contentY;
+        if (sideways && here <= 1)
+            return 0;
         if (sideways && here >= mostScroll() - 1)
             return sections.length - 1;
         let chosen = 0;
@@ -353,6 +366,8 @@ Item {
         property var gesture: null
         property var dragFrom: ({})
         property var wired: new Set()
+        // The sections in sight when the panorama last showed.
+        property var inSight: []
         // Items of a panorama that is being destroyed still signal; nothing is laid out then.
         property bool gone: false
     }

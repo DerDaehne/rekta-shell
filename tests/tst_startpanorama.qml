@@ -249,18 +249,70 @@ TestCase {
         compare(named("sectionStrip").currentIndex, 0);
     }
 
-    function test_a_section_read_stays_the_one_read_when_running_comes_and_goes() {
-        openAt(1600, 900, {
+    // When "läuft" comes or goes, the strip marks the section the view shows
+
+    function marked(): Item {
+        const panorama = named("panorama");
+        compare(named("sectionStrip").currentIndex, panorama.currentIndex, "the strip and the panorama agree");
+        return panorama.sectionItems()[panorama.currentIndex];
+    }
+
+    function test_windows_that_come_to_a_start_standing_without_them_mark_running_where_the_view_begins_data() {
+        return [
+            {
+                tag: "1920 x 1080, where everything fits",
+                width: 1920,
+                height: 1080
+            },
+            {
+                tag: "1080 x 1920, where the panorama scrolls",
+                width: 1080,
+                height: 1920
+            }
+        ];
+    }
+
+    function test_windows_that_come_to_a_start_standing_without_them_mark_running_where_the_view_begins(data) {
+        openAt(data.width, data.height, {
             windows: []
         });
-        compare(named("sectionStrip").currentIndex, 0);
+        compare(marked(), named("pinned"));
         start.windows = windowsOpen();
         compare(named("sectionStrip").titles, ["läuft", "angeheftet"]);
-        compare(named("panorama").currentIndex, 1, "angeheftet is still the one read");
-        compare(named("sectionStrip").currentIndex, 1);
+        compare(named("panorama").scroller.contentX, 0, "the view stays at the start, where running now stands");
+        compare(marked(), named("running"));
+    }
+
+    function test_running_that_goes_while_pinned_is_read_leaves_pinned_marked_where_the_view_now_begins() {
+        openAt(1000, 900);
+        const panorama = named("panorama");
+        panorama.userScroll();
+        panorama.scroller.contentX = panorama.mostScroll();
+        compare(marked(), named("pinned"));
         start.windows = [];
-        compare(named("panorama").currentIndex, 0);
-        compare(named("sectionStrip").currentIndex, 0);
+        compare(panorama.scroller.contentX, 0);
+        compare(marked(), named("pinned"));
+    }
+
+    function test_running_that_goes_while_it_is_read_hands_the_mark_to_pinned_and_takes_it_back_when_it_comes_again() {
+        openAt(1000, 900);
+        compare(marked(), named("running"));
+        start.windows = [];
+        compare(marked(), named("pinned"));
+        start.windows = windowsOpen();
+        compare(marked(), named("running"));
+    }
+
+    function test_running_that_goes_during_a_jump_to_pinned_ends_the_glide_with_the_view_and_the_mark_on_pinned() {
+        openAt(1000, 900);
+        Prefs.motion = "on";
+        const panorama = named("panorama");
+        named("sectionStrip").select(1);
+        verify(panorama.gliding);
+        start.windows = [];
+        wait(2 * Tokens.durationPivotGlide);
+        compare(panorama.scroller.contentX, 0, "nothing scrolls past the start of a panorama that now fits");
+        compare(marked(), named("pinned"));
     }
 
     // The wheel

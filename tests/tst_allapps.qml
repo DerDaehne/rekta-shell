@@ -546,8 +546,8 @@ TestCase {
         keyClick(Qt.Key_Home);
         tryCompare(panorama, "gliding", false);
         compare(panorama.scroller.contentX, 0, "the first section flush left");
-        // The strip marks what Rekta 0.5.0's follow rule says there, kept by the panorama.
-        compare(panorama.currentIndex, sections().filter(section => section.x <= panorama.width / 3).length - 1);
+        verify(sections()[1].x <= panorama.width / 3, "more than one leading edge lies in the first third");
+        compare(panorama.currentIndex, 0, "at the start the strip marks the first section");
     }
 
     function test_down_from_a_focused_heading_goes_to_the_first_tile_of_its_section_and_up_to_the_strip() {
