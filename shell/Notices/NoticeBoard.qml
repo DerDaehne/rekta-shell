@@ -166,7 +166,8 @@ QtObject {
         return notification.summary || notification.body;
     }
 
-    // A summary over a body; either alone is the toast's one sentence.
+    // A summary over a body; either alone is the toast's one sentence. The app's name is deliberately not added, though
+    // Rekta wants the sender's name in the title or the text (states.md:97–98).
     function toastWords(notification: var): var {
         const titled = notification.summary !== "" && notification.body !== "";
         return { title: titled ? notification.summary : "", text: titled ? notification.body : headline(notification) };

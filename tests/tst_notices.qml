@@ -265,6 +265,13 @@ TestCase {
         compare(board.rows[0].summary, "disk almost full", "the list row says it too");
     }
 
+    function test_the_toast_keeps_the_words_the_app_sends_and_does_not_add_the_app_s_name() {
+        notify({ appName: "Browser", summary: "Download finished", body: "report.pdf" });
+        compare(toaster.open.title, "Download finished");
+        compare(toaster.open.text, "report.pdf");
+        compare(toaster.open.spoken, "Download finished. report.pdf");
+    }
+
     function test_the_image_takes_the_place_of_the_app_icon() {
         notify({ image: testCase.picture, appIcon: "konsole" });
         compare(toaster.open.icon, testCase.picture);

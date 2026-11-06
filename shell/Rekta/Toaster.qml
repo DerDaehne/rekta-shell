@@ -19,6 +19,8 @@ import QtQuick
 // control that counts it. Rekta's toast layer lies above the app bar (states.md:225–227), so its notification glides
 // over the bar; here the toasts' surface ends at the bar's top edge, and a notification comes from behind the bar.
 // A toast that has to leave while it still comes in goes from where it stands, where Rekta's jumps to its place first.
+// A notification's title is the one it brings, so its sender's name may be missing from the toast's words, where Rekta
+// always has it in the title or the text (states.md:97–98).
 Item {
     id: toaster
 

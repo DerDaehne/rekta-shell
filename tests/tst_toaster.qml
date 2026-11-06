@@ -470,9 +470,27 @@ TestCase {
         compare(message.lineCount, 2);
     }
 
-    function test_without_a_title_the_text_has_no_limit_and_no_heading() {
+    function test_a_long_title_wraps_over_as_many_lines_as_it_needs_and_is_never_cut() {
+        const title = "Mia Lindqvist, Jonas Berg, Lea Hoffmann and two others in the planning group for the Thursday review";
+        const long = "a long message body that says what happened in many words, and then some more words, so that it needs a third line to be said";
+        toaster.width = 360;
+        const toast = toaster.show(long, { title, icon: testCase.appIcon });
+        const heading = findChild(toast, "title");
+        const message = findChild(toast, "message");
+        verify(heading.lineCount > 2, `${heading.lineCount} lines`);
+        verify(!heading.truncated);
+        compare(heading.text, title);
+        compare(message.lineCount, 2, "the text under it is still cut after two lines");
+        verify(message.truncated);
+        compare(message.y, heading.height, "the text starts under the title's last line");
+        compare(toast.height, findChild(toast, "words").height);
+        compare(toast.Accessible.name, `${title}. ${long}`);
+    }
+
+    // The docs bind the cut to a title (states.md:91, behaviour.md:678–679); rekta.js cuts beside an icon too.
+    function test_without_a_title_the_text_has_no_limit_and_no_heading_even_beside_an_icon() {
         const long = "a long message body that says what happened in many words, and then some more words, so that it needs a third line to be said, and a fourth line besides, because a message may run on and on and on until nobody reads it to the end";
-        const toast = toaster.show(long, {});
+        const toast = toaster.show(long, { icon: testCase.appIcon });
         verify(!findChild(toast, "title").visible);
         verify(findChild(toast, "message").lineCount > 2);
         verify(!findChild(toast, "message").truncated);
@@ -610,8 +628,8 @@ TestCase {
         compare(testCase.ends, ["toast dismissed"]);
     }
 
-    function test_the_text_control_tints_with_hover_and_carries_the_acts_focus_ring() {
-        const toast = toaster.show("see you soon", { open: { run: () => {} } });
+    function test_the_text_control_tints_with_hover_and_its_focus_ring_sits_space_xs_inside_where_the_action_s_sits_ten() {
+        const toast = toaster.show("see you soon", { open: { run: () => {} }, act: { label: "reply", run: () => {} } });
         const text = findChild(toast, "open");
         const tint = findChild(text, "press");
         compare(tint.opacity, 0);
@@ -621,8 +639,12 @@ TestCase {
         text.forceActiveFocus(Qt.TabFocusReason);
         const ring = Array.from(text.children).find(child => child instanceof FocusRing);
         verify(ring.visible);
-        compare(ring.offset, -Geometry.toastFocusInset);
+        compare(ring.x + ring.border.width, Tokens.spaceXs, "its inner edge lies space-xs inside");
         compare(ring.ink, findChild(toast, "message").color);
+        const action = findChild(toast, "action");
+        action.forceActiveFocus(Qt.TabFocusReason);
+        const actionRing = Array.from(action.children).find(child => child instanceof FocusRing);
+        compare(actionRing.x + actionRing.border.width, Geometry.toastFocusInset);
     }
 
     function test_the_text_comes_before_the_action_in_the_tab_order() {
@@ -1043,7 +1065,7 @@ TestCase {
             findChild(sheet, "error").show("could not save the schedule: the server is offline", { status: "error", act: { label: "retry", run: () => {} } });
             findChild(sheet, "focused").show("message archived", { undo: () => {} });
             findChild(findChild(sheet, "focused").open, "action").forceActiveFocus();
-            const titled = findChild(sheet, "titled").show("Can we move the call to Thursday afternoon? I have the whole morning booked and the afternoon is free, so any time after lunch works.", { title: "Mia", icon: testCase.widePicture, open: { run: () => {} }, stays: true });
+            const titled = findChild(sheet, "titled").show("Can we move the call to Thursday afternoon? I have the whole morning booked and the afternoon is free, so any time after lunch works.", { title: "Mia Lindqvist and Jonas Berg in the planning group for the review on Thursday", icon: testCase.widePicture, open: { run: () => {} }, stays: true });
             findChild(sheet, "pressable").show("Backup finished", { title: "Backups", icon: testCase.appIcon, open: { run: () => {} }, act: { label: "show", run: () => {} } });
             findChild(findChild(sheet, "pressable").open, "open").forceActiveFocus(Qt.TabFocusReason);
             findChild(sheet, "neutral").set("offline", true, { since: false });

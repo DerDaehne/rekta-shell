@@ -7,28 +7,38 @@ import "Status.js" as Status
 // It stays its window, duration-toast, which holds while it is hovered or has focus. With undo, the window closes as a
 // 2px line and a tabular figure, once a second. The window runs against a deadline in wall-clock time, and reduced
 // motion leaves it alone (motion.md, "Reduced motion").
+//
+// A notification from another program (states.md:78–103; rekta.css:1181–1196) brings a title over its text, the
+// sender's icon or its own picture at the start, and a text that is a button. A deliberate deviation: the title is the
+// one the notification brings, so the sender's name stands in the title or the text only where the program put it there,
+// where Rekta has it there always (states.md:97–98).
 FocusScope {
     id: toast
 
     required property Toaster toaster
     property string key
     property string text
-    // A notification's summary, semibold above the text; with it the text keeps to bodyMaxLines and ends in an ellipsis.
-    // The reader still gets all of it, as in Rekta's toast from another program (rekta.css:1183–1184, :1195–1196).
+    // Semibold above the text, on as many lines as it needs (rekta.css:1195); under it the text keeps to bodyMaxLines
+    // and ends in an ellipsis (:1196). The reader still gets all of it (states.md:89–91). Without a title the text is one
+    // uncut sentence, as in any toast (states.md:91, behaviour.md:678–679), though Rekta's script cuts it beside an icon
+    // (rekta.js:1532–1542); the docs are followed until Rekta settles which holds.
     property string title
     readonly property int bodyMaxLines: 2
     // The word of a neutral tag at the end of the text, before the action (`.rk-tag` without a status). It stands last
     // but is said first, so that a reader hears it before the text it qualifies.
     property string tag
-    // { run }: the text is a control; pressing it calls run and ends the toast as "acted". What the press does, such as
-    // bringing the app forward, is the host's. Without it the text is only text, as in Rekta.
+    // { run }: the text is a button, tinted on hover and press and ringed on focus as the action is (rekta.css:1185–1190,
+    // :1343; states.md:99–101); pressing it calls run and ends the toast as "acted". What the press does is the host's:
+    // a notification's default action or, a deliberate deviation, bringing its app forward. Without it the text is only
+    // text, as in a toast of the product's own.
     property var open: null
     // The toast has no window and no countdown line; it ends by a press, its action, Escape or dismiss().
     property bool stays: false
     // info | success | warning | error, or "" for the ink strip; a success says it without a status (states.md).
     property string status
-    // The app the toast speaks for, at the front of the strip in the icon's 20px field (rekta.css:1182–1183, :1192).
-    // ponytail: its rounded corners are the shell's from before Rekta had it; 0.6.0 crops a picture square (:1193).
+    // The sender's icon or the notification's own picture, cropped square at the front of the strip in the icon's 20px
+    // field (rekta.css:1182–1183, :1192–1193). Deliberate deviations: an app's icon keeps its colours where Rekta takes a
+    // single-colour one first (states.md:92–95), and the picture keeps the tile's corners (see Picture).
     property url icon
     // "undo", "redo" or the label of another action with a window.
     property string action: "undo"
@@ -361,8 +371,7 @@ FocusScope {
             font.pixelSize: Tokens.fontSizeS
             font.weight: Tokens.fontWeightSemibold
             color: toast.ink
-            elide: Text.ElideRight
-            maximumLineCount: 1
+            wrapMode: Text.Wrap
             leftPadding: message.leftPadding
             rightPadding: message.rightPadding
             topPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxTop
@@ -382,7 +391,7 @@ FocusScope {
             wrapMode: Text.Wrap
             elide: Text.ElideRight
             maximumLineCount: heading.visible ? toast.bodyMaxLines : 2147483647
-            // Next to the app's icon the words keep the space a glyph keeps from its label (rekta.css:321).
+            // The icon field and the words are the text's row, space-s apart (rekta.css:1191).
             leftPadding: front.width > 0 ? Tokens.spaceS : Tokens.spaceM
             // A tag after the words stands the gap of the text's row away (rekta.css:1191).
             rightPadding: toast.tag !== "" ? Tokens.spaceS : Tokens.spaceM
@@ -440,10 +449,11 @@ FocusScope {
             lit: openHover.hovered || openTap.pressed
         }
 
+        // Closer to the edge than the action's (rekta.css:1190, :1216).
         FocusRing {
             onFill: true
             ink: toast.ink
-            offset: -Geometry.toastFocusInset
+            offset: -Tokens.spaceXs
         }
 
         TapHandler {
