@@ -46,6 +46,8 @@ PanelWindow {
     readonly property var nodes: Pipewire.nodes
     // The sound cards and other audio devices, not the programs playing or recording.
     readonly property list<PwNode> audioDevices: nodes.values.filter(node => node.audio && !node.isStream)
+    // The programs playing and recording, tracked so their properties and audio are valid.
+    readonly property list<PwNode> streams: nodes.values.filter(node => node.isStream)
     // The network cards, only once NetworkManager runs; untyped for the same reason.
     readonly property var networkModel: networkManagerRunning ? Networking.devices : null
     readonly property var networkDevices: networkModel?.values ?? []
@@ -130,6 +132,9 @@ PanelWindow {
             onBrightnessChosen: (name, value) => surface.brightness.setBrightness(name, value)
             outputs: surface.audioDevices.filter(node => node.isSink)
             inputs: surface.audioDevices.filter(node => !node.isSink)
+            streams: surface.streams
+            ownProcessId: Quickshell.processId
+            iconFor: name => Quickshell.iconPath(name, true)
             onRun: command => surface.launcher.run(command)
             onLockAsked: surface.launcher.lock()
             // The nested session reaches the host's system bus: only the session's own shell sets the profile.
@@ -184,6 +189,10 @@ PanelWindow {
             board: surface.notices
             onActed: panel.close()
         }
+    }
+
+    PwObjectTracker {
+        objects: surface.streams
     }
 
     GlobalShortcut {

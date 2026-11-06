@@ -9,10 +9,11 @@ import State
 // follow in a fixed order, ton, verbindungen, anzeige, sitzung; one without rows falls away. The states switched most,
 // "wlan", "bluetooth", "nicht stören" and "dunkel", are toggle buttons at the panel's edge nearest the app bar
 // (`edge`). The host runs what the rows ask for and feeds back the state they show. In ton each kind has two rows, a
-// select of its devices, then a button that mutes before the volume slider; in anzeige each display that can be dimmed
-// has a slider; in verbindungen the paired Bluetooth devices and the strongest wireless networks unfold below their
-// rows, up to five, and a level lists them all. A secured network the system does not know asks for its password in a
-// sheet.
+// select of its devices, then a button that mutes before the volume slider; between the output and the input each
+// stream another program plays has a row with a button and a slider of its own; in anzeige each display that can be
+// dimmed has a slider; in verbindungen the paired Bluetooth devices and the strongest wireless networks unfold below
+// their rows, up to five, and a level lists them all. A secured network the system does not know asks for its password
+// in a sheet.
 Column {
     id: controls
 
@@ -62,6 +63,19 @@ Column {
     // The devices of each kind to choose from, nodes as above.
     property var outputs: []
     property var inputs: []
+    // The programs' streams as PipeWire has them once tracked: id, name, properties (media.class, application.name,
+    // application.icon-name, application.process.id, media.name) and audio as above.
+    property var streams: []
+    // The shell's own process, whose streams are never listed.
+    property int ownProcessId: -1
+    // The picture of an icon theme's icon by its name, or "" where the theme has none; the host asks its theme.
+    property var iconFor: name => ""
+    // The streams other programs play, in the order they came; recording, video and the shell's own are left out.
+    readonly property var playing: streams.filter(node => node.properties["media.class"] === "Stream/Output/Audio" && Number(node.properties["application.process.id"]) !== ownProcessId)
+    // Once one stream has an icon, the words of all start at one edge.
+    readonly property bool streamIcons: playing.some(node => streamIcon(node) !== "")
+    // The ids of the streams the rows show or are about to show.
+    property var streamIds: []
     // The displays that can be dimmed, a ListModel of name, title, brightness and max (in powerdevil's units), or null.
     property var displays: null
     // The default Bluetooth adapter as Quickshell has it, or null: its enabled and state.
@@ -140,6 +154,57 @@ Column {
 
     function deviceName(node: var): string {
         return node?.description || node?.name || "";
+    }
+
+    // The program's icon by the name it gave its stream; none where it gave none or the theme lacks it.
+    // ponytail: a program that names no icon shows none; look up its desktop entry by application.process.binary
+    // should many do so.
+    function streamIcon(node: var): string {
+        const name = node.properties["application.icon-name"] ?? "";
+        return name === "" ? "" : iconFor(name);
+    }
+
+    // What a stream's row shows: the program's icon and "program · what it plays", both as the program writes them
+    // (states.md:143–145), and the stream's volume.
+    function streamLook(node: var): var {
+        const program = node.properties["application.name"] || node.name;
+        return {
+            words: [program, node.properties["media.name"]].filter(word => word).join(" · "),
+            icon: streamIcon(node),
+            volume: Math.min(1, node.audio.volume),
+            muted: node.audio.muted
+        };
+    }
+
+    function streamRows(): list<Item> {
+        return Array.from({ length: streamItems.count }, (_, index) => streamItems.itemAt(index));
+    }
+
+    // The rows follow the streams by id: rows that stay keep their item and its focus, new ones are appended in the
+    // order they came, so nothing moves under the pointer. They come and go as rows do, and what lies below makes room
+    // or closes the gap (motion.md:24).
+    function followStreams() {
+        const ids = playing.map(node => node.id);
+        if (String(ids) === String(streamIds))
+            return;
+        streamIds = ids;
+        streamPresence.finish();
+        const rows = streamRows();
+        const going = rows.filter(row => !ids.includes(row.nodeId));
+        const coming = ids.filter(id => !rows.some(row => row.nodeId === id));
+        const staying = [...Array.from(soundGroup.rows), ...Array.from(controls.children)].filter(item => item instanceof Item && !going.includes(item));
+        streamPresence.change(going, staying, () => showStreams(ids), () => streamRows().filter(row => coming.includes(row.nodeId)), coming.length);
+    }
+
+    function showStreams(ids: var) {
+        for (let index = shownStreams.count - 1; index >= 0; index--) {
+            if (!ids.includes(shownStreams.get(index).nodeId))
+                shownStreams.remove(index);
+        }
+        const shown = Array.from({ length: shownStreams.count }, (_, index) => shownStreams.get(index).nodeId);
+        ids.filter(id => !shown.includes(id)).forEach(id => shownStreams.append({ nodeId: id }));
+        soundGroup.layOutNow();
+        controls.forceLayout();
     }
 
     // On its way between connected and not; a connection that fails takes the device back to where it was.
@@ -226,6 +291,18 @@ Column {
         })
 
     width: parent ? parent.width : 0
+    onPlayingChanged: followStreams()
+    Component.onCompleted: followStreams()
+
+    ListModel {
+        id: shownStreams
+    }
+
+    Presence {
+        id: streamPresence
+
+        objectName: "streamPresence"
+    }
 
     NowPlaying {
         objectName: "nowPlaying"
@@ -250,6 +327,14 @@ Column {
             kind: "output"
             name: "ausgang"
             glyph: "speaker"
+        }
+
+        Repeater {
+            id: streamItems
+
+            model: shownStreams
+
+            StreamRow {}
         }
 
         DeviceRow {
@@ -693,56 +778,119 @@ Column {
         }
     }
 
-    // The volume of the default device of one kind, after the icon button that mutes it. Muted, its glyph is struck
-    // through (shell.md:13–15) and the slider rests, its value saying why (forms.md, "Disabled controls say why"). Both
-    // follow the device, so a mute from elsewhere shows at once.
-    // ponytail: a volume raised above 100% shows as 100%, and moving the slider brings it back onto the scale; widen the
-    // scale once a raised maximum is wanted.
+    // The volume of the default device of one kind, after the icon button that mutes it.
     component VolumeRow: PanelRow {
         id: volumeRow
 
         required property var node
         required property string kind
         required property string name
-        // speaker or microphone; muted, its -muted form.
         required property string glyph
-        readonly property real volume: Math.min(1, node?.audio?.volume ?? 0)
-        readonly property bool muted: node?.audio?.muted ?? false
-        // What a press does, as the button's tip; its name says the kind too (forms.md:287–292).
-        readonly property string pressWord: muted ? "ton an" : "stumm schalten"
 
         present: node !== null
+
+        VolumeControl {
+            implicitWidth: volumeRow.width
+            node: volumeRow.node
+            kind: volumeRow.kind
+            name: volumeRow.name
+            glyph: volumeRow.glyph
+            volume: Math.min(1, volumeRow.node?.audio?.volume ?? 0)
+            muted: volumeRow.node?.audio?.muted ?? false
+        }
+    }
+
+    // Another program's playback stream: its icon and words, and below them a mute button and a volume of its own,
+    // which set this stream alone. A row whose stream has ended leaves showing what it last showed.
+    component StreamRow: PanelRow {
+        id: streamRow
+
+        required property int nodeId
+        readonly property var node: controls.playing.find(node => node.id === nodeId) ?? null
+        readonly property var look: node ? controls.streamLook(node) : null
+        property var seen: ({
+                words: "",
+                icon: "",
+                volume: 0,
+                muted: false
+            })
+
+        function keep() {
+            if (look)
+                seen = look;
+        }
+
+        objectName: "stream"
+        label: seen.words
+        icon: seen.icon
+        iconSlot: controls.streamIcons
+        onLookChanged: keep()
+        Component.onCompleted: keep()
+
+        VolumeControl {
+            implicitWidth: streamRow.width
+            node: streamRow.node
+            kind: "stream"
+            name: streamRow.seen.words
+            glyph: "speaker"
+            volume: streamRow.seen.volume
+            muted: streamRow.seen.muted
+        }
+    }
+
+    // A button that mutes, then the volume slider to the end of the line. Muted, the glyph is struck through
+    // (shell.md:13–15) and the slider rests, its value saying why (forms.md, "Disabled controls say why"). Both follow
+    // the node, so a change from elsewhere shows at once. A node that has gone takes nothing more.
+    // ponytail: a volume raised above 100% shows as 100%, and moving the slider brings it back onto the scale; widen the
+    // scale once a raised maximum is wanted.
+    component VolumeControl: Item {
+        id: volumeControl
+
+        required property var node
+        // output, input or stream, which names its controls.
+        required property string kind
+        // What it sets, read with the names of its controls.
+        required property string name
+        // speaker or microphone; muted, its -muted form.
+        required property string glyph
+        required property real volume
+        required property bool muted
+        // What a press does, as the button's tip; its name says what it sets too (forms.md:287–292).
+        readonly property string pressWord: muted ? "ton an" : "stumm schalten"
+
+        implicitHeight: Math.max(muteButton.implicitHeight, volumeSlider.implicitHeight)
         // A change from elsewhere (a key, an app) moves the slider, as moving it ends its binding.
         onVolumeChanged: volumeSlider.value = volume
 
-        Item {
-            implicitWidth: volumeRow.width
-            implicitHeight: Math.max(muteButton.implicitHeight, volumeSlider.implicitHeight)
+        IconButton {
+            id: muteButton
 
-            IconButton {
-                id: muteButton
-
-                objectName: `${volumeRow.kind}Mute`
-                anchors.verticalCenter: parent.verticalCenter
-                icon: volumeRow.muted ? `${volumeRow.glyph}-muted` : volumeRow.glyph
-                label: `${volumeRow.name} ${volumeRow.pressWord}`
-                tip: volumeRow.pressWord
-                onClicked: volumeRow.node.audio.muted = !volumeRow.muted
+            objectName: `${volumeControl.kind}Mute`
+            anchors.verticalCenter: parent.verticalCenter
+            icon: volumeControl.muted ? `${volumeControl.glyph}-muted` : volumeControl.glyph
+            label: `${volumeControl.name} ${volumeControl.pressWord}`
+            tip: volumeControl.pressWord
+            onClicked: {
+                if (volumeControl.node)
+                    volumeControl.node.audio.muted = !volumeControl.muted;
             }
+        }
 
-            // The rest of the row, space-m after the button as the value is after the track (rekta.css:527).
-            Slider {
-                id: volumeSlider
+        // The rest of the line, space-m after the button as the value is after the track (rekta.css:527).
+        Slider {
+            id: volumeSlider
 
-                objectName: `${volumeRow.kind}Volume`
-                anchors.verticalCenter: parent.verticalCenter
-                x: muteButton.implicitWidth + Tokens.spaceM
-                width: parent.width - x
-                value: volumeRow.volume
-                disabledReason: volumeRow.muted ? "stumm" : ""
-                valueText: disabledReason || `${Math.round(value * 100)}%`
-                label: `lautstärke ${volumeRow.name}`
-                onMoved: volumeRow.node.audio.volume = value
+            objectName: `${volumeControl.kind}Volume`
+            anchors.verticalCenter: parent.verticalCenter
+            x: muteButton.implicitWidth + Tokens.spaceM
+            width: parent.width - x
+            value: volumeControl.volume
+            disabledReason: volumeControl.muted ? "stumm" : ""
+            valueText: disabledReason || `${Math.round(value * 100)}%`
+            label: `lautstärke ${volumeControl.name}`
+            onMoved: {
+                if (volumeControl.node)
+                    volumeControl.node.audio.volume = value;
             }
         }
     }

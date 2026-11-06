@@ -9,25 +9,39 @@ Item {
     id: row
 
     property string label
+    // Another program's icon before the words, a picture 20px in rows (shell.md:42–46), space-s before them.
+    property url icon
+    // Keeps the icon's room in a row without one, so the words of rows with and without start at one edge
+    // (states.md:138–141).
+    property bool iconSlot: false
     // False while the row has nothing to offer, such as when its service is missing: it is gone from its group.
     property bool present: true
     default property alias content: holder.data
     readonly property Item control: holder.children.length > 0 ? holder.children[0] : null
     readonly property real controlWidth: control?.implicitWidth ?? 0
     readonly property real controlHeight: control?.implicitHeight ?? 0
-    readonly property bool wraps: label !== "" && words.implicitWidth + Tokens.spaceM + controlWidth > width
+    readonly property real wordsStart: iconSlot || icon.toString() !== "" ? Geometry.iconSize + Tokens.spaceS : 0
+    readonly property bool wraps: label !== "" && wordsStart + words.implicitWidth + Tokens.spaceM + controlWidth > width
     readonly property real lineHeight: Math.max(label !== "" ? words.height : 0, wraps ? 0 : controlHeight)
 
     width: parent ? parent.width : 0
     implicitHeight: lineHeight + (wraps ? Tokens.spaceXs + controlHeight : 0)
     visible: present
 
+    PictureIcon {
+        objectName: "icon"
+        y: (row.lineHeight - height) / 2
+        visible: row.icon.toString() !== ""
+        source: row.icon
+    }
+
     Body {
         id: words
 
         objectName: "words"
+        x: row.wordsStart
         y: (row.lineHeight - height) / 2
-        width: row.wraps ? row.width : row.width - row.controlWidth - Tokens.spaceM
+        width: (row.wraps ? row.width : row.width - row.controlWidth - Tokens.spaceM) - x
         visible: row.label !== ""
         text: row.label
         wrapMode: Text.NoWrap

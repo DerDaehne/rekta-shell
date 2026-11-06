@@ -181,6 +181,16 @@ TestCase {
         FakeDevice {}
     }
 
+    // A stream's audio as PipeWire has it: volume and muted.
+    Component {
+        id: audioComponent
+
+        QtObject {
+            property real volume: 0.5
+            property bool muted: false
+        }
+    }
+
     // A Bluetooth adapter as Quickshell has it: enabled and its state.
     component FakeAdapter: QtObject {
         property bool enabled: true
@@ -483,6 +493,42 @@ TestCase {
         target.output = sound.speakers;
         target.input = sound.microphone;
         return sound;
+    }
+
+    // A program's stream as PipeWire has it once tracked: a playback stream of another process unless `properties`
+    // say otherwise.
+    function stream(id: int, properties: var, volume: real): var {
+        return {
+            id,
+            name: `node-${id}`,
+            properties: Object.assign({
+                "media.class": "Stream/Output/Audio",
+                "application.process.id": "4242"
+            }, properties),
+            audio: createTemporaryObject(audioComponent, testCase, { volume })
+        };
+    }
+
+    // Two tabs of a browser and a music player, as the host hands them to the controls; only the browser names an icon
+    // the theme has.
+    function giveStreams(target: var): var {
+        target.ownProcessId = 1000;
+        target.iconFor = name => name === "firefox" ? Qt.resolvedUrl("pictures/blue-32.png").toString() : "";
+        const streams = {
+            tab: stream(51, { "application.name": "Firefox", "application.icon-name": "firefox", "media.name": "AudioStream" }, 1),
+            otherTab: stream(52, { "application.name": "Firefox", "application.icon-name": "firefox", "media.name": "AudioStream" }, 0.4),
+            music: stream(53, { "application.name": "Elisa", "application.icon-name": "elisa", "media.name": "Gymnopédie No. 1" }, 0.7)
+        };
+        target.streams = [streams.tab, streams.otherTab, streams.music];
+        return streams;
+    }
+
+    function streamRows(): var {
+        return shownRows(findChild(controls, "sound")).filter(row => row.objectName === "stream");
+    }
+
+    function streamRow(words: string): var {
+        return streamRows().find(row => row.label === words) ?? null;
     }
 
     Component {
@@ -1482,6 +1528,193 @@ TestCase {
         verify(!rowOf(control("inputVolume")).visible);
         controls.output = null;
         verify(!findChild(controls, "sound").visible);
+    }
+
+    function test_each_stream_another_program_plays_has_a_row_in_ton_between_the_output_and_the_input() {
+        giveSound(controls);
+        giveStreams(controls);
+        showSettled(0);
+        const group = findChild(controls, "sound");
+        const rows = streamRows();
+        compare(shownRows(group), [rowOf(control("outputDevice")), rowOf(control("outputVolume")), ...rows, rowOf(control("inputDevice")), rowOf(control("inputVolume"))]);
+        compare(rows.map(row => row.label), ["Firefox · AudioStream", "Firefox · AudioStream", "Elisa · Gymnopédie No. 1"], "one row per stream, in the order they came, as the programs write them");
+        for (const row of rows) {
+            const words = findChild(row, "words");
+            const button = findChild(row, "streamMute");
+            const slider = findChild(row, "streamVolume");
+            compare(words.x, Geometry.iconSize + Tokens.spaceS, `${row.label}: the words space-s after the icon's room`);
+            compare(button.mapToItem(row, 0, 0).y, words.height + Tokens.spaceXs, `${row.label}: the controls space-xs below the words`);
+            compare(findChild(button, "box").mapToItem(row, 0, 0).x, 0, `${row.label}: the button at the start`);
+            compare(slider.mapToItem(row, 0, 0).x, findChild(button, "box").width + Tokens.spaceM, `${row.label}: the slider space-m after it`);
+            compare(slider.mapToItem(row, slider.width, 0).x, row.width, `${row.label}: to the end of the row`);
+            compare(findChild(button, "glyph").name, "speaker");
+        }
+        const icon = findChild(rows[0], "icon");
+        verify(icon.visible);
+        compare(icon.source, Qt.resolvedUrl("pictures/blue-32.png"), "the program's icon");
+        compare(icon.width, Geometry.iconSize, "20px in a row");
+        compare(icon.mapToItem(rows[0], 0, 0).x, 0, "at the start");
+        verify(!findChild(rows[2], "icon").visible, "none where the theme lacks it");
+        compare(findChild(rows[2], "words").x, findChild(rows[0], "words").x, "its words start where the others do");
+        compare(findChild(findChild(rows[1], "streamVolume"), "output").text, "40%");
+        compare(findChild(findChild(rows[2], "streamVolume"), "output").text, "70%");
+    }
+
+    function test_a_stream_without_media_name_or_icons_shows_the_program_alone_with_its_words_at_the_start() {
+        giveSound(controls);
+        controls.streams = [stream(61, { "application.name": "mpv" }, 0.5), stream(62, {}, 0.5)];
+        side.show(0);
+        const rows = streamRows();
+        compare(rows.map(row => row.label), ["mpv", "node-62"], "the node's name where the program gives none");
+        compare(findChild(rows[0], "words").x, 0, "without an icon in the list, no room for one");
+    }
+
+    function test_only_the_playback_streams_of_other_programs_have_rows() {
+        giveSound(controls);
+        controls.ownProcessId = 1000;
+        controls.streams = [
+            stream(71, { "media.class": "Stream/Input/Audio", "application.name": "Recorder" }, 0.5),
+            stream(72, { "media.class": "Stream/Input/Audio", "stream.capture.sink": "true", "application.name": "Meter" }, 0.5),
+            stream(73, { "media.class": "Stream/Output/Video", "application.name": "KWin" }, 0.5),
+            stream(74, { "application.name": "Shell", "application.process.id": "1000" }, 0.5),
+            stream(75, { "media.class": "Audio/Sink", "application.name": "Card" }, 0.5),
+            Object.assign(stream(76, {}, 0.5), { properties: {} }),
+            stream(77, { "application.name": "Player" }, 0.5)
+        ];
+        side.show(0);
+        compare(streamRows().map(row => row.label), ["Player"], "no recording, monitor, video, own, device or untracked stream");
+    }
+
+    function test_a_streams_button_and_slider_set_that_stream_alone_and_follow_changes_from_elsewhere() {
+        const sound = giveSound(controls);
+        sound.speakers.audio.volume = 0.6;
+        const streams = giveStreams(controls);
+        showSettled(0);
+        const row = streamRows()[1];
+        const slider = findChild(row, "streamVolume");
+        mouseClick(findChild(findChild(row, "streamMute"), "box"));
+        verify(streams.otherTab.audio.muted, "a press mutes the stream");
+        compare(findChild(findChild(row, "streamMute"), "glyph").name, "speaker-muted");
+        verify(slider.disabled, "its slider rests");
+        compare(findChild(slider, "output").text, "stumm", "its value says why");
+        compare(findChild(slider, "output").color, Tokens.color.disabled, "in grey");
+        verify(!streams.tab.audio.muted && !streams.music.audio.muted && !sound.speakers.audio.muted, "nothing else is muted");
+        mouseClick(findChild(findChild(row, "streamMute"), "box"));
+        verify(!streams.otherTab.audio.muted, "a second press brings it back");
+        slider.forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        compare(streams.otherTab.audio.volume, 0.41, "a step sets the stream's volume");
+        compare(streams.tab.audio.volume, 1, "the other tab keeps its own");
+        compare(sound.speakers.audio.volume, 0.6, "the output keeps its own");
+        streams.otherTab.audio.volume = 0.8;
+        compare(slider.value, 0.8, "a change from elsewhere moves the slider");
+        streams.otherTab.audio.muted = true;
+        compare(findChild(findChild(row, "streamMute"), "glyph").name, "speaker-muted", "a mute from elsewhere shows at once");
+        verify(slider.disabled);
+    }
+
+    function test_a_streams_controls_are_named_by_its_words_and_what_a_press_does() {
+        giveSound(controls);
+        const streams = giveStreams(controls);
+        side.show(0);
+        const row = streamRow("Elisa · Gymnopédie No. 1");
+        const button = findChild(row, "streamMute");
+        compare(button.Accessible.name, "Elisa · Gymnopédie No. 1 stumm schalten");
+        compare(findChild(row, "streamVolume").Accessible.name, "lautstärke Elisa · Gymnopédie No. 1");
+        button.forceActiveFocus();
+        compare(Tips.text, "stumm schalten");
+        keyClick(Qt.Key_Space);
+        verify(streams.music.audio.muted);
+        compare(button.Accessible.name, "Elisa · Gymnopédie No. 1 ton an");
+        compare(Tips.text, "ton an");
+    }
+
+    function test_the_keyboard_reaches_each_streams_button_and_slider_between_the_output_and_the_input() {
+        giveSound(controls);
+        const streams = giveStreams(controls);
+        side.show(0);
+        control("outputVolume").forceActiveFocus();
+        for (const row of streamRows()) {
+            keyClick(Qt.Key_Tab);
+            verify(findChild(row, "streamMute").activeFocus, `Tab to the button of ${row.label}`);
+            keyClick(Qt.Key_Down);
+            verify(findChild(row, "streamVolume").activeFocus, `↓ to its slider`);
+        }
+        keyClick(Qt.Key_Left);
+        compare(streams.music.audio.volume, 0.69, "the slider steps its stream");
+        keyClick(Qt.Key_Tab);
+        verify(control("inputDevice").activeFocus, "then on to the input");
+        keyClick(Qt.Key_Up);
+        verify(findChild(streamRows()[2], "streamVolume").activeFocus, "↑ back");
+    }
+
+    function test_a_stream_that_comes_is_appended_and_arrives_from_above_with_a_fade_while_the_rows_below_make_room() {
+        giveSound(controls);
+        const streams = giveStreams(controls);
+        showSettled(0);
+        Prefs.motion = "on";
+        const presence = findChild(controls, "streamPresence");
+        const input = rowOf(control("inputDevice"));
+        const player = stream(54, { "application.name": "Haruna", "media.name": "clip.mkv" }, 0.9);
+        controls.streams = [streams.tab, streams.otherTab, streams.music, player];
+        const rows = streamRows();
+        compare(rows.map(row => row.label).pop(), "Haruna · clip.mkv", "appended after the others");
+        const coming = presence.moving.find(motion => motion.item === rows[3]);
+        verify(coming, "it arrives");
+        compare(coming.from.y, -Geometry.arriveShift, "from just above");
+        compare(coming.from.opacity, 0, "with a fade");
+        compare(coming.duration, Tokens.durationShort);
+        compare(coming.curve, Tokens.easeIn);
+        const making = presence.moving.find(motion => motion.item === input);
+        verify(making, "the input's row glides down");
+        compare(making.from.y, -(rows[3].height + Tokens.spaceM), "from where it stood, the new row and its space higher");
+        compare(making.duration, Tokens.durationModerate);
+        tryVerify(() => !presence.running, Tokens.durationModerate * 4);
+        compare(rows[3].opacity, 1, "whole once it rests");
+    }
+
+    function test_a_stream_that_ends_leaves_as_it_was_drifting_to_the_trailing_edge_and_the_rest_close_the_gap() {
+        giveSound(controls);
+        const streams = giveStreams(controls);
+        streams.tab.audio.muted = true;
+        showSettled(0);
+        Prefs.motion = "on";
+        const presence = findChild(controls, "streamPresence");
+        const leaving = streamRows()[0];
+        const below = streamRows()[1];
+        const gap = leaving.height + Tokens.spaceM;
+        controls.streams = [streams.otherTab, streams.music];
+        const going = presence.moving.find(motion => motion.item === leaving);
+        verify(going, "it leaves");
+        compare(going.to.x, Geometry.leaveRowDrift, "towards the trailing edge");
+        compare(going.to.opacity, 0, "with a fade");
+        compare(going.duration, Geometry.leaveShare * Tokens.durationShort);
+        compare(going.curve, Tokens.easeOut);
+        compare(leaving.label, "Firefox · AudioStream", "showing its words");
+        compare(findChild(findChild(leaving, "streamMute"), "glyph").name, "speaker-muted", "and its state");
+        tryVerify(() => streamRows().length === 2, Tokens.durationShort * 4, "then it is gone");
+        const closing = presence.moving.find(motion => motion.item === below);
+        verify(closing, "the next row glides up");
+        compare(closing.from.y, gap, "from where it stood, the gone row and its space lower");
+        compare(closing.curve, Tokens.easeBase);
+    }
+
+    function test_under_reduced_motion_streams_come_and_go_at_once() {
+        giveSound(controls);
+        const streams = giveStreams(controls);
+        side.show(0);
+        controls.streams = [streams.music];
+        compare(streamRows().map(row => row.label), ["Elisa · Gymnopédie No. 1"]);
+        controls.streams = [streams.music, streams.tab];
+        compare(streamRows().map(row => row.label), ["Elisa · Gymnopédie No. 1", "Firefox · AudioStream"]);
+        verify(!findChild(controls, "streamPresence").running);
+    }
+
+    function test_without_streams_ton_shows_its_device_rows_alone() {
+        giveSound(controls);
+        side.show(0);
+        compare(streamRows(), []);
+        compare(shownRows(findChild(controls, "sound")).length, 4);
     }
 
     function test_the_output_select_expands_in_place_pushes_the_rows_below_down_and_a_click_asks_for_another_default() {

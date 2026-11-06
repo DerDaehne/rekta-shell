@@ -21,6 +21,12 @@ Column {
     readonly property bool hasRows: Array.from(list.children).some(row => (row as PanelRow)?.present ?? false)
     readonly property PanelLevel level: Array.from(levelHolder.children).find(child => (child as PanelLevel)?.open) ?? null
 
+    // Places its rows and itself now rather than at the next frame, so a change can be measured where it lands.
+    function layOutNow() {
+        list.forceLayout();
+        forceLayout();
+    }
+
     width: parent ? parent.width : 0
     visible: hasRows
     topPadding: Tokens.spaceXl
