@@ -30,7 +30,9 @@ PanelWindow {
     required property StatusWords status
     required property ShellScreen primaryScreen
     // The toasts rise from the bar of the primary screen, above "meldungen"; it gives way to a notification's toast.
-    required property Toaster toaster
+    required property Toasts toastHost
+    readonly property Toaster toaster: toastHost.toaster
+    required property bool startOpen
     // The splash has gone after login (SplashEnd.arrived).
     required property bool arrived
     readonly property bool showsReadout: modelData === primaryScreen
@@ -42,6 +44,8 @@ PanelWindow {
     readonly property var musicParts: Middle.musicParts(media?.title ?? "", media?.artist ?? "", media?.position ?? 0, media?.length ?? 0)
     readonly property bool playing: musicParts.length > 0
     readonly property var windowParts: front ? Middle.windowParts(front.app, front.title) : []
+    readonly property bool floatOpen: bar.menu.open || background.menu.open || clock.calendar.open || tip.open
+    readonly property bool panelOpenHere: controlPanel.visible && controlPanel.screen === modelData
 
     screen: modelData
     anchors.left: true
@@ -171,6 +175,19 @@ PanelWindow {
         target: panel.toaster
         property: "countInSight"
         value: !panel.away && !bell.overflowed
+    }
+
+    // Rekta lays floating surfaces above the toasts, but KWin keeps the bar's popups below the overlay layer the toasts
+    // are on, so the toasts step back to the top layer while one is open. Not while the side panel is open on this
+    // screen or the Start is: on their layer a toast could lie under the panel, whose foot it covers, and KWin raises
+    // the Start as it opens, before the popups it closes then have gone.
+    // ponytail: with the panel open, a floating surface of the bar lies under a toast; upgrade: host the floating
+    // surfaces on the overlay layer and have KWin activate them, which costs the popups' grab.
+    Binding {
+        when: panel.showsToasts
+        target: panel.toastHost
+        property: "stepsBack"
+        value: panel.floatOpen && !panel.startOpen && !panel.panelOpenHere
     }
 
     FloatPopup {
