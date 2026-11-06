@@ -21,6 +21,7 @@ let
   userUnits = [
     "rekta-shell.service"
     "plasma-kwin_wayland.service.d/rekta-session.conf"
+    "plasma-kded6.service.d/rekta-session.conf"
     "plasma-plasmashell.service.d/rekta-session.conf"
     "plasma-workspace.target.d/rekta-shell.conf"
   ];
@@ -91,6 +92,8 @@ in
     grep -qF 'QT_PLUGIN_PATH="${rekta-shell}/lib/rekta-kwin/plugins' libexec/rekta-kwin
     grep -qF 'XDG_DATA_DIRS="${rekta-shell}/share/rekta-kwin:' libexec/rekta-kwin
     grep -qF 'XDG_CONFIG_DIRS="${rekta-shell}/share/rekta-kwin/kwin:' libexec/rekta-kwin
+    grep -qF 'XDG_CONFIG_DIRS="${rekta-shell}/share/rekta-kded:' libexec/rekta-kded
+    grep -qx '\[Module-mprisservice\]\[$i\]' share/rekta-kded/kded5rc
     # The greeter KWin starts finds the lock screen's package by this name, under KWin's data dirs alone.
     grep -qx '  export PLASMA_DEFAULT_SHELL=rekta-lockscreen' libexec/rekta-kwin
     grep -qF '"Id": "rekta-lockscreen"' share/rekta-kwin/plasma/shells/rekta-lockscreen/metadata.json
@@ -140,6 +143,18 @@ in
       ${rekta-shell}/share/systemd/user/plasma-kwin_wayland.service.d/rekta-session.conf)
     if [ "$rekta" != "$plasma" ]; then
       echo "the rekta drop-in runs '$rekta' through rekta-kwin, plasma-kwin_wayland.service runs '$plasma'" >&2
+      exit 1
+    fi
+    touch $out
+  '';
+
+  # The same for kded6: its drop-in replaces kded6's command in both sessions.
+  kded-drop-in-follows-plasma = pkgs.runCommand "rekta-shell-kded-drop-in-follows-plasma" { } ''
+    plasma=$(sed -n 's/^ExecStart=//p' ${qt.kded}/share/systemd/user/plasma-kded6.service)
+    rekta=$(sed -n 's|^ExecStart=${rekta-shell}/libexec/rekta-kded ||p' \
+      ${rekta-shell}/share/systemd/user/plasma-kded6.service.d/rekta-session.conf)
+    if [ "$rekta" != "$plasma" ]; then
+      echo "the rekta drop-in runs '$rekta' through rekta-kded, plasma-kded6.service runs '$plasma'" >&2
       exit 1
     fi
     touch $out

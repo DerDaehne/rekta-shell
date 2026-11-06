@@ -155,7 +155,11 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   `rekta-kwin` directories (`kwin/`: effects, kwinrc defaults, `rekta-fadeback`), the
   Rekta module, the `org.kde.desktop` controls style and
   `PLASMA_DEFAULT_SHELL=rekta-lockscreen` into KWin's environment; the
-  `kwin-drop-in-follows-plasma` check fails once Plasma's command changes. The package
+  `kwin-drop-in-follows-plasma` check fails once Plasma's command changes. In the same way
+  a drop-in on `plasma-kded6.service` runs kded6 through `libexec/rekta-kded`, which only
+  in the rekta session puts `share/rekta-kded` (a `kded5rc` that keeps KDE's media
+  controller `mprisservice` unloaded, so the media keys reach the shell alone) before
+  `XDG_CONFIG_DIRS`; `kded-drop-in-follows-plasma` guards it. The package
   installs them with their paths filled in (`share/wayland-sessions`, `libexec`,
   `lib/systemd/user`).
 - `lockscreen/` is the Plasma shell package `rekta-lockscreen` with only

@@ -21,8 +21,9 @@ BuildRequires:  cmake(KWin)
 BuildRequires:  pkgconfig(epoxy)
 BuildRequires:  pkgconfig(libdrm)
 BuildRequires:  qt6-qtbase-private-devel
-# Plasma's own unit, which %%check compares the session's drop-in with
+# Plasma's own units, which %%check compares the session's drop-ins with
 BuildRequires:  kwin
+BuildRequires:  kf6-kded
 BuildRequires:  desktop-file-utils
 # The QML tests
 BuildRequires:  qt6-qtdeclarative-devel
@@ -79,6 +80,15 @@ if [ "$rekta" != "$plasma" ]; then
     echo "the rekta drop-in runs '$rekta' through rekta-kwin, plasma-kwin_wayland.service runs '$plasma'" >&2
     exit 1
 fi
+# The same for kded6.
+plasma=$(sed -n 's/^ExecStart=//p' %{_userunitdir}/plasma-kded6.service)
+rekta=$(sed -n 's|^ExecStart=%{_libexecdir}/rekta-kded ||p' \
+    %{buildroot}%{_userunitdir}/plasma-kded6.service.d/rekta-session.conf)
+test -n "$plasma"
+if [ "$rekta" != "$plasma" ]; then
+    echo "the rekta drop-in runs '$rekta' through rekta-kded, plasma-kded6.service runs '$plasma'" >&2
+    exit 1
+fi
 
 # Plasma reads these in every session: the package may put nothing there.
 for path in %{_datadir}/kwin %{_qt6_plugindir}/kwin %{_sysconfdir}/xdg; do
@@ -122,9 +132,11 @@ QMLTESTRUNNER=%{_qt6_bindir}/qmltestrunner $src/tests/run-qml-tests.sh $src
 %{_bindir}/rekta-settings
 %{_libexecdir}/rekta-session
 %{_libexecdir}/rekta-kwin
+%{_libexecdir}/rekta-kded
 %{_datadir}/rekta-shell/
 %{_datadir}/rekta-settings/
 %{_datadir}/rekta-kwin/
+%{_datadir}/rekta-kded/
 %{_libdir}/rekta-kwin/
 %{_qt6_qmldir}/RektaShell/
 %{_datadir}/wayland-sessions/rekta.desktop
@@ -132,6 +144,8 @@ QMLTESTRUNNER=%{_qt6_bindir}/qmltestrunner $src/tests/run-qml-tests.sh $src
 %{_userunitdir}/rekta-shell.service
 %dir %{_userunitdir}/plasma-kwin_wayland.service.d
 %{_userunitdir}/plasma-kwin_wayland.service.d/rekta-session.conf
+%dir %{_userunitdir}/plasma-kded6.service.d
+%{_userunitdir}/plasma-kded6.service.d/rekta-session.conf
 %dir %{_userunitdir}/plasma-plasmashell.service.d
 %{_userunitdir}/plasma-plasmashell.service.d/rekta-session.conf
 %dir %{_userunitdir}/plasma-workspace.target.d

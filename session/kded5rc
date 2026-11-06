@@ -1,0 +1,3 @@
+# Immutable, so an autoload in the user's kded5rc cannot bring the media controller's keys back into the rekta session.
+[Module-mprisservice][$i]
+autoload=false

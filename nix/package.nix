@@ -56,6 +56,7 @@ stdenv.mkDerivation {
   cmakeFlags = [
     "-DQUICKSHELL=${lib.getExe quickshell}"
     "-DKWIN_WAYLAND_WRAPPER=${kdePackages.kwin}/bin/kwin_wayland_wrapper"
+    "-DKDED6=${kdePackages.kded}/bin/kded6"
     "-DSTARTPLASMA_WAYLAND=${plasma-workspace}/bin/startplasma-wayland"
     "-DPLASMA_DBUS_RUN_SESSION_IF_NEEDED=${plasma-workspace}/libexec/plasma-dbus-run-session-if-needed"
   ]
