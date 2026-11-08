@@ -19,16 +19,12 @@ PanelWindow {
     required property Launcher launcher
     required property ShellScreen primaryScreen
     readonly property alias hold: metaHold
-    // Shown for a held Meta rather than asked for.
-    property bool held: false
 
     // `?` asked for the list.
     signal asked
 
     function show() {
-        held = false;
-        map.readKeys();
-        map.show();
+        map.showAsked();
     }
 
     screen: primaryScreen
@@ -39,10 +35,10 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     visible: primaryScreen !== null && map.open
-    mask: held ? empty : null
+    mask: map.held ? empty : null
     WlrLayershell.namespace: "dock"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: held ? WlrKeyboardFocus.None : WlrKeyboardFocus.Exclusive
+    WlrLayershell.keyboardFocus: map.held ? WlrKeyboardFocus.None : WlrKeyboardFocus.Exclusive
     // A deliberate deviation, as for the session banner: KWin blurs at the strength of its blur effect.
     BackgroundEffect.blurRegion: Region {
         item: map.open ? map : null
@@ -65,15 +61,7 @@ PanelWindow {
     MetaHold {
         id: metaHold
 
-        onShowingChanged: {
-            if (showing && !map.open) {
-                surface.held = true;
-                map.readKeys();
-                map.show();
-            } else if (!showing && surface.held) {
-                map.close("");
-            }
-        }
+        onShowingChanged: showing ? map.showHeld() : map.holdEnded()
     }
 
     IpcHandler {

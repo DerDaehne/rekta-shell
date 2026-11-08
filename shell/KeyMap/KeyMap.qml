@@ -59,8 +59,31 @@ Sheet {
                 key: shortcut.key ?? bound[`${shortcut.component}/${shortcut.action}`] ?? ""
             })).filter(row => row.key !== "")
 
+    // Shown for a held Meta rather than asked for: the surface then takes neither keys nor the pointer.
+    property bool held: false
+
     // `?` asked for the list.
     signal asked
+
+    function showAsked() {
+        held = false;
+        readKeys();
+        show();
+    }
+
+    // A list asked for stays when a hold begins or ends.
+    function showHeld() {
+        if (open)
+            return;
+        held = true;
+        readKeys();
+        show();
+    }
+
+    function holdEnded() {
+        if (held)
+            close("");
+    }
 
     function readKeys() {
         for (const shortcut of shortcuts.filter(shortcut => shortcut.action !== undefined)) {
@@ -84,6 +107,8 @@ Sheet {
     kicker: "hilfe"
     title: "tastenkürzel"
     closeButton: false
+    // Held, the keys go to the window underneath: no control may wear the ring that says they come to it.
+    initialFocus: held ? rowList : null
 
     // Below the open toast's undo, as Rekta's showcase puts it (site.js:413–416).
     property var removeLayer
@@ -94,6 +119,8 @@ Sheet {
 
     // `.rk-rows`: each row a hairline above, the last one below too (rekta.css:73–75).
     Column {
+        id: rowList
+
         objectName: "rows"
         width: parent.width
 

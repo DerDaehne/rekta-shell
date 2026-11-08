@@ -2,10 +2,10 @@ import QtQuick
 import Start
 
 // The shell's own commands, defined once for the Start's search: what the session offers, the looks, quiet, sound and
-// the key map. A command says what it will do now ("dunkel an" while light). Ending the session goes through the banner, which gives
-// the time to take it back. A command shows its key (navigation.md:303) where the session binds one, as kglobalaccel
-// tells it, read only; with no key bound, or no kglobalaccel, it shows none. The sound commands are there only while
-// there is an output to set.
+// the key map. A command says what it will do now ("dunkel an" while light). Ending the session goes through the
+// banner, which gives the time to take it back. A command shows its key (navigation.md:303) where the session binds
+// one, as kglobalaccel tells it, read only; with no key bound, or no kglobalaccel, it shows none. The sound commands
+// are there only while there is an output to set.
 QtObject {
     id: commands
 

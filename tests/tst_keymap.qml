@@ -180,6 +180,38 @@ TestCase {
         verify(findChild(scene, "outside").activeFocus, "the focus is back where it was");
     }
 
+    function test_a_list_shown_by_a_hold_gives_no_button_the_focus_and_shows_no_ring() {
+        findChild(scene, "outside").forceActiveFocus();
+        map.showHeld();
+        const close = findChild(map, "schliessen");
+        verify(!close.activeFocus);
+        verify(!findChild(close, "ring").shown);
+    }
+
+    function test_a_list_asked_for_by_a_question_mark_gives_schliessen_the_focus() {
+        map.showHeld();
+        map.holdEnded();
+        tryVerify(() => !map.open);
+        map.showAsked();
+        verify(findChild(map, "schliessen").activeFocus);
+    }
+
+    function test_a_hold_that_ends_does_not_close_a_list_asked_for_by_a_question_mark() {
+        map.showAsked();
+        map.showHeld();
+        map.holdEnded();
+        wait(0);
+        verify(map.open);
+        verify(!map.held, "it keeps the keyboard");
+    }
+
+    function test_a_list_shown_by_a_hold_goes_when_the_hold_ends() {
+        map.showHeld();
+        verify(map.open);
+        map.holdEnded();
+        tryVerify(() => !map.open);
+    }
+
     function test_meta_held_alone_for_long_press_shows_the_map_and_its_end_hides_it() {
         const hold = createTemporaryObject(holdComponent, testCase);
         hold.alone();
