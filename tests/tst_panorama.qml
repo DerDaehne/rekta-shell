@@ -862,7 +862,7 @@ TestCase {
         const read = place.panorama.scroller.contentX;
         sectionAt(place.panorama, 0).visible = false;
         compare(place.panorama.scroller.contentX, read);
-        compare(place.panorama.sectionItems()[place.strip.currentIndex], sectionAt(place.panorama, 3));
+        compare(place.panorama.sectionItems()[place.strip.currentIndex].title, "section 3");
     }
 
     function test_a_section_that_hides_during_a_jump_leaves_the_mark_on_the_section_where_the_glide_ends() {
@@ -879,7 +879,38 @@ TestCase {
         sectionAt(place.panorama, 0).visible = false;
         tryCompare(place.panorama, "gliding", false, 2 * Tokens.durationPivotGlide);
         compare(place.panorama.scroller.contentX, place.panorama.mostScroll(), "the glide ends where it was going");
-        compare(place.panorama.sectionItems()[place.strip.currentIndex], sectionAt(place.panorama, 4));
+        compare(place.panorama.sectionItems()[place.strip.currentIndex].title, "section 4");
+    }
+
+    function test_a_panorama_that_is_away_keeps_its_mark_while_its_sections_change() {
+        Prefs.motion = "off";
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        for (let k = 0; k < 5; k++)
+            sectionComponent.createObject(place.panorama.sectionParent, {
+                title: `section ${k}`,
+                tall: 100,
+                sectionWidth: 300
+            });
+        place.strip.select(1);
+        place.visible = false;
+        sectionComponent.createObject(place.panorama.sectionParent, {
+            title: "section 5",
+            tall: 100,
+            sectionWidth: 300
+        });
+        compare(place.panorama.currentIndex, 1);
+        compare(place.strip.currentIndex, 1);
+    }
+
+    function test_a_wide_facet_chosen_stays_chosen_when_the_row_goes_narrow_and_wide_again() {
+        Prefs.motion = "off";
+        const place = createTemporaryObject(wideComponent, testCase);
+        place.strip.select(2);
+        place.facets.width = 1000;
+        verify(!place.facets.wide);
+        place.facets.width = 1400;
+        verify(place.facets.wide);
+        compare(place.strip.currentIndex, 2);
     }
 
     function test_a_press_on_the_strip_scrolls_there_in_the_glide_time_and_the_title_stays_chosen() {

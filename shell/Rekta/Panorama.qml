@@ -366,7 +366,8 @@ Item {
         property var gesture: null
         property var dragFrom: ({})
         property var wired: new Set()
-        // The sections in sight when the panorama last showed.
+        // The sections in sight at the last layout while the panorama showed. When it shows again its sections come into
+        // sight one by one, so it marks by position then too.
         property var inSight: []
         // Items of a panorama that is being destroyed still signal; nothing is laid out then.
         property bool gone: false
