@@ -181,7 +181,7 @@ in
           exit 1
         fi
       }
-      session="XDG_CONFIG_DIRS=/session/xdg XDG_DATA_DIRS=/session/share"
+      session="XDG_CONFIG_DIRS=/session/xdg XDG_DATA_DIRS=/session/share QT_PLUGIN_PATH=/session/plugins QML_IMPORT_PATH=/session/qml"
       for script in rekta-kwin rekta-kded; do
         for desktop in XDG_SESSION_DESKTOP=KDE XDG_SESSION_DESKTOP= ""; do
           expect $script "$desktop $session" "$desktop $session"
@@ -189,15 +189,19 @@ in
         done
       done
 
+      # env keeps the last value given for a name, so an expectation names only what the script changes.
       rekta=XDG_SESSION_DESKTOP=rekta
       kded=${rekta-shell}/share/rekta-kded
-      expect rekta-kded "$rekta $session" "$rekta XDG_CONFIG_DIRS=$kded:/session/xdg XDG_DATA_DIRS=/session/share"
+      expect rekta-kded "$rekta $session" "$rekta $session XDG_CONFIG_DIRS=$kded:/session/xdg"
       expect rekta-kded "$rekta" "$rekta XDG_CONFIG_DIRS=$kded:/etc/xdg"
       kwin=${rekta-shell}/share/rekta-kwin
-      kwinOnly="QT_PLUGIN_PATH=${rekta-shell}/lib/rekta-kwin/plugins QML_IMPORT_PATH=${rekta-shell}/share/rekta-shell"
-      kwinOnly+=" QT_QUICK_CONTROLS_STYLE=org.kde.desktop PLASMA_DEFAULT_SHELL=rekta-lockscreen"
-      expect rekta-kwin "$rekta $session" "$rekta XDG_CONFIG_DIRS=$kwin/kwin:/session/xdg XDG_DATA_DIRS=$kwin:/session/share $kwinOnly"
-      expect rekta-kwin "$rekta" "$rekta XDG_CONFIG_DIRS=$kwin/kwin:/etc/xdg XDG_DATA_DIRS=$kwin:/usr/local/share:/usr/share $kwinOnly"
+      plugins=${rekta-shell}/lib/rekta-kwin/plugins
+      module=${rekta-shell}/share/rekta-shell
+      style="QT_QUICK_CONTROLS_STYLE=org.kde.desktop PLASMA_DEFAULT_SHELL=rekta-lockscreen"
+      expect rekta-kwin "$rekta $session" "$rekta $session XDG_CONFIG_DIRS=$kwin/kwin:/session/xdg \
+        XDG_DATA_DIRS=$kwin:/session/share QT_PLUGIN_PATH=$plugins:/session/plugins QML_IMPORT_PATH=$module:/session/qml $style"
+      expect rekta-kwin "$rekta" "$rekta XDG_CONFIG_DIRS=$kwin/kwin:/etc/xdg XDG_DATA_DIRS=$kwin:/usr/local/share:/usr/share \
+        QT_PLUGIN_PATH=$plugins QML_IMPORT_PATH=$module $style"
       touch $out
     '';
 
