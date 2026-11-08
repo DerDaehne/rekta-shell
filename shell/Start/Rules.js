@@ -432,30 +432,44 @@ function providerQuery(grepped, files, locale) {
     return query.includes("\\{@}") ? query : "";
 }
 
-const keyModifiers = [[0x10000000, "Meta"], [0x04000000, "Ctrl"], [0x08000000, "Alt"], [0x02000000, "Shift"]];
-// Rekta names a key as shortcutText() does: Ctrl, Alt, Shift and Esc as such, the arrows as glyphs, any other in
-// capitals.
-// ponytail: the keys of a combination apart by a space and Meta for the Super key are Rekta 0.5.0's; 0.6.0 orders the
-// modifiers Ctrl, Alt, Shift, Meta, joins them by "+" and calls Meta "Super" off Apple and Windows (rekta.js:3000–3018).
+// Rekta writes a combination one way: the modifiers in the order Ctrl, Alt, Shift, Meta, then the key, joined by "+".
+// Meta is "Super" off Apple and Windows, Escape "Esc", the arrows glyphs, a letter a capital and any other key its web
+// name (navigation.md:481–494; rekta.js:3000–3018).
+const keyModifiers = [[0x04000000, "Ctrl"], [0x08000000, "Alt"], [0x02000000, "Shift"], [0x10000000, "Super"]];
+// A modifier that is the whole shortcut, as Meta is the Start's, by its flag.
+const modifierKeys = {
+    0x01000020: 0x02000000,
+    0x01000021: 0x04000000,
+    0x01000022: 0x10000000,
+    0x01000023: 0x08000000
+};
 const namedKeys = {
-    0x20: "SPACE",
+    0x20: "Space",
     0x01000000: "Esc",
-    0x01000001: "TAB",
-    0x01000003: "BACKSPACE",
-    0x01000004: "ENTER",
-    0x01000005: "ENTER",
-    0x01000006: "INSERT",
-    0x01000007: "DELETE",
-    0x01000010: "HOME",
-    0x01000011: "END",
+    0x01000001: "Tab",
+    0x01000003: "Backspace",
+    0x01000004: "Enter",
+    0x01000005: "Enter",
+    0x01000006: "Insert",
+    0x01000007: "Delete",
+    0x01000010: "Home",
+    0x01000011: "End",
     0x01000012: "←",
     0x01000013: "↑",
     0x01000014: "→",
     0x01000015: "↓",
-    0x01000016: "PAGEUP",
-    0x01000017: "PAGEDOWN",
-    0x01000009: "PRINT"
+    0x01000016: "PageUp",
+    0x01000017: "PageDown",
+    0x01000009: "PrintScreen"
 };
+
+function keyName(key) {
+    if (key in namedKeys)
+        return namedKeys[key];
+    if (key >= 0x01000030 && key <= 0x0100004b)
+        return `F${key - 0x01000030 + 1}`;
+    return key >= 0x21 && key <= 0x7e ? String.fromCharCode(key) : "";
+}
 
 // The whole numbers in nested lists, in order; the reply's struct and array levels do not matter here.
 function numbersIn(value) {
@@ -466,17 +480,19 @@ function numbersIn(value) {
     return Array.from(value).reduce((numbers, item) => numbers.concat(numbersIn(item)), []);
 }
 
-// The text of the first key combination kglobalaccel's `shortcutKeys` replied, such as "Meta L"; the reply is a list of
+// The text of the first key combination kglobalaccel's `shortcutKeys` replied, such as "Super+L"; the reply is a list of
 // key sequences, each a list of Qt key codes. "" when it holds none (no key is bound) or only a key this does not name.
 function keyText(values) {
     const code = numbersIn(values).find(number => number > 0);
     if (code === undefined)
         return "";
     const key = code & 0x01ffffff;
-    const name = namedKeys[key] ?? (key >= 0x01000030 && key <= 0x0100004b ? `F${key - 0x01000030 + 1}` : (key >= 0x21 && key <= 0x7e ? String.fromCharCode(key) : ""));
-    if (name === "")
+    const name = keyName(key);
+    if (name === "" && !(key in modifierKeys))
         return "";
-    return [...keyModifiers.filter(([flag]) => (code & flag) !== 0).map(([, word]) => word), name].join(" ");
+    const flags = code | (modifierKeys[key] ?? 0);
+    const modifiers = keyModifiers.filter(([flag]) => (flags & flag) !== 0).map(([, word]) => word);
+    return [...modifiers, name].filter(word => word !== "").join("+");
 }
 
 // The newest line, by app id, of the app whose player plays: what it plays, as Rekta's music tile says it ("Playing:

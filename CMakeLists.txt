@@ -30,6 +30,7 @@ endif()
 
 add_subdirectory(plugins/dbus)
 add_subdirectory(kwin/fadeback)
+add_subdirectory(kwin/metahold)
 
 set(generated ${CMAKE_CURRENT_BINARY_DIR}/generated)
 configure_file(session/rekta.desktop ${generated}/rekta.desktop @ONLY)

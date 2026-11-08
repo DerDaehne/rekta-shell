@@ -36,6 +36,8 @@ PanelWindow {
     property bool handsToFullScreen: false
     // The shell's commands, see StartPlace.commands.
     property var commands: []
+    // Meta held for the key map (MetaHold), which takes the Meta that follows from the Start.
+    property var metaHold: null
     // The list in start.json, null without a usable one.
     property var listedPins: null
     // The window previews on the Start, and KWin's node of each that streams.
@@ -170,7 +172,10 @@ PanelWindow {
         name: "start"
         text: "Open the Start"
         keys: [Qt.Key_Meta]
-        onPressed: place.toggle()
+        onPressed: {
+            if (!(surface.metaHold?.takesStartKey() ?? false))
+                place.toggle();
+        }
     }
 
     Connections {

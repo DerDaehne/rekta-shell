@@ -1,0 +1,9 @@
+{
+    "KPlugin": {
+        "Category": "Tools",
+        "Description": "Tells the rekta shell when Meta is held alone, so it can show its keyboard shortcuts",
+        "EnabledByDefault": false,
+        "License": "MIT",
+        "Name": "Rekta Meta held"
+    }
+}

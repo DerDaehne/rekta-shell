@@ -108,7 +108,8 @@ People should understand intent and behaviour by reading the code.
   refuses any Quickshell other than 0.3.x.
 - Rekta Design is a flake input pinned to one commit (source only).
 - The build is one CMake project at the repository root (ECM `KDEInstallDirs`): it
-  builds the DBus module and `rekta-fadeback` (only against KWin 6.8.x) and installs
+  builds the DBus module and the KWin effects `rekta-fadeback` and `rekta-metahold` (only
+  against KWin 6.8.x) and installs
   the shell, KWin parts, session files and the two starters, filling the `@…@`
   placeholders with `configure_file(@ONLY)`; other programs' paths are cache
   variables (`QUICKSHELL`, `KWIN_WAYLAND_WRAPPER`, …). The flake builds through it
@@ -152,7 +153,8 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   `rekta-shell.service` and the drop-ins that skip plasmashell and pull the shell into
   `plasma-workspace.target`. A drop-in on `plasma-kwin_wayland.service` runs Plasma's
   KWin command through `libexec/rekta-kwin`, which only in the rekta session puts the
-  `rekta-kwin` directories (`kwin/`: effects, kwinrc defaults, `rekta-fadeback`), the
+  `rekta-kwin` directories (`kwin/`: effects, kwinrc defaults, `rekta-fadeback`,
+  `rekta-metahold`), the
   Rekta module, the `org.kde.desktop` controls style and
   `PLASMA_DEFAULT_SHELL=rekta-lockscreen` into KWin's environment; the
   `kwin-drop-in-follows-plasma` check fails once Plasma's command changes. In the same way

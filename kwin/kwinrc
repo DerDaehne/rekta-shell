@@ -1,6 +1,7 @@
 [Plugins]
 rekta-turnstileEnabled=true
 rekta-fadebackEnabled=true
+rekta-metaholdEnabled=true
 slideEnabled=false
 # rekta-fadeback fades the splash out after login, in Rekta's duration and curve.
 loginEnabled=false

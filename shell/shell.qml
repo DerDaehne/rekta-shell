@@ -78,6 +78,7 @@ ShellRoot {
         launcher: appLauncher
         panel: sidePanel
         session: sessionBanner
+        keyMap: shortcutList
         sink: keys.sink
     }
 
@@ -130,6 +131,7 @@ ShellRoot {
 
         searchEscape: settingsFiles.value("searchEscape")
         commands: shellCommands.list
+        metaHold: shortcutList.hold
         windows: running
         launcher: appLauncher
         notices: notifications.board
@@ -225,6 +227,19 @@ ShellRoot {
         toaster: toasts.toaster
 
         onCleanUp: notifications.board.cleanUp()
+    }
+
+    // `?` in the side panel: the panel goes, as for the session banner, and the key map takes the keyboard.
+    KeyMapSurface {
+        id: shortcutList
+
+        launcher: appLauncher
+        primaryScreen: primary.screen
+
+        onAsked: {
+            sidePanel.close();
+            shortcutList.show();
+        }
     }
 
     Toasts {

@@ -1,0 +1,3 @@
+module KeyMap
+KeyMap 1.0 KeyMap.qml
+MetaHold 1.0 MetaHold.qml

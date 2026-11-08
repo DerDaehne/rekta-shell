@@ -52,6 +52,11 @@ TestCase {
                     testCase.calls = [...testCase.calls, `banner ${focusOn}`];
                 }
             }
+            keyMap: QtObject {
+                function show() {
+                    testCase.calls = [...testCase.calls, "key map"];
+                }
+            }
             sink: QtObject {
                 property var audio: QtObject {
                     property real volume: 0.5
@@ -80,6 +85,15 @@ TestCase {
         compare(texts("neu"), ["neu starten"]);
         compare(texts("aus"), ["ausschalten"]);
         compare(texts("benutzer w"), ["benutzer wechseln"]);
+    }
+
+    function test_tastenkuerzel_shows_the_key_map_and_names_its_key() {
+        compare(texts("tast"), ["tastenkürzel"]);
+        compare(texts("shortcuts"), ["tastenkürzel"]);
+        const command = Rules.commandHits(commands.list, "tastenkürzel")[0];
+        compare(command.key, "?");
+        command.run();
+        compare(calls, ["key map"]);
     }
 
     function test_sperren_locks_the_session_and_the_ones_that_end_it_open_the_banner_on_their_action() {
@@ -146,15 +160,15 @@ TestCase {
         return Rules.commandHits(commands.list, typed)[0].key ?? "";
     }
 
-    // Meta L as kglobalaccel replies it: a list of key sequences, each a list of Qt key codes.
+    // Meta+L as kglobalaccel replies it: a list of key sequences, each a list of Qt key codes.
     readonly property var metaL: [[0x10000000 | 0x4c, 0, 0, 0]]
 
     function test_a_command_shows_the_key_the_session_binds_to_its_action() {
         replies = { "Lock Session": metaL, "LogOut": [[0x04000000 | 0x08000000 | 0x01000007, 0, 0, 0]] };
         commands.destroy();
         commands = createTemporaryObject(commandsComponent, testCase);
-        compare(keyOf("sperren"), "Meta L");
-        compare(keyOf("abmelden"), "Ctrl Alt DELETE");
+        compare(keyOf("sperren"), "Super+L");
+        compare(keyOf("abmelden"), "Ctrl+Alt+Delete");
         compare(asked[0], `org.kde.kglobalaccel /kglobalaccel org.kde.KGlobalAccel.shortcutKeys [["ksmserver","Lock Session","",""]] as`);
     }
 
@@ -177,6 +191,6 @@ TestCase {
         compare(keyOf("sperren"), "");
         replies = { "Lock Session": metaL };
         commands.readKeys();
-        compare(keyOf("sperren"), "Meta L");
+        compare(keyOf("sperren"), "Super+L");
     }
 }
