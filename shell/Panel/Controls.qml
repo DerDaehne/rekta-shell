@@ -50,7 +50,7 @@ Column {
     // The text of kdeglobals, which names Plasma's pair of light and dark global themes.
     property string kdeglobals
     readonly property bool dark: Prefs.resolvedTheme === "dark"
-    readonly property alias doNotDisturb: quietButton.checked
+    readonly property bool doNotDisturb: quiet.on
     // The power profile daemon: whether it runs, its profile (0 power saver, 1 balanced, 2 performance), and whether it
     // offers performance on this machine.
     property bool hasPowerProfiles: false
@@ -109,6 +109,8 @@ Column {
 
     // The shell's choice among the media players, which the bar's middle shares.
     property PlayerChoice choice: PlayerChoice {}
+    // "nicht stören" and how long it lasts, which the bar's middle shows.
+    property DoNotDisturb quiet: DoNotDisturb {}
     // The density as the shell has it: auto, comfortable or compact.
     property string density: "auto"
 
@@ -144,7 +146,10 @@ Column {
     }
 
     function setDoNotDisturb(on: bool) {
-        quietButton.checked = on;
+        if (on)
+            quiet.choose("open");
+        else
+            quiet.stop();
     }
 
     // So the few that show are the ones in use; each group keeps its order.
@@ -625,6 +630,7 @@ Column {
                 return;
             bluetoothBranch.fold();
             wifiBranch.fold();
+            quietBranch.fold();
             passwordSheet.close("cancel");
         }
 
@@ -677,85 +683,120 @@ Column {
     // columns space-s apart as a row of buttons is (rekta.css:353). Unlike Rekta's groups (states.md:186) they have no
     // heading and stand at the edge nearest the app bar, so the way from "steuerung" in the bar to them stays short. One
     // whose device is missing is gone. The details of wlan and bluetooth are their lists in verbindungen, unfolded with
-    // the focus on them; Escape folds them and gives the focus back to the button (behaviour.md:826).
-    Grid {
-        id: quickSettings
-
-        readonly property real cellWidth: (width - spacing) / 2
-
-        objectName: "quickSettings"
+    // the focus on them; those of "nicht stören" are how long it lasts, unfolded below the buttons. Escape folds them and
+    // gives the focus back to the button (behaviour.md:826).
+    Column {
+        objectName: "edgeSettings"
         parent: controls.edge
         width: parent ? parent.width : 0
         visible: controls.visible
-        columns: 2
         spacing: Tokens.spaceS
 
-        ToggleButton {
-            id: wifiButton
+        Grid {
+            id: quickSettings
 
-            objectName: "wifi"
-            width: quickSettings.cellWidth
-            visible: controls.networking !== null && controls.wifiDevice !== null
-            icon: "wireless"
-            text: "wlan"
-            onWord: "an"
-            offWord: "aus"
-            value: controls.connectedNetwork?.name ?? ""
-            checked: controls.wifiOn
-            disabledReason: controls.networking?.wifiHardwareEnabled === false ? "funk gesperrt" : ""
-            details: controls.wifiOn
-            // It shows what the system has: a switch it did not take springs back.
-            onToggled: {
-                controls.wifiChosen(checked);
-                checked = Qt.binding(() => controls.wifiOn);
+            readonly property real cellWidth: (width - spacing) / 2
+
+            objectName: "quickSettings"
+            width: parent ? parent.width : 0
+            columns: 2
+            spacing: Tokens.spaceS
+
+            ToggleButton {
+                id: wifiButton
+
+                objectName: "wifi"
+                width: quickSettings.cellWidth
+                visible: controls.networking !== null && controls.wifiDevice !== null
+                icon: "wireless"
+                text: "wlan"
+                onWord: "an"
+                offWord: "aus"
+                value: controls.connectedNetwork?.name ?? ""
+                checked: controls.wifiOn
+                disabledReason: controls.networking?.wifiHardwareEnabled === false ? "funk gesperrt" : ""
+                details: controls.wifiOn
+                // It shows what the system has: a switch it did not take springs back.
+                onToggled: {
+                    controls.wifiChosen(checked);
+                    checked = Qt.binding(() => controls.wifiOn);
+                }
+                onDetailsAsked: wifiBranch.expandFocused(wifiButton)
             }
-            onDetailsAsked: wifiBranch.expandFocused(wifiButton)
-        }
 
-        ToggleButton {
-            id: bluetoothButton
+            ToggleButton {
+                id: bluetoothButton
 
-            objectName: "bluetooth"
-            width: quickSettings.cellWidth
-            visible: controls.bluetooth !== null
-            icon: "bluetooth"
-            text: "bluetooth"
-            onWord: "an"
-            offWord: "aus"
-            checked: controls.bluetoothOn
-            disabledReason: controls.bluetooth?.state === Controls.Blocked ? "funk gesperrt" : ""
-            details: true
-            // It shows what the adapter has: a switch the system did not take springs back.
-            onToggled: {
-                controls.bluetoothChosen(checked);
-                checked = Qt.binding(() => controls.bluetoothOn);
+                objectName: "bluetooth"
+                width: quickSettings.cellWidth
+                visible: controls.bluetooth !== null
+                icon: "bluetooth"
+                text: "bluetooth"
+                onWord: "an"
+                offWord: "aus"
+                checked: controls.bluetoothOn
+                disabledReason: controls.bluetooth?.state === Controls.Blocked ? "funk gesperrt" : ""
+                details: true
+                // It shows what the adapter has: a switch the system did not take springs back.
+                onToggled: {
+                    controls.bluetoothChosen(checked);
+                    checked = Qt.binding(() => controls.bluetoothOn);
+                }
+                onDetailsAsked: bluetoothBranch.expandFocused(bluetoothButton)
             }
-            onDetailsAsked: bluetoothBranch.expandFocused(bluetoothButton)
+
+            // A plain press switches it on without an end; the details choose how long it lasts.
+            ToggleButton {
+                id: quietButton
+
+                objectName: "doNotDisturb"
+                width: quickSettings.cellWidth
+                icon: "bell"
+                text: "nicht stören"
+                onWord: "an"
+                offWord: "aus"
+                value: controls.quiet.endWord
+                checked: controls.quiet.on
+                details: true
+                onToggled: {
+                    controls.setDoNotDisturb(checked);
+                    checked = Qt.binding(() => controls.quiet.on);
+                }
+                onDetailsAsked: quietBranch.expandFocused(quietButton)
+            }
+
+            ToggleButton {
+                id: darkButton
+
+                objectName: "dark"
+                width: quickSettings.cellWidth
+                icon: "theme"
+                text: "dunkel"
+                onWord: "an"
+                offWord: "aus"
+                checked: controls.dark
+                onToggled: controls.setDark(checked)
+            }
         }
 
-        // ponytail: kept in memory only, so a restart of the shell turns it off; keep it once the shell has a config.
-        ToggleButton {
-            id: quietButton
+        // A press on a length switches it on at once with that end.
+        PanelBranch {
+            id: quietBranch
 
-            objectName: "doNotDisturb"
-            width: quickSettings.cellWidth
-            icon: "bell"
-            text: "nicht stören"
-            onWord: "an"
-            offWord: "aus"
-        }
+            objectName: "quietBranch"
+            opener: quietLength
 
-        ToggleButton {
-            id: darkButton
+            Segments {
+                id: quietLength
 
-            objectName: "dark"
-            width: quickSettings.cellWidth
-            icon: "theme"
-            text: "dunkel"
-            onWord: "an"
-            offWord: "aus"
-            checked: controls.dark
-            onToggled: controls.setDark(checked)
+                objectName: "quietLength"
+                options: ["bis aus", "1 stunde", "bis morgen"]
+                currentIndex: controls.quiet.chosen
+                onActivated: index => {
+                    controls.quiet.choose(controls.quiet.choices[index]);
+                    currentIndex = Qt.binding(() => controls.quiet.chosen);
+                }
+            }
         }
     }
 

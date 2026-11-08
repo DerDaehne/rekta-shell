@@ -28,7 +28,9 @@ function musicParts(title, artist, position, length) {
     return track === "" ? [] : [track, time];
 }
 
-// The first source that has something to say, else the window. A source is a list of parts, empty when idle.
-function firstRunning(sources, fallback) {
-    return sources.find(parts => parts.length > 0) ?? fallback;
+// What the middle says and what about: how long "nicht stören" lasts leads, then the music that plays, its time in
+// tabular figures, else the window. Each is a list of parts, empty when idle.
+function barLine(quiet, music, window) {
+    const running = [{ kind: "quiet", parts: quiet, figuresPart: -1 }, { kind: "music", parts: music, figuresPart: 1 }];
+    return running.find(line => line.parts.length > 0) ?? { kind: "window", parts: window, figuresPart: -1 };
 }

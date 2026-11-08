@@ -40,10 +40,10 @@ PanelWindow {
     // The active window, when it is on this screen.
     readonly property var front: windows?.active?.isOn(modelData) ? windows.active : null
     readonly property bool away: !arrived || (windows?.fullScreenOn(modelData) ?? false)
-    // What the middle says, the first of these that has something: the music that plays, else the window.
-    readonly property var musicParts: Middle.musicParts(media?.title ?? "", media?.artist ?? "", media?.position ?? 0, media?.length ?? 0)
-    readonly property bool playing: musicParts.length > 0
-    readonly property var windowParts: front ? Middle.windowParts(front.app, front.title) : []
+    readonly property var middleLine: Middle.barLine(
+        controlPanel.quiet.middleParts,
+        Middle.musicParts(media?.title ?? "", media?.artist ?? "", media?.position ?? 0, media?.length ?? 0),
+        front ? Middle.windowParts(front.app, front.title) : [])
     readonly property bool floatOpen: bar.menu.open || background.menu.open || clock.calendar.open || tip.open
     readonly property bool panelOpenHere: controlPanel.visible && controlPanel.screen === modelData
 
@@ -90,9 +90,9 @@ PanelWindow {
         away: panel.away
 
         AppBarMiddle {
-            kind: panel.playing ? "music" : "window"
-            parts: Middle.firstRunning([panel.musicParts], panel.windowParts)
-            figuresPart: panel.playing ? 1 : -1
+            kind: panel.middleLine.kind
+            parts: panel.middleLine.parts
+            figuresPart: panel.middleLine.figuresPart
 
             onTapped: panel.controlPanel.toggle(panel.modelData, 0, true)
         }

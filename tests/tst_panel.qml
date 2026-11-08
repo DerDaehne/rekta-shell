@@ -3231,16 +3231,69 @@ TestCase {
         tryVerify(() => branchRows().length > 0 && branchRows()[0].activeFocus, 4 * Tokens.durationShort);
     }
 
-    function test_nicht_stoeren_and_dunkel_have_no_details() {
+    function test_a_plain_press_on_nicht_stoeren_switches_it_on_without_an_end() {
         showSettled(0);
-        for (const name of ["doNotDisturb", "dark"]) {
-            verify(!findChild(control(name), "chevron").visible, name);
-            mouseClick(control(name), 10, 10, Qt.RightButton);
-            verify(!control(name).checked, `${name}: a right click does nothing`);
-        }
-        compare(commands, []);
+        mouseClick(control("doNotDisturb"));
+        compare(controls.quiet.choice, "open");
+        compare(controls.quiet.middleParts, [], "no time left to show");
+        compare(findChild(control("doNotDisturb"), "state").text, "an");
+        verify(!control("quietBranch").expanded, "the details stay folded");
     }
 
+    function quietOptions(): var {
+        return Array.from(findChild(control("quietLength"), "options").children).filter(item => item instanceof Rectangle);
+    }
+
+    function test_the_details_of_nicht_stoeren_unfold_its_lengths_below_the_buttons_and_a_press_on_one_switches_it_on() {
+        controls.quiet.clock = () => Date.UTC(2026, 10, 8, 13, 0);
+        controls.quiet.zoneOffset = () => 60;
+        showSettled(0);
+        const quiet = control("doNotDisturb");
+        verify(findChild(quiet, "chevron").visible);
+        mouseClick(quiet, 10, 10, Qt.RightButton);
+        verify(control("quietBranch").expanded);
+        verify(!controls.doNotDisturb, "opening the details alone does not switch it");
+        const lengths = control("quietLength");
+        verify(lengths.activeFocus, "the focus on the lengths");
+        compare(lengths.options, ["bis aus", "1 stunde", "bis morgen"]);
+        compare(lengths.currentIndex, -1, "none chosen while off");
+        const buttons = findChild(controls.edge, "quickSettings");
+        tryVerify(() => Math.abs(control("quietBranch").mapToItem(controls.edge, 0, 0).y - buttons.height - Tokens.spaceS) < 0.01, 1000, "below the buttons, space-s apart");
+        waitForRendering(side);
+        mouseClick(quietOptions()[1]);
+        verify(controls.doNotDisturb, "on at once");
+        compare(controls.quiet.choice, "hour");
+        compare(lengths.currentIndex, 1);
+        compare(findChild(quiet, "state").text, "bis 15:00", "the state word is its end");
+        compare(quiet.Accessible.name, "nicht stören bis 15:00");
+        compare(controls.quiet.middleParts, ["nicht stören", "bis 15:00"]);
+        keyClick(Qt.Key_Escape);
+        verify(!control("quietBranch").expanded);
+        verify(quiet.activeFocus, "Escape gives the focus back to the button");
+        mouseClick(quiet);
+        verify(!controls.doNotDisturb, "a press switches it off");
+        compare(findChild(quiet, "state").text, "aus");
+    }
+
+    function test_the_keys_choose_a_length_of_nicht_stoeren_at_once() {
+        showSettled(0);
+        control("doNotDisturb").forceActiveFocus();
+        keyClick(Qt.Key_Menu);
+        verify(control("quietLength").activeFocus);
+        keyClick(Qt.Key_Right);
+        compare(controls.quiet.choice, "open", "the first length");
+        keyClick(Qt.Key_End);
+        compare(controls.quiet.choice, "morning");
+        verify(controls.quiet.endWord.startsWith("bis "));
+    }
+
+    function test_dunkel_has_no_details() {
+        showSettled(0);
+        verify(!findChild(control("dark"), "chevron").visible);
+        mouseClick(control("dark"), 10, 10, Qt.RightButton);
+        verify(!control("dark").checked, "a right click does nothing");
+        compare(commands, []);
+    }
     // The panel follows the one current theme and density, so the contact sheet is drawn once per pair.
     function test_contact_sheet_of_the_panel_in_both_themes_and_densities() {
         for (const theme of ["light", "dark"]) {

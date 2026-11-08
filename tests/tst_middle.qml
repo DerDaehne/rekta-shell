@@ -39,8 +39,11 @@ TestCase {
         compare(Middle.musicParts("", "", 0, 0), []);
     }
 
-    function test_the_first_source_with_parts_wins_over_the_window() {
-        compare(Middle.firstRunning([[], ["a"], ["b"]], ["window"]), ["a"]);
-        compare(Middle.firstRunning([[]], ["window"]), ["window"]);
+    function test_the_time_nicht_stoeren_has_left_leads_before_the_music_and_the_window() {
+        const quiet = ["nicht stören", "noch 42 min"];
+        const music = ["Titel", "2:14 / 4:03"];
+        compare(Middle.barLine(quiet, music, ["Dolphin"]), { kind: "quiet", parts: quiet, figuresPart: -1 });
+        compare(Middle.barLine([], music, ["Dolphin"]), { kind: "music", parts: music, figuresPart: 1 }, "the music's time in figures");
+        compare(Middle.barLine([], [], ["Dolphin"]), { kind: "window", parts: ["Dolphin"], figuresPart: -1 });
     }
 }

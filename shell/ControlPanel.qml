@@ -40,6 +40,8 @@ PanelWindow {
     // The screen it opens on, null once that one has gone; the panel hides meanwhile.
     property ShellScreen shownOn: primaryScreen
     readonly property alias doNotDisturb: controls.doNotDisturb
+    // "nicht stören" and how long it lasts.
+    readonly property alias quiet: controls.quiet
     readonly property alias dark: controls.dark
     readonly property alias hasPowerProfiles: controls.hasPowerProfiles
     // Untyped, as qmllint sees Pipewire's own opaque copy of the model type, which lacks `values`.
@@ -233,6 +235,26 @@ PanelWindow {
 
         busType: DBus.BusType.System
         watchedService: "org.bluez"
+    }
+
+    // How long "nicht stören" lasts outlives the shell, in its state directory (XDG base directories). Blocking, so a
+    // restart shows it from the first frame.
+    UserFile {
+        id: quietFile
+
+        path: `${Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"}/rekta-shell/do-not-disturb.json`
+        blockLoading: true
+        blockWrites: true
+        atomicWrites: true
+        onLoaded: controls.quiet.restore(text())
+    }
+
+    Connections {
+        target: controls.quiet
+
+        function onSavedChanged() {
+            quietFile.setText(controls.quiet.saved);
+        }
     }
 
     FileView {
