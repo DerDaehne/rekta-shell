@@ -160,6 +160,47 @@ in
     touch $out
   '';
 
+  # Both drop-ins run Plasma's commands through their scripts in Plasma too, so only in the rekta session may a script
+  # change what the command gets. A child stands in for the command: it sees the same, run through a script with one
+  # environment, as run directly with the environment the script must hand on.
+  drop-ins-change-only-rekta =
+    let
+      child = pkgs.writeShellScript "child" ''
+        printf 'argument %s\n' "$@"
+        # Each shell counts it up, so it tells only how many shells ran before.
+        unset SHLVL
+        ${pkgs.coreutils}/bin/env | ${pkgs.coreutils}/bin/sort
+      '';
+    in
+    pkgs.runCommand "rekta-shell-drop-ins-change-only-rekta" { } ''
+      expect() {
+        local script=$1 given=$2 handed=$3
+        if ! diff <(env -i $handed ${child} 'two words' --flag) \
+          <(env -i $given ${rekta-shell}/libexec/$script ${child} 'two words' --flag) >&2; then
+          echo "$script turns '$given' into more or less than '$handed'" >&2
+          exit 1
+        fi
+      }
+      session="XDG_CONFIG_DIRS=/session/xdg XDG_DATA_DIRS=/session/share"
+      for script in rekta-kwin rekta-kded; do
+        for desktop in XDG_SESSION_DESKTOP=KDE XDG_SESSION_DESKTOP= ""; do
+          expect $script "$desktop $session" "$desktop $session"
+          expect $script "$desktop" "$desktop"
+        done
+      done
+
+      rekta=XDG_SESSION_DESKTOP=rekta
+      kded=${rekta-shell}/share/rekta-kded
+      expect rekta-kded "$rekta $session" "$rekta XDG_CONFIG_DIRS=$kded:/session/xdg XDG_DATA_DIRS=/session/share"
+      expect rekta-kded "$rekta" "$rekta XDG_CONFIG_DIRS=$kded:/etc/xdg"
+      kwin=${rekta-shell}/share/rekta-kwin
+      kwinOnly="QT_PLUGIN_PATH=${rekta-shell}/lib/rekta-kwin/plugins QML_IMPORT_PATH=${rekta-shell}/share/rekta-shell"
+      kwinOnly+=" QT_QUICK_CONTROLS_STYLE=org.kde.desktop PLASMA_DEFAULT_SHELL=rekta-lockscreen"
+      expect rekta-kwin "$rekta $session" "$rekta XDG_CONFIG_DIRS=$kwin/kwin:/session/xdg XDG_DATA_DIRS=$kwin:/session/share $kwinOnly"
+      expect rekta-kwin "$rekta" "$rekta XDG_CONFIG_DIRS=$kwin/kwin:/etc/xdg XDG_DATA_DIRS=$kwin:/usr/local/share:/usr/share $kwinOnly"
+      touch $out
+    '';
+
   # KWin makes a layer surface of a namespace it does not know a normal window, which tiling scripts move into the work
   # area: a surface that keeps a zone clear for itself would leave that zone, unless it is a dock.
   docked-surfaces-are-docks = pkgs.runCommand "rekta-shell-docked-surfaces-are-docks" { } ''
