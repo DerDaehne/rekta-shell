@@ -3294,6 +3294,7 @@ TestCase {
         verify(!control("dark").checked, "a right click does nothing");
         compare(commands, []);
     }
+
     // The panel follows the one current theme and density, so the contact sheet is drawn once per pair.
     function test_contact_sheet_of_the_panel_in_both_themes_and_densities() {
         for (const theme of ["light", "dark"]) {

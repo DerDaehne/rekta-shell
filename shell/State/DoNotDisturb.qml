@@ -60,7 +60,7 @@ QtObject {
     function restore(text: string) {
         let state = {};
         try {
-            state = JSON.parse(text);
+            state = JSON.parse(text) ?? {};
         } catch (error) {
             console.warn(`DoNotDisturb: kept nothing, as the file is not JSON: ${error}`);
         }

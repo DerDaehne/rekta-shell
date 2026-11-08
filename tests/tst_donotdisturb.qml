@@ -166,5 +166,26 @@ TestCase {
         verify(!quiet.on);
         quiet.restore(JSON.stringify({ choice: "forever" }));
         verify(!quiet.on, "an unknown choice");
+        quiet.choose("open");
+        quiet.restore("null");
+        verify(!quiet.on, "a file holding null");
+    }
+
+    function test_an_hour_ends_by_itself_when_the_clock_passes_it() {
+        const quiet = make();
+        at(quiet, berlin(9, 12, 0));
+        quiet.choose("hour");
+        verify(quiet.on);
+        testCase.time = berlin(9, 13, 1);
+        tryVerify(() => !quiet.on, 3000);
+    }
+
+    function test_the_timer_runs_only_while_an_end_is_pending() {
+        const quiet = make();
+        verify(!quiet.ticker.running, "off");
+        quiet.choose("open");
+        verify(!quiet.ticker.running, "on with no end");
+        quiet.choose("hour");
+        verify(quiet.ticker.running, "on with an end");
     }
 }

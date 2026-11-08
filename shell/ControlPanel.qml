@@ -12,6 +12,7 @@ import org.kde.plasma.workspace.dbus as DBus
 import Notices
 import Settings
 import Panel
+import Start
 import "services"
 
 // The side panel's surface at the trailing edge of the screen it opens on: as wide as the panel, from the top down to
@@ -242,7 +243,7 @@ PanelWindow {
     UserFile {
         id: quietFile
 
-        path: `${Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"}/rekta-shell/do-not-disturb.json`
+        path: `${Rules.stateDir(Quickshell.env("XDG_STATE_HOME"), Quickshell.env("HOME"))}/do-not-disturb.json`
         blockLoading: true
         blockWrites: true
         atomicWrites: true
