@@ -133,6 +133,7 @@ ShellRoot {
         windows: running
         launcher: appLauncher
         notices: notifications.board
+        media: music
         primaryScreen: primary.screen
         topInset: systemBanner.zone
         arrived: splash.arrived

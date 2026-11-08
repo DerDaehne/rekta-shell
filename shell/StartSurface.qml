@@ -19,6 +19,8 @@ PanelWindow {
     required property Windows windows
     required property Launcher launcher
     required property NoticeBoard notices
+    // What plays: its line stands on its app's tile.
+    required property Media media
     required property ShellScreen primaryScreen
     // The room a banner keeps clear at the top: the Start begins below it, as the windows do.
     property real topInset: 0
@@ -129,6 +131,7 @@ PanelWindow {
         searchEscape: surface.searchEscape
         starts: usage.starts
         unseen: surface.notices.unseenByApp
+        lines: Rules.playingLines(surface.media.player, surface.media.appId)
         preview: Component {
             WindowPreview {
                 id: windowPreview

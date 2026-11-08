@@ -90,6 +90,8 @@ QtObject {
     readonly property real statLineHeight: 1
     // `.rk-launch-count { line-height: 1 }` (rekta.css:181)
     readonly property real launchCountLineHeight: 1
+    // `.rk-launch-peek { line-clamp: 2 }` (rekta.css:183)
+    readonly property int launchLineCount: 2
     // `.rk-tile-msg { line-clamp: 4 }`, `.rk-w2 > .rk-tile-msg { line-clamp: 6 }` (rekta.css:122, :125)
     readonly property int tileMessageLines: 4
     readonly property int tileMessageLinesWide: 6

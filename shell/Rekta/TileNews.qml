@@ -81,6 +81,9 @@ Item {
         markedGhost.font = marked.font;
         markedGhost.color = marked.color;
         markedGhost.lineHeightFactor = marked.lineHeightFactor;
+        markedGhost.wrapMode = marked.wrapMode;
+        markedGhost.maximumLineCount = marked.maximumLineCount;
+        markedGhost.elide = marked.elide;
         markedGhost.width = marked.width;
     }
 

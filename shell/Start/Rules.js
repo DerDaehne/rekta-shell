@@ -478,3 +478,10 @@ function keyText(values) {
         return "";
     return [...keyModifiers.filter(([flag]) => (code & flag) !== 0).map(([, word]) => word), name].join(" ");
 }
+
+// The newest line, by app id, of the app whose player plays: what it plays, as Rekta's music tile says it ("Playing:
+// Calm, side B"). `player` is an MPRIS player as Quickshell has it, or null; `appId` its app, "" for none known.
+function playingLines(player, appId) {
+    const track = [player?.trackTitle ?? "", player?.trackArtist ?? ""].filter(part => part !== "").join(" · ");
+    return appId !== "" && track !== "" ? { [appId]: `Läuft gerade: ${track}` } : {};
+}

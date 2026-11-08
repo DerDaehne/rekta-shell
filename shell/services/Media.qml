@@ -16,6 +16,8 @@ Scope {
     readonly property MprisPlayer player: choice.playingPlayer
     readonly property string title: player?.trackTitle ?? ""
     readonly property string artist: player?.trackArtist ?? ""
+    // The desktop file ID of the player's app: the entry it names, else the one its name fits, as for a notification.
+    readonly property string appId: player ? DesktopEntries.heuristicLookup(player.desktopEntry || player.identity)?.id ?? player.desktopEntry : ""
     // In seconds; MPRIS sends no change of position while a track plays, so it is asked once a second.
     readonly property real position: player?.positionSupported ? player.position : 0
     readonly property real length: player?.lengthSupported ? player.length : 0

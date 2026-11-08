@@ -3,8 +3,9 @@ import Rekta
 
 // An app in the Start, pinned, in "alle apps" or found by a search, as Rekta's launch tile (tiles.md:141–156;
 // rekta.css:176–187): its icon at the top leading corner, the count of its unseen notifications at the top trailing one,
-// its name at the foot. It stays neutral, as a count is no status; a press starts the app. The best hit of a search is
-// wide and says which key starts it (navigation.md, "a command shows its key").
+// its name at the foot, and on a tile two units or more wide the app's newest line between them. It stays neutral, as a
+// count is no status; a press starts the app. The best hit of a search is wide and says which key starts it
+// (navigation.md, "a command shows its key").
 Tile {
     id: tile
 
@@ -17,18 +18,31 @@ Tile {
     property int unseen: 0
     // The count the tile shows, which follows `unseen` through the tile's news.
     property int shown: 0
+    // The app's newest line, such as what its player plays; empty for none.
+    property string line
+    // The line the tile shows, which follows `line` through the tile's news.
+    property string shownLine
 
     opens: true
-    peekPart: count
-    // The name is read first, then the count (tiles.md:154–156).
-    Accessible.name: shown > 0 ? `${name}, ${shown} ungelesen` : name
+    // The name is read first, then the count, then the line in sight (tiles.md:154–156; site/index.html:883).
+    Accessible.name: [name, shown > 0 ? `${shown} ungelesen` : "", lineText.visible ? shownLine : ""].filter(part => part !== "").join(", ")
     Accessible.description: best ? "bester treffer" : ""
     held: hovered || activeFocus
 
-    // Only a number replacing a number peeks; one that comes or goes has no old or new number to move, and ends a peek
-    // still running. The first count is no news.
-    onUnseenChanged: news(unseen > 0 && shown > 0 ? "peek" : "", () => tile.shown = tile.unseen)
-    Component.onCompleted: shown = unseen
+    // Only a number replacing a number, or a line replacing a line, peeks; one that comes or goes has no old or new one
+    // to move, and ends a peek still running. The first count and line are no news.
+    onUnseenChanged: tell(count, unseen > 0 && shown > 0, () => tile.shown = tile.unseen)
+    onLineChanged: tell(lineText, line !== "" && shownLine !== "", () => tile.shownLine = tile.line)
+    Component.onCompleted: {
+        shown = unseen;
+        shownLine = line;
+    }
+
+    // A tile peeks one part, as a page marks one (rekta.js:4200): the one with the news.
+    function tell(part: Body, replaces: bool, change: var) {
+        peekPart = part;
+        news(replaces ? "peek" : "", change);
+    }
 
     // About a third of the tile's height, at its padding (tiles.md:147–150; rekta.css:179–180).
     PictureIcon {
@@ -58,7 +72,26 @@ Tile {
         wrapMode: Text.NoWrap
     }
 
+    // In s, two lines at most, space-s above the name (rekta.css:89–94, :182–186). By hand, not in the tile's column: a
+    // column lays out at the next polish, and a new line has to rise where it will stand.
+    Body {
+        id: lineText
+
+        objectName: "line"
+        parent: tile
+        x: Geometry.tilePadding
+        y: tile.height - Geometry.tilePadding - nameRow.height - Tokens.spaceS - height
+        width: tile.width - 2 * Geometry.tilePadding
+        visible: tile.columns >= 2 && text !== ""
+        text: tile.shownLine
+        lineHeightFactor: Tokens.lineHeightCompact
+        maximumLineCount: Geometry.launchLineCount
+        elide: Text.ElideRight
+    }
+
     Item {
+        id: nameRow
+
         width: parent.width
         height: nameText.height
 

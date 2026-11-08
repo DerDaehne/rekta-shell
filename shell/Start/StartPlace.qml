@@ -27,6 +27,8 @@ FocusScope {
     property var starts: ({})
     // The unseen notifications by app id: {id: count}.
     property var unseen: ({})
+    // The newest line by app id, such as what its player plays: {id: text}.
+    property var lines: ({})
     // The System Settings pages, shaped as `apps` are; they are found, not listed.
     property var settings: []
     // The shell's commands: {text, keywords, run}, or {word, at(n)} for one that takes an amount (Rules.commandHits).
@@ -984,6 +986,7 @@ FocusScope {
                                 name: modelData.name
                                 icon: modelData.icon
                                 unseen: start.unseen[modelData.id] ?? 0
+                                line: start.lines[modelData.id] ?? ""
                                 columns: modelData.columns
                                 rows: modelData.rows
                                 onActivated: start.press(appTile, () => appTile.modelData.launch())
@@ -1128,6 +1131,7 @@ FocusScope {
                                 name: modelData.name
                                 icon: modelData.icon
                                 unseen: start.unseen[modelData.id] ?? 0
+                                line: start.lines[modelData.id] ?? ""
                                 onActivated: start.press(letterTile, () => letterTile.modelData.launch())
                             }
                         }
@@ -1248,6 +1252,7 @@ FocusScope {
                         name: label
                         icon: image
                         unseen: start.unseen[appId] ?? 0
+                        line: start.lines[appId] ?? ""
                         best: index === 0
                         columns: best ? 2 : 1
                         onActivated: start.press(hitTile, () => start.launchApp(hitTile.appId))

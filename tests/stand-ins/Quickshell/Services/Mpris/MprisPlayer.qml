@@ -2,6 +2,8 @@ import QtQml
 
 // An MPRIS player as Quickshell has it, playing and open to every control. It records the calls it gets.
 QtObject {
+    property string identity: ""
+    property string desktopEntry: ""
     readonly property bool isPlaying: true
     readonly property bool canTogglePlaying: true
     readonly property bool canPause: true
