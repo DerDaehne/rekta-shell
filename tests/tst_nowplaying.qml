@@ -428,10 +428,38 @@ TestCase {
         compare(stopped.calls, [], "a stopped player is not shown, so the keys leave it alone");
     }
 
-    function test_a_media_key_the_player_cannot_follow_now_is_not_sent_to_it() {
-        const elisa = givePlayer({ canGoNext: false, canGoPrevious: false, canTogglePlaying: false, canPause: false, canControl: false });
+    function test_a_media_key_the_player_cannot_follow_now_is_not_sent_to_it_data() {
+        return [
+            {
+                tag: "canTogglePlaying",
+                withheld: "togglePlaying"
+            },
+            {
+                tag: "canPause",
+                withheld: "pause"
+            },
+            {
+                tag: "canControl",
+                withheld: "stop"
+            },
+            {
+                tag: "canGoNext",
+                withheld: "next"
+            },
+            {
+                tag: "canGoPrevious",
+                withheld: "previous"
+            }
+        ];
+    }
+
+    function test_a_media_key_the_player_cannot_follow_now_is_not_sent_to_it(data) {
+        const elisa = givePlayer({
+            [data.tag]: false
+        });
         pressEveryMediaKey();
-        compare(elisa.calls, []);
+        const everyCall = ["next", "previous", "togglePlaying", "togglePlaying", "pause", "stop"];
+        compare(elisa.calls, everyCall.filter(call => call !== data.withheld), "the other keys still reach it");
     }
 
     function test_the_progress_glides_on_between_the_players_reports_without_jumps() {

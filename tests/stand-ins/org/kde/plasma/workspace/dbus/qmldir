@@ -1,0 +1,3 @@
+module org.kde.plasma.workspace.dbus
+singleton SessionBus 1.0 SessionBus.qml
+SignalWatcher 1.0 SignalWatcher.qml

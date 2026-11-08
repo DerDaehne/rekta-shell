@@ -6,9 +6,10 @@ set -eu
 root=${1:?usage: run-qml-tests.sh <directory holding shell/ and tests/>}
 runner=${QMLTESTRUNNER:-qmltestrunner}
 
-# A bus of its own for the DBus tests, which exists only while the tests run.
+# A bus of its own for the DBus tests, which exists only while the tests run. The stand-ins take the place of the
+# modules from Quickshell and Plasma that a service imports.
 dbus-run-session ${DBUS_SESSION_CONFIG:+--config-file="$DBUS_SESSION_CONFIG"} -- \
-	"$runner" -import "$root/shell" -input "$root/tests"
+	"$runner" -import "$root/shell" -import "$root/tests/stand-ins" -input "$root/tests"
 # Week numbers count days across a daylight saving change, which a build zone of UTC has none of.
 TZ=Europe/Berlin "$runner" -import "$root/shell" -input "$root/tests/tst_clock.qml"
 # A picture icon's own size counts in logical px on a scaled display too.
