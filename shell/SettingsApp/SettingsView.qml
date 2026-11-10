@@ -127,8 +127,11 @@ FocusScope {
     // The window is a plain item to its content, so the view takes the keys itself.
     focus: true
 
-    // Escape never closes the window: Rekta has no hidden way out. Ctrl+W and the frame do.
+    // Open lists and tips take their keys first (the key layers), then the place. Escape never closes the window:
+    // Rekta has no hidden way out. Ctrl+W and the frame do.
     Keys.onPressed: event => {
+        if (KeyLayers.dispatch(event, Window.activeFocusItem))
+            return;
         if (goesBack(event))
             goBack();
         else if (event.key === Qt.Key_W && (event.modifiers & Qt.ControlModifier))

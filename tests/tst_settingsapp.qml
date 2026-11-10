@@ -170,6 +170,18 @@ TestCase {
         tryVerify(() => page(0).visible && !page(2).visible);
     }
 
+    function test_escape_closes_a_list_opened_by_the_pointer_before_it_goes_back() {
+        pivot().select(1);
+        tryVerify(() => page(1).visible);
+        const select = control("searchEscape");
+        select.expand();
+        keyClick(Qt.Key_Escape);
+        verify(!select.expanded);
+        compare(pivot().currentIndex, 1);
+        keyClick(Qt.Key_Escape);
+        compare(pivot().currentIndex, 0);
+    }
+
     function test_alt_left_and_the_back_key_go_back_too() {
         pivot().select(2);
         keyClick(Qt.Key_Left, Qt.AltModifier);
