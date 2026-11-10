@@ -4,9 +4,10 @@ import QtQuick
 
 // The status words of the app bar: tags in controls. Each is a tag (rekta.css:790–791: a square and its word, the word
 // always visible) in a control of the bar (.rk-ab, rekta.css:802–813) that opens the place where it can be changed.
-// A deviation (ADR-032, point 3): Rekta's single live-state slot (.rk-ab-status, rekta.css:824) is one plain text that
-// does nothing; here there are several, they are controls, and they take the controls' gap, size and weight, not the
-// slot's. Like the live state they never move into "more" (AppBar).
+// They stand where Rekta's live state stands, at the start of the leading side before the middle (navigation.md, "A
+// control in the middle"). A deliberate deviation: Rekta's single live-state slot (.rk-ab-status, rekta.css:824) is one
+// plain text that does nothing; here there are several, they are controls, and they take the controls' gap, size and
+// weight, not the slot's. Like the live state they never move into "more" (AppBar).
 //
 // `words` are all the deviations in order, `limit` how many of them stand; the bar sets it from the room it has. The rest
 // are counted in one more word, "+N". A word arrives with a fade over duration-short and leaves over 0.6 of it (motion.md,

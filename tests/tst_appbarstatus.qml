@@ -33,8 +33,8 @@ TestCase {
         StatusWords {}
     }
 
-    // A bar as the shell's: the middle, the clock in the centre, then on the trailing side the background apps, messages,
-    // the status words and controls.
+    // A bar as the shell's: the status words and the middle, the clock in the centre, then on the trailing side the
+    // background apps, messages and controls.
     Component {
         id: sceneComponent
 
@@ -61,10 +61,6 @@ TestCase {
                 centre: clock
                 centreReserve: scene.reserve
 
-                AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects: build the shell and its tests"] }
-                AppBarClock { id: clock; objectName: "clock"; area: appBar.area; locale: Qt.locale("de_DE"); now: scene.clockNow }
-                AppBarButton { objectName: "background"; icon: "window"; text: "im hintergrund"; priority: 0 }
-                AppBarButton { objectName: "messages"; icon: "bell"; text: "meldungen"; count: 2; priority: 2 }
                 AppBarStatus {
                     id: words
 
@@ -73,7 +69,11 @@ TestCase {
                     words: scene.shown
                     more: stateModel.more
                 }
-                AppBarButton { objectName: "controls"; icon: "tune"; text: "steuerung"; priority: 1 }
+
+                AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects: build the shell and its tests"] }
+                AppBarClock { id: clock; objectName: "clock"; area: appBar.area; locale: Qt.locale("de_DE"); now: scene.clockNow }
+                AppBarButton { objectName: "background"; icon: "window"; text: "im hintergrund"; priority: 0 }
+                AppBarButton { objectName: "messages"; icon: "bell"; text: "meldungen"; count: 2; priority: 2 }                AppBarButton { objectName: "controls"; icon: "tune"; text: "steuerung"; priority: 1 }
             }
 
             StatusWords { id: stateModel }
@@ -157,13 +157,25 @@ TestCase {
             verify(shown[i - 1].right <= shown[i].left + 0.5, `${what}: ${shown[i - 1].name} runs into ${shown[i].name}`);
     }
 
+    function middle(): var {
+        return findChild(scene, "middle");
+    }
+
+    function endOf(item: Item): real {
+        return drawnX(item) + item.width;
+    }
+
+    // The width of a bar whose sides have `room` each beside the clock and its reserve.
+    function barWidthFor(room: real): real {
+        return 2 * (room + scene.bar.gap + scene.bar.padding) + Math.max(findChild(scene, "clock").implicitWidth, scene.reserve);
+    }
+
     function test_without_a_deviation_no_word_and_no_room_stands() {
         makeScene({});
         compare(scene.status.present, false);
         compare(scene.status.visible, false);
         compare(standing(), []);
-        const messages = findChild(scene, "messages");
-        compare(findChild(scene, "controls").x - (messages.x + messages.width), scene.bar.gap, "the neighbours stand a gap apart, as with nothing between them");
+        compare(middle().x, scene.bar.padding, "the middle starts the bar, as with nothing before it");
     }
 
     function test_a_word_is_a_square_and_the_word_with_its_status_colour() {
@@ -179,12 +191,14 @@ TestCase {
         compare(word("muted").Accessible.name, "stumm, öffnet ton");
     }
 
-    function test_the_words_stand_in_the_order_of_the_keys_before_steuerung() {
+    function test_the_words_stand_at_the_start_of_the_bar_in_the_order_of_the_keys_before_the_middle() {
         makeScene({ shown: [microphone, offline] });
         tryVerify(() => standing().length === 2);
-        verify(word("microphone").mapToItem(scene, 0, 0).x < word("offline").mapToItem(scene, 0, 0).x);
-        tryVerify(() => scene.status.x + scene.status.width <= findChild(scene, "controls").x);
-        verify(findChild(scene, "messages").x + findChild(scene, "messages").width <= scene.status.x);
+        compare(drawnX(word("microphone")), scene.bar.padding, "the first word starts the bar");
+        verify(endOf(word("microphone")) <= drawnX(word("offline")));
+        tryCompare(middle(), "x", scene.status.x + scene.status.width + scene.bar.gap);
+        verify(endOf(word("offline")) <= middle().x - scene.bar.gap + 0.5);
+        verify(endOf(middle()) <= findChild(scene, "clock").x - scene.bar.gap + 0.5, "the middle ends before the clock");
     }
 
     function test_more_than_two_deviations_show_two_words_and_a_count_of_the_rest() {
@@ -195,7 +209,7 @@ TestCase {
         compare(word("more").face.word, "+3");
     }
 
-    function test_a_press_names_the_word() {
+    function test_a_press_names_the_group_the_word_opens_and_leaves_the_words_as_they_are() {
         makeScene({ shown: [offline, muted, quiet] });
         const spy = createTemporaryObject(pressSpy, testCase, { target: scene.status });
         tryVerify(() => standing().length === 3);
@@ -204,6 +218,7 @@ TestCase {
         compare(spy.signalArguments[0][0].opens, "connections");
         mouseClick(word("more"), 10, 10);
         compare(spy.signalArguments[1][0].opens, "");
+        compare(standing(), ["offline", "muted", "more"], "a press switches nothing");
     }
 
     function test_the_screen_word_stands_in_the_error_colour_and_its_press_names_the_background_menu() {
@@ -216,77 +231,74 @@ TestCase {
         compare(spy.signalArguments[0][0].opens, "background");
     }
 
-    function test_a_word_fades_in_and_the_bar_makes_room() {
+    function test_a_word_fades_in_and_the_middle_makes_room() {
         makeScene({});
-        const before = findChild(scene, "controls").x;
+        const controls = findChild(scene, "controls");
+        const before = controls.x;
         scene.shown = [muted];
         tryCompare(word("muted"), "visible", true);
         verify(word("muted").opacity < 1, "it comes with a fade");
         tryCompare(word("muted"), "opacity", 1);
-        tryVerify(() => findChild(scene, "controls").x === before);
-        verify(findChild(scene, "messages").x < scene.bar.width);
+        tryCompare(middle(), "x", scene.status.x + scene.status.width + scene.bar.gap);
+        compare(controls.x, before, "the trailing side stays where it stood");
     }
 
     function test_a_word_fades_out_and_then_leaves_no_room() {
         makeScene({ shown: [muted] });
-        const messages = findChild(scene, "messages");
-        const controls = findChild(scene, "controls");
-        const sideWidth = () => controls.x + controls.width - findChild(scene, "background").x;
-        const background = findChild(scene, "background");
-        tryVerify(() => sideWidth() === background.width + messages.width + scene.status.width + controls.width + 3 * scene.bar.gap);
+        tryCompare(middle(), "x", scene.bar.padding + scene.status.widthAt(2) + scene.bar.gap);
         scene.shown = [];
         verify(word("muted").visible, "it stays while it fades");
         tryCompare(word("muted"), "visible", false);
         compare(scene.status.present, false);
-        tryVerify(() => sideWidth() === background.width + messages.width + controls.width + 2 * scene.bar.gap);
+        tryCompare(middle(), "x", scene.bar.padding);
     }
 
-    function test_while_a_word_fades_out_the_words_stay_clear_of_steuerung_and_the_bar_lays_out_after_it() {
+    function test_while_a_word_fades_out_the_words_stay_clear_of_the_middle_and_the_bar_lays_out_after_it() {
         makeScene({ shown: [muted, quiet] });
-        const controls = findChild(scene, "controls");
         tryVerify(() => standing().length === 2);
-        const right = () => word("doNotDisturb").mapToItem(scene, word("doNotDisturb").width, 0).x;
+        settle();
+        const right = () => endOf(word("doNotDisturb"));
         scene.shown = [muted];
         verify(word("doNotDisturb").visible, "it still stands");
-        verify(right() <= controls.x - scene.bar.gap + 0.5, `${right()} against ${controls.x}`);
+        verify(right() <= middle().x - scene.bar.gap + 0.5, `${right()} against ${middle().x}`);
         wait(Tokens.durationShort / 2);
-        verify(right() <= controls.x - scene.bar.gap + 0.5, `half way: ${right()} against ${controls.x}`);
+        verify(right() <= middle().x - scene.bar.gap + 0.5, `half way: ${right()} against ${middle().x}`);
         tryCompare(word("doNotDisturb"), "visible", false);
         tryVerify(() => scene.status.width === scene.status.widthAt(2));
     }
 
-    function test_a_word_that_comes_fades_in_where_it_rests_while_the_others_glide_aside() {
+    function test_a_word_that_comes_fades_in_where_it_rests_while_the_middle_glides_aside() {
         Prefs.motion = "on";
         makeScene({ shown: [muted] });
         settle();
-        const messages = findChild(scene, "messages");
-        const from = messages.x;
+        const from = middle().x;
         scene.shown = [microphone, muted];
         tryVerify(() => word("microphone").visible && word("microphone").opacity < 1, 1000, "it fades in");
         holdGlide();
         scene.bar.reflow.progress = 0;
         const at = drawnX(word("microphone"));
-        compare(messages.x, from, "the others start where they stood");
+        compare(middle().x, from, "the middle starts where it stood");
         scene.bar.reflow.progress = easeBase.valueForProgress(0.5);
-        const half = messages.x;
+        const half = middle().x;
         scene.bar.reflow.run.complete();
         compare(drawnX(word("microphone")), at, "it stood where it rests from the start");
-        verify(messages.x < from, "the others made room");
-        verify(Math.abs(half - (from + (messages.x - from) * easeBase.valueForProgress(0.5))) <= 1, `halfway at ${half}`);
+        verify(middle().x > from, "the middle made room");
+        verify(Math.abs(half - (from + (middle().x - from) * easeBase.valueForProgress(0.5))) <= 1, `halfway at ${half}`);
     }
 
-    function test_the_first_word_to_come_fades_in_where_it_rests_clear_of_the_control_after_it() {
+    function test_the_first_word_to_come_fades_in_at_the_start_of_the_bar_where_it_rests() {
         Prefs.motion = "on";
         makeScene({});
         settle();
         const quietWord = word("doNotDisturb");
-        const controls = findChild(scene, "controls");
         scene.shown = [quiet];
         tryVerify(() => quietWord.visible, 1000, "it comes");
         const at = drawnX(quietWord);
-        verify(at + quietWord.width <= drawnX(controls) + 0.5, `it stands clear of the control after it: ${at + quietWord.width} > ${drawnX(controls)}`);
+        compare(at, scene.bar.padding);
         settle();
         compare(drawnX(quietWord), at, "it stood where it rests from the start");
+        compare(middle().x, scene.status.x + scene.status.width + scene.bar.gap, "the middle follows it");
+        verify(endOf(quietWord) + scene.bar.gap <= middle().x + 0.5);
     }
 
     function test_a_word_that_goes_fades_out_where_it_stands_and_then_the_others_close_the_gap() {
@@ -294,9 +306,8 @@ TestCase {
         makeScene({ shown: [microphone, muted] });
         settle();
         const microphoneWord = word("microphone");
-        const messages = findChild(scene, "messages");
         const at = drawnX(microphoneWord);
-        const from = messages.x;
+        const from = middle().x;
         const started = Date.now();
         scene.shown = [muted];
         verify(microphoneWord.visible, "it stays while it fades");
@@ -305,9 +316,10 @@ TestCase {
         verify(!microphoneWord.visible, "it has gone before the others move");
         scene.bar.reflow.progress = 0;
         compare(drawnX(microphoneWord), at, "it faded where it stood");
-        compare(messages.x, from, "they start where they stood");
+        compare(middle().x, from, "they start where they stood");
         scene.bar.reflow.run.complete();
-        verify(messages.x > from, "and close the gap");
+        verify(middle().x < from, "and close the gap");
+        compare(drawnX(word("muted")), scene.bar.padding);
     }
 
     function test_a_word_that_comes_while_another_goes_waits_until_that_one_has_gone() {
@@ -379,17 +391,16 @@ TestCase {
         }
     }
 
-    function test_under_reduced_motion_the_others_make_room_at_once() {
+    function test_under_reduced_motion_the_middle_makes_room_at_once() {
         Prefs.motion = "off";
         makeScene({ shown: [muted] });
-        const messages = findChild(scene, "messages");
         tryVerify(() => scene.status.slots.length === 1);
-        const from = messages.x;
+        const from = middle().x;
         scene.shown = [microphone, muted];
-        tryVerify(() => messages.x < from);
+        tryVerify(() => middle().x > from);
         verify(!scene.bar.gliding);
         compare(word("microphone").opacity, 1);
-        compare(messages.x + messages.width + scene.bar.gap, scene.status.x);
+        compare(scene.status.x + scene.status.width + scene.bar.gap, middle().x);
     }
 
     function test_under_reduced_motion_a_word_stands_and_goes_at_once() {
@@ -412,49 +423,79 @@ TestCase {
         verify(reserved - (last - first) <= 5 * 3, `${last - first} in ${reserved}`);
     }
 
-    // The status words stand on the trailing side, right of the centre and its reserve, left of "more", inside the bar.
+    // The status words stand on the leading side, from the bar's padding to a gap before the clock and its reserve.
     function checkWordsOnTheirSide(barWidth: real) {
         const clock = findChild(scene, "clock");
-        const more = scene.bar.more;
-        const from = barWidth / 2 + Math.max(clock.implicitWidth, Tokens.tileUnit) / 2 + scene.bar.gap;
+        const to = barWidth / 2 - Math.max(clock.implicitWidth, scene.reserve) / 2 - scene.bar.gap;
         const words = standing().map(key => word(key));
         verify(words.length > 0, `${barWidth}: a word stands`);
         for (const control of words) {
-            const left = control.mapToItem(scene, 0, 0).x;
             const key = control.objectName;
-            verify(left >= from - 0.5, `${barWidth} ${key}: ${left} is left of ${from}`);
-            verify(left + control.width <= barWidth - scene.bar.padding + 0.5, `${barWidth} ${key} runs out of the bar: left ${left} width ${control.width} status ${scene.status.x} ${scene.status.width} limit ${scene.status.limit} plan ${scene.bar.plan.statusLimit} more ${more.x} ${more.width}`);
-            if (more.visible)
-                verify(left + control.width <= more.x - scene.bar.gap + 0.5, `${barWidth} ${key} runs into "more"`);
+            verify(drawnX(control) >= scene.bar.padding - 0.5, `${barWidth} ${key} runs out of the bar at ${drawnX(control)}`);
+            verify(endOf(control) <= to + 0.5, `${barWidth} ${key}: ${endOf(control)} runs into the clock at ${to}`);
         }
         for (let i = 1; i < words.length; i++)
-            verify(words[i].mapToItem(scene, 0, 0).x >= words[i - 1].mapToItem(scene, words[i - 1].width, 0).x, `${barWidth}: words overlap`);
+            verify(drawnX(words[i]) >= endOf(words[i - 1]), `${barWidth}: words overlap`);
     }
 
     function test_at_800_px_and_narrower_the_words_never_move_into_more_and_never_cover_the_clock() {
         const cases = [];
-        for (const width of [800, 700, 600, 520])
+        for (const width of [800, 700, 600, 520, 400])
             cases.push([width, widestClock], [width, narrowestClock]);
         for (const [barWidth, clockNow] of cases) {
             makeScene({ shown: everything, barWidth, clockNow });
-            tryVerify(() => scene.bar.plan.more, 1000, `${barWidth}: more shows`);
             tryVerify(() => standing().length === scene.status.shown.length, 1000, `${barWidth}`);
             verify(!scene.bar.plan.moved.includes(scene.status), `${barWidth}`);
             verify(scene.status.visible, `${barWidth}`);
             tryVerify(() => scene.status.width === scene.status.widthAt(scene.status.limit));
-            tryVerify(() => scene.status.x + scene.status.width <= barWidth - scene.bar.padding + 0.5, 1000, `${barWidth}: placed`);
             // A word that has left no longer holds its place in the row once the row has laid itself out again.
-            tryVerify(() => standing().every(key => word(key).mapToItem(scene, word(key).width, 0).x <= scene.status.x + scene.status.width + 0.5), 1000, `${barWidth}: row settled`);
+            tryVerify(() => standing().every(key => endOf(word(key)) <= scene.status.x + scene.status.width + 0.5), 1000, `${barWidth}: row settled`);
             checkWordsOnTheirSide(barWidth);
         }
     }
 
-    function test_the_controls_go_into_more_first_and_the_words_give_up_places_only_after_them() {
-        makeScene({ shown: everything, barWidth: 800 });
-        tryVerify(() => scene.bar.plan.more);
-        compare(scene.bar.plan.moved.length, 3, "background, messages and controls have gone");
-        verify(scene.status.limit < 2, "the room left holds fewer than two words");
+    function test_the_middle_cuts_its_words_first_and_the_words_keep_theirs() {
+        makeScene({ shown: [microphone, muted] });
+        findChild(scene, "background").present = false;
+        tryVerify(() => standing().length === 2);
+        const full = middle().implicitWidth;
+        scene.barWidth = barWidthFor(scene.status.widthAt(2) + scene.bar.gap + full / 2);
+        settle();
+        compare(scene.status.limit, 2, "both words stand");
+        verify(!scene.bar.more.visible);
+        verify(middle().visible);
+        verify(Math.abs(middle().width - full / 2) <= 1, `the middle is cut to the room left: ${middle().width} of ${full}`);
+        compare(middle().x, scene.status.x + scene.status.width + scene.bar.gap);
+    }
+
+    function test_when_the_middle_has_given_its_room_the_words_give_up_places_and_the_other_side_keeps_its_controls() {
+        makeScene({ shown: everything });
+        findChild(scene, "background").present = false;
+        settle();
+        const trailing = ["messages", "controls"].map(name => findChild(scene, name));
+        const room = trailing[0].width + scene.bar.gap + trailing[1].width;
+        verify(scene.status.widthAt(2) > room, "two words and the count need more than the trailing side");
+        scene.barWidth = barWidthFor(room);
+        settle();
+        verify(scene.status.limit < 2, "the words give up places");
+        verify(scene.status.widthAt(scene.status.limit) <= room && scene.status.widthAt(scene.status.limit + 1) > room, `only as many as their side needs: ${scene.status.limit}`);
         compare(scene.status.shown.length, scene.status.limit + 1, "the rest are counted");
+        verify(!scene.bar.more.visible, "the words never call up more");
+        verify(trailing.every(control => control.visible && !control.overflowed), "the other side keeps its controls");
+        checkWordsOnTheirSide(scene.barWidth);
+        verify(!middle().visible || endOf(middle()) <= findChild(scene, "clock").x - scene.bar.gap + 0.5, "the middle ends before the clock");
+    }
+
+    function test_the_remaining_time_of_do_not_disturb_stands_in_the_middle_after_the_words() {
+        makeScene({ shown: [muted, quiet] });
+        middle().parts = ["nicht stören", "noch 42 min"];
+        tryVerify(() => standing().length === 2);
+        settle();
+        verify(middle().visible);
+        verify(middle().width >= middle().implicitWidth, "it has room for its words");
+        verify(!findChild(middle(), "part 1").truncated, "the time is not cut");
+        compare(middle().x, scene.status.x + scene.status.width + scene.bar.gap);
+        verify(endOf(word("doNotDisturb")) + scene.bar.gap <= middle().x + 0.5);
     }
 
     function test_the_limit_is_two_while_there_is_room() {
@@ -534,11 +575,11 @@ TestCase {
                 centre: slot
                 centreReserve: Tokens.tileUnit
 
+                AppBarStatus { keys: testCase.keys; words: reflowBar.deviations; more: model.more }
                 AppBarMiddle { parts: ["konsole", "~/projects: build the shell"] }
                 AppBarClock { id: slot; locale: Qt.locale("de_DE"); now: testCase.widestClock }
                 AppBarButton { icon: "window"; text: "im hintergrund"; priority: 0 }
                 AppBarButton { id: bell; icon: "bell"; text: "meldungen"; count: 9; priority: 2 }
-                AppBarStatus { keys: testCase.keys; words: reflowBar.deviations; more: model.more }
                 AppBarButton { icon: "tune"; text: "steuerung"; priority: 1 }
 
                 StatusWords { id: model }
@@ -571,11 +612,11 @@ TestCase {
                 centre: slot
                 centreReserve: Tokens.tileUnit
 
+                AppBarStatus { id: status; keys: testCase.keys; words: sheetBar.deviations; more: model.more }
                 AppBarMiddle { parts: ["konsole", "~/projects: build the shell"] }
                 AppBarClock { id: slot; locale: Qt.locale("de_DE"); now: testCase.widestClock }
                 AppBarButton { icon: "window"; text: "im hintergrund"; priority: 0 }
                 AppBarButton { icon: "bell"; text: "meldungen"; count: 2; priority: 2 }
-                AppBarStatus { id: status; keys: testCase.keys; words: sheetBar.deviations; more: model.more }
                 AppBarButton { icon: "tune"; text: "steuerung"; priority: 1 }
 
                 StatusWords { id: model }

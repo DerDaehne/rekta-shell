@@ -11,10 +11,11 @@ import Tray
 import "services"
 
 // The app bar on one screen (navigation.md, "App bar"): along the bottom edge, full width, and windows keep clear of
-// it. The middle with the active window leads, the clock stands in the centre, the background apps (gone
-// while none runs), messages and controls trail, each opening the side panel on this screen on its facet; those
-// whose features come later stand disabled, their reason in their tooltip. Under a full-screen window it slides down
-// out of sight and comes back the same way; after login it comes that way once the splash has gone.
+// it. The status words lead where Rekta's live state stands, the middle with what runs or the active window follows
+// them, the clock stands in the centre, the background apps (gone while none runs), messages and controls trail, each
+// opening the side panel on this screen on its facet; those whose features come later stand disabled, their reason in
+// their tooltip. Under a full-screen window it slides down out of sight and comes back the same way; after login it
+// comes that way once the splash has gone.
 PanelWindow {
     id: panel
 
@@ -26,7 +27,7 @@ PanelWindow {
     required property ControlPanel controlPanel
     // The keys' readout and the screen that shows it: the display stands in the bar of the primary screen only.
     required property KeyReadout readout
-    // What deviates from normal, as the words before "steuerung".
+    // What deviates from normal, as the words at the start of the bar.
     required property StatusWords status
     required property ShellScreen primaryScreen
     // The toasts rise from the bar of the primary screen, above "meldungen"; it gives way to a notification's toast.
@@ -89,6 +90,14 @@ PanelWindow {
         centreReserve: panel.showsReadout ? display.implicitWidth : 0
         away: panel.away
 
+        AppBarStatus {
+            keys: panel.status.keys
+            words: panel.status.deviations
+            more: panel.status.more
+
+            onActivated: word => panel.openWord(word)
+        }
+
         AppBarMiddle {
             kind: panel.middleLine.kind
             parts: panel.middleLine.parts
@@ -133,14 +142,6 @@ PanelWindow {
             away: panel.showsToasts && panel.toaster.countAway
             priority: 2
             onClicked: panel.controlPanel.toggle(panel.modelData, 1, !bell.activeFocus)
-        }
-
-        AppBarStatus {
-            keys: panel.status.keys
-            words: panel.status.deviations
-            more: panel.status.more
-
-            onActivated: word => panel.openWord(word)
         }
 
         AppBarButton {

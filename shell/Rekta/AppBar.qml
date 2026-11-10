@@ -19,7 +19,8 @@ import QtQuick
 // where they are.
 //
 // The status words (`AppBarStatus`) never move into "more", as the live state never does in Rekta (navigation.md,
-// "When the bar is full"); the other controls give way to them first, then the words give up places, down to a single "+N".
+// "When the bar is full"); on their side the middle and the other controls give way to them first, then the words give
+// up places, down to a single "+N".
 Rectangle {
     id: bar
 
@@ -118,28 +119,34 @@ Rectangle {
         return controls.map((control, i) => ({ control, i })).sort((a, b) => a.control.priority - b.control.priority || b.i - a.i).map(entry => entry.control);
     }
 
-    // Which controls move into "more", and whether it shows; a control moves only from a side that does not fit. When the
+    // Which controls move into "more", and whether it shows. Each side gives its own way (giveWay()). When a side's
     // controls have all gone and the status words still do not fit, they give up words, down to one count of them.
     function layoutPlan(): var {
         const sides = regions();
         const most = statusWords()?.most ?? 0;
-        const fitAll = (moved, moreShown, limit) => sides.every(region => fits(region, moved, moreShown, limit));
-        if (fitAll([], false, most))
-            return { sides, moved: [], more: false, statusLimit: most };
         const moved = [];
-        for (const control of candidates()) {
-            if (fitAll(moved, true, most))
-                break;
-            if (!fits(sides.find(region => region.items.includes(control)), moved, true, most))
-                moved.push(control);
-        }
-        // ponytail: with the readout in the centre (centreReserve) below about 520 px not even "+N" fits beside "more" and
-        // it overlaps the clock; hide the words then, or let the bar scroll them, once a bar that narrow matters.
+        const more = sides.reduce((shown, region) => giveWay(region, moved, shown, most), false);
+        // ponytail: with the readout in the centre (centreReserve) below about 330 px not even "+N" fits on the leading
+        // side and it overlaps the clock; hide the words then, or let the bar scroll them, once a bar that narrow matters.
         let limit = most;
-        while (limit > 0 && !fitAll(moved, true, limit))
+        while (limit > 0 && !sides.every(region => fits(region, moved, more, limit)))
             limit--;
         const order = Array.from(strip.children);
-        return { sides, moved: moved.sort((a, b) => order.indexOf(a) - order.indexOf(b)), more: true, statusLimit: limit };
+        return { sides, moved: moved.sort((a, b) => order.indexOf(a) - order.indexOf(b)), more, statusLimit: limit };
+    }
+
+    // A side moves its own controls into `moved`, the least important first, until it fits: moving one of the other
+    // side's would not help. "more" shows once a control has moved or the side it ends does not fit; returns whether it
+    // does.
+    function giveWay(region: var, moved: var, moreShown: bool, statusLimit: int): bool {
+        let more = moreShown || (region.more && !fits(region, moved, false, statusLimit));
+        for (const control of candidates().filter(control => region.items.includes(control))) {
+            if (fits(region, moved, more, statusLimit))
+                break;
+            moved.push(control);
+            more = true;
+        }
+        return more;
     }
 
     function statusWords(): AppBarStatus {

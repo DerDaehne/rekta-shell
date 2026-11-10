@@ -679,6 +679,16 @@ TestCase {
         verify(controls().slice(1).some(control => control.overflowed));
     }
 
+    function test_a_control_the_leading_side_gives_away_is_in_more_at_the_end_of_the_trailing_side_that_fits() {
+        makeScene({ barWidth: 1600, withCentre: true });
+        named("back").text = "back to the place before this one, and to the one before that, and further back still, as far as the history of this window goes";
+        settle();
+        verify(named("back").overflowed, "the leading side gives it away");
+        verify(controls().slice(1).every(control => !control.overflowed), "the trailing side keeps its own");
+        verify(bar.more.visible, "more holds it");
+        compare(endOf(bar.more), bar.width - bar.padding);
+    }
+
     function test_among_equally_important_controls_the_last_moves_first() {
         makeScene({ viewportHeight: 400 });
         const first = named("in the background");
