@@ -244,13 +244,10 @@ in
           qt.qtdeclarative
           pkgs.dbus
         ];
-        QT_QPA_PLATFORM = "offscreen";
         QT_QUICK_BACKEND = "software";
         FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ pkgs.atkinson-hyperlegible-next ]; };
         QT_PLUGIN_PATH = "${qt.qtbase}/lib/qt-6/plugins";
         QML_IMPORT_PATH = "${qt.qtdeclarative}/lib/qt-6/qml:${rekta-shell}/lib/qt-6/qml:${counterpart}/lib/qt-6/qml";
-        # The tests' system-bus instance must find no bus, wherever they run.
-        DBUS_SYSTEM_BUS_ADDRESS = "unix:path=/nonexistent/system_bus_socket";
         DBUS_SESSION_CONFIG = "${pkgs.dbus}/share/dbus-1/session.conf";
         TZDIR = "${pkgs.tzdata}/share/zoneinfo";
         LANG = "C.UTF-8";

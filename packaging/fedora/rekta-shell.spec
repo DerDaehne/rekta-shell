@@ -114,14 +114,13 @@ cmake -S tests/counterpart -B qml-tests/counterpart -DCMAKE_BUILD_TYPE=Release \
 cmake --build qml-tests/counterpart
 cmake --install qml-tests/counterpart
 cd qml-tests
-export HOME=$PWD/home LANG=C.UTF-8 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software
+export HOME=$PWD/home LANG=C.UTF-8 QT_QUICK_BACKEND=software
 # Only the typeface, as the flake check has it: the system's other fonts and rules change the text metrics the tests measure.
 cat > fonts.conf <<FONTS
 <?xml version="1.0"?>
 <fontconfig><dir>%{_datadir}/fonts/atkinson-hyperlegible-next-fonts</dir><cachedir>$PWD/fontcache</cachedir></fontconfig>
 FONTS
 export FONTCONFIG_FILE=$PWD/fonts.conf
-export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent/system_bus_socket
 export QML_IMPORT_PATH=%{buildroot}%{_qt6_qmldir}:$src/qml-tests/counterpart-root/lib/qt-6/qml
 QMLTESTRUNNER=%{_qt6_bindir}/qmltestrunner $src/tests/run-qml-tests.sh $src
 
