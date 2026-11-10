@@ -2,13 +2,12 @@ import QtQuick
 import org.kde.kirigami as Kirigami
 import org.kde.kscreenlocker as ScreenLocker
 import org.kde.plasma.private.keyboardindicator as KeyboardIndicator
-import org.kde.plasma.private.mpris as Mpris
 import org.kde.plasma.private.sessions as Sessions
 import org.kde.plasma.workspace.keyboardlayout as Keyboards
 import Rekta
 
 // The lock screen kscreenlocker_greet loads, once per monitor. It only hands the greeter's context and Plasma's
-// modules to the parts beside it, LockFace (what is shown), NowPlaying (what plays) and Unlock (how PAM is asked, one
+// modules to the parts beside it, LockFace (what is shown), Playing (what plays) and Unlock (how PAM is asked, one
 // for all monitors), and quits the greeter once the session is unlocked. Its opaque face covers the wallpaper the
 // greeter puts below it.
 Item {
@@ -21,6 +20,8 @@ Item {
     // qmllint disable unqualified
     readonly property var pam: authenticator
     readonly property string userName: kscreenlocker_userName
+    // KDE's lock screen setting "show media controls"; only a yes shows what is playing.
+    readonly property bool showMedia: config.showMediaControls === true
     // qmllint enable unqualified
 
     Component.onCompleted: Unlock.authenticator = pam
@@ -59,11 +60,10 @@ Item {
         id: keyboardLayout
     }
 
-    NowPlaying {
-        id: nowPlaying
+    Playing {
+        id: playing
 
-        model: Mpris.MultiplexerModel {}
-        playingStatus: Mpris.PlaybackStatus.Playing
+        shown: root.showMedia
     }
 
     Sessions.SessionManagement {
@@ -90,8 +90,8 @@ Item {
         layouts: Array.from(keyboardLayout.layoutsList, layout => layout.shortName)
         layoutIndex: keyboardLayout.layout
         canSwitchUser: sessionManagement.canSwitchUser
-        playingTitle: nowPlaying.title
-        playingArtist: nowPlaying.artist
+        playingTitle: playing.title
+        playingArtist: playing.artist
         onSubmitted: secret => Unlock.submit(secret, capsLockState.locked)
         onLayoutChosen: index => keyboardLayout.layout = index
         onSwitchUser: sessionManagement.switchUser()

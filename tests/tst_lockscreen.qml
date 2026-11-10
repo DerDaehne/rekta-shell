@@ -95,6 +95,13 @@ TestCase {
         playingStatus: testCase.playback.playing
     }
 
+    // What LockScreen.qml takes the player from.
+    Component {
+        id: playingComponent
+
+        Playing {}
+    }
+
     function play(track: string, artist: string, status: int) {
         players.clear();
         players.append({ track: track, artist: artist, playbackStatus: status });
@@ -514,6 +521,60 @@ TestCase {
         compare(findChild(playing, "number").text, "Morgengrau", "a new title follows");
         players.setProperty(0, "artist", "");
         compare(words.text, "läuft", "without an artist only the title");
+    }
+
+    function test_the_music_icon_stands_centred_on_the_first_line_of_its_words() {
+        play("Nachtfahrt", "Kolibri", playback.playing);
+        waitForRendering(face);
+        const playing = part("playing"), words = findChild(playing, "words"), icon = findChild(playing, "wordsIcon");
+        compare(icon.mapToItem(words, 0, icon.height / 2).y, words.lineHeight / 2, "on the centre of the first line box");
+    }
+
+    function test_a_title_shorter_than_switch_user_still_stands_at_the_right_edge() {
+        play("Ja", "Kolibri", playback.playing);
+        const status = part("status"), switchUser = part("switchUser");
+        waitForRendering(face);
+        verify(status.width < switchUser.width);
+        compare(status.mapToItem(face, status.width, 0).x, face.width - Tokens.spaceXl);
+    }
+
+    function test_a_long_artist_wraps_its_words_and_keeps_space_l_from_the_sign_in() {
+        play("Nachtfahrt", "Kolibri und das Orchester der langen Nächte, mit Chor und allen Gästen des Abends".repeat(3), playback.playing);
+        const status = part("status"), signIn = part("signIn"), words = findChild(part("playing"), "words");
+        waitForRendering(face);
+        verify(words.lineCount > 1, "the words wrap");
+        compare(status.mapToItem(face, 0, 0).x, signIn.x + signIn.width + Tokens.spaceL, "space-l from the sign-in");
+        compare(status.mapToItem(face, status.width, 0).x, face.width - Tokens.spaceXl);
+    }
+
+    // Plasma's modules are not on the test path, so Plasma's player cannot load here, as when it is missing or changed.
+    function test_without_plasmas_player_module_nothing_shows_and_the_password_still_reaches_pam() {
+        ignoreWarning(/org\.kde\.plasma\.private\.mpris/);
+        const playing = createTemporaryObject(playingComponent, testCase);
+        tryCompare(playing, "status", Loader.Error);
+        face = createTemporaryObject(faceComponent, testCase, {
+            playingTitle: Qt.binding(() => playing.title),
+            playingArtist: Qt.binding(() => playing.artist)
+        });
+        waitForRendering(face);
+        compare(playing.title, "");
+        compare(playing.artist, "");
+        verify(!part("status").visible);
+        ask();
+        type("rekta");
+        keyClick(Qt.Key_Return);
+        tryVerify(() => responses().length === 1);
+        compare(responses()[0], ["respond", "rekta"]);
+    }
+
+    function test_with_media_switched_off_in_the_lock_screen_settings_plasmas_player_is_not_even_loaded() {
+        const playing = createTemporaryObject(playingComponent, testCase, { shown: false });
+        compare(playing.status, Loader.Null);
+        compare(playing.title, "");
+        compare(playing.artist, "");
+        ignoreWarning(/org\.kde\.plasma\.private\.mpris/);
+        playing.shown = true;
+        tryCompare(playing, "status", Loader.Error, 5000, "switched on, it is loaded");
     }
 
     function test_a_paused_or_stopped_player_or_one_without_a_title_shows_nothing_and_takes_no_room() {
