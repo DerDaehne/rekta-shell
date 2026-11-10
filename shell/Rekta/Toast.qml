@@ -5,8 +5,10 @@ import "Status.js" as Status
 // One toast, made and taken away by its Toaster (rekta.css:1164–1236; rekta.js toaster()). An ink strip for something
 // that just happened; with a status, that fill, for a failure whose control has gone (states.md, "Pending actions").
 // It stays its window, duration-toast, which holds while it is hovered or has focus. With undo, the window closes as a
-// 2px line and a tabular figure, once a second. The window runs against a deadline in wall-clock time, and reduced
-// motion leaves it alone (motion.md, "Reduced motion").
+// 2px line, stepped once a second. A deliberate deviation: Rekta also shows the seconds as a figure beside the action
+// (rekta.js:1550 `.rk-toast-count`, rekta.css:1217), which beside the verb ("undo 4") reads as a quantity, so only the
+// line is seen and the seconds are only spoken (`announcement`). The window runs against a deadline in wall-clock
+// time, and reduced motion leaves it alone (motion.md, "Reduced motion").
 //
 // A notification from another program (states.md:78–103; rekta.css:1181–1196) brings a title over its text, the
 // sender's icon or its own picture at the start, and a text that is a button. A deliberate deviation: the title is the
@@ -475,7 +477,7 @@ FocusScope {
 
         objectName: "action"
         x: toast.width - width
-        width: toast.actionLabel !== "" ? Math.max(Tokens.controlHeight, label.implicitWidth + (toast.undoAction ? Tokens.spaceS + count.implicitWidth : 0) + 2 * Tokens.spaceM) : 0
+        width: toast.actionLabel !== "" ? Math.max(Tokens.controlHeight, label.implicitWidth + 2 * Tokens.spaceM) : 0
         height: toast.height
         visible: width > 0
         activeFocusOnTab: visible
@@ -512,19 +514,6 @@ FocusScope {
                 font.family: Tokens.fontSans
                 font.pixelSize: Tokens.fontSizeS
                 font.weight: Tokens.fontWeightSemibold
-                color: toast.ink
-            }
-
-            Text {
-                id: count
-
-                objectName: "count"
-                visible: toast.undoAction !== null
-                text: toast.seconds
-                font.family: Tokens.fontSans
-                font.pixelSize: Tokens.fontSizeS
-                font.weight: Tokens.fontWeightMedium
-                font.features: ({ "tnum": 1 })
                 color: toast.ink
             }
         }

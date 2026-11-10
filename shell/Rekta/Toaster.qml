@@ -7,7 +7,8 @@ import QtQuick
 // the open toast instead and restarts its window. Escape inside a toast dismisses it (key layer 30); Ctrl+Z undoes while
 // an undo window is open, except in a text field (layer 25). It stays on the toast layer, below floating surfaces and
 // below sheets, which sit in the modal layer above everything (states.md, "Layers"; platforms.md, "Layer"). The host
-// puts it along the top of the app bar and gives it its width; it is as high as its toast needs.
+// puts it along the top of the app bar and gives it its width; it is as high as its toast needs. A deliberate deviation:
+// an undo toast shows no seconds figure, only the running-out line (see Toast.qml).
 //
 // A notification's toast comes from its count: the count gives way (`countAway`), the toast comes in once the count is
 // turn-overlap through its way out, and the count comes back once the toast is turn-overlap through its way down, unless

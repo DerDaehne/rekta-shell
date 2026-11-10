@@ -245,19 +245,20 @@ TestCase {
         compare(toaster.open, null);
     }
 
-    function test_an_undo_window_counts_down_once_a_second() {
+    function test_an_undo_window_runs_out_as_a_line_and_is_spoken_in_seconds_without_a_figure() {
         const toast = toaster.show("3 messages deleted", { undo: undoing("delete") });
         const tick = findChild(toast, "tick");
         const line = findChild(toast, "line");
         compare(toast.seconds, 5);
-        compare(findChild(toast, "count").text, "5");
+        compare(toast.announcement, "3 messages deleted, 5 seconds to undo");
+        verify(!findChild(toast, "count"), "the undo toast shows no figure");
         compare(tick.interval, 1000);
         at(1300, toast);
         compare(toast.seconds, 4);
         compare(tick.interval, 700, "the next step falls on a whole second");
         compare(line.transform[0].xScale, 3700 / 5000);
         at(2000, toast);
-        compare(findChild(toast, "count").text, "3");
+        compare(toast.announcement, "3 messages deleted, 3 seconds to undo");
         compare(line.transform[0].xScale, 3000 / 5000);
     }
 
@@ -392,7 +393,7 @@ TestCase {
     function test_a_plain_action_runs_without_a_countdown_and_ends_the_toast_as_acted() {
         let reloaded = false;
         const toast = toaster.show("could not load the jobs", { status: "error", act: { label: "reload", run: () => { reloaded = true; } }, onEnd: ending("toast") });
-        verify(!findChild(toast, "count").visible);
+        verify(!findChild(toast, "count"));
         verify(!findChild(toast, "line").visible);
         compare(findChild(toast, "tick").interval, Tokens.durationToast, "it stays its usual time");
         findChild(toast, "action").forceActiveFocus();
