@@ -106,6 +106,8 @@ Item {
 
                 anchors.fill: parent
                 enabled: !slider.disabled
+                // A drag along it stays its own: a swipe of what holds it, the side panel's, does not take it over.
+                preventStealing: true
 
                 // The thumb's centre follows the pointer, so it stays under it at both ends.
                 function follow(x: real) {

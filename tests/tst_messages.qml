@@ -317,6 +317,22 @@ TestCase {
         compare(calls, [], "it closes only once the undo window has run out");
     }
 
+    function test_a_finger_pulling_a_row_past_half_the_panels_width_removes_the_row_and_leaves_the_panel_open() {
+        three();
+        openOnMessages();
+        const row = rows()[1];
+        const from = row.mapToItem(scene, 10, row.height / 2);
+        const by = 0.6 * side.panelWidth;
+        const touch = touchEvent(scene);
+        touch.press(0, scene, from.x, from.y).commit();
+        for (let step = 1; step <= 10; ++step)
+            touch.move(0, scene, from.x + by * step / 10, from.y).commit();
+        touch.release(0, scene, from.x + by, from.y).commit();
+        compare(summaries(), ["cleo", "anna"], "the row's own swipe");
+        verify(side.open, "the panel stays");
+        compare(side.entry, 1);
+    }
+
     function test_a_pulled_row_is_not_pressed() {
         three();
         openOnMessages();

@@ -699,7 +699,7 @@ TestCase {
         const pivot = findChild(side, "pivot");
         compare(pivot.mapToItem(panel, 0, 0).x, Geometry.hairline + Tokens.spaceM, "space-m at the sides");
         compare(pivot.y, Tokens.spaceL, "space-l at the top");
-        compare(pivot.width, contentWidth);
+        compare(pivot.width, contentWidth - Tokens.touchTarget, "clear of the close button");
         const facets = findChild(side, "facets");
         compare(facets.mapToItem(panel, 0, 0).x, Geometry.hairline + Tokens.spaceM, "its facets too");
         compare(facets.width, contentWidth);
@@ -742,7 +742,7 @@ TestCase {
         verify(pivot.compact, "and a narrow one, so the strip takes the facet sizes");
         const under = findChild(side, "underPivot");
         compare(under.y, pivot.y + pivot.height);
-        compare(under.width, pivot.width);
+        compare(under.width, 2.5 * Tokens.tileUnit + Tokens.spaceS, "across the content, below the close button too");
         compare(findChild(side, "scroller").y, under.y + Geometry.hairline);
     }
 
@@ -817,6 +817,111 @@ TestCase {
         keyClick(Qt.Key_Escape);
         verify(!side.open);
         verify(named("opener").activeFocus, "and gives it back");
+    }
+
+    function test_a_quiet_close_button_named_schliessen_stands_space_xs_from_the_top_trailing_corner_clear_of_the_pivot() {
+        side.show(0);
+        const button = findChild(side, "close");
+        const ground = findChild(side, "ground");
+        compare(button.parent, ground);
+        compare(button.x + button.width, ground.width - Tokens.spaceXs);
+        compare(button.y, Tokens.spaceXs);
+        compare(button.icon, "close");
+        compare(button.variant, "quiet");
+        compare(button.Accessible.name, "schließen");
+        compare(button.tip, "schließen", "its tip reads its name");
+        const pivot = findChild(side, "pivot");
+        compare(pivot.x + pivot.width, Tokens.spaceM + side.contentWidth - Tokens.touchTarget, "the pivot keeps a touch target clear");
+    }
+
+    function test_the_close_button_sends_it_away_the_way_escape_does_and_the_focus_goes_back() {
+        Prefs.motion = "on";
+        showSettled(0);
+        mouseClick(findChild(side, "close"));
+        verify(findChild(side, "goingOut").running, "it leaves the way it came");
+        tryCompare(side, "open", false, Tokens.durationModerate * 4);
+        verify(named("opener").activeFocus, "and gives the focus back");
+    }
+
+    function test_tab_reaches_the_close_button_last_and_space_on_it_closes_the_panel() {
+        side.show(1);
+        const button = findChild(side, "close");
+        verify(findChild(side, "pivot").activeFocus, "an empty facet starts at the pivot, not at the button");
+        keyClick(Qt.Key_Tab);
+        verify(button.activeFocus, "the last stop in meldungen");
+        keyClick(Qt.Key_Space);
+        verify(!side.open);
+        verify(named("opener").activeFocus, "and the focus goes back");
+    }
+
+    // A finger, or the mouse, laid on the panel's ground beside its content and moved sideways by dx; gives back the
+    // letting go.
+    function pullSideways(dx: real, byTouch: bool): var {
+        const x = 900 - side.panelWidth + Geometry.hairline + Tokens.spaceM / 2;
+        const y = 160;
+        const touch = byTouch ? touchEvent(scene) : null;
+        if (touch)
+            touch.press(0, scene, x, y).commit();
+        else
+            mousePress(scene, x, y);
+        for (let step = 1; step <= 10; ++step) {
+            if (touch)
+                touch.move(0, scene, x + dx * step / 10, y).commit();
+            else
+                mouseMove(scene, x + dx * step / 10, y);
+        }
+        return () => touch ? touch.release(0, scene, x + dx, y).commit() : mouseRelease(scene, x + dx, y);
+    }
+
+    function test_the_panel_follows_a_finger_towards_the_trailing_edge_and_past_half_its_width_it_goes() {
+        side.show(0);
+        const panel = findChild(side, "panel");
+        const letGo = pullSideways(0.6 * side.panelWidth, true);
+        fuzzyCompare(panel.x, 900 - 0.4 * side.panelWidth, 1, "it follows the finger");
+        letGo();
+        verify(!side.open, "let go past half its width, it goes");
+        verify(named("opener").activeFocus, "and gives the focus back");
+    }
+
+    function test_a_finger_let_go_before_half_its_width_has_the_panel_come_back() {
+        side.show(0);
+        pullSideways(0.4 * side.panelWidth, true)();
+        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        verify(side.open, "it stays");
+        verify(control("density").activeFocus, "with the focus where it was");
+    }
+
+    function test_a_finger_moved_along_a_slider_sets_the_slider_and_leaves_the_panel_open() {
+        giveSound(controls);
+        showSettled(0);
+        const slider = control("outputVolume");
+        const from = slider.mapToItem(scene, slider.width * 0.3, slider.height / 2);
+        const touch = touchEvent(scene);
+        touch.press(0, scene, from.x, from.y).commit();
+        for (let step = 1; step <= 10; ++step)
+            touch.move(0, scene, from.x + 0.06 * slider.width * step, from.y).commit();
+        touch.release(0, scene, from.x + 0.6 * slider.width, from.y).commit();
+        verify(controls.output.audio.volume > 0.8, "the slider follows the finger");
+        verify(side.open, "the panel stays");
+        compare(side.entry, 1);
+    }
+
+    function test_in_a_panel_that_scrolls_a_finger_swipe_on_its_ground_still_sends_it_away() {
+        giveSound(controls);
+        giveBluetooth(controls);
+        scene.height = 360;
+        side.show(0);
+        verify(named("scroller").interactive, "the facet scrolls");
+        pullSideways(0.6 * side.panelWidth, true)();
+        verify(!side.open);
+    }
+
+    function test_a_mouse_drag_towards_the_trailing_edge_leaves_the_panel_where_it_is() {
+        side.show(0);
+        const letGo = pullSideways(0.8 * side.panelWidth, false);
+        compare(side.entry, 1, "it does not follow the mouse");
+        letGo();
+        verify(side.open);
     }
 
     function test_escape_closes_it_from_every_control() {
@@ -1053,7 +1158,7 @@ TestCase {
         compare(ringsShowing(control("density")), 1);
     }
 
-    // The quick settings at the bottom edge come last, as they stand.
+    // The quick settings at the bottom edge come last, as they stand, then the close button.
     function test_tab_and_the_arrows_reach_every_control_in_order() {
         giveBluetooth(controls);
         side.show(0);
@@ -1084,7 +1189,9 @@ TestCase {
         verify(order[5].activeFocus, "↑ to the one before");
         order[7].forceActiveFocus();
         keyClick(Qt.Key_Down);
-        verify(order[7].activeFocus, "the arrows never leave the panel");
+        verify(findChild(side, "close").activeFocus, "↓ from the last quick setting to the close button");
+        keyClick(Qt.Key_Down);
+        verify(findChild(side, "close").activeFocus, "the arrows never leave the panel");
     }
 
     // Whole in sight with its ring: in the scroll, and clear of the quick settings by space-m, or among them.
@@ -1115,7 +1222,8 @@ TestCase {
                 if (!side.holds(focused) || focused === findChild(side, "pivot"))
                     break;
                 names.push(focused.objectName);
-                verify(shownWhole(focused), `${focused.objectName} in sight`);
+                // The close button stands at the top corner, always in sight.
+                verify(focused === findChild(side, "close") || shownWhole(focused), `${focused.objectName} in sight`);
             }
         }
         for (const name of ["outputVolume", "inputDevice", "density", "lock", "sessionActions", "dark"])
