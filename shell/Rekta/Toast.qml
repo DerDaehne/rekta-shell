@@ -153,7 +153,7 @@ FocusScope {
         shownLeft = timeLeft();
     }
 
-    // An undo toast steps its figure on whole seconds; a plain one only goes when its window runs out.
+    // An undo toast steps its line on whole seconds; a plain one only goes when its window runs out.
     function schedule() {
         const ms = deadline - toaster.now();
         tick.interval = Math.max(0, undoAction ? ms % 1000 || 1000 : ms);
