@@ -902,6 +902,21 @@ TestCase {
         compare(place.strip.currentIndex, 1);
     }
 
+    function test_a_section_hidden_while_the_panorama_is_away_takes_no_room_once_it_shows_again() {
+        const place = createTemporaryObject(stripAndPanoramaComponent, testCase);
+        for (let k = 0; k < 5; k++)
+            sectionComponent.createObject(place.panorama.sectionParent, {
+                title: `section ${k}`,
+                tall: 100,
+                sectionWidth: 300
+            });
+        const first = sectionAt(place.panorama, 0).x;
+        place.visible = false;
+        sectionAt(place.panorama, 0).visible = false;
+        place.visible = true;
+        compare(sectionAt(place.panorama, 1).x, first);
+    }
+
     function test_a_wide_facet_chosen_stays_chosen_when_the_row_goes_narrow_and_wide_again() {
         Prefs.motion = "off";
         const place = createTemporaryObject(wideComponent, testCase);

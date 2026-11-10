@@ -593,6 +593,43 @@ TestCase {
         compare(named("appsStrip").currentIndex, 0);
     }
 
+    // Away and back (rekta.js:1070)
+
+    function standOnFifthSection(): real {
+        Prefs.motion = "off";
+        named("appsStrip").select(4);
+        const at = named("appsPanorama").scroller.contentX;
+        verify(at > 0);
+        return at;
+    }
+
+    function verifyStillOnFifthSection(at: real) {
+        compare(named("appsPanorama").scroller.contentX, at, "the view stands where it was");
+        compare(named("appsPanorama").currentIndex, 4);
+        compare(named("appsStrip").currentIndex, 4);
+    }
+
+    function test_after_a_change_of_place_and_back_alle_apps_shows_the_section_it_showed_and_the_strip_marks_it() {
+        openOnAllApps(desktopApps, 1920, 1080);
+        const at = standOnFifthSection();
+        named("pivot").select(0);
+        verify(!named("appsPanorama").visible);
+        named("pivot").select(1);
+        verify(named("appsPanorama").visible);
+        verifyStillOnFifthSection(at);
+    }
+
+    function test_after_a_search_that_covered_alle_apps_it_shows_the_section_it_showed_and_the_strip_marks_it() {
+        openOnAllApps(desktopApps, 1920, 1080);
+        const at = standOnFifthSection();
+        start.query = "o";
+        verify(named("results").visible);
+        verify(!named("appsPanorama").visible);
+        start.query = "";
+        verify(named("appsPanorama").visible);
+        verifyStillOnFifthSection(at);
+    }
+
     // A change of height
 
     function test_a_change_of_height_regroups_the_sections_and_the_app_in_focus_stays_in_view_and_in_focus() {

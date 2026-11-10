@@ -103,9 +103,11 @@ Item {
     }
 
     // The sections in sight of the layout: a hidden one takes no room (display: none). While the panorama itself is
-    // hidden every child counts, as nothing says which of them is hidden for itself.
+    // hidden every child counts, as nothing says which of them is hidden for itself. It counts as hidden until it has
+    // shown whole: Qt shows the sections one by one before the row, and a layout of the first few would fit and pull
+    // the view back to the start (rekta.js:1070).
     function sectionItems(): var {
-        return [...row.children].filter(child => !row.visible || child.visible);
+        return [...row.children].filter(child => !reading.shown || !row.visible || child.visible);
     }
 
     function fits(): bool {
@@ -157,7 +159,7 @@ Item {
     // ponytail: sideways only; a stacked panorama's vertical reveal is the nearest scroller's.
     function revealFocus() {
         const focused = Window.activeFocusItem;
-        if (!sideways || fit || glide.running || !focused)
+        if (!sideways || fit || glide.running || !focused || !visible)
             return;
         let item = focused;
         while (item && item !== row)
@@ -366,9 +368,12 @@ Item {
         property var gesture: null
         property var dragFrom: ({})
         property var wired: new Set()
-        // The sections in sight at the last layout while the panorama showed. When it shows again its sections come into
-        // sight one by one, so it marks by position then too.
+        // The sections in sight at the last layout while the panorama showed. Shown again with others in sight, it
+        // marks by position.
         property var inSight: []
+        // The row's visibility as last signalled, which lags behind `row.visible` while its sections are shown.
+        property bool shown: row.visible
+        onShownChanged: panorama.relayout()
         // Items of a panorama that is being destroyed still signal; nothing is laid out then.
         property bool gone: false
     }
