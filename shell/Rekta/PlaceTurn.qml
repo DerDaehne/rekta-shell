@@ -88,6 +88,12 @@ QtObject {
                 value: true
                 when: part.holding
             }
+            property Binding tileTurning: Binding {
+                target: part.item as Tile
+                property: "turning"
+                value: true
+                when: part.holding
+            }
 
             // Leaving, whole for the first share of its time, then fading; arriving, whole after its first share.
             property AnimationController motion: AnimationController {

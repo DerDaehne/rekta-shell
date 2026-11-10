@@ -30,6 +30,11 @@ Item {
     readonly property bool statusFill: status !== ""
     // A place turn keeps the tile that opened the next place pressed until it turns away (rekta.js turn.leave()).
     property bool kept: false
+    // A part of a running place turn: it acts on a press without sinking, as rekta.js press() shows no press while
+    // turn.running; the turn that the press starts sinks it in its centre (keepPressed).
+    // ponytail: set per part, so a tile that has landed sinks while others still turn (rekta.js asks one global
+    // turn.running); have PlaceTurn set it on every tile of both places if that shows.
+    property bool turning: false
     readonly property bool pressed: press.held || kept
     // The pointer is over the tile, over any part of it.
     readonly property bool hovered: hover.hovered
@@ -230,7 +235,9 @@ Item {
         event.accepted = true;
         if (event.isAutoRepeat)
             return;
-        press.start(0, 0);
+        press.armed = true;
+        if (!turning)
+            press.start(0, 0);
         // Enter acts as it goes down, the space bar as it comes up, as a link and a button do.
         if (event.key !== Qt.Key_Space)
             activated();
@@ -239,7 +246,7 @@ Item {
         if (!opens || (event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter && event.key !== Qt.Key_Space) || event.isAutoRepeat)
             return;
         event.accepted = true;
-        if (event.key === Qt.Key_Space && press.held)
+        if (event.key === Qt.Key_Space && press.armed)
             activated();
         press.release(false);
     }
@@ -258,6 +265,8 @@ Item {
 
         objectName: "press"
         property bool held: false
+        // A key went down on the tile and has not come up.
+        property bool armed: false
         property real x: 0
         property real y: 0
         property double since: 0
@@ -271,6 +280,7 @@ Item {
         }
 
         function release(now: bool) {
+            armed = false;
             const wait = now ? 0 : Math.max(0, Tokens.durationPress - (Date.now() - since));
             if (wait === 0) {
                 letGo.stop();
@@ -334,6 +344,8 @@ Item {
         property bool moved: false
 
         function pressAtStart() {
+            if (tile.turning)
+                return;
             press.start(Math.max(-1, Math.min(1, (start.x - Tokens.spaceM) / tile.width * 2 - 1)), Math.max(-1, Math.min(1, (start.y - Tokens.spaceM) / tile.height * 2 - 1)));
         }
 

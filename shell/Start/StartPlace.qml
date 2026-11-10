@@ -9,9 +9,10 @@ import Rekta
 // panorama of the installed apps A–Z, a section for each initial, where a typed letter jumps to the next app it
 // starts. It opens once the windows are three quarters back (Rekta's hand-over between places), its parts turning in
 // as a place arrives, and closes turning them out: back the way they came, or forward after a press, the pressed tile
-// last. While it turns its places take no input. A letter typed in the start place searches, and so does what a
-// calculation starts with: what is typed becomes the title, "suche" beside it, and the apps that match stand below as
-// tiles, the other kinds as rows. The title is a line edited as a field is; Escape there closes the Start.
+// last. While it turns in, its tiles take keys and presses; while it turns out, none. A letter typed in the start place
+// searches, and so does what a calculation starts with: what is typed becomes the title, "suche" beside it, and the
+// apps that match stand below as tiles, the other kinds as rows. The title is a line edited as a field is; Escape
+// there closes the Start.
 FocusScope {
     id: start
 
@@ -389,7 +390,9 @@ FocusScope {
         return rows.concat(waysOutColumn.children.filter(isRow));
     }
 
+    // A press ends a turn still running before it acts, as a navigation does (rekta.js turn.leave()).
     function press(tile: Tile, act: var) {
+        quietly(() => turner.finish());
         act();
         close(tile);
     }
@@ -632,6 +635,7 @@ FocusScope {
 
     // A key that acts on the hits makes their change first.
     function arrow(direction: string) {
+        bringPlaceIn();
         presence.finish();
         moveFocus(direction);
     }
@@ -655,10 +659,7 @@ FocusScope {
     // state first, as a navigation that comes while a turn runs finishes it (rekta.js:379–380, :669–670). What is typed
     // goes in at the line's caret.
     function typeOn(text: string) {
-        if (waitForWindows.running) {
-            waitForWindows.stop();
-            turnIn();
-        }
+        bringPlaceIn();
         turner.finish();
         takeKeysToLine();
         line.insert(line.cursorPosition, text);
@@ -718,9 +719,9 @@ FocusScope {
         return event.key === Qt.Key_Return || event.key === Qt.Key_Enter;
     }
 
-    // Back goes even while the Start turns, as a navigation always does, and so does typing, to search or to jump, which
-    // ends the turn; nothing else does. Escape in a search closes the Start at once unless searchEscape says back; the
-    // other ways back clear the search first.
+    // Every key goes while the Start turns in, as a navigation always does: typing, to search or to jump, ends the turn,
+    // arrows move the focus while it runs on, and Enter on a tile ends it and acts. Escape in a search closes the Start
+    // at once unless searchEscape says back; the other ways back clear the search first.
     function useKey(event: KeyEvent): bool {
         const directions = {
             [Qt.Key_Left]: "left",
@@ -738,8 +739,6 @@ FocusScope {
             typeOn(event.text);
         else if (event.key === Qt.Key_Backspace && query !== "")
             eraseBack();
-        else if (turning)
-            return false;
         else if (event.key in directions)
             arrow(directions[event.key]);
         else if (isEnter(event) && searching)
@@ -747,6 +746,17 @@ FocusScope {
         else
             return toTheFirstOrLastApp(event);
         return true;
+    }
+
+    // A key for the tiles finds the chosen place in view: the parts waiting for the windows turn in now, and a place
+    // change still turning the last place out ends, as a navigation ends it (navigation.md:103–105).
+    function bringPlaceIn() {
+        if (waitForWindows.running) {
+            waitForWindows.stop();
+            turnIn();
+        } else if (turner.running && !turner.handedOver) {
+            turner.finish();
+        }
     }
 
     focus: true
@@ -924,7 +934,7 @@ FocusScope {
                     headingToken: Tokens.fontSizeXl
                     placeWidth: start.width
                     visible: start.running.length > 0
-                    enabled: !start.turning
+                    enabled: start.wanted
 
                     TileGrid {
                         id: runningGrid
@@ -964,7 +974,7 @@ FocusScope {
                     headingSpacing: Tokens.spaceL
                     headingToken: Tokens.fontSizeXl
                     placeWidth: start.width
-                    enabled: !start.turning
+                    enabled: start.wanted
 
                     TileGrid {
                         id: pinnedGrid
@@ -1109,7 +1119,7 @@ FocusScope {
                     headingSpacing: Tokens.spaceL
                     headingToken: Tokens.fontSizeXl
                     placeWidth: start.width
-                    enabled: !start.turning
+                    enabled: start.wanted
 
                     TileGrid {
                         id: letterGrid
@@ -1217,7 +1227,7 @@ FocusScope {
             width: start.searchWidth + 2 * ringRoom
             height: start.placeHeight
             visible: false
-            enabled: !start.turning
+            enabled: start.wanted
             // The focus ring of a row, outside it, is not clipped at the search's edge.
             leftMargin: ringRoom
             rightMargin: ringRoom

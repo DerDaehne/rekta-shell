@@ -758,25 +758,164 @@ TestCase {
         verify(!start.holdsKeyboard);
     }
 
-    function test_while_the_start_turns_a_tile_takes_no_press() {
+    // Pinned apps alone, which say whether the turn still ran when they were launched.
+    function pinnedAppsThatTellTheTurn(): var {
+        return ["systemsettings", "dolphin", "konsole"].map(name => Object.assign(fakeApp(name, 1), {
+                launch: () => testCase.calls = [...testCase.calls, `launch ${name}${testCase.turner.running ? " amid the turn" : ""}`]
+            }));
+    }
+
+    // The Start opening without windows, its parts turning in, the turn held a little way in.
+    function holdTheOpeningTurn() {
+        start.windows = [];
+        start.pinned = pinnedAppsThatTellTheTurn();
+        start.open();
+        tryVerify(() => turner.running, 2000);
+        turner.paused = true;
+        turner.elapsed = turner.handOverAt + 20;
+    }
+
+    function test_the_start_opens_with_no_tile_in_focus_so_none_shows_a_ring_or_holds_its_news() {
+        start.windows = [];
+        start.open();
+        verify(start.activeFocus);
+        verify(tilesIn("pinned").every(tile => !tile.focus));
+        tryVerify(() => start.phase === "open", 3000);
+        verify(tilesIn("pinned").every(tile => !tile.activeFocus && !tile.held));
+    }
+
+    function test_meta_down_and_enter_at_once_launch_the_first_tile_well_within_400_ms() {
+        start.windows = [];
+        start.pinned = pinnedAppsThatTellTheTurn();
+        const opened = Date.now();
+        start.open();
+        verify(findChild(start, "waitForWindows").running, "the parts still wait for the windows");
+        keyClick(Qt.Key_Down);
+        verify(turner.running, "the parts come in at once and turn on");
+        verify(tilesIn("pinned")[0].activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch systemsettings"]);
+        verify(!start.wanted);
+        verify(Date.now() - opened < 400, `${Date.now() - opened} ms`);
+    }
+
+    function test_the_right_arrow_while_the_start_turns_in_goes_to_alle_apps() {
+        holdTheOpeningTurn();
+        keyClick(Qt.Key_Right);
+        compare(named("pivot").currentIndex, 1);
+        verify(start.wanted);
+        turner.paused = false;
+        tryVerify(() => named("apps").visible && !start.turning, 3000);
+    }
+
+    function test_arrows_move_the_focus_while_the_start_turns_in_and_enter_ends_the_turn_and_launches_once() {
+        holdTheOpeningTurn();
+        const pinned = tilesIn("pinned");
+        keyClick(Qt.Key_Down);
+        verify(pinned[0].activeFocus);
+        keyClick(Qt.Key_Right);
+        verify(pinned[1].activeFocus);
+        verify(turner.arrivingTurns.length > 0 && start.phase === "opening", "the turn runs on");
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch dolphin"], "after the turn ended");
+        compare(turner.pressedTile, pinned[1], "it turns out forward with the tile last");
+        verify(!turner.back);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch dolphin"], "once");
+        turner.paused = false;
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
+    function test_space_on_a_tile_while_the_start_turns_in_shows_no_press_and_launches_it_as_it_comes_up() {
+        holdTheOpeningTurn();
+        keyClick(Qt.Key_Down);
+        const tile = tilesIn("pinned")[0];
+        keyPress(Qt.Key_Space);
+        verify(!tile.pressed, "no press shows while it turns, as rekta.js press() shows none");
+        compare(calls, []);
+        keyRelease(Qt.Key_Space);
+        compare(calls, ["launch systemsettings"]);
+        turner.paused = false;
+    }
+
+    function test_a_press_while_the_start_turns_in_ends_the_turn_and_launches_once_the_tile_sinking_only_then_in_its_centre() {
+        holdTheOpeningTurn();
+        const tile = tilesIn("pinned")[2];
+        const turn = turner.arrivingTurns.find(planned => planned.part.item === tile);
+        turner.elapsed = turn.at + turn.duration / 2;
+        verify(turner.running);
+        // The grid has laid the tiles out where the press lands.
+        waitForRendering(start);
+        mousePress(tile, tile.width * 0.6, tile.height * 0.4);
+        verify(!tile.pressed, "no press shows while it turns, as rekta.js press() shows none");
+        mouseRelease(tile, tile.width * 0.6, tile.height * 0.4);
+        compare(calls, ["launch konsole"], "after the turn ended");
+        compare(turner.pressedTile, tile);
+        verify(tile.pressed);
+        compare(Qt.point(tile.pressX, tile.pressY), Qt.point(0, 0));
+        mouseClick(tilesIn("pinned")[0]);
+        compare(calls, ["launch konsole"], "once");
+        turner.paused = false;
+    }
+
+    function test_a_press_while_the_start_stands_sinks_where_it_lands() {
+        start.windows = [];
+        openNow();
+        const tile = tilesIn("pinned")[2];
+        mousePress(tile, tile.width - 4, 4);
+        verify(tile.pressed);
+        verify(tile.pressX > 0 && tile.pressY < 0);
+        mouseRelease(tile, tile.width - 4, 4);
+    }
+
+    function test_while_the_start_turns_out_a_tile_takes_no_key_or_press() {
+        openNow();
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Escape);
+        verify(turner.running);
+        keyClick(Qt.Key_Return);
+        mouseClick(tilesIn("pinned")[0]);
+        compare(calls, []);
+    }
+
+    function test_escape_while_the_start_turns_to_alle_apps_goes_back_to_the_start_place() {
         openNow();
         keyClick(Qt.Key_Right);
         verify(start.turning);
-        keyClick(Qt.Key_Left);
-        tryVerify(() => named("startPlace").visible);
-        verify(start.turning);
-        mouseClick(tilesIn("pinned")[0]);
-        compare(calls, []);
+        keyClick(Qt.Key_Escape);
+        compare(named("pivot").currentIndex, 0);
         verify(start.wanted);
+        tryVerify(() => named("startPlace").visible && !start.turning, 3000);
     }
 
-    function test_while_the_start_turns_a_key_other_than_back_or_typing_does_nothing() {
-        start.open();
-        tryVerify(() => turner.running, 2000);
-        keyClick(Qt.Key_Right);
+    function test_turning_to_alle_apps_arrows_and_enter_act_amid_the_turn() {
+        start.apps = ["ark", "Blender", "konsole"].map(name => installedApp(name));
+        openNow();
+        named("pivot").select(1);
+        turner.paused = true;
+        turner.elapsed = turner.handOverAt + 20;
+        verify(turner.handedOver);
+        verify(start.letterTiles().every(tile => !tile.activeFocus), "no app has the focus as the place shows");
         keyClick(Qt.Key_Down);
-        compare(named("pivot").currentIndex, 0);
-        verify(tilesIn("running").concat(tilesIn("pinned")).every(tile => !tile.activeFocus), "no tile took the focus");
+        verify(letterTile(0).activeFocus);
+        keyClick(Qt.Key_Right);
+        verify(letterTile(1).activeFocus);
+        verify(turner.running, "the turn runs on");
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Blender"]);
+        turner.paused = false;
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
+    function test_down_while_the_start_place_still_turns_out_toward_alle_apps_ends_the_turn_and_goes_to_the_first_app() {
+        start.apps = ["ark", "Blender", "konsole"].map(name => installedApp(name));
+        openNow();
+        named("pivot").select(1);
+        verify(!turner.handedOver);
+        keyClick(Qt.Key_Down);
+        verify(!start.turning);
+        verify(named("apps").visible);
+        verify(letterTile(0).activeFocus);
     }
 
     function test_closing_during_the_opening_ends_that_turn_and_goes_out() {
@@ -1339,6 +1478,21 @@ TestCase {
         const last = turner.leavingTurns.find(turn => turn.part.item === first);
         verify(turner.leavingTurns.every(turn => turn.at <= last.at), "the pressed tile last");
         keyClick(Qt.Key_Return);
+        compare(calls, ["launch Konsole"], "once");
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
+    function test_a_hit_in_focus_launches_once_however_often_it_is_pressed_while_the_start_turns_out() {
+        openWithApps();
+        typeNow("ko");
+        keyClick(Qt.Key_Down);
+        const hit = start.hitTiles()[0];
+        verify(hit.activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Konsole"]);
+        verify(turner.running);
+        keyClick(Qt.Key_Return);
+        mouseClick(hit);
         compare(calls, ["launch Konsole"], "once");
         tryVerify(() => closedSpy.count === 1, 3000);
     }
