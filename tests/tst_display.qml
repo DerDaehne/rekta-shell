@@ -94,6 +94,13 @@ TestCase {
         display.phase = phase;
     }
 
+    // Ends the stay at once instead of waiting it out; the tests that need it check its interval against the token.
+    function runOutHold() {
+        verify(hold.running, "the display stays for the hold");
+        hold.stop();
+        hold.triggered();
+    }
+
     function test_the_display_is_hidden_and_the_clock_whole_until_a_key() {
         verify(!display.shown);
         verify(!display.visible);
@@ -154,27 +161,28 @@ TestCase {
     function test_the_display_stays_duration_level_after_a_key() {
         compare(hold.interval, Tokens.durationLevel);
         display.press();
-        wait(Tokens.durationLevel - 200);
         verify(display.shown);
-        tryCompare(display, "shown", false, 1000);
+        runOutHold();
+        verify(!display.shown);
     }
 
     function test_a_second_key_only_extends_the_stay_without_a_new_turn() {
         display.press();
         tryCompare(display, "phase", display.span, 2000);
-        wait(1000);
+        hold.stop();
         display.press();
         compare(display.phase, display.span);
         verify(!turning.running);
-        wait(1000);
         verify(display.shown);
         compare(display.opacity, 1);
-        tryCompare(display, "shown", false, 1500);
+        runOutHold();
+        verify(!display.shown);
     }
 
     function test_the_way_back_runs_the_turns_the_other_way_round_the_display_leaving_first() {
         display.press();
-        tryCompare(display, "shown", false, 3000);
+        tryCompare(display, "phase", display.span, 2000);
+        runOutHold();
         tryCompare(turning, "running", true, 500);
         stopAt(0.5);
         verify(display.displayAngle < 0 && display.displayAngle > -Tokens.flipAngle);
@@ -190,7 +198,8 @@ TestCase {
 
     function test_the_clock_is_whole_and_the_display_gone_after_the_way_back() {
         display.press();
-        tryCompare(display, "shown", false, 3000);
+        tryCompare(display, "phase", display.span, 2000);
+        runOutHold();
         tryCompare(turning, "running", false, 1000);
         compare(clock.opacity, 1);
         verify(!display.visible);
@@ -199,7 +208,8 @@ TestCase {
 
     function test_a_key_during_the_way_back_brings_the_display_again_after_it() {
         display.press();
-        tryCompare(display, "shown", false, 3000);
+        tryCompare(display, "phase", display.span, 2000);
+        runOutHold();
         tryCompare(turning, "running", true, 500);
         display.press();
         compare(display.toDisplay, false);
@@ -227,9 +237,8 @@ TestCase {
         Prefs.motion = "off";
         display.press();
         compare(hold.interval, Tokens.durationLevel);
-        wait(Tokens.durationLevel - 200);
         verify(display.shown);
-        tryCompare(display, "shown", false, 1000);
+        runOutHold();
         compare(clock.opacity, 1);
         verify(!display.visible);
     }
