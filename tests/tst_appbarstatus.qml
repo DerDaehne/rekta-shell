@@ -541,7 +541,6 @@ TestCase {
             bars.slice(1, 3).forEach((bar, i) => holdAt(bar, (i + 1) / 4));
             tryVerify(() => !bars[3].gliding && !bars[3].settling);
             wait(Tokens.durationModerate);
-            waitForRendering(sheet);
             grabImage(sheet).save(`appbar-reflow-sheet-${theme}.png`);
         }
     }

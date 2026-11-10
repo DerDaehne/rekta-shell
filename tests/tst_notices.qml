@@ -771,7 +771,6 @@ TestCase {
             init();
             notify({ summary: "Mia", body: "Can we move the call to Thursday afternoon? I have the whole morning booked, so any time after lunch works.", image: testCase.picture }, [["default", "open"], ["reply", "reply"]]);
             tryCompare(findChild(toaster.open, "appIcon"), "status", Image.Ready);
-            waitForRendering(scene);
             grabImage(scene).save(`notices-sheet-${theme}.png`);
         }
     }

@@ -1959,7 +1959,6 @@ TestCase {
                 Prefs.motion = "system";
                 keyClick(Qt.Key_Down);
                 wait(Tokens.durationShort);
-                waitForRendering(backdrop);
                 grabImage(backdrop).save(`start-sheet-${theme}-${density}.png`);
                 verify(sheet.wanted, `${theme} ${density}`);
             }
@@ -1979,7 +1978,6 @@ TestCase {
             sheet.open();
             Prefs.motion = "system";
             wait(Tokens.durationShort);
-            waitForRendering(backdrop);
             grabImage(backdrop).save(`start-sheet-${theme}-720x1280.png`);
             verify(!findChild(sheet, "panorama").sideways, theme);
         }

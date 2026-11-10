@@ -614,11 +614,18 @@ TestCase {
         return level;
     }
 
+    // A frame drawn after this point. waitForRendering alone waits for the next frame, which never comes once a scene
+    // has nothing left to draw, and then runs out its whole timeout.
+    function waitForFrame(item: Item) {
+        item.Window.window.update();
+        waitForRendering(item);
+    }
+
     // The side panel open on a facet once its slide has ended, so that clicks land where the controls stand.
     function showSettled(index: int) {
         side.show(index);
         tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
-        waitForRendering(side);
+        waitForFrame(side);
     }
 
     // The level panel, open and drawn.
@@ -1802,7 +1809,7 @@ TestCase {
         compare(options.map(row => findChild(row, "fill").visible), [true, false], "the default in the accent");
         const growth = findChild(select, "box").height - Tokens.controlHeight;
         tryVerify(() => volumeRow.mapToItem(controls, 0, 0).y === before + growth, 1000, "the volume's row moves down by what the select grows");
-        waitForRendering(side);
+        waitForFrame(side);
         mouseClick(options[1]);
         compare(chosenDevices, [sound.headphones], "a click chooses");
         verify(!select.expanded);
@@ -3101,7 +3108,7 @@ TestCase {
         const branch = control("wifiBranch");
         mouseClick(control("chooseNetwork"));
         tryCompare(branch, "unfolded", 1, 4 * Tokens.durationShort);
-        waitForRendering(side);
+        waitForFrame(side);
         const fullHeight = branch.height;
         const hint = control("noNetworks");
         verify(!hint.visible);
@@ -3382,7 +3389,7 @@ TestCase {
         compare(lengths.currentIndex, -1, "none chosen while off");
         const buttons = findChild(controls.edge, "quickSettings");
         tryVerify(() => Math.abs(control("quietBranch").mapToItem(controls.edge, 0, 0).y - buttons.height - Tokens.spaceS) < 0.01, 1000, "below the buttons, space-s apart");
-        waitForRendering(side);
+        waitForFrame(side);
         mouseClick(quietOptions()[1]);
         verify(controls.doNotDisturb, "on at once");
         compare(controls.quiet.choice, "hour");

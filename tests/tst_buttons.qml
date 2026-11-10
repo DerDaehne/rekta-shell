@@ -317,7 +317,6 @@ TestCase {
                 }
                 findChild(sheet, "primary-focused").forceActiveFocus();
                 wait(Tokens.durationBusyDelay + 50);
-                waitForRendering(sheet);
                 grabImage(sheet).save(`buttons-sheet-${theme}-${density}.png`);
                 verify(sheet.height > 0, `${theme} ${density}`);
                 sheet.destroy();

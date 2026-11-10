@@ -367,7 +367,6 @@ TestCase {
                 }
                 findChild(sheet, "opens-info").forceActiveFocus();
                 wait(Tokens.durationPress + Tokens.durationShort);
-                waitForRendering(sheet);
                 grabImage(sheet).save(`tile-sheet-${theme}-${density}.png`);
                 verify(sheet.height > 0, `${theme} ${density}`);
                 sheet.destroy();
