@@ -105,7 +105,7 @@ public Q_SLOTS:
 private:
     void watch(LayerSurfaceV1Interface *layer);
     void follow(Retreat &retreat, LayerSurfaceV1Interface *layer);
-    void committed(Retreat &retreat, bool keyboard);
+    void committed(Retreat &retreat, bool keyboard, bool takesInput);
     void head(Retreat &retreat, qreal target);
     void tearDown(Retreat &retreat);
     void advance(Retreat &retreat, std::chrono::nanoseconds presentation);
@@ -173,7 +173,7 @@ void FadeBackEffect::follow(Retreat &retreat, LayerSurfaceV1Interface *layer)
     // Qt hides a window by destroying its layer surface and committing once more on the wl_surface, which outlives it.
     connect(layer->surface(), &SurfaceInterface::committed, this, [this, &retreat, layer = QPointer(layer)] {
         if (layer) {
-            committed(retreat, layer->acceptsFocus());
+            committed(retreat, layer->acceptsFocus(), !layer->surface()->input().isEmpty());
         }
     });
     // KWin forgets the keyboard of a surface that goes, unmapped or destroyed, without a word.
@@ -185,13 +185,14 @@ void FadeBackEffect::follow(Retreat &retreat, LayerSurfaceV1Interface *layer)
     });
 }
 
-// To ask for the keyboard anew, a surface goes without it for a single commit. So a hand-over holds the windows where
-// they are until the surface's next commit still goes without.
-void FadeBackEffect::committed(Retreat &retreat, bool keyboard)
+// To ask for the keyboard anew, a surface goes without it for a single commit and goes on taking input. So a hand-over
+// holds the windows where they are until the surface's next commit still goes without, unless the surface takes no
+// input any more: then it has gone, as the Start does at once under reduced motion.
+void FadeBackEffect::committed(Retreat &retreat, bool keyboard, bool takesInput)
 {
     const bool changed = keyboard != retreat.keyboard;
     retreat.keyboard = keyboard;
-    retreat.handOverUnconfirmed = changed && !keyboard;
+    retreat.handOverUnconfirmed = changed && !keyboard && takesInput;
     if (changed) {
         head(retreat, keyboard ? 1 : 0);
     }
@@ -241,16 +242,13 @@ void FadeBackEffect::advance(Retreat &retreat, std::chrono::nanoseconds presenta
     retreat.elapsed = presentation - *retreat.setOffAt;
 }
 
-// Under reduced motion the windows stand where they head at once. The Start draws nothing after its hand-over there, so
-// the hand-over holds them for a frame only. ponytail: a re-ask slower than a frame still shows under reduced motion;
-// hold until the next commit there too once the Start draws a frame after its hand-over.
+// Under reduced motion the windows stand where they head at once.
 qreal FadeBackEffect::progress(const Retreat &retreat) const
 {
-    const bool reducedMotion = effects->animationTimeFactor() == 0;
-    if (retreat.handOverUnconfirmed && !(reducedMotion && retreat.elapsed > 0ns)) {
+    if (retreat.handOverUnconfirmed) {
         return retreat.from;
     }
-    if (reducedMotion) {
+    if (effects->animationTimeFactor() == 0) {
         return retreat.to;
     }
     const double elapsed = std::chrono::duration<double, std::milli>(retreat.elapsed).count();

@@ -76,7 +76,7 @@ stdenv.mkDerivation {
       --prefix QML_IMPORT_PATH : "$out/lib/qt-6/qml:${plasma-workspace}/lib/qt-6/qml:${kdePackages.kpipewire}/lib/qt-6/qml" \
       --prefix PATH : ${kdePackages.libkscreen}/bin:${libcanberra-gtk3}/bin:${gnugrep}/bin
     wrapProgram $out/bin/rekta-settings \
-      --prefix QML_IMPORT_PATH : "${plasma-workspace}/lib/qt-6/qml"
+      --prefix QML_IMPORT_PATH : "$out/lib/qt-6/qml:${plasma-workspace}/lib/qt-6/qml"
   '';
 
   passthru = {
