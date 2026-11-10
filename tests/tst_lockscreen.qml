@@ -80,7 +80,27 @@ TestCase {
         }
     }
 
-    // The lock screen of one monitor, wired to the shared flow as LockScreen.qml wires it.
+    // Plasma 6.8.0's MultiplexerModel as the lock screen sees it: no row without a player, else one row for the player
+    // it follows, with its title, artist and status in the values of Mpris.PlaybackStatus (playercontainer.h).
+    readonly property var playback: ({ stopped: 1, playing: 2, paused: 3 })
+
+    ListModel {
+        id: players
+    }
+
+    NowPlaying {
+        id: nowPlaying
+
+        model: players
+        playingStatus: testCase.playback.playing
+    }
+
+    function play(track: string, artist: string, status: int) {
+        players.clear();
+        players.append({ track: track, artist: artist, playbackStatus: status });
+    }
+
+    // The lock screen of one monitor, wired to the shared flow and the player as LockScreen.qml wires it.
     Component {
         id: faceComponent
 
@@ -95,6 +115,8 @@ TestCase {
             checking: Unlock.checking
             error: Unlock.error
             info: Unlock.info
+            playingTitle: nowPlaying.title
+            playingArtist: nowPlaying.artist
             onSubmitted: secret => Unlock.submit(secret, lockFace.capsLock)
         }
     }
@@ -122,6 +144,7 @@ TestCase {
 
     // The stand-ins go when the test ends; the real authenticator lives as long as the greeter.
     function cleanup() {
+        players.clear();
         Unlock.shown = false;
         Unlock.authenticator = null;
         Prefs.motion = "system";
@@ -470,7 +493,72 @@ TestCase {
         compare(chosen, 0);
     }
 
-    // Each theme on a fresh lock screen: resting with two layouts, a refused password, and another monitor.
+    function test_while_a_player_plays_its_title_stands_as_a_figure_over_the_music_icon_and_its_artist() {
+        play("Nachtfahrt", "Kolibri", playback.playing);
+        const status = part("status"), playing = part("playing"), corner = part("corner");
+        waitForRendering(face);
+        verify(status.visible);
+        compare(findChild(playing, "number").text, "Nachtfahrt");
+        compare(findChild(playing, "number").font.pixelSize, Tokens.fluid(Tokens.fontSizeXxl, playing.placeWidth));
+        const words = findChild(playing, "words"), icon = findChild(playing, "wordsIcon");
+        compare(words.text, "läuft · Kolibri");
+        compare(words.color, Tokens.color.textContrastHigh);
+        compare(icon.name, "music");
+        compare(icon.color, words.color, "the icon in the colour of its words");
+        compare(words.leftPadding, Geometry.iconSize + Tokens.spaceS, "space-s between icon and words");
+        compare(status.mapToItem(face, status.width, 0).x, face.width - Tokens.spaceXl, "right-aligned");
+        compare(status.mapToItem(face, 0, status.height).y + Tokens.spaceXs, part("switchUser").mapToItem(face, 0, 0).y, "over switch user");
+        compare(corner.y + corner.height, face.height - Tokens.spaceXl);
+        compare(playing.Accessible.name, "Nachtfahrt läuft · Kolibri");
+        players.setProperty(0, "track", "Morgengrau");
+        compare(findChild(playing, "number").text, "Morgengrau", "a new title follows");
+        players.setProperty(0, "artist", "");
+        compare(words.text, "läuft", "without an artist only the title");
+    }
+
+    function test_a_paused_or_stopped_player_or_one_without_a_title_shows_nothing_and_takes_no_room() {
+        const corner = part("corner"), switchUser = part("switchUser");
+        const height = corner.height;
+        for (const [track, status] of [["Nachtfahrt", playback.paused], ["Nachtfahrt", playback.stopped], ["", playback.playing]]) {
+            play(track, "Kolibri", status);
+            verify(!part("status").visible, `${track || "no title"} ${status}`);
+            compare(corner.height, height, "no room taken");
+        }
+        play("Nachtfahrt", "Kolibri", playback.playing);
+        verify(part("status").visible);
+        players.setProperty(0, "playbackStatus", playback.paused);
+        verify(!part("status").visible, "pausing takes it away");
+        compare(switchUser.mapToItem(face, 0, switchUser.height).y, face.height - Tokens.spaceXl);
+    }
+
+    function test_without_a_player_nothing_shows() {
+        play("Nachtfahrt", "Kolibri", playback.playing);
+        players.clear();
+        verify(!part("status").visible);
+        compare(nowPlaying.title, "");
+    }
+
+    function test_a_long_title_ends_on_one_line_in_an_ellipsis_beside_the_sign_in() {
+        play("Eine sehr lange Nachtfahrt durch die Stadt, bis der Morgen graut und alle Lichter ausgehen".repeat(2), "Kolibri", playback.playing);
+        const status = part("status"), signIn = part("signIn");
+        const number = findChild(part("playing"), "number");
+        waitForItemPolished(status);
+        verify(number.truncated);
+        compare(number.lineCount, 1);
+        compare(status.mapToItem(face, 0, 0).x, signIn.x + signIn.width + Tokens.spaceL, "space-l from the sign-in");
+        compare(status.mapToItem(face, status.width, 0).x, face.width - Tokens.spaceXl);
+        compare(part("playing").Accessible.name, `${players.get(0).track} läuft · Kolibri`, "read out whole");
+    }
+
+    function test_another_monitor_shows_nothing_of_what_is_playing() {
+        play("Nachtfahrt", "Kolibri", playback.playing);
+        face.active = false;
+        tryCompare(part("rest"), "opacity", 0);
+        verify(!part("rest").enabled);
+    }
+
+    // Each theme on a fresh lock screen: resting with two layouts and a player, a long title, a refused password, and
+    // another monitor.
     function test_contact_sheet_in_both_themes() {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
@@ -478,8 +566,12 @@ TestCase {
             Unlock.authenticator = pam;
             face = createTemporaryObject(faceComponent, testCase);
             face.layouts = ["de", "us"];
+            play("Nachtfahrt", "Kolibri", playback.playing);
             waitForRendering(face);
             grabImage(face).save(`lockscreen-sheet-${theme}.png`);
+            players.setProperty(0, "track", "Eine sehr lange Nachtfahrt durch die Stadt, bis der Morgen graut und alle Lichter ausgehen");
+            waitForRendering(face);
+            grabImage(face).save(`lockscreen-sheet-${theme}-long-title.png`);
             ask();
             type("geheim");
             keyClick(Qt.Key_Return);

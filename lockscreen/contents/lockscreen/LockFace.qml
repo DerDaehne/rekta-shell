@@ -23,6 +23,9 @@ Rectangle {
     property list<string> layouts
     property int layoutIndex: 0
     property bool canSwitchUser: true
+    // What is playing; no title, nothing is.
+    property string playingTitle
+    property string playingArtist
 
     signal submitted(string secret)
     signal layoutChosen(int index)
@@ -88,6 +91,8 @@ Rectangle {
         }
 
         Column {
+            id: signIn
+
             objectName: "signIn"
             anchors.left: parent.left
             anchors.bottom: parent.bottom
@@ -153,12 +158,26 @@ Rectangle {
             anchors.margins: Tokens.spaceXl
             spacing: Tokens.spaceXs
 
-            // What is going on, right-aligned; it takes no room while it holds nothing.
-            Column {
+            // What is going on as figures and words, right-aligned, new messages before what is playing
+            // (site/index.html:720); it takes no room while it holds nothing. Unsized, the figures stand in one row.
+            Figures {
                 objectName: "status"
                 x: parent.width - width
-                visible: children.length > 0
-                spacing: Tokens.spaceXs
+                visible: face.playingTitle !== ""
+
+                Stat {
+                    id: playing
+
+                    objectName: "playing"
+                    visible: face.playingTitle !== ""
+                    value: face.playingTitle
+                    label: face.playingArtist !== "" ? `läuft · ${face.playingArtist}` : "läuft"
+                    icon: "music"
+                    // ponytail: Rekta does not say how a long title is held as a figure's value; it ends on one
+                    // line in an ellipsis, at the room beside the sign-in, as far from it as the showcase's status
+                    // from its account (space-l, site/site.css:177). Follow Rekta's answer once it has one.
+                    maximumWidth: face.width - 2 * Tokens.spaceXl - signIn.width - Tokens.spaceL
+                }
             }
 
             Button {
