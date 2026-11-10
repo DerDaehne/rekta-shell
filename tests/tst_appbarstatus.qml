@@ -73,7 +73,8 @@ TestCase {
                 AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects: build the shell and its tests"] }
                 AppBarClock { id: clock; objectName: "clock"; area: appBar.area; locale: Qt.locale("de_DE"); now: scene.clockNow }
                 AppBarButton { objectName: "background"; icon: "window"; text: "im hintergrund"; priority: 0 }
-                AppBarButton { objectName: "messages"; icon: "bell"; text: "meldungen"; count: 2; priority: 2 }                AppBarButton { objectName: "controls"; icon: "tune"; text: "steuerung"; priority: 1 }
+                AppBarButton { objectName: "messages"; icon: "bell"; text: "meldungen"; count: 2; priority: 2 }
+                AppBarButton { objectName: "controls"; icon: "tune"; text: "steuerung"; priority: 1 }
             }
 
             StatusWords { id: stateModel }
