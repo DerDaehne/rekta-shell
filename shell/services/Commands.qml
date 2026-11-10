@@ -22,7 +22,7 @@ QtObject {
     property var shortcuts: ({})
     readonly property var actions: ({
             lock: "Lock Session",
-            logout: "LogOut",
+            logout: "Log Out",
             reboot: "Reboot",
             shutdown: "Shut Down"
         })
