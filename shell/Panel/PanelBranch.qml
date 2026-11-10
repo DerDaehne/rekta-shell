@@ -21,6 +21,7 @@ Item {
     property Item openedBy
     // Opened from elsewhere than its opener: the focus goes to its first row once it shows.
     property bool focusOnShow: false
+    property var removeEscapeLayer: () => {}
     default property alias rows: list.data
 
     signal activated(MenuItem row)
@@ -88,6 +89,16 @@ Item {
         return true;
     }
 
+    // Unfolded by a pointer it may hold no focus, yet Escape folds it before anything behind it sees the key, and the
+    // focus stays where it is; a sheet or menu over it is nearer (navigation.md, "Who gets a key"). Untyped, so a test
+    // can hand it a key.
+    function foldOnEscape(event: var, focusItem: Item): bool {
+        if (!expanded || event.key !== Qt.Key_Escape || KeyLayers.surfaces.length > 0 || focusItem?.Window.window !== Window.window)
+            return false;
+        collapse();
+        return true;
+    }
+
     function reveal() {
         if (revealing)
             Reveal.intoView(branch, height);
@@ -108,6 +119,8 @@ Item {
     opacity: unfolded
     clip: true
     Keys.onPressed: event => event.accepted = handleKey(event)
+    Component.onCompleted: removeEscapeLayer = KeyLayers.on(40, (event, focusItem) => foldOnEscape(event, focusItem))
+    Component.onDestruction: removeEscapeLayer()
 
     NumberAnimation {
         id: unfolding

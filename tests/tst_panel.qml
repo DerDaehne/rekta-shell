@@ -1809,6 +1809,79 @@ TestCase {
         verify(!side.open, "the next Escape closes the panel");
     }
 
+    function test_escape_folds_a_select_a_pointer_expanded_without_focus_and_only_a_second_escape_closes_the_panel() {
+        giveSound(controls);
+        showSettled(0);
+        const select = control("inputDevice");
+        mouseClick(findChild(select, "box"));
+        verify(select.expanded);
+        verify(!select.activeFocus, "a press gives no focus");
+        Tips.show(control("inputMute"), "stumm schalten");
+        keyClick(Qt.Key_Escape);
+        verify(!Tips.target, "a tip takes Escape before the list");
+        verify(select.expanded);
+        keyClick(Qt.Key_Escape);
+        verify(!select.expanded, "Escape folds the list first");
+        verify(side.open, "the panel stays");
+        keyClick(Qt.Key_Escape);
+        verify(!side.open, "a second Escape closes the panel");
+    }
+
+    function test_escape_folds_a_branch_a_pointer_unfolded_without_focus_and_only_a_second_escape_closes_the_panel() {
+        giveSound(controls);
+        giveBluetooth(controls);
+        showSettled(0);
+        const branch = control("bluetoothBranch");
+        mouseClick(control("chooseBluetoothDevice"));
+        verify(branch.expanded);
+        verify(!side.within(rowOf(control("chooseBluetoothDevice")), side.Window.activeFocusItem), "nor in the row of its opener");
+        verify(!side.within(branch, side.Window.activeFocusItem), "the focus is not in the branch");
+        Tips.show(control("dark"), "dunkel");
+        keyClick(Qt.Key_Escape);
+        verify(!Tips.target, "a tip takes Escape before the branch");
+        verify(branch.expanded);
+        keyClick(Qt.Key_Escape);
+        verify(!branch.expanded, "Escape folds the branch first");
+        verify(side.open, "the panel stays");
+        keyClick(Qt.Key_Escape);
+        verify(!side.open, "a second Escape closes the panel");
+    }
+
+    function test_escape_in_another_window_leaves_an_open_select_and_branch_open() {
+        giveSound(controls);
+        giveBluetooth(controls);
+        showSettled(0);
+        const select = control("inputDevice");
+        const branch = control("bluetoothBranch");
+        mouseClick(findChild(select, "box"));
+        mouseClick(control("chooseBluetoothDevice"));
+        const elsewhere = createTemporaryObject(windowedComponent, testCase).first;
+        const escape = { key: Qt.Key_Escape };
+        verify(!select.foldOnEscape(escape, elsewhere));
+        verify(!branch.foldOnEscape(escape, elsewhere));
+        verify(select.expanded);
+        verify(branch.expanded);
+    }
+
+    function test_another_key_or_a_sheet_over_them_leaves_an_open_select_and_branch_open() {
+        giveSound(controls);
+        giveBluetooth(controls);
+        showSettled(0);
+        const select = control("inputDevice");
+        const branch = control("bluetoothBranch");
+        mouseClick(findChild(select, "box"));
+        mouseClick(control("chooseBluetoothDevice"));
+        const focused = side.Window.activeFocusItem;
+        verify(!select.foldOnEscape({ key: Qt.Key_Down }, focused), "only Escape");
+        verify(!branch.foldOnEscape({ key: Qt.Key_Down }, focused), "only Escape");
+        KeyLayers.opened(side.sheets);
+        verify(!select.foldOnEscape({ key: Qt.Key_Escape }, focused), "a sheet over it is nearer");
+        verify(!branch.foldOnEscape({ key: Qt.Key_Escape }, focused), "a sheet over it is nearer");
+        KeyLayers.closed(side.sheets);
+        verify(select.expanded);
+        verify(branch.expanded);
+    }
+
     function test_the_select_collapses_with_the_panel() {
         giveSound(controls);
         side.show(0);

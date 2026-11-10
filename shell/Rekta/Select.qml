@@ -30,6 +30,7 @@ Item {
     // Runs from 0 to 1 as it unfolds, and back as it folds.
     property real unfolded: 0
     readonly property real expandedHeight: 2 * Geometry.inputBorder + 2 * Tokens.spaceXs + options.length * Tokens.rowHeight
+    property var removeEscapeLayer: () => {}
 
     // A choice made here.
     signal activated(int index)
@@ -87,6 +88,16 @@ Item {
         return true;
     }
 
+    // Expanded by a pointer it holds no focus, yet Escape folds it before anything behind it sees the key, as a
+    // combobox's list is closed first; a sheet or menu over it is nearer (navigation.md, "Who gets a key"). Untyped,
+    // so a test can hand it a key.
+    function foldOnEscape(event: var, focusItem: Item): bool {
+        if (!expanded || event.key !== Qt.Key_Escape || KeyLayers.surfaces.length > 0 || focusItem?.Window.window !== Window.window)
+            return false;
+        collapse();
+        return true;
+    }
+
     implicitHeight: disabled ? why.y + why.height : box.height
     activeFocusOnTab: true
     Accessible.role: Accessible.ComboBox
@@ -116,6 +127,8 @@ Item {
             collapse();
     }
     Keys.onPressed: event => event.accepted = handleKey(event)
+    Component.onCompleted: removeEscapeLayer = KeyLayers.on(40, (event, focusItem) => foldOnEscape(event, focusItem))
+    Component.onDestruction: removeEscapeLayer()
 
     NumberAnimation {
         id: unfolding
