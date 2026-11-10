@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import Start
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -2101,6 +2102,8 @@ TestCase {
     }
 
     function test_contact_sheet() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             for (const density of ["compact", "comfortable"]) {
                 Prefs.theme = theme;
@@ -2121,6 +2124,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_the_compact_start_at_720_by_1280() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             // The window takes the surface's size, as the grab shows only what the window holds.
@@ -2141,6 +2146,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_the_search() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const backdrop = createTemporaryObject(backdropComponent, testCase);
@@ -2160,6 +2167,8 @@ TestCase {
 
 
     function test_contact_sheet_of_the_search_with_the_best_hit() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const backdrop = createTemporaryObject(backdropComponent, testCase);
@@ -2185,6 +2194,8 @@ TestCase {
     // The search for "k", seven hits and a window's row: compact at 720 × 1280 between the sections' edges, its grid
     // stretched; sideways at 1080 × 1920 five whole units, as many as fit there.
     function test_contact_sheets_of_the_search_compact_and_sideways_at_1080_by_1920() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         const sizes = [["compact", Qt.size(720, 1280)], ["1080x1920", Qt.size(1080, 1920)]];
         for (const theme of ["light", "dark"]) {
             for (const [name, size] of sizes) {
@@ -2212,6 +2223,8 @@ TestCase {
     }
     // The caret inside "fire|fox", then "fire" selected. Each is taken right after a key, which lights the caret.
     function test_contact_sheet_of_the_search_line() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const backdrop = createTemporaryObject(backdropComponent, testCase);
@@ -2236,6 +2249,8 @@ TestCase {
     // after a press (as the pressed tile starts, the last to start, and halfway through its turn). The glass alone is taken
     // last, as its parts start on the clock.
     function test_contact_sheet_of_the_turn() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const sheet = createTemporaryObject(framesComponent, testCase);
@@ -2704,6 +2719,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_the_search_with_every_kind() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const backdrop = createTemporaryObject(backdropComponent, testCase);
@@ -2724,6 +2741,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_the_search_with_a_row_as_the_best_hit() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const backdrop = createTemporaryObject(backdropComponent, testCase);
@@ -2764,6 +2783,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_a_calculation_and_of_the_way_on() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             saveSearchSheet(theme, "(2+3)*4", "calc", false);
             saveSearchSheet(theme, "qq x", "way-on", true);
@@ -2833,6 +2854,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_a_command_with_its_key_as_the_best_hit() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const backdrop = createTemporaryObject(backdropComponent, testCase);

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -499,6 +500,8 @@ TestCase {
 
     // Each pair of theme and density, collapsed and then with the first select expanded from the keys.
     function test_contact_sheet_of_selects_collapsed_and_expanded_in_both_themes_and_densities() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             for (const density of ["compact", "comfortable"]) {
                 Prefs.theme = theme;

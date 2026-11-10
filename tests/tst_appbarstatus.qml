@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import State
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -516,6 +517,8 @@ TestCase {
     }
 
     function test_contact_sheet() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const sheet = createTemporaryObject(sheetComponent, testCase);
@@ -528,6 +531,8 @@ TestCase {
     // The bar before, a quarter and half the way through and after "mikrofon an" comes while "meldungen" counts from 9 to
     // 10: the word fades in where it rests, the count peeks, the others glide aside.
     function test_reflow_contact_sheet() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             Prefs.motion = "on";

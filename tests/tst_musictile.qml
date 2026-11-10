@@ -5,6 +5,7 @@ import QtTest
 import Rekta
 import Start
 import State
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -386,6 +387,8 @@ TestCase {
     }
 
     function test_contact_sheet() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const sheet = createTemporaryObject(sheetComponent, testCase);

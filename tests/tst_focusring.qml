@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -121,6 +122,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_rings_on_every_status_fill_and_neutral_ground() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         const sheet = createTemporaryObject(sheetComponent, testCase);
         waitForRendering(sheet);
         grabImage(sheet).save("focus-ring-sheet.png");

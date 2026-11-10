@@ -37,6 +37,10 @@
         rekta-shell = pkgs.callPackage ./nix/package.nix { };
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
         rekta-design-dist = pkgs.callPackage ./nix/rekta-design-dist.nix { src = rekta-design; };
+        # The QML tests once more, keeping the contact sheets they render; never part of the flake check.
+        contact-sheets = self.checks.${pkgs.stdenv.hostPlatform.system}.qml-tests.override {
+          contactSheets = true;
+        };
       });
 
       apps = eachSystem (

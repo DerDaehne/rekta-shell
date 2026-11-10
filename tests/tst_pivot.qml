@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -147,7 +148,8 @@ TestCase {
                 ground.pivot.forceActiveFocus(Qt.TabFocusReason);
                 waitForRendering(ground);
                 compare(ringSidesCutOff(ground, index), [], `${theme}, title ${index}: sides cut off`);
-                grabImage(ground).save(`pivot-ring-${theme}-${index}.png`);
+                if (ContactSheets.wanted)
+                    grabImage(ground).save(`pivot-ring-${theme}-${index}.png`);
                 ground.destroy();
             }
         }
@@ -487,6 +489,8 @@ TestCase {
 
     // The pivots follow the one current theme and density, so the sheet is drawn once per pair.
     function test_contact_sheet_of_pivots_in_both_themes_and_densities() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         Prefs.motion = "off";
         for (const theme of ["light", "dark"]) {
             for (const density of ["compact", "comfortable"]) {

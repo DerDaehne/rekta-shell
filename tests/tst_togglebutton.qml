@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -311,6 +312,8 @@ TestCase {
 
     // The buttons follow the one current theme and density, so the sheet is drawn once per pair.
     function test_contact_sheet_of_toggle_buttons_in_both_themes_and_densities() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         Tokens.light.accent = inkLight;
         Tokens.light.textOnAccent = onInkLight;
         for (const theme of ["light", "dark"]) {

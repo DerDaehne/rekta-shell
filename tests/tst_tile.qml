@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -356,6 +357,8 @@ TestCase {
 
     // The tiles follow the one current theme and density, so the sheet is drawn once per pair.
     function test_contact_sheet_of_tiles_in_both_themes_and_densities() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             for (const density of ["compact", "comfortable"]) {
                 Prefs.theme = theme;

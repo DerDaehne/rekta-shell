@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Shapes
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -561,6 +562,8 @@ TestCase {
     // laid out before the news comes, as live tiles are; fill colours and the stale fade, which run on their own
     // clock, settle before the picture is taken.
     function test_contact_sheet_of_live_tile_motion_in_between() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         Prefs.motion = "on";
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;

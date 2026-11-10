@@ -3,7 +3,6 @@
 let
   rekta-shell = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
   rekta-qmllint = pkgs.callPackage ./qmllint.nix { inherit rekta-shell; };
-  counterpart = pkgs.callPackage ./dbus-counterpart.nix { };
   # The tests import the shell's directories by relative path, so both stand side by side here.
   qml = lib.fileset.toSource {
     root = ../.;
@@ -237,28 +236,7 @@ in
         touch $out
       '';
 
-  qml-tests =
-    pkgs.runCommand "rekta-shell-qml-tests"
-      {
-        nativeBuildInputs = [
-          qt.qtdeclarative
-          pkgs.dbus
-        ];
-        QT_QUICK_BACKEND = "software";
-        FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ pkgs.atkinson-hyperlegible-next ]; };
-        QT_PLUGIN_PATH = "${qt.qtbase}/lib/qt-6/plugins";
-        QML_IMPORT_PATH = "${qt.qtdeclarative}/lib/qt-6/qml:${rekta-shell}/lib/qt-6/qml:${counterpart}/lib/qt-6/qml";
-        DBUS_SESSION_CONFIG = "${pkgs.dbus}/share/dbus-1/session.conf";
-        TZDIR = "${pkgs.tzdata}/share/zoneinfo";
-        LANG = "C.UTF-8";
-      }
-      ''
-        export HOME="$TMPDIR"
-        ${qml}/tests/run-qml-tests.sh ${qml}
-        # Tests save contact sheets into the working directory; they end up in the check's result for review.
-        mkdir $out
-        cp *.png $out/ 2>/dev/null || true
-      '';
+  qml-tests = pkgs.callPackage ./qml-tests.nix { inherit rekta-shell qml; };
 
   start-file =
     pkgs.runCommand "rekta-shell-start-file"

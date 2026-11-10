@@ -1,15 +1,16 @@
 #!/bin/sh
-# Runs the QML tests in the working directory (they save contact sheets there), each file in a runner and on a bus of
-# its own, at most six files at once. Given test file names, it runs only those. The caller sets QML_IMPORT_PATH,
-# QT_PLUGIN_PATH, FONTCONFIG_FILE, QT_QUICK_BACKEND, HOME and LANG, and puts dbus-run-session on PATH; no other variable
-# reaches the tests, so neither the desktop's bus, display nor QML modules can; they run offscreen and find no system bus.
-# QMLTESTRUNNER names the runner (default: qmltestrunner on PATH), DBUS_SESSION_CONFIG the config of the tests' private
-# bus, TZDIR the zone files for the clock test, NIX_BUILD_CORES the cores to use (default and 0: all).
+# Runs the QML tests in the working directory, each file in a runner and on a bus of its own, at most six files at once.
+# Given test file names, it runs only those. The caller sets QML_IMPORT_PATH, QT_PLUGIN_PATH, FONTCONFIG_FILE,
+# QT_QUICK_BACKEND, HOME and LANG, and puts dbus-run-session on PATH; no other variable reaches the tests, so neither the
+# desktop's bus, display nor QML modules can; they run offscreen and find no system bus. QMLTESTRUNNER names the runner
+# (default: qmltestrunner on PATH), DBUS_SESSION_CONFIG the config of the tests' private bus, TZDIR the zone files for the
+# clock test, NIX_BUILD_CORES the cores to use (default and 0: all). CONTACT_SHEETS=1 also renders the contact sheets
+# into the working directory; without it their tests skip.
 set -eu
 root=${1:?usage: run-qml-tests.sh <directory holding shell/ and tests/> [tst_<name>.qml ...]}
 shift
 # A file that has not ended after five minutes hangs: the slowest takes well under one.
-export root runner="${QMLTESTRUNNER:-qmltestrunner}" logs="$(mktemp -d)" limit=300
+export root runner="${QMLTESTRUNNER:-qmltestrunner}" logs="$(mktemp -d)" limit=300 sheets="${CONTACT_SHEETS:+contact-sheets}"
 trap 'rm -rf "$logs"' EXIT
 cores=${NIX_BUILD_CORES:-0}
 [ "$cores" -gt 0 ] || cores=$(nproc)
@@ -45,7 +46,8 @@ list_jobs "$@" | xargs -L 1 -P "$cores" sh -c '
 			${FONTCONFIG_FILE+"FONTCONFIG_FILE=$FONTCONFIG_FILE"} ${QT_QUICK_BACKEND+"QT_QUICK_BACKEND=$QT_QUICK_BACKEND"} \
 			QT_QPA_PLATFORM=offscreen DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent/system_bus_socket "$@" \
 			dbus-run-session ${DBUS_SESSION_CONFIG:+--config-file="$DBUS_SESSION_CONFIG"} -- timeout "$limit" \
-			"$runner" -import "$root/shell" -import "$root/tests/stand-ins" -input "$root/tests/$file" \
+			"$runner" ${sheets:+-file-selector "$sheets"} -import "$root/shell" -import "$root/tests/stand-ins" \
+			-input "$root/tests/$file" \
 			> "$logs/$name.log" 2>&1 || status=$?
 		[ "$status" -ne 124 ] || echo "timed out after $limit s" >> "$logs/$name.log"
 		[ "$status" -eq 0 ] || : > "$logs/$name.failed"

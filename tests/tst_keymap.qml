@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import KeyMap
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -256,6 +257,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_the_list_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             map.readKeys();

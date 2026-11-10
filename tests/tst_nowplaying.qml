@@ -5,6 +5,7 @@ import QtTest
 import Panel
 import Rekta
 import State
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -647,6 +648,8 @@ TestCase {
 
     // Both themes: one player with a cover, then two with the select.
     function test_contact_sheet_of_laeuft_gerade_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const contact = createTemporaryObject(sceneComponent, testCase);

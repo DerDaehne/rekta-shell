@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -420,6 +421,8 @@ TestCase {
 
     // The inputs follow the one current theme and density, so the sheet is drawn once per pair, the name field focused.
     function test_contact_sheet_of_inputs_in_both_themes_and_densities() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         Prefs.motion = "off";
         for (const theme of ["light", "dark"]) {
             for (const density of ["compact", "comfortable"]) {

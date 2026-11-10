@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import Session
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -746,6 +747,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_the_countdown_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             Prefs.density = "compact";
@@ -758,6 +761,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_the_banner_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             Prefs.density = "compact";

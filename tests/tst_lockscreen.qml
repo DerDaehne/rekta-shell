@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import "../lockscreen/contents/lockscreen"
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -621,6 +622,8 @@ TestCase {
     // Each theme on a fresh lock screen: resting with two layouts and a player, a long title, a refused password, and
     // another monitor.
     function test_contact_sheet_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             pam = createTemporaryObject(authenticatorComponent, testCase);

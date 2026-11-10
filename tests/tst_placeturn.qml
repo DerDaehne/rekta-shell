@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -740,6 +741,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_a_turn_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         scene.visible = false;
         const labels = ["a tile pressed", "leaving, halfway", "leaving, the pressed tile last", "arriving, a quarter in", "arriving, halfway", "landed"];
         for (const theme of ["light", "dark"]) {

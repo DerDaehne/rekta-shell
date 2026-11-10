@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -1055,6 +1056,8 @@ TestCase {
 
     // The toasts follow the one current theme, so the sheet is drawn once per theme.
     function test_contact_sheet_of_toasts_and_banners_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             testCase.time = 0;
@@ -1153,6 +1156,8 @@ TestCase {
     }
 
     function test_contact_sheet_of_a_tagged_toast_with_and_without_an_action_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const sheet = createTemporaryObject(tagSheetComponent, testCase);
@@ -1198,6 +1203,8 @@ TestCase {
     // The way of a notification's toast, held at six moments: at rest, the count halfway out, the toast halfway in from
     // behind the bar, at rest above the bar, halfway out behind it, and the count halfway back with the toast counted.
     function test_contact_sheet_of_a_notification_rising_from_its_count_and_falling_into_it_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         Prefs.motion = "on";
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;

@@ -135,8 +135,10 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   pinned Rekta Design and checked in, like `IconData.js` (the icons, drawn by `Icon.qml`):
   regenerate both with `nix run .#tokens`, never edit them; the `tokens-drift` check
   fails when one differs. QML tests live in `tests/`
-  (`nix build .#checks.x86_64-linux.qml-tests -L`; its result holds the contact sheets
-  the tests render, e.g. `icon-sheet.png`); `generator-tests` makes sure the
+  (`nix build .#checks.x86_64-linux.qml-tests -L`). Their contact sheets, pictures for
+  people, render only on demand: `nix build .#contact-sheets -L` runs the tests once more
+  and its result holds them, e.g. `icon-sheet.png`; the flake check never builds it, and
+  the gate skips a test that only renders a sheet; `generator-tests` makes sure the
   generator stops on tokens it cannot map instead of dropping them.
 - `rekta-qmllint -I shell <files>` in the dev shell lints exactly like the flake check
   (Qt, Quickshell, the DBus module and plasma-workspace on the import path, warnings fail).

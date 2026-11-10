@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Notices
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -766,6 +767,8 @@ TestCase {
 
     // Both themes: a toast with a picture, a title and two lines.
     function test_contact_sheet_of_a_notification_toast_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             init();

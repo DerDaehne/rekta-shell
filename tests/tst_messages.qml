@@ -5,6 +5,7 @@ import QtTest
 import Notices
 import Panel
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -697,6 +698,8 @@ TestCase {
 
     // Both themes: the tip of a long, cut text, drawn whole over its row.
     function test_contact_sheet_of_the_whole_text_of_a_cut_row_in_its_tip_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             init();
@@ -712,6 +715,8 @@ TestCase {
 
     // Both themes: the panel open on meldungen, with a picture, a long body and a row without body.
     function test_contact_sheet_of_the_notification_centre_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             init();

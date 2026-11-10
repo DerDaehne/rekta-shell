@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Shapes
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -116,7 +117,8 @@ TestCase {
         const sheet = createTemporaryObject(sheetComponent, testCase);
         waitForRendering(sheet);
         const image = grabImage(sheet);
-        image.save("icon-sheet.png");
+        if (ContactSheets.wanted)
+            image.save("icon-sheet.png");
         const icons = iconsBelow(sheet);
         compare(icons.length, Object.keys(IconData.icons).length * 4);
         for (const icon of icons) {

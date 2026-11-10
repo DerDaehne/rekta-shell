@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -339,6 +340,8 @@ TestCase {
 
     // A list with a chosen row, the active row in the ring, a hovered and a pressed row; one loading, one empty.
     function test_contact_sheet() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             for (const density of ["compact", "comfortable"]) {
                 Prefs.theme = theme;
