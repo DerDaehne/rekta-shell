@@ -1080,6 +1080,56 @@ TestCase {
         verify(order[7].activeFocus, "the arrows never leave the panel");
     }
 
+    // Whole in sight with its ring: in the scroll, and clear of the quick settings by space-m, or among them.
+    function shownWhole(item: var): bool {
+        const ring = Geometry.focusRingOffset + Geometry.focusRingWidth;
+        const scroller = named("scroller");
+        if (!side.within(scroller, item))
+            return side.within(side.edge, item);
+        const top = item.mapToItem(scroller, 0, 0).y - ring;
+        const bottom = item.mapToItem(side.edge, 0, item.height).y + ring;
+        return top >= -0.5 && top + item.height + 2 * ring <= scroller.height + 0.5 && bottom <= -Tokens.spaceM + 0.5;
+    }
+
+    function test_in_a_short_panel_tab_and_shift_tab_bring_every_stop_whole_into_sight_above_the_quick_settings() {
+        giveSound(controls);
+        giveBluetooth(controls);
+        scene.height = 360;
+        showSettled(0);
+        const names = [];
+        for (const modifier of [Qt.NoModifier, Qt.ShiftModifier]) {
+            if (modifier === Qt.ShiftModifier) {
+                control("dark").forceActiveFocus();
+                named("scroller").contentY = 0;
+            }
+            for (let k = 0; k < 40; k++) {
+                keyClick(Qt.Key_Tab, modifier);
+                const focused = side.Window.activeFocusItem;
+                if (!side.holds(focused) || focused === findChild(side, "pivot"))
+                    break;
+                names.push(focused.objectName);
+                verify(shownWhole(focused), `${focused.objectName} in sight`);
+            }
+        }
+        for (const name of ["outputVolume", "inputDevice", "density", "lock", "sessionActions", "dark"])
+            verify(names.includes(name), `Tab reached ${name}`);
+        verify(named("scroller").contentY > 0, "the view followed the focus");
+    }
+
+    function test_a_focus_that_scrolls_its_control_into_sight_keeps_the_tip_it_brought() {
+        giveSound(controls);
+        scene.height = 360;
+        showSettled(0);
+        const scroller = named("scroller");
+        scroller.contentY = scroller.contentHeight - scroller.height;
+        const mute = control("outputMute");
+        verify(!shownWhole(mute), "above the view");
+        mute.forceActiveFocus(Qt.TabFocusReason);
+        verify(shownWhole(mute));
+        verify(named("tip").visible, "its tip stays");
+        compare(findChild(named("tip"), "words").text, "stumm schalten");
+    }
+
     function test_every_row_works_from_the_keyboard() {
         controls.hasPerformanceProfile = true;
         controls.kdeglobals = "";

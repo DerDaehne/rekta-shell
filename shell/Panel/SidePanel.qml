@@ -143,6 +143,13 @@ FocusScope {
         item.Keys.forwardTo = [keyHook];
     }
 
+    // Focus that lands in the facet's scroll brings its control whole into view, ring included (rekta.css:46: focus
+    // scrolls clear of what is pinned; the scroll ends space-m above the edge).
+    function revealFocus(item: Item) {
+        if (within(scroller, item))
+            Reveal.intoView(item, item.height, Geometry.focusRingOffset + Geometry.focusRingWidth);
+    }
+
     function moveFocus(forward: bool) {
         const next = Window.activeFocusItem?.nextItemInFocusChain(forward);
         if (next && holds(next))
@@ -191,14 +198,17 @@ FocusScope {
         event.accepted = true;
     }
 
-    // Whichever control holds the focus is watched for keys, also after the window's activation moves the focus to it.
+    // Whichever control holds the focus is watched for keys, also after the window's activation moves the focus to it,
+    // and kept in view.
     Connections {
         target: sidePanel.open ? sidePanel.Window.window : null
 
         function onActiveFocusItemChanged() {
             const now = sidePanel.Window.window.activeFocusItem;
-            if (now)
-                sidePanel.watchKeysOf(now);
+            if (!now)
+                return;
+            sidePanel.watchKeysOf(now);
+            sidePanel.revealFocus(now);
         }
     }
 
