@@ -32,8 +32,10 @@ BuildRequires:  atkinson-hyperlegible-next-fonts
 
 # Quickshell 0.3 comes from the COPR errornointernet/quickshell until Fedora has it
 Requires:       (quickshell >= 0.3 with quickshell < 0.4)
-# rekta-fadeback and rekta-metahold use KWin's internal headers, which change with every Plasma minor release
-Requires:       (kwin-libs%{?_isa} >= 6.8 with kwin-libs%{?_isa} < 6.9)
+# KWin loads an effect only when it was built against KWin's exact version and skips rekta-fadeback and
+# rekta-metahold otherwise; Fedora rebuilds its own KWin plugins with KWin, nothing rebuilds these. So dnf
+# keeps KWin at this version until a rekta-shell built against the new one is installed.
+%{?_kwin_version:Requires: kwin-libs%{?_isa} = %{_kwin_version}}
 Requires:       kwin
 Requires:       plasma-workspace >= 6.8
 Requires:       kpipewire
