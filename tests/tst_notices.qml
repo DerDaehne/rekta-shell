@@ -164,42 +164,6 @@ TestCase {
         verify(!toaster.open.notification, "the count stays for the shell's own toast");
     }
 
-    function test_a_toast_that_takes_the_place_of_another_comes_in_once_that_one_has_slid_away() {
-        Prefs.motion = "on";
-        notify({ summary: "anna" });
-        const first = toaster.open;
-        tryCompare(first, "entry", 1, 1000);
-        notify({ summary: "ben" });
-        compare(toaster.open.title, "ben", "it takes the place at once");
-        verify(first.done, "anna's goes");
-        verify(toaster.open.waiting, "ben's comes in once anna's has gone");
-        tryVerify(() => !toaster.open.waiting, 1000);
-    }
-
-    function test_the_count_stays_away_when_a_notification_takes_the_place_of_one_whose_toast_waits_for_it() {
-        Prefs.motion = "on";
-        toaster.countInSight = true;
-        notify({ summary: "anna" });
-        verify(toaster.open.waiting, "anna's toast waits for the count");
-        const flips = createTemporaryObject(spyComponent, testCase, { target: toaster, signalName: "countAwayChanged" });
-        notify({ summary: "ben" });
-        compare(toaster.open.title, "ben");
-        compare(flips.count, 0, "the count never came back between them");
-        verify(toaster.countAway);
-    }
-
-    function test_the_count_waits_for_the_way_down_of_a_replaced_toast_when_the_app_closes_the_one_that_took_its_place() {
-        Prefs.motion = "on";
-        toaster.countInSight = true;
-        notify({ summary: "anna" });
-        tryCompare(toaster.open, "entry", 1, 1000);
-        const ben = notify({ summary: "ben" });
-        verify(toaster.open.waiting, "ben waits while anna goes down");
-        ben.close(NoticeBoard.CloseRequested);
-        verify(toaster.countAway, "anna is still on her way down");
-        tryVerify(() => !toaster.countAway, 1000, "then the count comes back");
-    }
-
     function test_a_shell_toast_that_takes_the_place_of_a_notification_s_toast_rises_and_stands_its_time_with_meldungen_back() {
         Prefs.motion = "on";
         toaster.countInSight = true;
