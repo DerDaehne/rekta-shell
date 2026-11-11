@@ -137,6 +137,13 @@ TestCase {
         }
     }
 
+    SignalSpy {
+        id: delayRuns
+
+        target: Tips.delay
+        signalName: "runningChanged"
+    }
+
     property Item scene
     property Tooltip tooltip
 
@@ -155,16 +162,28 @@ TestCase {
         Prefs.theme = "system";
     }
 
+    // Ends tip-delay at once instead of waiting it out; its interval is held to the token in the first test.
+    function runOutTipDelay() {
+        verify(Tips.delay.running, "tip-delay runs");
+        Tips.delay.stop();
+        Tips.delay.triggered();
+    }
+
+    function verifyNoTipComes(message) {
+        verify(!Tips.delay.running, "no tip-delay runs");
+        compare(Tips.target, null, message);
+    }
+
     function box(name) {
         return findChild(findChild(scene, name), "box");
     }
 
     function test_a_resting_pointer_shows_the_tip_after_tip_delay() {
         mouseMove(box("close"));
-        compare(Tips.target, null);
-        wait(Tokens.durationTipDelay - 200);
+        compare(Tips.delay.interval, Tokens.durationTipDelay);
         compare(Tips.target, null, "not before tip-delay");
-        tryCompare(Tips, "target", box("close"), Tokens.durationTipDelay);
+        runOutTipDelay();
+        compare(Tips.target, box("close"));
         verify(tooltip.visible);
         compare(findChild(tooltip, "words").text, "close", "an icon button shows its label");
     }
@@ -178,7 +197,8 @@ TestCase {
 
     function test_moving_on_from_a_tip_shows_the_next_at_once() {
         mouseMove(box("close"));
-        tryCompare(Tips, "target", box("close"), Tokens.durationTipDelay * 2);
+        runOutTipDelay();
+        compare(Tips.target, box("close"));
         mouseMove(box("more"));
         compare(Tips.target, box("more"), "straight from one tip to the next");
         mouseMove(scene, 5, 5);
@@ -191,8 +211,7 @@ TestCase {
         const close = box("close");
         touchEvent(close).press(0, close, close.width / 2, close.height / 2).commit();
         touchEvent(close).release(0, close, close.width / 2, close.height / 2).commit();
-        wait(Tokens.durationTipDelay * 2);
-        compare(Tips.target, null);
+        verifyNoTipComes();
     }
 
     function test_escape_hides_the_tip_before_any_lower_layer() {
@@ -214,7 +233,8 @@ TestCase {
 
     function test_a_press_hides_the_tip() {
         mouseMove(box("close"));
-        tryCompare(Tips, "target", box("close"), Tokens.durationTipDelay * 2);
+        runOutTipDelay();
+        compare(Tips.target, box("close"));
         mousePress(box("close"));
         compare(Tips.target, null);
         mouseRelease(box("close"));
@@ -225,15 +245,15 @@ TestCase {
 
     function test_leaving_hides_the_tip_or_stops_its_wait() {
         mouseMove(box("close"));
-        tryCompare(Tips, "target", box("close"), Tokens.durationTipDelay * 2);
+        runOutTipDelay();
+        compare(Tips.target, box("close"));
         mouseMove(scene, 5, 5);
         compare(Tips.target, null);
         Tips.hiddenAt = -Infinity;
         mouseMove(box("close"));
-        wait(100);
+        verify(Tips.delay.running);
         mouseMove(scene, 5, 5);
-        wait(Tokens.durationTipDelay * 2);
-        compare(Tips.target, null, "a pointer that left before tip-delay brings no tip");
+        verifyNoTipComes("a pointer that left before tip-delay brings no tip");
     }
 
     function test_the_focus_leaving_hides_the_tip() {
@@ -261,15 +281,15 @@ TestCase {
         mouseMove(box("close"));
         compare(Tips.waiting, box("close"));
         close.label = "close for good";
-        tryCompare(Tips, "target", box("close"), Tokens.durationTipDelay * 2);
+        runOutTipDelay();
+        compare(Tips.target, box("close"));
         compare(findChild(tooltip, "words").text, "close for good");
         mouseMove(scene, 5, 5);
         Tips.hiddenAt = -Infinity;
         mouseMove(box("close"));
         close.tip = "";
         compare(Tips.waiting, null, "a tip that goes empty while it waits never shows");
-        wait(Tokens.durationTipDelay * 2);
-        compare(Tips.target, null);
+        verifyNoTipComes();
     }
 
     function test_each_window_s_tooltip_draws_only_a_tip_from_its_own_window() {
@@ -338,9 +358,9 @@ TestCase {
         const cut = findChild(scene, "cut");
         verify(cut.truncated);
         mouseMove(cut);
-        wait(Tokens.durationTipDelay - 200);
         compare(Tips.target, null, "not before tip-delay");
-        tryCompare(Tips, "target", cut, Tokens.durationTipDelay);
+        runOutTipDelay();
+        compare(Tips.target, cut);
         compare(Tips.text, "a network name far too long for its box");
         verify(tooltip.visible);
         compare(findChild(tooltip, "words").text, "a network name far too long for its box");
@@ -349,22 +369,23 @@ TestCase {
     function test_a_text_that_fits_has_no_tip() {
         mouseMove(findChild(scene, "fits"));
         compare(Tips.waiting, null);
-        wait(Tokens.durationTipDelay * 2);
-        compare(Tips.target, null);
+        verifyNoTipComes();
     }
 
     function test_a_text_cut_at_its_line_count_shows_all_its_lines_in_its_tip() {
         const lines = findChild(scene, "lines");
         verify(lines.truncated);
         mouseMove(lines);
-        tryCompare(Tips, "target", lines, Tokens.durationTipDelay * 2);
+        runOutTipDelay();
+        compare(Tips.target, lines);
         compare(Tips.text, "the first line\nand the second", "without the space around them");
         compare(findChild(tooltip, "words").lineCount, 2, "line for line");
     }
 
     function test_moving_on_from_another_tip_a_cut_text_shows_its_tip_at_once() {
         mouseMove(box("close"));
-        tryCompare(Tips, "target", box("close"), Tokens.durationTipDelay * 2);
+        runOutTipDelay();
+        compare(Tips.target, box("close"));
         mouseMove(findChild(scene, "cut"));
         compare(Tips.target, findChild(scene, "cut"));
     }
@@ -373,8 +394,7 @@ TestCase {
         const cut = findChild(scene, "cut");
         touchEvent(cut).press(0, cut, cut.width / 2, cut.height / 2).commit();
         touchEvent(cut).release(0, cut, cut.width / 2, cut.height / 2).commit();
-        wait(Tokens.durationTipDelay * 2);
-        compare(Tips.target, null);
+        verifyNoTipComes();
     }
 
     function test_escape_a_press_and_leaving_hide_the_tip_of_a_cut_text() {
@@ -386,7 +406,8 @@ TestCase {
         });
         scene.forceActiveFocus();
         mouseMove(cut);
-        tryCompare(Tips, "target", cut, Tokens.durationTipDelay * 2);
+        runOutTipDelay();
+        compare(Tips.target, cut);
         keyClick(Qt.Key_Escape);
         compare(Tips.target, null, "Escape");
         compare(lower, 0, "the tip used it");
@@ -407,9 +428,10 @@ TestCase {
     function test_a_text_that_comes_to_be_cut_brings_its_tip_and_one_that_fits_again_takes_it_away() {
         const fits = findChild(scene, "fits");
         mouseMove(fits);
-        wait(Tokens.durationTipDelay * 2);
+        verifyNoTipComes();
         fits.text = "a name that has grown too long for its box";
-        tryCompare(Tips, "target", fits, Tokens.durationTipDelay * 2);
+        runOutTipDelay();
+        compare(Tips.target, fits);
         compare(Tips.text, "a name that has grown too long for its box");
         fits.text = "a new name, again far too long for its box";
         verify(fits.truncated, "the new words are cut too");
@@ -424,7 +446,8 @@ TestCase {
         mouseMove(cut);
         compare(Tips.waiting, cut);
         cut.text = "another name far too long for its box";
-        tryCompare(Tips, "target", cut, Tokens.durationTipDelay * 2);
+        runOutTipDelay();
+        compare(Tips.target, cut);
         compare(Tips.text, "another name far too long for its box");
         mouseMove(scene, 5, 5);
         Tips.hiddenAt = -Infinity;
@@ -432,16 +455,16 @@ TestCase {
         compare(Tips.waiting, cut);
         cut.width = 900;
         compare(Tips.waiting, null);
-        wait(Tokens.durationTipDelay * 2);
-        compare(Tips.target, null, "words that fit by the end of tip-delay bring no tip");
+        verifyNoTipComes("words that fit by the end of tip-delay bring no tip");
     }
 
     function test_new_words_while_a_cut_text_s_tip_waits_do_not_start_tip_delay_again() {
         const cut = findChild(scene, "cut");
         mouseMove(cut);
-        wait(Tokens.durationTipDelay - 150);
+        delayRuns.clear();
         cut.text = "another name far too long for its box";
-        wait(300);
+        compare(delayRuns.count, 0, "tip-delay runs on as it was");
+        runOutTipDelay();
         compare(Tips.target, cut, "it shows once the pointer has rested for tip-delay");
         compare(Tips.text, "another name far too long for its box");
     }
@@ -451,8 +474,7 @@ TestCase {
         verify(unhosted.truncated);
         mouseMove(unhosted);
         compare(Tips.waiting, null);
-        wait(Tokens.durationTipDelay * 2);
-        compare(Tips.target, null);
+        verifyNoTipComes();
     }
 
     function test_under_reduced_motion_a_tip_is_there_at_once() {
