@@ -848,6 +848,8 @@ TestCase {
             else
                 mouseMove(scene, x + dx * step / 10, y);
         }
+        // Qt Quick holds back a touch move that comes before the frame it waits for and hands it over with that frame.
+        waitForRendering(scene);
         return () => touch ? touch.release(0, scene, x + dx, y).commit() : mouseRelease(scene, x + dx, y);
     }
 
