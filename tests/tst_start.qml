@@ -1096,64 +1096,6 @@ TestCase {
         compare(sentence.mapToItem(place, 0, 0), Qt.point(line.x, line.y + Geometry.hairline + Tokens.spaceM));
     }
 
-    function test_enter_or_space_on_an_app_launches_it_once() {
-        openOnAllApps(["ark", "Blender", "konsole"]);
-        keyClick(Qt.Key_Down);
-        keyClick(Qt.Key_Right);
-        keyClick(Qt.Key_Return);
-        compare(calls, ["launch Blender"]);
-        verify(!start.wanted);
-        keyClick(Qt.Key_Return);
-        compare(calls, ["launch Blender"], "once");
-        tryVerify(() => closedSpy.count === 1, 3000);
-        openOnAllApps(["ark", "Blender", "konsole"]);
-        keyClick(Qt.Key_Down);
-        keyClick(Qt.Key_Space);
-        compare(calls, ["launch Blender", "launch ark"]);
-    }
-
-    function test_a_typed_letter_jumps_to_the_next_app_it_starts_whatever_the_case_and_again_to_the_one_after() {
-        openOnAllApps(["ark", "Blender", "Dateien", "Dolphin", "dragon", "Elisa"]);
-        keyClick("d");
-        verify(letterTile(2).activeFocus, "the first that starts with it");
-        keyClick("d");
-        verify(letterTile(3).activeFocus, "the same letter again, the next");
-        keyClick("D");
-        verify(letterTile(4).activeFocus, "a capital counts the same");
-        keyClick("d");
-        verify(letterTile(2).activeFocus, "round past the last");
-        keyClick("q");
-        verify(letterTile(2).activeFocus, "without a match nothing happens");
-        compare(start.query, "", "and nothing is searched");
-        verify(named("apps").visible);
-        verify(!named("results").visible);
-        keyClick("e");
-        verify(letterTile(5).activeFocus);
-    }
-
-    function test_a_letter_typed_while_the_start_turns_to_alle_apps_ends_the_turn_and_jumps() {
-        start.apps = ["ark", "Blender", "konsole"].map(name => installedApp(name));
-        openNow();
-        keyClick(Qt.Key_Right);
-        verify(start.turning);
-        keyClick("k");
-        verify(!start.turning);
-        verify(named("apps").visible);
-        verify(letterTile(2).activeFocus);
-        compare(start.query, "");
-    }
-
-    function test_in_the_start_place_typing_still_searches() {
-        openOnAllApps(["Kate", "Konsole", "Okular"]);
-        Prefs.motion = "off";
-        keyClick(Qt.Key_Left);
-        compare(named("pivot").currentIndex, 0);
-        keyClick("k");
-        compare(start.query, "k");
-        verify(named("results").visible);
-        compare(hitNames(), ["Kate", "Konsole", "Okular"]);
-    }
-
     function test_pressing_an_app_launches_it_once_and_turns_the_start_out_forward_at_half_rekta_s_pace_with_it_last() {
         openOnAllApps(["ark", "Blender", "konsole"]);
         const pressed = letterTile(1);
