@@ -462,8 +462,6 @@ FocusScope {
     // A tile asks for its context menu at `at`, in the tile. `id` is its app's, "" when none is known; `inPinned` offers
     // the sizes too. The menu opens at that point, turned to stay in the Start, with the first item it may choose in focus.
     function openMenu(tile: Tile, at: point, id: string, inPinned: bool) {
-        if (!wanted)
-            return;
         const app = (apps ?? []).find(known => Rules.sameApp(known.id, id)) ?? null;
         const pin = pinned.find(known => Rules.sameApp(known.id, id)) ?? null;
         menuApp = {
@@ -586,7 +584,7 @@ FocusScope {
     function unpinFocused() {
         const tile = pinTiles().find(pinTile => pinTile.activeFocus);
         const app = pinned.find(known => known.id === tile?.appId);
-        if (!tile || !app || !pinFile || pinFile.fault === "broken")
+        if (!app || !pinFile)
             return;
         unpinApp({
             id: app.id,
