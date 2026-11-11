@@ -305,14 +305,14 @@ TestCase {
         compare(rowNames(menu)[0], "zurück · Devices");
     }
 
-    function test_a_checkbox_entry_starts_its_text_where_the_other_entries_do() {
+    function test_a_checkbox_entry_stands_before_its_text_in_a_menu_without_icons() {
         const menu = open(threeApps());
         keyClick(Qt.Key_Right);
-        const textEdge = row => findChild(row, "label").x;
         const pause = rowAt(menu, "Pause");
         compare(pause.kind, "checkbox");
-        compare(textEdge(pause), textEdge(rowAt(menu, "Open folder")));
-        verify(findChild(pause, "check").x + findChild(pause, "check").width <= textEdge(pause), "the box stands before the text");
+        compare(findChild(pause, "check").x, Tokens.spaceM, "the box where a row starts");
+        compare(findChild(pause, "label").x, Tokens.spaceM + Geometry.menuCheck + Tokens.spaceS, "the text after the box");
+        compare(findChild(rowAt(menu, "Open folder"), "label").x, Tokens.spaceM, "an entry without a box starts at the edge");
     }
 
     function test_an_entry_with_an_icon_shows_it_first_and_every_entry_starts_its_words_at_one_edge() {
@@ -325,20 +325,20 @@ TestCase {
         compare(icon.width, 20);
         compare(icon.height, 20);
         const edge = icon.x + icon.width + Tokens.spaceS;
-        for (const text of ["Compose", "Settings", "Notify", "zurück · Mail"])
+        for (const text of ["Compose", "Settings", "Notify"])
             compare(findChild(rowAt(menu, text), "label").x, edge, `${text} starts its words at the edge`);
+        compare(findChild(rowAt(menu, "zurück · Mail"), "label").x, Tokens.spaceM + Geometry.chevronSize + Tokens.spaceS, "the back row has its chevron, not the icon's room");
         verify(!findChild(rowAt(menu, "Settings"), "icon").visible, "an entry without an icon gets none");
     }
 
-    function test_an_apps_menu_without_icons_shows_none_and_keeps_its_words_and_boxes_where_they_were() {
+    function test_an_apps_menu_without_icons_shows_none_and_starts_its_words_at_the_edge_with_a_box_before_its_word() {
         const menu = open(threeApps());
         keyClick(Qt.Key_Right);
-        const edge = Tokens.spaceM + 20 + Tokens.spaceS;
-        for (const text of ["Open folder", "Pause", "Devices"]) {
+        for (const text of ["Open folder", "Devices"]) {
             verify(!findChild(rowAt(menu, text), "icon").visible, text);
-            compare(findChild(rowAt(menu, text), "label").x, edge, text);
+            compare(findChild(rowAt(menu, text), "label").x, Tokens.spaceM, text);
         }
-        compare(findChild(rowAt(menu, "Pause"), "check").x, Tokens.spaceM + (20 - 10) / 2, "the box stands where the back row's icon does");
+        compare(findChild(rowAt(menu, "Pause"), "check").x, Tokens.spaceM);
     }
 
     function test_an_app_whose_icon_name_the_theme_does_not_know_shows_no_picture_and_its_word_stands_at_the_common_edge() {

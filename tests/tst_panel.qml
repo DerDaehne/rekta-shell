@@ -2243,7 +2243,7 @@ TestCase {
         compare(findChild(group, "heading").text, "verbindungen", "under the group's heading");
         const rows = levelRows(level);
         compare(rows.map(row => row.text), ["zurück · wlan", "home", "office"]);
-        compare(rows[0].glyph, "back");
+        compare(rows[0].isBack, true);
         compare(rows.slice(1).map(row => row.kind), ["radio", "radio"]);
         compare(rows.slice(1).map(row => row.checked), [true, false], "the current one is marked as a chosen menu option");
         waitForRendering(panel);
@@ -2251,6 +2251,21 @@ TestCase {
         compare(chosenOptions, [1], "a click chooses");
         verify(!level.open, "and goes back");
         verify(findChild(group, "rows").visible);
+    }
+
+    function test_the_back_row_of_a_level_has_a_chevron_back_and_a_hairline_and_the_options_start_at_the_edge() {
+        const panel = showLevelPanel();
+        const level = findChild(panel, "level");
+        mouseClick(findChild(panel, "chooseNetwork"));
+        waitForRendering(panel);
+        const rows = levelRows(level);
+        verify(findChild(rows[0], "chevron").visible, "a chevron pointing back");
+        compare(findChild(rows[0], "chevron").rotation, Geometry.chevronBackTurn);
+        verify(!findChild(rows[0], "glyph").visible, "in place of the icon");
+        verify(findChild(rows[0], "hairline").visible, "a hairline below");
+        compare(findChild(rows[0], "label").font.weight, Tokens.fontWeightSemibold);
+        const stand = findChild(rows[1], "label").x;
+        compare(stand, rows[1].inset + rows[1].checkSpace, "the options do not make room for an icon");
     }
 
     function test_the_back_row_goes_back_without_choosing() {

@@ -132,6 +132,13 @@ QtObject {
     // (rekta.css:1019)
     readonly property real menuCheck: 10
     readonly property real menuCheckBorder: 1
+    // `.rk-menu-item[aria-haspopup='menu']::after, .rk-menu-back::before { width: 6px; height: 6px; border-width: 1.6px 1.6px 0 0 }`
+    // (rekta.css:1029–1030); the chevron back is turned -135° and set 2px to the trailing side: `.rk-menu-back::before
+    // { transform: translateX(2px) rotate(-135deg) }` (rekta.css:1034)
+    readonly property real chevronSize: 6
+    readonly property real chevronStroke: 1.6
+    readonly property real chevronBackTurn: -135
+    readonly property real chevronBackNudge: 2
     // `.rk-tip { max-width: min(20rem, …); padding: 4px var(--rk-space-s) }` (rekta.css:572–573)
     readonly property real tipMaxWidth: 320
     readonly property real tipPaddingY: 4

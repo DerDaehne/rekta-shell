@@ -15,6 +15,7 @@ PivotTitle 1.0 PivotTitle.qml
 GroupHeading 1.0 GroupHeading.qml
 Empty 1.0 Empty.qml
 Hairline 1.0 Hairline.qml
+Chevron 1.0 Chevron.qml
 Picture 1.0 Picture.qml
 PictureIcon 1.0 PictureIcon.qml
 FocusRing 1.0 FocusRing.qml

@@ -176,7 +176,7 @@ FloatSurface {
         id: backRow
 
         objectName: "back"
-        glyph: menu.back !== null ? "back" : ""
+        isBack: true
         text: `${menu.backWord} · ${menu.backName}`
         visible: menu.back !== null
     }

@@ -94,7 +94,7 @@ Column {
         id: back
 
         objectName: "back"
-        glyph: "back"
+        isBack: true
         text: `zurück · ${level.name}`
         activeFocusOnTab: true
     }

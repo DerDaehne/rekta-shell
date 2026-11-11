@@ -33,12 +33,15 @@ Item {
     property bool iconSlot: false
     // Choosing it opens a deeper level the host swaps in, so the menu stays open.
     property bool opensLevel: false
+    // The back row of a level (rekta.css:1033–1037): a chevron pointing back instead of an icon, words in text-contrast-high
+    // and semibold, a hairline below. It is no row with an icon, so it takes no part in the edge the others share.
+    property bool isBack: false
     readonly property bool disabled: disabledReason !== "" || dimmed
     readonly property bool checkable: kind !== "item"
     readonly property string label: disabledReason !== "" ? `${text} (${disabledReason})` : text
-    readonly property color ink: disabled ? Tokens.color.disabled : Tokens.color.textPrimary
-    readonly property real checkSpace: (checkable && !checkInIconSlot) || menuHasCheckWithIcon ? Geometry.menuCheck + Tokens.spaceS : 0
-    readonly property bool hasIcon: icon.toString() !== "" || glyph !== ""
+    readonly property color ink: disabled ? Tokens.color.disabled : isBack ? Tokens.color.textContrastHigh : Tokens.color.textPrimary
+    readonly property real checkSpace: !isBack && ((checkable && !checkInIconSlot) || menuHasCheckWithIcon) ? Geometry.menuCheck + Tokens.spaceS : 0
+    readonly property bool hasIcon: !isBack && (icon.toString() !== "" || glyph !== "")
     readonly property var menuRows: Array.from(parent?.children ?? []).filter(row => row.visible || !item.visible)
     readonly property bool menuHasIcons: menuRows.some(row => row.hasIcon === true)
     // A row with a box and an icon has the box first (states.md:138–141); every row keeps the box's room, so all texts
@@ -47,16 +50,17 @@ Item {
     // Otherwise, in a menu with icons, a row without one has its box where the icons stand, so every text starts at one
     // edge.
     readonly property bool checkInIconSlot: checkable && menuHasIcons && !hasIcon && !menuHasCheckWithIcon
-    readonly property real iconSpace: menuHasIcons || iconSlot ? Geometry.iconSize + Tokens.spaceS : 0
+    readonly property real iconSpace: !isBack && (menuHasIcons || iconSlot) ? Geometry.iconSize + Tokens.spaceS : 0
     readonly property real leadSpace: lead !== "" ? leadWords.implicitWidth + Tokens.spaceS : 0
-    readonly property real textEdge: inset + checkSpace + iconSpace + leadSpace
+    readonly property real chevronSpace: isBack ? Geometry.chevronSize + Tokens.spaceS : 0
+    readonly property real textEdge: inset + chevronSpace + checkSpace + iconSpace + leadSpace
     readonly property string spoken: lead !== "" ? `${lead} ${label}` : label
     // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:1014, :1021)
     readonly property real keySpace: keyHint !== "" ? Tokens.spaceS + Tokens.spaceL + key.implicitWidth : 0
     readonly property real endSpace: end.implicitWidth > 0 ? Tokens.spaceS + end.implicitWidth : 0
 
     width: parent ? parent.width : implicitWidth
-    implicitWidth: 2 * inset + checkSpace + iconSpace + leadSpace + words.implicitWidth + endSpace + keySpace
+    implicitWidth: 2 * inset + chevronSpace + checkSpace + iconSpace + leadSpace + words.implicitWidth + endSpace + keySpace
     implicitHeight: Tokens.rowHeight
     Accessible.role: Accessible.MenuItem
     Accessible.name: spoken
@@ -134,11 +138,27 @@ Item {
         elide: Text.ElideRight
         font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeS
+        font.weight: item.isBack ? Tokens.fontWeightSemibold : Font.Normal
         color: item.ink
 
         OverflowTip {
             id: labelTip
         }
+    }
+
+    Chevron {
+        objectName: "chevron"
+        x: item.inset + Geometry.chevronBackNudge
+        anchors.verticalCenter: parent.verticalCenter
+        rotation: Geometry.chevronBackTurn
+        color: item.ink
+        visible: item.isBack
+    }
+
+    Hairline {
+        objectName: "hairline"
+        y: parent.height - height
+        visible: item.isBack
     }
 
     Row {

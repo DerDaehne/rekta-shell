@@ -608,7 +608,8 @@ TestCase {
         const levelled = levelMenu();
         const back = findChild(levelled, "back");
         verify(back.visible);
-        compare(back.glyph, "back");
+        compare(back.isBack, true);
+        compare(back.glyph, "", "the chevron, not an icon");
         compare(back.text, "back · mail");
         verify(levelled.items()[0] === back);
         mouseClick(back);
@@ -621,6 +622,95 @@ TestCase {
         levelled.backWord = "zurück";
         compare(findChild(levelled, "back").text, "zurück · mail");
         compare(findChild(levelled, "back").Accessible.name, "zurück · mail");
+    }
+
+    Component {
+        id: backLevelComponent
+
+        Menu {
+            property bool withIcon: false
+            property bool boxWithIcon: false
+
+            back: () => {}
+            backName: "mail"
+
+            MenuItem { objectName: "compose"; text: "compose"; icon: withIcon ? testCase.picture : "" }
+            MenuItem { objectName: "notify"; kind: "checkbox"; text: "notify"; icon: boxWithIcon ? testCase.picture : "" }
+            MenuItem { objectName: "settings"; text: "settings" }
+        }
+    }
+
+    function backLevel(withIcon: bool, boxWithIcon: bool): var {
+        const level = createTemporaryObject(backLevelComponent, testCase, { withIcon, boxWithIcon });
+        level.open = true;
+        return level;
+    }
+
+    function test_the_back_row_starts_with_a_chevron_pointing_back_instead_of_an_icon() {
+        const level = backLevel(false, false);
+        const back = findChild(level, "back");
+        const chevron = findChild(back, "chevron");
+        verify(chevron.visible);
+        compare(chevron.width, Geometry.chevronSize);
+        compare(chevron.height, Geometry.chevronSize);
+        compare(chevron.rotation, Geometry.chevronBackTurn);
+        compare(chevron.x, Tokens.spaceM + Geometry.chevronBackNudge);
+        compare(findChild(chevron, "top").height, Geometry.chevronStroke);
+        compare(findChild(chevron, "right").width, Geometry.chevronStroke);
+        verify(!findChild(back, "glyph").visible, "no icon");
+        compare(findChild(back, "label").x, Tokens.spaceM + Geometry.chevronSize + Tokens.spaceS, "the words follow the chevron");
+    }
+
+    function test_the_back_row_is_in_text_contrast_high_and_semibold_and_the_other_rows_are_not() {
+        const level = backLevel(false, false);
+        const label = findChild(findChild(level, "back"), "label");
+        compare(label.color, Tokens.color.textContrastHigh);
+        compare(label.font.weight, Tokens.fontWeightSemibold);
+        compare(findChild(findChild(level, "back"), "chevron").color, Tokens.color.textContrastHigh, "the chevron follows the words");
+        const other = findChild(findChild(level, "settings"), "label");
+        compare(other.color, Tokens.color.textPrimary);
+        compare(other.font.weight, Font.Normal);
+    }
+
+    function test_a_hairline_in_text_contrast_low_lies_at_the_foot_of_the_back_row_inside_its_height() {
+        const level = backLevel(false, false);
+        const back = findChild(level, "back");
+        const hairline = findChild(back, "hairline");
+        verify(hairline.visible);
+        compare(hairline.height, Geometry.hairline);
+        compare(hairline.y + hairline.height, back.height, "inside the row, as a border-box has its border");
+        compare(back.height, Tokens.rowHeight, "the row keeps its height");
+        compare(hairline.color, Tokens.color.textContrastLow);
+        verify(!findChild(findChild(level, "settings"), "hairline").visible, "no other row has one");
+    }
+
+    function test_rows_without_icons_start_at_the_menu_s_edge_and_a_box_stands_before_its_word() {
+        const level = backLevel(false, false);
+        compare(findChild(findChild(level, "compose"), "label").x, Tokens.spaceM, "the back row's chevron makes no room for an icon");
+        const notify = findChild(level, "notify");
+        compare(findChild(notify, "check").x, Tokens.spaceM);
+        compare(findChild(notify, "label").x, Tokens.spaceM + Geometry.menuCheck + Tokens.spaceS);
+    }
+
+    function test_when_a_row_has_an_icon_the_rows_share_one_edge_but_the_back_row_does_not_move() {
+        const level = backLevel(true, false);
+        const edge = Tokens.spaceM + Geometry.iconSize + Tokens.spaceS;
+        compare(findChild(findChild(level, "compose"), "label").x, edge);
+        compare(findChild(findChild(level, "settings"), "label").x, edge);
+        compare(findChild(findChild(level, "back"), "label").x, Tokens.spaceM + Geometry.chevronSize + Tokens.spaceS, "it is no row with an icon");
+    }
+
+    function test_when_a_box_and_an_icon_share_a_row_the_back_row_keeps_no_room_for_the_box() {
+        const level = backLevel(false, true);
+        const boxEdge = Tokens.spaceM + Geometry.menuCheck + Tokens.spaceS;
+        compare(findChild(findChild(level, "settings"), "label").x, boxEdge + Geometry.iconSize + Tokens.spaceS, "every row keeps the box's room");
+        compare(findChild(findChild(level, "back"), "label").x, Tokens.spaceM + Geometry.chevronSize + Tokens.spaceS);
+    }
+
+    function test_a_menu_without_a_deeper_level_has_no_chevron_and_no_hairline() {
+        const menu = createTemporaryObject(sceneComponent, testCase);
+        const back = findChild(menu, "back");
+        verify(!back.visible);
     }
 
     function test_without_a_deeper_level_there_is_no_back_row_and_left_does_nothing() {
