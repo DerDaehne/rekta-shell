@@ -2242,6 +2242,7 @@ TestCase {
     function test_contact_sheet_of_the_turn() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
+        Prefs.motion = "on";
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const sheet = createTemporaryObject(framesComponent, testCase);
