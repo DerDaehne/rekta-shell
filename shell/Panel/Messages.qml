@@ -232,41 +232,8 @@ Column {
                 objectName: "rows"
                 width: parent.width
 
-                // A row that comes slides in from above and fades up.
-                add: Transition {
-                    NumberAnimation {
-                        property: "y"
-                        from: ViewTransition.destination.y - Geometry.rowEnterShift
-                        duration: Tokens.durationShort
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: Tokens.easeIn
-                    }
-                    NumberAnimation {
-                        property: "opacity"
-                        from: 0
-                        to: 1
-                        duration: Tokens.durationShort
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: Tokens.easeIn
-                    }
-                }
-
-                // The rest close the gap or make room; an arrival cut short still ends whole.
-                move: Transition {
-                    NumberAnimation {
-                        property: "y"
-                        duration: Tokens.durationModerate
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: Tokens.easeBase
-                    }
-                    NumberAnimation {
-                        property: "opacity"
-                        to: 1
-                        duration: Tokens.durationModerate
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: Tokens.easeBase
-                    }
-                }
+                add: RowArrival {}
+                move: RowsMakeRoom {}
 
                 Repeater {
                     id: rowItems

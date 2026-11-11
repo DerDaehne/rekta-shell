@@ -158,7 +158,7 @@ TestCase {
         openNow();
         compare(named("pivot").titles, ["start", "alle apps"]);
         compare(named("pivot").currentIndex, 0);
-        compare(named("sectionStrip").titles, ["läuft", "angeheftet"]);
+        compare(named("sectionStrip").titles, ["läuft", "angeheftet", "heute"]);
         compare(named("sectionStrip").level, "facet");
         const running = named("running").mapToItem(start, 0, 0);
         const pinned = named("pinned").mapToItem(start, 0, 0);
@@ -213,7 +213,7 @@ TestCase {
         openNow();
         start.windows = [];
         verify(!named("running").visible);
-        compare(named("sectionStrip").titles, ["angeheftet"], "its title leaves the strip too");
+        compare(named("sectionStrip").titles, ["angeheftet", "heute"], "its title leaves the strip too");
         tryCompare(named("pinned"), "x", Tokens.spaceXl);
     }
 

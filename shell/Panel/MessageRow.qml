@@ -6,8 +6,8 @@ import Rekta
 // One notification in the centre, a row on a hairline (rekta.css:73–75): the picture or the app's icon, square with a
 // tile's corners, the summary in semibold, how long ago and a quiet "entfernen" button at the end, one line of the
 // body, cut, and under it up to two of the notification's actions as quiet buttons. A click, Enter or Space presses the
-// row, tinted on hover and press like a toast's text. The button is always there; Delete, or pulling the row towards
-// the trailing edge, are shortcuts to it (collections.md:164–166). Let go past half its width the pulled row leaves,
+// row, tinted on hover and press like a toast's text. A removable row always has the button; Delete, or pulling it
+// towards the trailing edge, are shortcuts to it (collections.md:164–166). Let go past half its width the pulled row leaves,
 // else it glides back. Leaving, it drifts and fades as a row that leaves a list does (motion.md, "Arriving, leaving");
 // then it has gone.
 Item {
@@ -25,6 +25,10 @@ Item {
     required property string actions
     property var now: new Date()
     property var locale: Qt.locale()
+    // False where the row is only a view of the centre's: no button, no Delete, no pull.
+    property bool removable: true
+    // What the row stands on, which the picture's corners are drawn in (Picture.ground).
+    property color ground: Tokens.color.bg
     readonly property string time: Calendar.ago(new Date(stamp), now, locale)
     readonly property var actionList: JSON.parse(actions)
     // The focus is in it, also on a button of its own.
@@ -69,7 +73,7 @@ Item {
     Accessible.onPressAction: pressed()
 
     Keys.onPressed: event => {
-        if (event.key === Qt.Key_Delete) {
+        if (event.key === Qt.Key_Delete && row.removable) {
             removing();
         } else if ([Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space].includes(event.key)) {
             // A held key presses once.
@@ -122,6 +126,7 @@ Item {
             objectName: "icon"
             y: heading.y + (heading.height - height) / 2
             source: row.icon
+            ground: row.ground
         }
 
         Body {
@@ -145,7 +150,7 @@ Item {
 
             objectName: "time"
             // The parts of a row stand space-m apart (rekta.css:74).
-            x: remove.x - Tokens.spaceM - width
+            x: (row.removable ? remove.x - Tokens.spaceM : row.width) - width
             anchors.baseline: heading.baseline
             text: row.time
             wrapMode: Text.NoWrap
@@ -188,6 +193,7 @@ Item {
             id: remove
 
             objectName: "remove"
+            visible: row.removable
             x: row.width - width
             y: heading.y + (heading.height - height) / 2
             variant: "quiet"
@@ -242,7 +248,7 @@ Item {
 
         target: null
         yAxis.enabled: false
-        enabled: !row.going
+        enabled: !row.going && row.removable
 
         onActiveTranslationChanged: {
             if (active)

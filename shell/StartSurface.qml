@@ -134,6 +134,8 @@ PanelWindow {
         starts: usage.starts
         unseen: surface.notices.unseenByApp
         lines: Rules.playingLines(surface.media.player, surface.media.appId)
+        board: surface.notices
+        playerChoice: surface.media.choice
         preview: Component {
             WindowPreview {
                 id: windowPreview

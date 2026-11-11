@@ -1,11 +1,14 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Notices
 import Rekta
+import State
 
 // The Start, after the shell's decision for it: glass over the windows, across the whole surface. Its pivot
 // "start · alle apps" picks the place; the start place is a panorama of sections under a strip of their titles:
-// "läuft", a tile for each open window, the most recent first, then "angeheftet", the pinned apps; "alle apps" is a
+// "läuft", a tile for each open window, the most recent first, then "angeheftet", the pinned apps, then "heute", what
+// plays and the newest notifications (Today); "alle apps" is a
 // panorama of the installed apps A–Z, a section for each initial, where a typed letter jumps to the next app it
 // starts. It opens once the windows are three quarters back (Rekta's hand-over between places), its parts turning in
 // as a place arrives, and closes turning them out: back the way they came, or forward after a press, the pressed tile
@@ -44,6 +47,9 @@ FocusScope {
     property string decimalPoint: Qt.locale().decimalPoint
     // Draws a window's preview on its tile (RunningTile.preview); null for none.
     property Component preview: null
+    // What "heute" shows: the notifications and the choice of player.
+    property NoticeBoard board: null
+    property PlayerChoice playerChoice: null
     // closed, opening (the glass comes, then the parts turn in), open, or closing (the parts turn out, the glass goes).
     property string phase: "closed"
     // From opening until it has closed; the host shows its surface while this holds.
@@ -80,7 +86,7 @@ FocusScope {
     // The rows of tiles a section of "alle apps" holds under its heading; stacked, no letter splits.
     readonly property real letterRows: rowsHeld(appsPanorama)
     // "angeheftet" is as many units wide as its tiles need in the rows it holds, at least four and only while it fits
-    // before the trailing inset; on a panorama past the window it keeps four (layout.md:146–148 against :31–32).
+    // with "heute" before the trailing inset; on a panorama past the window it keeps four (layout.md:146–148 against :31–32).
     readonly property int pinnedUnits: fittedPinnedUnits()
     // What was typed: the text of the search's line.
     property alias query: line.text
@@ -106,7 +112,8 @@ FocusScope {
     function fittedPinnedUnits(): int {
         // Not runningSection.visible: that is false while the Start is hidden, and the width would change as it shows.
         const before = running.length > 0 ? runningSection.sectionWidth + panorama.gap : 0;
-        const room = Math.floor((panorama.width - 2 * panorama.inset - before) / unitStep);
+        const after = todaySection.sectionWidth + panorama.gap;
+        const room = Math.floor((panorama.width - 2 * panorama.inset - before - after) / unitStep);
         const rows = rowsHeld(panorama);
         let units = 4;
         while (units < room && pinnedGrid.rowsOf(pinned, units) > rows)
@@ -422,7 +429,7 @@ FocusScope {
     }
 
     function allTiles(): var {
-        return [...runningGrid.children, ...pinnedGrid.children, ...hitsGrid.children].filter(item => (item as Tile) !== null).concat(letterTiles());
+        return [...runningGrid.children, ...pinnedGrid.children, ...hitsGrid.children].filter(item => (item as Tile) !== null).concat(today.entries(), letterTiles());
     }
 
     // The tiles of the section being read, in reading order.
@@ -925,7 +932,7 @@ FocusScope {
                 y: start.placeTop
                 width: parent.width - 2 * start.stripInset
                 enabled: start.wanted
-                titles: start.running.length > 0 ? ["läuft", "angeheftet"] : ["angeheftet"]
+                titles: start.running.length > 0 ? ["läuft", "angeheftet", "heute"] : ["angeheftet", "heute"]
                 placeWidth: start.width
                 viewportHeight: start.height
             }
@@ -1026,6 +1033,32 @@ FocusScope {
                                 onActivated: start.press(appTile, () => appTile.modelData.launch())
                             }
                         }
+                    }
+                }
+
+                // Always there, empty too, two units wide; a press there leaves forward, as a row of the search does.
+                Section {
+                    id: todaySection
+
+                    objectName: "today"
+                    title: "heute"
+                    sectionWidth: 2 * start.unitStep
+                    verticalInset: Tokens.spaceXl
+                    headingSpacing: Tokens.spaceL
+                    headingToken: Tokens.fontSizeXl
+                    placeWidth: start.width
+                    enabled: start.wanted
+
+                    Today {
+                        id: today
+
+                        board: start.board
+                        choice: start.playerChoice
+                        windows: start.windows
+                        onChosen: start.leave({
+                            back: false,
+                            pressed: null
+                        })
                     }
                 }
             }

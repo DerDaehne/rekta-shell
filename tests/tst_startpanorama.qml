@@ -153,12 +153,12 @@ TestCase {
 
     function test_the_start_shows_the_pivot_the_strip_and_the_panorama_with_running_and_pinned() {
         openNow();
-        compare(named("sectionStrip").titles, ["läuft", "angeheftet"]);
+        compare(named("sectionStrip").titles, ["läuft", "angeheftet", "heute"]);
         verify(named("running").visible);
         verify(named("pinned").visible);
         const sections = named("panorama").sectionItems();
-        compare(sections.length, 2);
-        verify(sections[0] === named("running") && sections[1] === named("pinned"), "in a fixed order");
+        compare(sections.length, 3);
+        verify(sections[0] === named("running") && sections[1] === named("pinned") && sections[2] === named("today"), "in a fixed order");
     }
 
     function test_without_windows_running_is_gone_from_the_panorama_and_the_strip() {
@@ -166,8 +166,8 @@ TestCase {
             windows: []
         });
         verify(!named("running").visible);
-        compare(named("sectionStrip").titles, ["angeheftet"]);
-        compare(named("panorama").sectionItems(), [named("pinned")]);
+        compare(named("sectionStrip").titles, ["angeheftet", "heute"]);
+        compare(named("panorama").sectionItems(), [named("pinned"), named("today")]);
         compare(named("pinned").x, Tokens.spaceXl, "it takes no room");
     }
 
@@ -203,9 +203,9 @@ TestCase {
     }
 
     // Its trailing edge stands at most up to the panorama's inset.
-    function pinnedStopsAtTheInset() {
-        const pinned = named("pinned");
-        verify(pinned.x + pinned.width <= named("panorama").width - Tokens.spaceXl, `${pinned.x + pinned.width} past the inset`);
+    function lastSectionStopsAtTheInset() {
+        const today = named("today");
+        verify(today.x + today.width <= named("panorama").width - Tokens.spaceXl, `${today.x + today.width} past the inset`);
     }
 
     function verifyNothingCut() {
@@ -252,6 +252,7 @@ TestCase {
 
     function test_pinned_with_many_tiles_widens_to_the_fewest_whole_units_that_show_every_row(data) {
         openAt(2560, 1440, {
+            windows: [],
             pinned: data.pinned
         });
         const pinned = named("pinned");
@@ -262,17 +263,19 @@ TestCase {
         compare(grid.columns, units);
         verifyNothingCut();
         verify(grid.rowsOf(data.pinned, units - 1) > start.rowsHeld(named("panorama")), "one unit fewer would cut a row");
-        pinnedStopsAtTheInset();
+        lastSectionStopsAtTheInset();
         verify(named("panorama").fit);
     }
 
     function test_pinned_with_more_tiles_than_the_window_holds_takes_every_unit_up_to_the_trailing_inset() {
         openAt(1600, 900, {
+            windows: [],
             pinned: appsPinned(40)
         });
         const pinned = named("pinned");
-        pinnedStopsAtTheInset();
-        verify(pinned.x + pinned.width + unit(1) > named("panorama").width - Tokens.spaceXl, "one unit more would pass the inset");
+        lastSectionStopsAtTheInset();
+        const today = named("today");
+        verify(today.x + today.width + unit(1) > named("panorama").width - Tokens.spaceXl, "one unit more would push heute past the inset");
         compare(pinned.width, unit(6));
         verify(named("panorama").fit);
     }
@@ -288,7 +291,7 @@ TestCase {
 
     function test_pinned_keeps_its_width_while_the_start_waits_hidden_for_the_windows() {
         Prefs.motion = "on";
-        makeStart(1600, 900, {
+        makeStart(2000, 900, {
             pinned: appsPinned(40)
         });
         start.open();
@@ -329,7 +332,7 @@ TestCase {
         compare(named("sectionStrip").currentIndex, 0);
         panorama.userScroll();
         panorama.scroller.contentX = panorama.mostScroll();
-        compare(named("sectionStrip").currentIndex, 1);
+        compare(named("sectionStrip").currentIndex, 2);
         panorama.scroller.contentX = 0;
         compare(named("sectionStrip").currentIndex, 0);
     }
@@ -389,16 +392,16 @@ TestCase {
         });
         compare(marked(), named("pinned"));
         start.windows = windowsOpen();
-        compare(named("sectionStrip").titles, ["läuft", "angeheftet"]);
+        compare(named("sectionStrip").titles, ["läuft", "angeheftet", "heute"]);
         compare(named("panorama").scroller.contentX, 0, "the view stays at the start, where running now stands");
         compare(marked(), named("running"));
     }
 
     function test_running_that_goes_while_pinned_is_read_leaves_pinned_marked_where_the_view_now_begins() {
-        openAt(1000, 900);
+        openAt(1300, 900);
         const panorama = named("panorama");
         panorama.userScroll();
-        panorama.scroller.contentX = panorama.mostScroll();
+        panorama.scroller.contentX = named("pinned").x - Tokens.spaceXl;
         compare(marked(), named("pinned"));
         start.windows = [];
         compare(panorama.scroller.contentX, 0);
@@ -415,7 +418,7 @@ TestCase {
     }
 
     function test_running_that_goes_during_a_jump_to_pinned_ends_the_glide_with_the_view_and_the_mark_on_pinned() {
-        openAt(1000, 900);
+        openAt(1300, 900);
         Prefs.motion = "on";
         const panorama = named("panorama");
         named("sectionStrip").select(1);
@@ -682,9 +685,9 @@ TestCase {
         compare(strip.currentIndex, 0);
         keyClick(Qt.Key_End);
         tryCompare(named("panorama"), "gliding", false);
-        compare(strip.currentIndex, 1);
+        compare(strip.currentIndex, 2);
         keyClick(Qt.Key_Return);
-        verify(named("pinned").headingFocused);
+        verify(named("today").headingFocused);
     }
 
     function test_the_panorama_takes_arrows_page_keys_home_and_end_and_the_last_section_has_no_place_beyond() {
@@ -696,20 +699,23 @@ TestCase {
         compare(panorama.currentIndex, 1);
         keyClick(Qt.Key_Right);
         tryCompare(panorama, "gliding", false);
-        compare(panorama.currentIndex, 1, "no section beyond the last");
+        compare(panorama.currentIndex, 2);
+        keyClick(Qt.Key_Right);
+        tryCompare(panorama, "gliding", false);
+        compare(panorama.currentIndex, 2, "no section beyond the last");
         compare(named("pivot").currentIndex, 0, "and no place either");
         keyClick(Qt.Key_PageUp);
         tryCompare(panorama, "gliding", false);
-        compare(panorama.currentIndex, 0);
+        compare(panorama.currentIndex, 1);
         keyClick(Qt.Key_PageDown);
         tryCompare(panorama, "gliding", false);
-        compare(panorama.currentIndex, 1);
+        compare(panorama.currentIndex, 2);
         keyClick(Qt.Key_Home);
         tryCompare(panorama, "gliding", false);
         compare(panorama.currentIndex, 0);
         keyClick(Qt.Key_End);
         tryCompare(panorama, "gliding", false);
-        compare(panorama.currentIndex, 1);
+        compare(panorama.currentIndex, 2);
     }
 
     function test_arrows_go_from_the_pivot_to_the_strip_and_on_to_the_first_tile_of_the_section_read_and_back() {

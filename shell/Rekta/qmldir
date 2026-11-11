@@ -62,7 +62,7 @@ PressHidesTips 1.0 PressHidesTips.qml
 singleton Turnstile 1.0 Turnstile.qml
 singleton FadeBack 1.0 FadeBack.qml
 Sparkline 1.0 Sparkline.qml
-internal TileNews TileNews.qml
+TileNews 1.0 TileNews.qml
 Toaster 1.0 Toaster.qml
 Toast 1.0 Toast.qml
 Banner 1.0 Banner.qml
@@ -87,5 +87,7 @@ LongList 1.0 LongList.qml
 internal ListRow ListRow.qml
 Reveal 1.0 Reveal.js
 Section 1.0 Section.qml
+RowArrival 1.0 RowArrival.qml
+RowsMakeRoom 1.0 RowsMakeRoom.qml
 Panorama 1.0 Panorama.qml
 WheelLatch 1.0 WheelLatch.js
