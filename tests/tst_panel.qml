@@ -891,6 +891,39 @@ TestCase {
         verify(control("density").activeFocus, "with the focus where it was");
     }
 
+    function test_a_finger_moved_towards_the_leading_edge_leaves_the_panel_at_its_place() {
+        side.show(0);
+        const letGo = pullSideways(-0.4 * side.panelWidth, true);
+        compare(side.entry, 1, "it never comes further in than its place");
+        compare(findChild(side, "panel").x, 900 - side.panelWidth);
+        letGo();
+        compare(side.entry, 1);
+        verify(side.open);
+    }
+
+    function test_a_finger_swipe_over_an_open_sheet_leaves_the_panel_and_the_sheet_where_they_are() {
+        giveNetworks(controls);
+        showSettled(0);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        mouseClick(rowsOf("wifiBranch")[3]);
+        verify(sheet().open);
+        const letGo = pullSideways(0.6 * side.panelWidth, true);
+        compare(side.entry, 1, "the panel does not follow the finger");
+        letGo();
+        verify(side.open);
+        verify(sheet().open);
+    }
+
+    function test_a_finger_during_the_leaving_changes_nothing_and_the_panel_ends_gone() {
+        Prefs.motion = "on";
+        showSettled(0);
+        side.close();
+        pullSideways(0.2 * side.panelWidth, true)();
+        tryCompare(side, "open", false, Tokens.durationModerate * 4);
+        compare(side.entry, 0, "wholly beyond the trailing edge");
+    }
+
     function test_a_finger_moved_along_a_slider_sets_the_slider_and_leaves_the_panel_open() {
         giveSound(controls);
         showSettled(0);
