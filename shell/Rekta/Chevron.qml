@@ -7,8 +7,6 @@ Item {
 
     implicitWidth: Geometry.chevronSize
     implicitHeight: Geometry.chevronSize
-    width: implicitWidth
-    height: implicitHeight
 
     Rectangle {
         objectName: "top"

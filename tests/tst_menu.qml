@@ -657,6 +657,13 @@ TestCase {
         compare(chevron.x, Tokens.spaceM + Geometry.chevronBackNudge);
         compare(findChild(chevron, "top").height, Geometry.chevronStroke);
         compare(findChild(chevron, "right").width, Geometry.chevronStroke);
+        const top = findChild(chevron, "top");
+        const right = findChild(chevron, "right");
+        compare(top.width, Geometry.chevronSize);
+        compare(right.height, Geometry.chevronSize);
+        compare([top.x, top.y], [0, 0], "one stroke along the top edge");
+        compare([right.x, right.y], [Geometry.chevronSize - Geometry.chevronStroke, 0], "the other down the right edge");
+        compare(chevron.y + chevron.height / 2, back.height / 2, "centred in the row");
         verify(!findChild(back, "glyph").visible, "no icon");
         compare(findChild(back, "label").x, Tokens.spaceM + Geometry.chevronSize + Tokens.spaceS, "the words follow the chevron");
     }
@@ -667,6 +674,8 @@ TestCase {
         compare(label.color, Tokens.color.textContrastHigh);
         compare(label.font.weight, Tokens.fontWeightSemibold);
         compare(findChild(findChild(level, "back"), "chevron").color, Tokens.color.textContrastHigh, "the chevron follows the words");
+        for (const stroke of ["top", "right"])
+            compare(findChild(findChild(findChild(level, "back"), "chevron"), stroke).color, Tokens.color.textContrastHigh, `the  stroke follows the words`);
         const other = findChild(findChild(level, "settings"), "label");
         compare(other.color, Tokens.color.textPrimary);
         compare(other.font.weight, Font.Normal);
@@ -707,11 +716,6 @@ TestCase {
         compare(findChild(findChild(level, "back"), "label").x, Tokens.spaceM + Geometry.chevronSize + Tokens.spaceS);
     }
 
-    function test_a_menu_without_a_deeper_level_has_no_chevron_and_no_hairline() {
-        const menu = createTemporaryObject(sceneComponent, testCase);
-        const back = findChild(menu, "back");
-        verify(!back.visible);
-    }
 
     function test_without_a_deeper_level_there_is_no_back_row_and_left_does_nothing() {
         openFromKeys(0);
