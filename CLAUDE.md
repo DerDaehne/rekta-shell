@@ -289,6 +289,12 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   and installs the RPM with Quickshell from its COPR. The steps live in `packaging/fedora/ci-*.sh`,
   so the Fedora VM runs the same commands: there, `ci-build.sh` runs in a `git init` copy of the VM's `src/` (a `git archive`
   without `.git`) after `dnf install git`, as the workflow does before the checkout.
+- The RPM uses Fedora's own KWin and requires exactly the `kwin-libs` version it was built against
+  (`%{_kwin_version}` from `kwin-devel`): KWin 6.8 loads an effect only when its plugin IID names KWin's own
+  `major.minor.patch` and skips it otherwise. A Fedora KWin update is therefore held back by `dnf` until an RPM
+  built against it is installed; `ci-install-test.sh` checks the pin.
+- `%check` runs the QML tests against Fedora's Qt and typeface, which may be newer than the flake's: a test that
+  puts words into a box asserts `truncated` (or that they fit) instead of trusting the text's length.
 - Every push to `main` leaves the RPM and SRPM as a workflow artifact named
   `rekta-shell-<version>-fc<release>-<sha7>` (30 days; pull requests 7 days):
   `gh run download <run-id> -n <artifact name>`.

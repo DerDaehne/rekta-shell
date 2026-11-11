@@ -141,10 +141,11 @@ Plasma 6.8 or newer, and Quickshell 0.3, which Fedora does not package yet.
    log out and pick "Plasma". The login manager preselects the last session, so
    after a failed rekta login pick Plasma explicitly.
 
-The package depends on KWin `>= 6.8, < 6.9` because the shell's KWin effect uses
-KWin's internal headers, which change with every Plasma minor release. When
-Plasma 6.9 arrives, `dnf` holds the Plasma packages back until a new rekta-shell
-RPM for it is installed.
+The package depends on the exact KWin version it was built against (for
+example `kwin-libs = 6.8.2`): KWin loads the shell's two KWin effects only when
+they were built for its own version, down to the patch release. When Fedora
+publishes a newer KWin, `dnf upgrade` keeps KWin at the installed version
+until a rekta-shell RPM built against the new KWin is installed.
 
 ### Defaults, update, removal
 
