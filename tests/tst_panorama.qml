@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -1297,6 +1298,8 @@ TestCase {
     // Contact sheets
 
     function test_contact_sheets_of_a_panorama_that_fits_and_one_that_overflows_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         Prefs.motion = "off";
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;

@@ -6,6 +6,7 @@ import QtTest
 import Notices
 import Panel
 import Rekta
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -3583,6 +3584,8 @@ TestCase {
 
     // The panel follows the one current theme and density, so the contact sheet is drawn once per pair.
     function test_contact_sheet_of_the_panel_in_both_themes_and_densities() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             for (const density of ["compact", "comfortable"]) {
                 Prefs.theme = theme;
