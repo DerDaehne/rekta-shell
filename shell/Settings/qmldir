@@ -1,5 +1,7 @@
 module Settings
 Layers 1.0 Layers.qml
+Pins 1.0 Pins.js
 SettingsFiles 1.0 SettingsFiles.qml
+StartFile 1.0 StartFile.qml
 SystemMotion 1.0 SystemMotion.qml
 UserFile 1.0 UserFile.qml

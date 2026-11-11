@@ -55,13 +55,6 @@ TestCase {
         compare(Rules.escapeUnitName("my-app 2"), "my\\x2dapp\\x202");
     }
 
-    function test_start_json_holds_a_list_of_desktop_ids_and_sizes() {
-        compare(Rules.listedPins('{"pinned": [{"id": "org.kde.kate", "columns": 2}]}'), [{ id: "org.kde.kate", columns: 2 }]);
-        compare(Rules.listedPins('{"pinned": []}'), [], "nothing pinned is a list too");
-        compare(Rules.listedPins('{"pinned": "kate"}'), null);
-        compare(Rules.listedPins("{ broken"), null);
-    }
-
     function test_without_a_pinned_list_plasmas_own_apps_are_pinned_if_installed() {
         const installed = id => id !== "org.kde.dolphin";
         compare(Rules.pinnedTiles(undefined, installed).map(tile => tile.id), ["systemsettings", "org.kde.konsole"]);

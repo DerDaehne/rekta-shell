@@ -260,6 +260,21 @@ in
         cp *.png $out/ 2>/dev/null || true
       '';
 
+  start-file =
+    pkgs.runCommand "rekta-shell-start-file"
+      {
+        nativeBuildInputs = [
+          rekta-shell.quickshell
+          pkgs.dbus
+          pkgs.diffutils
+        ];
+        QML_IMPORT_PATH = "${qml}/shell";
+      }
+      ''
+        dbus-run-session --config-file=${pkgs.dbus}/share/dbus-1/session.conf -- sh ${qml}/tests/startfile.sh
+        touch $out
+      '';
+
   nixos-module =
     let
       system =

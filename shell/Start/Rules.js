@@ -1,6 +1,7 @@
 .pragma library
 .import Rekta as Rekta
 .import "Calc.js" as Calc
+.import Settings as Settings
 
 // The Start's rules as pure functions, apart from its surface, so the tests check them without a compositor.
 
@@ -42,28 +43,16 @@ function scopeCommand(id, command, stamp) {
     return ["systemd-run", "--user", "--scope", `--unit=app-${escapeUnitName(id)}-${stamp}`, "--", ...command];
 }
 
-// Plasma's own apps, pinned while the user has pinned nothing.
-const defaultPinned = [{ id: "systemsettings" }, { id: "org.kde.dolphin" }, { id: "org.kde.konsole" }];
-
 // A tile spans one or two units each way (tile-unit, rekta.tokens.json:838).
 // ponytail: two across at most is Rekta 0.5.0's; 0.6.0 lets a tile span up to four units across, two down.
 function span(units) {
     return Math.min(2, Math.max(1, Math.round(Number(units) || 1)));
 }
 
-// The list in start.json, {"pinned": [{"id": "org.kde.konsole", "columns": 1, "rows": 1}]}; null when it holds none.
-function listedPins(text) {
-    try {
-        const pinned = JSON.parse(text).pinned;
-        return Array.isArray(pinned) ? pinned : null;
-    } catch (error) {
-        return null;
-    }
-}
-
-// The pinned tiles from start.json's list, or the defaults without one; only installed apps, as `installed(id)` tells.
+// The pinned tiles from start.json's list (Pins.read), or the defaults without one; only installed apps, as
+// `installed(id)` tells.
 function pinnedTiles(pinned, installed) {
-    const listed = Array.isArray(pinned) ? pinned : defaultPinned;
+    const listed = Array.isArray(pinned) ? pinned : Settings.Pins.defaultPinned;
     return listed.map(tile => ({
         id: String(tile.id ?? "").replace(/\.desktop$/, ""),
         columns: span(tile.columns),

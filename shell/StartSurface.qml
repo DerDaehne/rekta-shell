@@ -39,7 +39,7 @@ PanelWindow {
     // Meta held for the key map (MetaHold), which takes the Meta that follows from the Start.
     property var metaHold: null
     // The list in start.json, null without a usable one.
-    property var listedPins: null
+    readonly property var listedPins: startFile.list
     // The window previews on the Start, and KWin's node of each that streams.
     property list<WindowPreview> previews: []
     readonly property list<int> previewNodes: previews.map(preview => preview.node).filter(node => node > 0)
@@ -217,10 +217,8 @@ PanelWindow {
         }
     }
 
-    UserFile {
-        path: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/rekta-shell/start.json`
-        onLoaded: surface.listedPins = Rules.listedPins(text())
-        onLoadFailed: surface.listedPins = null
+    StartFile {
+        id: startFile
     }
 
     // A window's live preview, drawn by KWin into a PipeWire stream while it has its window (StartPlace hands it over
