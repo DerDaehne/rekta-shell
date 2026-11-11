@@ -246,6 +246,7 @@ Item {
     DragHandler {
         id: pull
 
+        objectName: "pull"
         target: null
         yAxis.enabled: false
         enabled: !row.going && row.removable

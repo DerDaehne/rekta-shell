@@ -481,6 +481,130 @@ TestCase {
         compare(findChild(music(), "track").text, "Angel · Massive Attack");
     }
 
+    // The button that counts the waiting updates, once "heute" has laid it out after the rows.
+    function waitingButton(): var {
+        waitForItemPolished(today);
+        return findChild(today, "waiting");
+    }
+
+    function test_the_time_stands_at_the_end_of_a_row() {
+        three();
+        openNow();
+        const time = findChild(rows()[0], "time");
+        compare(time.x + time.width, rows()[0].width);
+    }
+
+    function test_a_row_cannot_be_pulled_away() {
+        // The Start's swipe takes a drag across "heute" before a row could, so the row's own pull is checked switched off.
+        three();
+        openNow();
+        verify(!findChild(rows()[0], "pull").enabled);
+    }
+
+    function test_a_changed_title_shows_in_its_row() {
+        const anna = notify({ summary: "anna" });
+        openNow();
+        anna.summary = "anna2";
+        anna.summaryChanged.emit();
+        compare(rows()[0].summary, "anna2");
+    }
+
+    function test_when_the_newest_of_four_closes_the_fourth_comes_back_at_the_bottom() {
+        three();
+        const dora = notify({ summary: "dora" });
+        openNow();
+        compare(inPlace(), ["dora", "cleo", "ben"]);
+        dora.dismiss();
+        compare(inPlace(), ["cleo", "ben", "anna"]);
+    }
+
+    function test_a_press_on_a_held_row_whose_notification_closed_shows_the_waiting_updates_and_the_start_stays() {
+        const anna = notify({ summary: "anna" });
+        notify({ summary: "ben" });
+        notify({ summary: "cleo" });
+        openNow();
+        mouseMove(rows()[2]);
+        anna.dismiss();
+        compare(inPlace(), ["cleo", "ben", "anna"], "held, the row still stands");
+        mouseClick(rows()[2]);
+        compare(inPlace(), ["cleo", "ben"]);
+        compare(wanted.count, 0);
+        verify(start.wanted);
+    }
+
+    function test_while_held_a_quiet_button_says_how_many_updates_wait() {
+        three();
+        openNow();
+        mouseMove(rows()[1]);
+        const more = waitingButton();
+        verify(!more.visible, "nothing waits yet");
+        notify({ summary: "dora" });
+        verify(more.visible);
+        compare(more.Accessible.name, "1 aktualisierung wartet · zeigen");
+        compare(more.Accessible.role, Accessible.Button);
+        compare(findChild(more, "label").color, Tokens.color.textContrastHigh);
+        notify({ summary: "eve" });
+        compare(findChild(more, "label").text, "2 aktualisierungen warten · zeigen");
+        mouseMove(testCase, 1, 1);
+        verify(!more.visible, "let go, nothing waits");
+    }
+
+    function test_the_waiting_button_arrives_from_above_and_fades_up() {
+        three();
+        openNow();
+        mouseMove(rows()[1]);
+        notify({ summary: "dora" });
+        const more = waitingButton();
+        tryVerify(() => more.opacity > 0 && more.opacity < 1, Tokens.durationShort, "it fades up");
+        tryCompare(more, "opacity", 1, Tokens.durationShort * 4);
+    }
+
+    function test_a_closed_and_a_changed_notification_wait_as_one_update_each() {
+        const anna = notify({ summary: "anna" });
+        const ben = notify({ summary: "ben" });
+        notify({ summary: "cleo" });
+        openNow();
+        mouseMove(rows()[0]);
+        anna.dismiss();
+        compare(waitingButton().count, 1, "anna's close; the older one moving up is no news");
+        ben.summary = "ben2";
+        ben.summaryChanged.emit();
+        compare(waitingButton().count, 2);
+    }
+
+    function test_pressing_the_waiting_button_shows_the_updates_while_heute_stays_held() {
+        three();
+        openNow();
+        mouseMove(rows()[1]);
+        notify({ summary: "dora" });
+        mouseClick(waitingButton());
+        verify(today.held);
+        compare(inPlace(), ["dora", "cleo", "ben"]);
+        verify(!waitingButton().visible);
+    }
+
+    function test_a_waiting_track_counts_and_the_button_brings_it() {
+        const player = play();
+        openNow();
+        mouseMove(music());
+        player.trackTitle = "Angel";
+        compare(waitingButton().count, 1);
+        mouseClick(waitingButton());
+        compare(findChild(music(), "track").text, "Angel · Massive Attack");
+    }
+
+    function test_the_keyboard_reaches_the_waiting_button_and_its_press_keeps_the_focus_in_heute() {
+        three();
+        openNow();
+        rows()[2].forceActiveFocus();
+        notify({ summary: "dora" });
+        keyClick(Qt.Key_Tab);
+        verify(waitingButton().activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(inPlace(), ["dora", "cleo", "ben"]);
+        verify(today.holdsFocus);
+    }
+
     function test_with_nothing_playing_and_no_notification_heute_stays_and_says_so() {
         openNow();
         const empty = findChild(today, "todayEmpty");

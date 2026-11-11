@@ -207,6 +207,10 @@ QtObject {
     readonly property real toastLine: 2
     // `@keyframes rk-banner-in { from { opacity: 0; transform: translateY(-8px) } }` (rekta.css:1261)
     readonly property real bannerShift: 8
+    // The button that says how many updates wait: `.rk-live-more { padding: 2px var(--rk-space-s) }` (rekta.css:662); it
+    // arrives with `@keyframes rk-arrive { from { opacity: 0; transform: translateY(-8px) } }` (rekta.css:1119)
+    readonly property real liveMorePadding: 2
+    readonly property real arriveDrop: 8
 
     // The Start is a place called up many times an hour, so it turns at half the pace of a place change, `called ? 0.5
     // : 1` (motion.md:15; rekta.js:571), and the windows step back and forward with it. Every time and stagger of these

@@ -7,12 +7,13 @@ import Rekta
 import State
 
 // "heute" in the Start: what plays, then the newest three notifications, each a row as in the centre (live.md:78–82),
-// on hairlines. It is a view of them, not a second centre: no button, no actions, and nothing is seen here. A press
+// on hairlines. It is a view of them, not a second centre: no ×, no actions, and nothing is seen here. A press
 // brings the player's window to the front, or does what a press on the centre's row does. A new notification enters at
 // the top and the oldest of the three leaves (motion.md, "Arriving, leaving"); a new track peeks in (motion.md, "Live
-// tile news"). While the pointer rests on it or the focus is in it, it holds still and catches up once let go (live.md,
-// "Holding still"). The times are told against `now`, renewed once a minute while it is in sight. With nothing to show,
-// a sentence says so (states.md, "Data states").
+// tile news"). While the pointer rests on it or the focus is in it, it holds still, a quiet button counts the waiting
+// updates, and it catches up once let go or the button is pressed (live.md, "Holding still"). The times are told
+// against `now`, renewed once a minute while it is in sight. With nothing to show, a sentence says so (states.md,
+// "Data states").
 Column {
     id: today
 
@@ -38,6 +39,9 @@ Column {
     }
     readonly property bool held: hover.hovered || holdsFocus
     readonly property bool idle: shownTrack === "" && shown.count === 0
+    // How many updates wait while it is held, one per notification that came, changed or closed, and one for the track
+    // (rekta.js:3760: the same key replaces a waiting update).
+    readonly property int waiting: held ? waitingCount() : 0
 
     // An entry was pressed: what it brought forward has the screen now.
     signal chosen
@@ -50,8 +54,17 @@ Column {
     // The rows follow the newest notifications by their order of arrival, newest first, so rows that stay keep their item
     // and its focus: those no longer among them leave, new ones come in where their order puts them.
     function follow() {
-        if (held)
-            return;
+        if (!held)
+            showNewest();
+    }
+
+    // What the button that counts the waiting updates does: they show while it stays held.
+    function catchUp() {
+        showNewest();
+        news.catchUp();
+    }
+
+    function showNewest() {
         const wanted = (board?.rows ?? []).slice(0, notices);
         const orders = wanted.map(row => row.order);
         for (let k = 0; k < shown.count; k++) {
@@ -80,6 +93,25 @@ Column {
         while (k < shown.count && shown.get(k).order > order)
             k++;
         return k;
+    }
+
+    function waitingCount(): int {
+        const live = board?.rows ?? [];
+        const newest = shown.count > 0 ? shown.get(0).order : -1;
+        const came = live.slice(0, notices).filter(row => {
+            const at = indexOf(row.order);
+            // An older one that moves up as a newer closes is no news of its own.
+            return at < 0 ? row.order > newest : !sameFields(shown.get(at), fields(row));
+        });
+        const closed = Array.from({ length: shown.count }, (_, k) => k).filter(k => {
+            const staying = !(rowItems.itemAt(k) as MessageRow)?.going;
+            return staying && !live.some(row => row.order === shown.get(k).order);
+        });
+        return came.length + closed.length + (track !== shownTrack ? 1 : 0);
+    }
+
+    function sameFields(entry: var, wanted: var): bool {
+        return Object.keys(wanted).every(key => entry[key] === wanted[key]);
     }
 
     function fields(row: var): var {
@@ -293,8 +325,14 @@ Column {
                 removable: false
                 // On the Start's glass a ring in `bg` would show: the picture keeps Rekta's square crop.
                 ground: "transparent"
+                // A held row whose notification closed meanwhile is stale: the press shows the waiting updates instead.
                 onPressed: {
-                    today.board.press(today.recordOf(row.order));
+                    const record = today.recordOf(row.order);
+                    if (!record) {
+                        today.catchUp();
+                        return;
+                    }
+                    today.board.press(record);
                     today.chosen();
                 }
                 // A row that left and is wanted again comes back in.
@@ -318,5 +356,17 @@ Column {
         width: today.width
         visible: today.idle
         text: "nichts läuft, keine meldungen."
+    }
+
+    LiveMore {
+        objectName: "waiting"
+        count: today.waiting
+        onClicked: {
+            const hadFocus = activeFocus;
+            today.catchUp();
+            // The button goes once nothing waits; the focus stays in the region.
+            if (hadFocus)
+                today.entries()[0]?.forceActiveFocus();
+        }
     }
 }

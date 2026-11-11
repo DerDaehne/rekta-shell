@@ -27,6 +27,10 @@ Item {
             waiting.push({ kind, change });
             return;
         }
+        show(kind, change);
+    }
+
+    function show(kind: string, change: var) {
         finish();
         if (kind !== "peek" && kind !== "flip") {
             change();
@@ -118,15 +122,20 @@ Item {
             change();
     }
 
-    // Let go, a held tile catches up in one step; a new status among the waiting news turns it over, as rekta-core's
-    // tile does (core/src/declare.c:667).
-    onHeldChanged: {
-        if (held || waiting.length === 0)
+    // A held tile catches up in one step, once let go or when asked (live.md, "Holding still"); a new status among the
+    // waiting news turns it over, as rekta-core's tile does (core/src/declare.c:667).
+    function catchUp() {
+        if (waiting.length === 0)
             return;
         const list = waiting;
         waiting = [];
         const kind = list.some(w => w.kind === "flip") ? "flip" : list.some(w => w.kind === "peek") ? "peek" : "";
-        tell(kind, () => list.forEach(w => w.change()));
+        show(kind, () => list.forEach(w => w.change()));
+    }
+
+    onHeldChanged: {
+        if (!held)
+            catchUp();
     }
 
     QtObject {
