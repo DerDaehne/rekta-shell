@@ -403,11 +403,14 @@ TestCase {
         verify(!menu.open);
     }
 
-    function test_the_menu_closes_when_a_change_from_outside_takes_its_tile_away() {
+    function test_the_menu_closes_when_a_change_from_outside_takes_its_tile_away_or_resizes_it() {
         openNow();
         rightClick(pinnedTile("Dolphin"), 30, 40);
         file.text = fileText([{ id: "systemsettings" }, { id: "org.kde.konsole" }]);
-        verify(!menu.open);
+        verify(!menu.open, "taken away");
+        rightClick(pinnedTile("Konsole"), 30, 40);
+        file.text = fileText([{ id: "systemsettings" }, { id: "org.kde.konsole", columns: 2 }]);
+        verify(!menu.open, "resized: its sizes are no longer true");
     }
 
     // Items

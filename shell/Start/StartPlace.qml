@@ -433,8 +433,8 @@ FocusScope {
         const before = new Set(tiles.map(tile => tile.appId));
         const coming = next.filter(app => !before.has(app.id)).map(app => app.id);
         const going = tiles.filter(tile => !kept.has(tile.appId));
-        if (going.includes(menu.control))
-            menu.close(false);
+        // What the menu offers was read from the list as it was.
+        menu.close(false);
         if (!shown || turning) {
             showPins(next);
             return;
