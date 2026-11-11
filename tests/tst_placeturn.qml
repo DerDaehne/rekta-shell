@@ -623,6 +623,112 @@ TestCase {
         compare(named("summary").opacity, 1);
     }
 
+    // How much wider a part's top edge shows than its bottom edge: above 0 when its top leans toward the viewer.
+    function topLean(item: Item): real {
+        const width = (left, right) => right.x - left.x;
+        const top = width(item.mapToItem(scene, 0, 0), item.mapToItem(scene, item.width, 0));
+        const bottom = width(item.mapToItem(scene, 0, item.height), item.mapToItem(scene, item.width, item.height));
+        return top - bottom;
+    }
+
+    function test_about_the_bottom_edge_each_part_turns_on_the_bottom_line_of_the_box_that_clips_it_wherever_its_place_lies() {
+        const clipped = createTemporaryObject(clippedComponent, testCase);
+        const clippedTurner = findChild(clipped, "turner");
+        clippedTurner.go(findChild(clipped, "place"), null, {
+            edge: "bottom"
+        });
+        clippedTurner.paused = true;
+        // The box's bottom against the part's top, from the part's top left, which is also the reach of its row. The
+        // clipping box ends at 80 + 250 on the screen, the place at 30 + 450.
+        const expected = [["flush", 330 - 80], ["lower", 330 - 120], ["beside", 480 - 30]];
+        for (const [name, reach] of expected) {
+            const rotation = rotationOf(findChild(clipped, name));
+            compare(rotation.axis, Qt.vector3d(1, 0, 0), name);
+            compare(rotation.origin.x, Tokens.tileUnit / 2, name);
+            compare(rotation.origin.y, reach, name);
+            fuzzyCompare(rotation.distanceToPlane, Tokens.turnstilePerspective + Tokens.turnstileReach * reach, 1e-9);
+        }
+        clippedTurner.finish();
+    }
+
+    function test_about_the_bottom_edge_a_part_leaving_forward_tips_its_top_toward_the_viewer_and_an_arriving_one_rises_with_its_top_from_behind() {
+        turnToSecond({
+            edge: "bottom"
+        });
+        const tile = named("tile1");
+        const leaving = turnOf(turner.leavingTurns, tile);
+        turner.elapsed = leaving.at + leaving.duration / 2;
+        verify(rotationOf(tile).angle < 0);
+        verify(topLean(tile) > 1, `${topLean(tile)}`);
+        turner.elapsed = turner.handOverAt;
+        const summary = named("summary");
+        const arriving = turnOf(turner.arrivingTurns, summary);
+        turner.elapsed = arriving.at + arriving.duration / 4;
+        verify(rotationOf(summary).angle > 0);
+        verify(topLean(summary) < -1, `${topLean(summary)}`);
+    }
+
+    function test_about_the_bottom_edge_a_part_going_back_tips_its_top_away_from_the_viewer() {
+        turnToSecond();
+        turner.elapsed = 5000;
+        turner.go(second, first, {
+            back: true,
+            edge: "bottom"
+        });
+        turner.paused = true;
+        const tile = named("summary");
+        const turn = turnOf(turner.leavingTurns, tile);
+        turner.elapsed = turn.at + Tokens.turnOutWhole * turn.duration;
+        compare(rotationOf(tile).axis, Qt.vector3d(1, 0, 0));
+        verify(topLean(tile) < -1, `${topLean(tile)}`);
+    }
+
+    function test_about_the_bottom_edge_the_pressed_tile_turns_last_from_its_pressed_pose() {
+        const tile = named("tile5");
+        mousePress(tile, tile.width * 0.8, tile.height * 0.8);
+        mouseRelease(tile, tile.width * 0.8, tile.height * 0.8);
+        turnToSecond({
+            pressed: tile,
+            edge: "bottom"
+        });
+        const turn = turnOf(turner.leavingTurns, tile);
+        compare(turner.leavingTurns[turner.leavingTurns.length - 1], turn, "it goes last");
+        compare(turn.axis, Qt.vector3d(1, 0, 0));
+        compare(turn.originY, scene.height - tile.parent.mapToItem(first, tile.x, tile.y).y);
+        turner.elapsed = turn.at + turn.duration / 2;
+        verify(tile.sink > 0 && tile.sink < 1, "the press lets go along the turn");
+        verify(topLean(tile) > 1, `${topLean(tile)}`);
+    }
+
+    function test_a_paused_turn_shows_whatever_moment_its_elapsed_time_names_earlier_ones_too() {
+        turnToSecond({
+            edge: "bottom"
+        });
+        const tile = named("tile0");
+        const turn = turnOf(turner.leavingTurns, tile);
+        turner.elapsed = turn.at + turn.duration * 0.6;
+        const later = rotationOf(tile).angle;
+        turner.elapsed = turn.at + turn.duration * 0.3;
+        verify(rotationOf(tile).angle > later, "back to a smaller swing");
+        turner.elapsed = 0;
+        compare(rotationOf(tile).angle, 0);
+        compare(tile.opacity, 1);
+        verify(first.visible);
+    }
+
+    function test_under_reduced_motion_a_turn_about_the_bottom_edge_stands_at_once() {
+        Prefs.motion = "off";
+        turner.go(first, second, {
+            edge: "bottom"
+        });
+        verify(!turner.running);
+        verify(!first.visible);
+        verify(second.visible);
+        compare(landedSpy.count, 1);
+        compare(rotationOf(named("summary")), null);
+        compare(named("summary").opacity, 1);
+    }
+
     // Starts the turn of one frame's own scene, its clock stopped.
     function startFrameTurn(frame: Item): var {
         const frameTurner = findChild(frame, "turner");

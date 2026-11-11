@@ -152,4 +152,87 @@ TestCase {
         compare(turns.map(turn => turn.at), [0, 0]);
         compare(turns.map(turn => turn.duration), [0, 0]);
     }
+
+    // A box 100 from the screen's leading side and 200 from its top, 800 by 600: its bottom edge lies at 800.
+    readonly property var box: ({
+            x: 100,
+            y: 200,
+            width: 800,
+            height: 600
+        })
+
+    function boxed(x: real, y: real, width: real, height: real): var {
+        return Object.assign(part(x, y, width, height), {
+            clip: box
+        });
+    }
+
+    function test_rekta_s_turn_is_about_the_vertical_axis_and_the_bottom_edge_s_about_the_horizontal_one() {
+        const tilePart = boxed(140, 300, tile, tile);
+        compare(Turnstile.plan([tilePart], Tokens.durationShort, 0)[0].axis, Qt.vector3d(0, 1, 0));
+        compare(Turnstile.plan([tilePart], Tokens.durationShort, 0, "bottom")[0].axis, Qt.vector3d(1, 0, 0));
+    }
+
+    function test_about_the_bottom_edge_a_part_turns_on_its_box_s_bottom_line_from_its_leading_side_when_flush_with_the_box_s_else_from_its_middle() {
+        const flush = boxed(101, 300, tile, tile);
+        const inner = boxed(400, 500, 2 * tile, tile);
+        const turns = Turnstile.plan([flush, inner], Tokens.durationShort, 0, "bottom");
+        compare(turnOf(turns, flush).originY, 800 - 300);
+        compare(turnOf(turns, flush).originX, 0);
+        compare(turnOf(turns, inner).originY, 800 - 500);
+        compare(turnOf(turns, inner).originX, tile);
+    }
+
+    function test_about_the_bottom_edge_parts_whose_bottoms_share_a_row_turn_in_the_perspective_of_their_farthest_reach_upwards() {
+        const short = boxed(140, 600, tile, 50);
+        const tall = boxed(400, 650 - tile, tile, tile);
+        const higher = boxed(700, 300, tile, tile);
+        const turns = Turnstile.plan([short, tall, higher], Tokens.durationShort, 0, "bottom");
+        const sharedRow = Tokens.turnstilePerspective + Tokens.turnstileReach * (800 - tall.y);
+        fuzzyCompare(turnOf(turns, short).perspective, sharedRow, 1e-9);
+        fuzzyCompare(turnOf(turns, tall).perspective, sharedRow, 1e-9);
+        fuzzyCompare(turnOf(turns, higher).perspective, Tokens.turnstilePerspective + Tokens.turnstileReach * (800 - 300), 1e-9);
+    }
+
+    function test_about_the_bottom_edge_parts_of_one_heft_follow_from_the_bottom_row_up_front_to_back_half_a_stagger_apart() {
+        const grid = [];
+        for (const y of [200, 200 + tile + Tokens.spaceS, 200 + 2 * (tile + Tokens.spaceS)])
+            for (const x of [100 + tile + Tokens.spaceS, 100])
+                grid.push(boxed(x, y, tile, tile));
+        const turns = Turnstile.plan(grid, Tokens.durationShort, 0, "bottom");
+        compare(turns.map(turn => [turn.part.x, turn.part.y]), [[grid[5].x, grid[5].y], [grid[4].x, grid[4].y], [grid[3].x, grid[3].y], [grid[2].x, grid[2].y], [grid[1].x, grid[1].y], [grid[0].x, grid[0].y]]);
+        const first = (Tokens.heftTile - Tokens.heftMin) * Tokens.heftSpread * Tokens.durationStagger;
+        for (let i = 0; i < turns.length; i++)
+            fuzzyCompare(turns[i].at, first + i * Geometry.sameHeftStagger * Tokens.durationStagger, 1e-9);
+    }
+
+    function test_about_the_bottom_edge_heft_still_leads_and_each_part_keeps_its_time() {
+        const lowWindow = boxed(100, 200, 700, 600);
+        const highLine = boxed(100, 210, 100, 20);
+        const bottom = Turnstile.plan([lowWindow, highLine], Tokens.durationModerate, 0, "bottom");
+        const rekta = Turnstile.plan([lowWindow, highLine], Tokens.durationModerate, 0);
+        verify(turnOf(bottom, highLine).at < turnOf(bottom, lowWindow).at, "the light line first, though it lies higher");
+        for (const turned of [lowWindow, highLine]) {
+            compare(turnOf(bottom, turned).at, turnOf(rekta, turned).at);
+            compare(turnOf(bottom, turned).duration, turnOf(rekta, turned).duration);
+        }
+    }
+
+    function test_about_the_bottom_edge_the_pressed_tile_turns_last_on_its_box_s_bottom_line_in_a_row_of_its_own() {
+        const pressed = boxed(100, 400, tile, tile);
+        const neighbour = boxed(100 + tile + Tokens.spaceS, 400, 2 * tile, 2 * tile);
+        const others = Turnstile.plan([neighbour], Tokens.durationShort, 0, "bottom");
+        const turn = Turnstile.pressedTurn(pressed, Tokens.durationShort, others, 0, "bottom");
+        compare(turn.at, others[0].at);
+        compare(turn.axis, Qt.vector3d(1, 0, 0));
+        compare(turn.originY, 800 - 400);
+        fuzzyCompare(turn.perspective, Tokens.turnstilePerspective + Tokens.turnstileReach * (800 - 400), 1e-9);
+    }
+
+    function test_under_reduced_motion_every_part_turns_about_the_bottom_edge_at_once_and_in_no_time() {
+        Tokens.reducedMotion = true;
+        const turns = Turnstile.plan([boxed(100, 200, tile, tile), boxed(100, 400, 700, 400)], Tokens.durationModerate, 0, "bottom");
+        compare(turns.map(turn => turn.at), [0, 0]);
+        compare(turns.map(turn => turn.duration), [0, 0]);
+    }
 }
