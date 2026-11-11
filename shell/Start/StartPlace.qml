@@ -15,7 +15,8 @@ import State
 // last. While it turns in, its tiles take keys and presses; while it turns out, none. A letter typed in the start place
 // searches, and so does what a calculation starts with: what is typed becomes the title, "suche" beside it, and the
 // apps that match stand below as tiles, the other kinds as rows. The title is a line edited as a field is; Escape
-// there closes the Start.
+// there closes the Start. An app's tile has a context menu that pins or unpins the app and, in "angeheftet", sizes its
+// tile; each change offers undo in a toast, and Delete unpins the focused pinned tile.
 FocusScope {
     id: start
 
@@ -23,8 +24,24 @@ FocusScope {
     property var windows: []
     // The window that had the keyboard when the Start opened; it gets it back unless a press chose where to go.
     property var returnTo: null
-    // The pinned apps: {name, icon, columns, rows, launch()}.
+    // The pinned apps: {id, name, icon, columns, rows, index, launch()}, `index` counting in start.json's list.
     property var pinned: []
+    // The pinned apps as "angeheftet" shows them: `pinned` once its change has been made.
+    property var shownPins: []
+    // Writes start.json (StartFile): pin(id), unpin(index), resize(index, columns, rows), insert(index, entry),
+    // replace(index, entry), entry(index), and its fault, "broken" while nothing may write over it. Null: no menus.
+    property var pinFile: null
+    // Shows the toast that offers undo after a change (Toaster); null for none.
+    property var toaster: null
+    // What the context menu acts on: {id, name, index, columns, rows, sized}; `id` is "" when no app is known, `index`
+    // -1 when the app is not pinned, and `sized` holds in "angeheftet", where the sizes are offered.
+    property var menuApp: null
+    // Where the menu's tile stood as the menu opened; a scroll that moves it closes the menu.
+    property point menuTileAt
+    // The scrollers that hold the menu's tile, followed while the menu is open.
+    property var menuScrollers: []
+    // The last pinned tile was unpinned with the focus on it: the focus goes to the empty section's way on.
+    property bool focusEmptyPins: false
     // The installed apps, A–Z: {id, name, genericName, keywords, exec, icon, launch()}; null until they are known.
     property var apps: null
     // How often each app was started from the Start, by id: {id: count}; the more often, the nearer the front of the hits.
@@ -116,7 +133,7 @@ FocusScope {
         const room = Math.floor((panorama.width - 2 * panorama.inset - before - after) / unitStep);
         const rows = rowsHeld(panorama);
         let units = 4;
-        while (units < room && pinnedGrid.rowsOf(pinned, units) > rows)
+        while (units < room && pinnedGrid.rowsOf(shownPins, units) > rows)
             units++;
         return units;
     }
@@ -395,6 +412,187 @@ FocusScope {
 
     function launchApp(appId: string) {
         (apps ?? []).find(app => app.id === appId)?.launch();
+    }
+
+    // The tiles of "angeheftet", in its order.
+    function pinTiles(): var {
+        return pinnedGrid.children.filter(item => (item as Tile) !== null);
+    }
+
+    // The pinned apps change: the tiles of apps no longer pinned leave, the others glide to their places and sizes, and
+    // those of newly pinned apps arrive (motion.md:22–24); at once while the Start is hidden or turns, the turn being
+    // the arrival.
+    function followPinned() {
+        const tiles = pinTiles();
+        const kept = new Set(pinned.map(app => app.id));
+        const before = new Set(tiles.map(tile => tile.appId));
+        const coming = pinned.filter(app => !before.has(app.id)).map(app => app.id);
+        const going = tiles.filter(tile => !kept.has(tile.appId));
+        if (going.includes(menu.control))
+            menu.close(false);
+        if (!shown || turning) {
+            showPins();
+            return;
+        }
+        presence.change(going, tiles.filter(tile => kept.has(tile.appId)), showPins, () => pinTiles().filter(tile => coming.includes(tile.appId)), coming.length);
+    }
+
+    // Brings the tiles in line with `pinned`, step by step, so that a tile that stays is the same tile.
+    function showPins() {
+        shownPins = pinned;
+        for (const step of Rules.steps(pinTiles().map(tile => tile.appId), pinned.map(app => app.id))) {
+            if (step.remove !== undefined)
+                pinnedModel.remove(step.remove);
+            else if (step.move !== undefined)
+                pinnedModel.move(step.move, step.to, 1);
+            else
+                pinnedModel.insert(step.insert, { appId: step.id });
+        }
+        if (focusEmptyPins && pinnedModel.count === 0)
+            toAllApps.forceActiveFocus();
+        focusEmptyPins = false;
+    }
+
+    // A tile asks for its context menu at `at`, in the tile. `id` is its app's, "" when none is known; `inPinned` offers
+    // the sizes too. The menu opens at that point, turned to stay in the Start, with the first item it may choose in focus.
+    function openMenu(tile: Tile, at: point, id: string, inPinned: bool) {
+        if (!wanted)
+            return;
+        const app = (apps ?? []).find(known => Rules.sameApp(known.id, id)) ?? null;
+        const pin = pinned.find(known => Rules.sameApp(known.id, id)) ?? null;
+        menuApp = {
+            id: app?.id ?? pin?.id ?? "",
+            name: app?.name ?? pin?.name ?? "",
+            index: pin?.index ?? -1,
+            columns: pin?.columns ?? 1,
+            rows: pin?.rows ?? 1,
+            sized: inPinned && pin !== null
+        };
+        sizeRows().forEach((row, k) => row.checked = Rules.pinSizes[k].columns === menuApp.columns && Rules.pinSizes[k].rows === menuApp.rows);
+        menu.close(false);
+        menu.control = tile;
+        menu.openAt(Math.max(0, menu.items().findIndex(item => !item.disabled)));
+        const place = Placement.at(tile.mapToItem(start, at.x, at.y), menu.measured(), Qt.size(width, height));
+        menu.x = place.x;
+        menu.y = place.y;
+        menu.side = place.side;
+        followMenuTile(tile);
+    }
+
+    // The menu's size items, in the order of Rules.pinSizes.
+    function sizeRows(): var {
+        return Array.from(menu.rows).filter(row => row.objectName === "size");
+    }
+
+    // A scroll that moves the menu's tile closes the menu; one that leaves the tile where it was does not (rekta.js:3190).
+    function followMenuTile(tile: Tile) {
+        menuTileAt = tile.mapToItem(start, 0, 0);
+        const scrollers = [];
+        for (let at = tile.parent; at; at = at.parent) {
+            if (at instanceof Flickable)
+                scrollers.push(at);
+        }
+        for (const scroller of scrollers) {
+            scroller.contentXChanged.connect(menuTileMoved);
+            scroller.contentYChanged.connect(menuTileMoved);
+        }
+        menuScrollers = scrollers;
+    }
+
+    function menuTileMoved() {
+        const now = menu.control?.mapToItem(start, 0, 0) ?? null;
+        if (!now || Math.abs(now.x - menuTileAt.x) > Geometry.contextMenuScrollSlop || Math.abs(now.y - menuTileAt.y) > Geometry.contextMenuScrollSlop)
+            menu.close(false);
+    }
+
+    function forgetMenuTile() {
+        for (const scroller of menuScrollers) {
+            scroller.contentXChanged.disconnect(menuTileMoved);
+            scroller.contentYChanged.disconnect(menuTileMoved);
+        }
+        menuScrollers = [];
+    }
+
+    // Why the menu cannot do what an item says, or "" when it can.
+    function menuBlocked(): string {
+        if (menuApp?.id === "")
+            return "keine app bekannt";
+        return pinFile?.fault === "broken" ? "start.json ist beschädigt" : "";
+    }
+
+    function choose(item: MenuItem) {
+        const app = menuApp;
+        const size = sizeRows().indexOf(item);
+        if (size >= 0)
+            resizeApp(app, Rules.pinSizes[size]);
+        else if (app.index >= 0)
+            unpinApp(app, menu.control);
+        else
+            pinApp(app);
+    }
+
+    // A change to start.json shows a toast that offers to undo it.
+    function tell(text: string, undo: var) {
+        toaster?.show(text, {
+            undo: undo
+        });
+    }
+
+    // A newly pinned app goes to the end, one unit.
+    function pinApp(app: var) {
+        if (!pinFile.pin(app.id))
+            return;
+        tell(`${app.name} angeheftet`, () => {
+            const at = pinned.find(known => Rules.sameApp(known.id, app.id))?.index ?? -1;
+            if (at >= 0)
+                pinFile.unpin(at);
+        });
+    }
+
+    // Unpinning the focused tile hands the focus to the next tile, at the end to the one before, and without any to the
+    // empty section's way on (collections.md:167–169).
+    // ponytail: an undo counts by the index the entry had; a change made meanwhile elsewhere can shift it.
+    function unpinApp(app: var, tile: Tile) {
+        const focused = tile?.activeFocus ?? false;
+        const tiles = pinTiles();
+        const at = tiles.indexOf(tile);
+        const next = focused ? tiles[at + 1] ?? tiles[at - 1] ?? null : null;
+        const entry = pinFile.entry(app.index);
+        // Set before the change, which may show at once.
+        focusEmptyPins = focused && next === null;
+        if (!pinFile.unpin(app.index)) {
+            focusEmptyPins = false;
+            return;
+        }
+        next?.forceActiveFocus();
+        tell(`${app.name} gelöst`, () => pinFile.insert(app.index, entry));
+    }
+
+    function resizeApp(app: var, size: var) {
+        if (size.columns === app.columns && size.rows === app.rows)
+            return;
+        const entry = pinFile.entry(app.index);
+        if (pinFile.resize(app.index, size.columns, size.rows))
+            tell(`${app.name}: ${size.name}`, () => pinFile.replace(app.index, entry));
+    }
+
+    // Delete unpins the focused tile of "angeheftet" (navigation.md:475).
+    function unpinFocused() {
+        const tile = pinTiles().find(pinTile => pinTile.activeFocus);
+        const app = pinned.find(known => known.id === tile?.appId);
+        if (!tile || !app || !pinFile || pinFile.fault === "broken")
+            return;
+        unpinApp({
+            id: app.id,
+            name: app.name,
+            index: app.index
+        }, tile);
+    }
+
+    // Ctrl+Z goes to the key layers, where an open undo toast takes it.
+    function passUndo(event: KeyEvent): bool {
+        const command = (event.modifiers & (Qt.ControlModifier | Qt.MetaModifier)) !== 0;
+        return event.key === Qt.Key_Z && command && !(event.modifiers & Qt.ShiftModifier) && KeyLayers.dispatch(event, focusItem);
     }
 
     // Enter without a tile or row in focus acts on the best hit: the first tile, pressed in its centre, else the first row.
@@ -774,6 +972,8 @@ FocusScope {
             arrow(directions[event.key]);
         else if (isEnter(event) && searching)
             pressFirstHit();
+        else if (event.key === Qt.Key_Delete)
+            unpinFocused();
         else
             return toTheFirstOrLastApp(event);
         return true;
@@ -795,6 +995,11 @@ FocusScope {
     Accessible.name: "start"
 
     onFocusItemChanged: reveal(focusItem)
+    onPinnedChanged: followPinned()
+    onWantedChanged: menu.close(false)
+    onWidthChanged: menu.close(false)
+    onHeightChanged: menu.close(false)
+    Component.onCompleted: showPins()
     onQueryChanged: refresh()
     onAppsChanged: {
         refresh();
@@ -802,8 +1007,9 @@ FocusScope {
     }
     onLetterRowsChanged: regroup()
 
+    // An open menu keeps every key; Ctrl+Z goes on to the undo toast.
     Keys.onPressed: event => {
-        if (wanted && useKey(event))
+        if (menu.open || (wanted && (passUndo(event) || useKey(event))))
             event.accepted = true;
     }
 
@@ -989,7 +1195,9 @@ FocusScope {
                                 // Its preview streams only while the Start shows, from its opening until it has gone.
                                 window: start.shown ? modelData : null
                                 preview: start.preview
+                                hasMenu: start.pinFile !== null
                                 onActivated: start.press(runningTile, () => runningTile.modelData.activate())
+                                onMenuAsked: at => start.openMenu(runningTile, at, runningTile.modelData.appId ?? "", false)
                             }
                         }
                     }
@@ -1015,23 +1223,46 @@ FocusScope {
                         columns: start.pinnedUnits
                         placeWidth: start.width
                         viewportHeight: start.height
+                        visible: pinnedModel.count > 0
 
+                        // A tile for each app as long as it stays pinned, so a change moves the tiles it keeps.
                         Repeater {
-                            model: start.pinned
+                            model: ListModel {
+                                id: pinnedModel
+                            }
 
                             delegate: AppTile {
                                 id: appTile
 
-                                required property var modelData
+                                required property string appId
+                                readonly property var app: start.shownPins.find(pin => pin.id === appId) ?? null
 
-                                name: modelData.name
-                                icon: modelData.icon
-                                unseen: start.unseen[modelData.id] ?? 0
-                                line: start.lines[modelData.id] ?? ""
-                                columns: modelData.columns
-                                rows: modelData.rows
-                                onActivated: start.press(appTile, () => appTile.modelData.launch())
+                                name: app?.name ?? ""
+                                icon: app?.icon ?? ""
+                                unseen: start.unseen[appId] ?? 0
+                                line: start.lines[appId] ?? ""
+                                columns: app?.columns ?? 1
+                                rows: app?.rows ?? 1
+                                hasMenu: start.pinFile !== null
+                                onActivated: start.press(appTile, () => appTile.app?.launch())
+                                onMenuAsked: at => start.openMenu(appTile, at, appTile.appId, true)
                             }
+                        }
+                    }
+
+                    // Nothing pinned: the sentence and the way to the apps (states.md:12).
+                    Empty {
+                        objectName: "noPins"
+                        width: parent.width
+                        visible: pinnedModel.count === 0
+                        text: "nichts angeheftet."
+
+                        Button {
+                            id: toAllApps
+
+                            objectName: "allApps"
+                            text: "alle apps"
+                            onClicked: pivot.select(1)
                         }
                     }
                 }
@@ -1199,7 +1430,9 @@ FocusScope {
                                 icon: modelData.icon
                                 unseen: start.unseen[modelData.id] ?? 0
                                 line: start.lines[modelData.id] ?? ""
+                                hasMenu: start.pinFile !== null
                                 onActivated: start.press(letterTile, () => letterTile.modelData.launch())
+                                onMenuAsked: at => start.openMenu(letterTile, at, letterTile.modelData.id, false)
                             }
                         }
                     }
@@ -1322,7 +1555,9 @@ FocusScope {
                         line: start.lines[appId] ?? ""
                         best: index === 0
                         columns: best ? 2 : 1
+                        hasMenu: start.pinFile !== null
                         onActivated: start.press(hitTile, () => start.launchApp(hitTile.appId))
+                        onMenuAsked: at => start.openMenu(hitTile, at, hitTile.appId, false)
                     }
                 }
             }
@@ -1401,6 +1636,71 @@ FocusScope {
                     keyHint: searchRow.modelData.key ?? ""
                     onActivated: start.chooseRow(searchRow.modelData)
                 }
+            }
+        }
+    }
+
+    // A press outside the menu closes it and goes on to what lies beneath (rekta.js contextMenu(), `outside`).
+    MouseArea {
+        objectName: "outsideMenu"
+        anchors.fill: parent
+        z: Tokens.layerFloat
+        visible: menu.open
+        acceptedButtons: Qt.AllButtons
+        onPressed: mouse => {
+            menu.close(false);
+            mouse.accepted = false;
+        }
+        onWheel: wheel => wheel.accepted = false
+    }
+
+    // An app tile's context menu (collections.md, "Context menus"): pin or unpin the app, and in "angeheftet" a group
+    // of the sizes its tile may take under a hairline, the current one chosen (states.md:131–137). It stands in the
+    // Start's surface, over everything in it.
+    Menu {
+        id: menu
+
+        objectName: "menu"
+        width: implicitWidth
+        height: implicitHeight
+        area: Qt.size(start.width, start.height)
+        onChosen: item => start.choose(item)
+        onOpenChanged: {
+            if (!open)
+                start.forgetMenuTile();
+        }
+        // Its tile has gone.
+        onControlChanged: {
+            if (!control)
+                close(false);
+        }
+
+        MenuItem {
+            objectName: "pin"
+            text: (start.menuApp?.index ?? -1) >= 0 ? "lösen" : "anheften"
+            disabledReason: start.menuBlocked()
+        }
+
+        MenuSeparator {
+            visible: start.menuApp?.sized ?? false
+        }
+
+        MenuLabel {
+            text: "größe"
+            visible: start.menuApp?.sized ?? false
+        }
+
+        Repeater {
+            model: Rules.pinSizes
+
+            delegate: MenuItem {
+                required property var modelData
+
+                objectName: "size"
+                kind: "radio"
+                text: modelData.name
+                visible: start.menuApp?.sized ?? false
+                disabledReason: start.menuBlocked()
             }
         }
     }

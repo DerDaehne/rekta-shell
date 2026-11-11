@@ -43,21 +43,34 @@ function scopeCommand(id, command, stamp) {
     return ["systemd-run", "--user", "--scope", `--unit=app-${escapeUnitName(id)}-${stamp}`, "--", ...command];
 }
 
-// A tile spans one or two units each way (tile-unit, rekta.tokens.json:838).
-// ponytail: two across at most is Rekta 0.5.0's; 0.6.0 lets a tile span up to four units across, two down.
-function span(units) {
-    return Math.min(2, Math.max(1, Math.round(Number(units) || 1)));
+// A tile spans one to four units across and one or two down (tiles.md:29–33), at most `most` units.
+function span(units, most) {
+    return Math.min(most, Math.max(1, Math.round(Number(units) || 1)));
 }
 
+// The sizes a pinned app's tile is offered in, by name.
+const pinSizes = [
+    { name: "klein", columns: 1, rows: 1 },
+    { name: "breit", columns: 2, rows: 1 },
+    { name: "groß", columns: 2, rows: 2 },
+    { name: "sehr groß", columns: 4, rows: 2 }
+];
+
 // The pinned tiles from start.json's list (Pins.read), or the defaults without one; only installed apps, as
-// `installed(id)` tells.
+// `installed(id)` tells. Each keeps its index in that list, which every change to the file counts by.
 function pinnedTiles(pinned, installed) {
     const listed = Array.isArray(pinned) ? pinned : Settings.Pins.defaultPinned;
-    return listed.map(tile => ({
-        id: Settings.Pins.bareId(tile.id),
-        columns: span(tile.columns),
-        rows: span(tile.rows)
+    return listed.map((tile, index) => ({
+        id: Settings.Pins.bareId(tile?.id),
+        columns: span(tile?.columns, 4),
+        rows: span(tile?.rows, 2),
+        index: index
     })).filter(tile => tile.id !== "" && installed(tile.id));
+}
+
+// The same app as `id`, written with or without ".desktop".
+function sameApp(id, other) {
+    return Settings.Pins.bareId(id) === Settings.Pins.bareId(other);
 }
 
 // The data directories in order of precedence, the user's first (XDG base directories).

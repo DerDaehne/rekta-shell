@@ -139,6 +139,7 @@ ShellRoot {
         primaryScreen: primary.screen
         topInset: systemBanner.zone
         arrived: splash.arrived
+        toaster: toasts.toaster
     }
 
     ControlPanel {

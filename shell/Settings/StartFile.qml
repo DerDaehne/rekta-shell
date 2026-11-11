@@ -36,6 +36,15 @@ UserFile {
         return write(Pins.insert(current.content, index, entry));
     }
 
+    function replace(index: int, entry: var): bool {
+        return write(Pins.replace(current.content, index, entry));
+    }
+
+    // A copy of the entry at `index`, to put back as it was; null for none.
+    function entry(index: int): var {
+        return Pins.entry(current.content, index);
+    }
+
     function write(next: var): bool {
         if (!settled || next === null)
             return false;

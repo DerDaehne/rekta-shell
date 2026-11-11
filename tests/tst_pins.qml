@@ -110,6 +110,25 @@ TestCase {
         compare(Pins.insert(file, 4, { id: "x" }), null);
     }
 
+    function test_replace_puts_an_entry_back_in_place_of_a_resized_one_with_its_keys() {
+        const file = content(userFile);
+        const before = Pins.entry(file, 0);
+        const resized = content(Pins.resize(file, 0, 2, 2));
+        compare(JSON.parse(Pins.replace(resized, 0, before)), JSON.parse(userFile));
+        compare(Pins.replace(file, 3, before), null);
+        compare(Pins.replace(file, 0, "kate"), null);
+    }
+
+    function test_entry_copies_an_entry_of_the_list_or_of_the_defaults_without_one() {
+        const file = content(userFile);
+        const kate = Pins.entry(file, 0);
+        compare(kate, { id: "org.kde.kate", columns: 3, group: "work" });
+        kate.columns = 1;
+        compare(file.pinned[0].columns, 3, "a copy");
+        compare(Pins.entry(content(""), 2), { id: "org.kde.konsole" });
+        compare(Pins.entry(file, 3), null);
+    }
+
     function test_without_a_list_the_first_change_writes_the_defaults_with_it() {
         compare(pinned(Pins.pin(content(""), "org.kde.kate")).map(entry => entry.id),
             ["systemsettings", "org.kde.dolphin", "org.kde.konsole", "org.kde.kate"]);

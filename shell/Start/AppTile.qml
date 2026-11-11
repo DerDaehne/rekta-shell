@@ -52,6 +52,7 @@ Tile {
         y: Geometry.tilePadding
         width: tile.rows > 1 ? Tokens.tileIconLarge : Tokens.tileIcon
         height: width
+        opacity: tile.contentOpacity
         source: tile.icon
     }
 
@@ -64,6 +65,7 @@ Tile {
         x: tile.width - Geometry.tilePadding - width
         y: Geometry.tilePadding
         visible: tile.shown > 0
+        opacity: tile.contentOpacity
         text: String(tile.shown)
         font.pixelSize: Tokens.fontSizeM
         font.weight: Tokens.fontWeightMedium
@@ -83,6 +85,7 @@ Tile {
         y: tile.height - Geometry.tilePadding - nameRow.height - Tokens.spaceS - height
         width: tile.width - 2 * Geometry.tilePadding
         visible: tile.columns >= 2 && text !== ""
+        opacity: tile.contentOpacity
         text: tile.shownLine
         lineHeightFactor: Tokens.lineHeightCompact
         maximumLineCount: Geometry.launchLineCount

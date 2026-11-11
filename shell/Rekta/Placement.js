@@ -45,3 +45,12 @@ function leadingX(control, size, window) {
     const fits = control.left + size.width <= window.width - edge;
     return fits ? Math.max(edge, control.left) : Math.max(edge, Math.min(control.right, window.width - edge) - size.width);
 }
+
+// A context menu at a point (rekta.js placeAt(), :3107–3114): its top leading corner there, turned to the other side
+// of the point on each axis where it would come within space-m of the window's edge.
+function at(point, size, window) {
+    const edge = Rekta.Tokens.spaceM;
+    const left = point.x + size.width > window.width - edge ? Math.max(edge, point.x - size.width) : point.x;
+    const top = point.y + size.height > window.height - edge ? Math.max(edge, point.y - size.height) : point.y;
+    return { x: Math.round(left), y: Math.round(top), side: top < point.y ? "above" : "below" };
+}

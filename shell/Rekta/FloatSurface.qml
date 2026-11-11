@@ -29,6 +29,12 @@ Rectangle {
         scroller.contentY = Math.min(top, Math.max(scroller.contentY, top + row.height - scroller.height));
     }
 
+    // Its size with its rows laid out now, not at the next frame, so a host can place it as it opens.
+    function measured(): size {
+        column.forceLayout();
+        return Qt.size(implicitWidth, implicitHeight);
+    }
+
     // The minimum wins over the maximum, as min-width does over max-width.
     implicitWidth: Math.max(Geometry.floatMinWidth, Math.min(maxWidth, widestRow + 2 * border.width))
     implicitHeight: Math.min(maxHeight, column.implicitHeight + 2 * border.width)

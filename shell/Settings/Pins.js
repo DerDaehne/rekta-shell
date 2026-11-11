@@ -95,3 +95,19 @@ function insert(content, index, entry) {
         return true;
     });
 }
+
+// Puts an entry back in place of the one at `index`, as undoing a resize does.
+function replace(content, index, entry) {
+    return edited(content, list => {
+        if (!holds(list, index) || !isEntry(entry))
+            return false;
+        list.splice(index, 1, entry);
+        return true;
+    });
+}
+
+// A copy of the entry at `index` of the file's list, or of the defaults while it has none; null for none.
+function entry(content, index) {
+    const list = Array.isArray(content?.pinned) ? content.pinned : defaultPinned;
+    return holds(list, index) && isEntry(list[index]) ? JSON.parse(JSON.stringify(list[index])) : null;
+}

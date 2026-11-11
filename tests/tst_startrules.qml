@@ -60,17 +60,20 @@ TestCase {
         compare(Rules.pinnedTiles(undefined, installed).map(tile => tile.id), ["systemsettings", "org.kde.konsole"]);
     }
 
-    function test_a_pinned_tile_spans_one_or_two_units_and_an_uninstalled_app_is_left_out() {
+    function test_a_pinned_tile_spans_one_to_four_units_across_and_one_or_two_down_and_an_uninstalled_app_is_left_out() {
         const tiles = Rules.pinnedTiles([
             { id: "org.kde.kate.desktop", columns: 2 },
             { id: "gone" },
             { id: "org.kde.konsole", columns: 4, rows: 0 },
-            { columns: 1 }
+            { columns: 1 },
+            null,
+            { id: "org.kde.dolphin", columns: 7, rows: 3 }
         ], id => id !== "gone");
         compare(tiles, [
-            { id: "org.kde.kate", columns: 2, rows: 1 },
-            { id: "org.kde.konsole", columns: 2, rows: 1 }
-        ]);
+            { id: "org.kde.kate", columns: 2, rows: 1, index: 0 },
+            { id: "org.kde.konsole", columns: 4, rows: 1, index: 2 },
+            { id: "org.kde.dolphin", columns: 4, rows: 2, index: 5 }
+        ], "each keeps its index in the file's list");
     }
 
     function test_desktop_entries_are_looked_for_in_the_data_home_then_the_data_dirs_as_quickshell_does() {

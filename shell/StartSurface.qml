@@ -9,6 +9,7 @@ import org.kde.taskmanager as TaskManager
 import Settings
 import Start
 import Notices
+import Rekta
 import "services"
 
 // The Start's surface: full screen on the primary screen, above the windows and the app bar, below the toasts. Without
@@ -26,6 +27,8 @@ PanelWindow {
     property real topInset: 0
     // The splash has gone after login (SplashEnd.arrived); until then the Start does not open on its own.
     required property bool arrived
+    // Where a change to the pinned apps offers its undo.
+    property Toaster toaster: null
     // Its first frame is out: the splash may fade over it.
     property bool drawn: false
     // What Escape does in a search: "close" or "back" (the setting searchEscape).
@@ -77,6 +80,7 @@ PanelWindow {
                 icon: Quickshell.iconPath(entry.icon, true),
                 columns: tile.columns,
                 rows: tile.rows,
+                index: tile.index,
                 launch: () => {
                     surface.launcher.launch(entry);
                     usage.count(entry.id);
@@ -122,6 +126,8 @@ PanelWindow {
         anchors.topMargin: surface.topInset
         windows: Array.from(surface.windows.all)
         pinned: surface.pinnedApps(Array.from(DesktopEntries.applications.values), surface.listedPins)
+        pinFile: startFile
+        toaster: surface.toaster
         apps: installed.list
         settings: installed.settings
         commands: surface.commands

@@ -181,6 +181,15 @@ QtObject {
     readonly property real leaveTileScale: 0.9
     readonly property real leaveRowDrift: 12
     readonly property int presenceAtOnceAbove: 60
+    // A resized box's content stays hidden to `{ opacity: 0, offset: 0.55 }` of its glide, then fades in (rekta.js:4074)
+    readonly property real resizeContentFrom: 0.55
+    // A context menu opened by the keys stands at `r.left + Math.min(24, r.width / 2)`, `r.top + Math.min(r.height, 32)`
+    // of its item; a long press gives up past `> 8`px; a scroll that moves the item `> 2`px closes the menu
+    // (rekta.js:3151, :3175, :3193)
+    readonly property real contextMenuAtX: 24
+    readonly property real contextMenuAtY: 32
+    readonly property real longPressSlop: 8
+    readonly property real contextMenuScrollSlop: 2
     // A peek over d, duration-moderate: the old content leaves over `d * 0.6` (rekta.js:4211), the new one comes over
     // `d * 0.8` after `delay: d * 0.2` (rekta.js:4212)
     readonly property real peekOutShare: 0.6

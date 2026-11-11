@@ -3,10 +3,10 @@ import QtQuick
 // A grid of tiles (layout.md:110–116; rekta.css:83–88, :1481), space-s apart. Each tile takes the first free cells its
 // size fits, row by row from the top (grid-auto-flow: dense), so a wide tile never leaves a hole that a narrower one
 // after it could fill. Sideways the cells are a tile unit square, `columns` of them across. Compact the grid fills its
-// width: as many tile-unit columns as fit, at least two, each stretched to fill the row, rows a tile unit high.
+// width: as many tile-unit columns as fit, at least two, each stretched to fill the row, rows a tile unit high; a tile
+// three or four units wide takes a whole compact row (rekta.css:172).
 // ponytail: a compact row stays a tile unit high, where Rekta's grows with content taller than that (minmax(tile-unit,
-// auto)), and a tile three or four units wide would take a whole compact row (rekta.css:170–172); no tile here has
-// either; add them once a tile's content outgrows a unit or a tile spans three units. The product keeps one tile-unit
+// auto)); no tile here has such content; add it once a tile's content outgrows a unit. The product keeps one tile-unit
 // for every width, ultrawide included.
 Item {
     id: grid
@@ -59,9 +59,14 @@ Item {
         return packed(spans, wide).reduce((most, cell, k) => Math.max(most, cell.row + spans[k].rows), 0);
     }
 
+    // The cells a tile spans here: compact, one three or four units wide spans the row.
+    function spanOf(tile: Tile): var {
+        return stretched && tile.columns > 2 ? { columns: across, rows: tile.rows } : { columns: tile.columns, rows: tile.rows };
+    }
+
     function pack(): var {
         const tiles = [...children].filter(child => (child as Tile)?.visible);
-        return packed(tiles, across).map((cell, k) => ({ tile: tiles[k], column: cell.column, row: cell.row }));
+        return packed(tiles.map(spanOf), across).map((cell, k) => ({ tile: tiles[k], column: cell.column, row: cell.row }));
     }
 
     // A tile spanning cells spans the gaps between them too.
@@ -73,7 +78,7 @@ Item {
         for (const cell of placed) {
             cell.tile.x = cell.column * (cellWidth + Tokens.spaceS);
             cell.tile.y = cell.row * (Tokens.tileUnit + Tokens.spaceS);
-            cell.tile.width = span(cell.tile.columns, cellWidth);
+            cell.tile.width = span(spanOf(cell.tile).columns, cellWidth);
             cell.tile.height = span(cell.tile.rows, Tokens.tileUnit);
         }
     }

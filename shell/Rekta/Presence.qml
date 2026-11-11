@@ -5,7 +5,9 @@ import QtQuick
 // Things coming and going in a list or a grid (motion.md, "Arriving, leaving" and "Reordering"; rekta.js presence(),
 // enter(), leave(), :4078–4128). Those that go leave first; then the change is made, the ones that stay glide from where
 // they were to where they are now, and those that come arrive. A tile leaves shrinking to 90% and arrives rising from
-// 96%; anything else moves as a row, leaving towards its trailing edge and arriving from just above. A newer change
+// 96%; anything else moves as a row, leaving towards its trailing edge and arriving from just above. A tile that changed
+// size scales from its old size while its content shows again over the last 45% (motion.md, "Resize and re-flow";
+// rekta.js reflow(), :4058–4078). A newer change
 // makes the one still waiting at once; more than sixty changes, or no motion, apply at once.
 QtObject {
     id: presence
@@ -18,6 +20,8 @@ QtObject {
             x: 0,
             y: 0,
             scale: 1,
+            sx: 1,
+            sy: 1,
             opacity: 1
         })
 
@@ -26,8 +30,10 @@ QtObject {
         onTriggered: presence.settle()
     }
 
-    // One item moving between two poses ({x, y, scale, opacity}, the shift and scale on top of where it rests) through
-    // Qt's own curve. One that leaves holds its end until the change is made; the others let go as they land.
+    // One item moving between two poses ({x, y, scale, sx, sy, opacity}: the shift, the scale about its centre and the
+    // stretch from its top leading corner on top of where it rests) through Qt's own curve. One that leaves holds its end
+    // until the change is made; the others let go as they land. A resized tile holds its content hidden until
+    // resizeContentFrom of the time has passed, then fades it in evenly.
     property Component motion: Component {
         QtObject {
             id: motion
@@ -39,7 +45,10 @@ QtObject {
             required property var curve
             required property bool holds
             readonly property bool fades: from.opacity !== to.opacity
+            readonly property bool resized: from.sx !== to.sx || from.sy !== to.sy
             property real progress: 0
+            // The share of the time gone, unlike progress not eased.
+            property real elapsed: 0
             property bool holding: true
             readonly property real opacity: from.opacity + (to.opacity - from.opacity) * progress
 
@@ -57,6 +66,17 @@ QtObject {
                 xScale: motion.along("scale")
                 yScale: motion.along("scale")
             }
+            property Scale stretch: Scale {
+                xScale: motion.along("sx")
+                yScale: motion.along("sy")
+            }
+            property Binding contentHeld: Binding {
+                // Only a tile has content apart from its fill.
+                target: motion.resized ? motion.item : null
+                property: "contentOpacity"
+                value: Math.max(0, motion.elapsed - Geometry.resizeContentFrom) / (1 - Geometry.resizeContentFrom)
+                when: motion.holding && motion.resized
+            }
             // A fading item fades as one, as CSS opacity does: drawn into a layer only while it is see-through. Qt puts
             // that layer's source beside the item, among its parent's children, until it is opaque again.
             property Binding opacityHeld: Binding {
@@ -71,29 +91,41 @@ QtObject {
                 value: motion.opacity > 0 && motion.opacity < 1
                 when: motion.holding && motion.fades
             }
-            property NumberAnimation run: NumberAnimation {
-                target: motion
-                property: "progress"
-                from: 0
-                to: 1
-                duration: motion.duration
-                easing.type: Easing.Bezier
-                easing.bezierCurve: motion.curve
+            property ParallelAnimation run: ParallelAnimation {
                 onFinished: {
                     if (!motion.holds)
                         presence.release(motion);
                 }
+
+                NumberAnimation {
+                    target: motion
+                    property: "progress"
+                    from: 0
+                    to: 1
+                    duration: motion.duration
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: motion.curve
+                }
+                NumberAnimation {
+                    target: motion
+                    property: "elapsed"
+                    from: 0
+                    to: 1
+                    duration: motion.duration
+                }
             }
+            readonly property list<QtObject> transforms: [size, stretch, shift]
 
             function letGo() {
                 run.stop();
                 holding = false;
                 if (item)
-                    item.transform = Array.from(item.transform).filter(transform => transform !== shift && transform !== size);
+                    item.transform = Array.from(item.transform).filter(transform => !transforms.includes(transform));
             }
 
+            // Scaled first, then shifted, as CSS reads `translate() scale()`.
             Component.onCompleted: {
-                item.transform = Array.from(item.transform).concat([shift, size]);
+                item.transform = Array.from(item.transform).concat(transforms);
                 run.start();
             }
         }
@@ -140,7 +172,7 @@ QtObject {
     function settle() {
         const change = waiting;
         waiting = null;
-        const before = change.staying.map(item => item.mapToItem(null, 0, 0));
+        const before = change.staying.map(item => item.mapToItem(null, 0, 0, item.width, item.height));
         change.going.forEach(releaseOn);
         change.apply();
         const arrived = change.arrived();
@@ -190,15 +222,21 @@ QtObject {
         start(item, from, rest, tile ? Tokens.durationModerate : Tokens.durationShort, Tokens.easeIn, false);
     }
 
-    // From where it showed before the change to where it rests now (FLIP); a glide still running gives way.
-    function glide(item: Item, was: point) {
+    // From where it showed before the change to where it rests now (FLIP); a glide still running gives way. A tile also
+    // scales from the size it showed (rekta.js:4069–4071).
+    function glide(item: Item, was: rect) {
         moving.filter(running => running.item === item && !running.fades).forEach(release);
-        const now = item.mapToItem(null, 0, 0);
-        if (Math.abs(was.x - now.x) < 0.5 && Math.abs(was.y - now.y) < 0.5)
+        const now = item.mapToItem(null, 0, 0, item.width, item.height);
+        const sx = isTile(item) && now.width > 0 ? was.width / now.width : 1;
+        const sy = isTile(item) && now.height > 0 ? was.height / now.height : 1;
+        const resized = Math.abs(sx - 1) > 0.01 || Math.abs(sy - 1) > 0.01;
+        if (Math.abs(was.x - now.x) < 0.5 && Math.abs(was.y - now.y) < 0.5 && !resized)
             return;
         start(item, Object.assign({}, rest, {
             x: was.x - now.x,
-            y: was.y - now.y
+            y: was.y - now.y,
+            sx: resized ? sx : 1,
+            sy: resized ? sy : 1
         }), rest, Tokens.durationModerate, Tokens.easeBase, false);
     }
 

@@ -30,6 +30,9 @@ Item {
     readonly property bool statusFill: status !== ""
     // A place turn keeps the tile that opened the next place pressed until it turns away (rekta.js turn.leave()).
     property bool kept: false
+    // It has a context menu (collections.md, "Context menus"): a right click, a long press on touch and Shift+F10 or the
+    // context-menu key ask for it through menuAsked, and none of them presses the tile.
+    property bool hasMenu: false
     // A part of a running place turn: it acts on a press without sinking, as rekta.js press() shows no press while
     // turn.running; the turn that the press starts sinks it in its centre (keepPressed).
     // ponytail: set per part, so a tile that has landed sinks while others still turn (rekta.js asks one global
@@ -49,6 +52,9 @@ Item {
     readonly property real tiltY: Tokens.reducedMotion ? 0 : pressX * sink * Tokens.tileTilt
     readonly property real pressScale: 1 - sink * (1 - Tokens.tilePressScale)
     default property alias content: column.data
+    // How much of its content shows, its fill aside: Presence hides it while a resized tile scales. Parts a tile places
+    // itself take it too.
+    property real contentOpacity: 1
     // The content patterns it shows, the status word among them (tiles.md, "Tile content patterns").
     readonly property int patterns: {
         let count = word !== "" ? 1 : 0;
@@ -63,6 +69,8 @@ Item {
     readonly property bool turnsWhole: true
 
     signal activated
+    // Where the menu goes, in the tile: at the pointer or the finger, or below the tile's leading edge for the keys.
+    signal menuAsked(point at)
 
     // Keeps the press until the place turn takes the tile away; one activated without a press sinks now, in its
     // centre (rekta.js turn.leave()). Returns how long it still sinks, in ms.
@@ -189,6 +197,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.margins: Geometry.tilePadding
         spacing: Tokens.spaceS
+        opacity: tile.contentOpacity
     }
 
     TileNews {
@@ -208,6 +217,7 @@ Item {
         anchors.topMargin: Geometry.tileWordTop
         anchors.rightMargin: Geometry.tileWordRight
         visible: text !== ""
+        opacity: tile.contentOpacity
         text: tile.word
         font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeXs
@@ -229,7 +239,16 @@ Item {
         cursorShape: Qt.PointingHandCursor
     }
 
+    function asksForMenu(event: KeyEvent): bool {
+        return hasMenu && (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier)));
+    }
+
     Keys.onPressed: event => {
+        if (asksForMenu(event)) {
+            event.accepted = true;
+            menuAsked(Qt.point(Math.min(Geometry.contextMenuAtX, width / 2), Math.min(height, Geometry.contextMenuAtY)));
+            return;
+        }
         if (!opens || (event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter && event.key !== Qt.Key_Space))
             return;
         event.accepted = true;
@@ -326,6 +345,18 @@ Item {
         onTriggered: press.held = false
     }
 
+    // A long press on touch opens the menu at the finger; the release after it starts nothing (rekta.js contextMenu()).
+    Timer {
+        id: longPress
+
+        objectName: "longPress"
+        interval: Tokens.durationLongPress
+        onTriggered: {
+            area.swallow = true;
+            tile.menuAsked(Qt.point(area.start.x - Tokens.spaceM, area.start.y - Tokens.spaceM));
+        }
+    }
+
     Timer {
         id: tapDelay
 
@@ -342,6 +373,8 @@ Item {
         property point start
         property bool touch: false
         property bool moved: false
+        // A long press opened the menu: its release does not activate.
+        property bool swallow: false
 
         function pressAtStart() {
             if (tile.turning)
@@ -352,22 +385,33 @@ Item {
         anchors.fill: parent
         anchors.margins: -Tokens.spaceM
         enabled: tile.opens
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
 
         onPressed: mouse => {
             const inside = mouse.x >= Tokens.spaceM && mouse.x <= width - Tokens.spaceM && mouse.y >= Tokens.spaceM && mouse.y <= height - Tokens.spaceM;
-            if (!inside || mouse.button !== Qt.LeftButton) {
+            const right = mouse.button === Qt.RightButton;
+            if (!inside || (right && !tile.hasMenu)) {
                 mouse.accepted = false;
+                return;
+            }
+            if (right) {
+                tile.menuAsked(Qt.point(mouse.x - Tokens.spaceM, mouse.y - Tokens.spaceM));
                 return;
             }
             start = Qt.point(mouse.x, mouse.y);
             touch = mouse.source !== Qt.MouseEventNotSynthesized;
             moved = false;
+            swallow = false;
+            if (touch && tile.hasMenu)
+                longPress.restart();
             if (touch)
                 tapDelay.restart();
             else
                 pressAtStart();
         }
         onPositionChanged: mouse => {
+            if (Math.hypot(mouse.x - start.x, mouse.y - start.y) > Geometry.longPressSlop)
+                longPress.stop();
             if (moved || Math.hypot(mouse.x - start.x, mouse.y - start.y) <= (touch ? Geometry.pressSlopTouch : Geometry.pressSlopMouse))
                 return;
             // Dragging, or selecting, never activates.
@@ -376,16 +420,20 @@ Item {
             press.release(true);
         }
         onReleased: mouse => {
+            if (mouse.button === Qt.RightButton)
+                return;
+            longPress.stop();
             if (tapDelay.running) {
                 tapDelay.stop();
                 pressAtStart();
             }
-            const landed = !moved && mouse.x >= 0 && mouse.x <= width && mouse.y >= 0 && mouse.y <= height;
+            const landed = !moved && !swallow && mouse.x >= 0 && mouse.x <= width && mouse.y >= 0 && mouse.y <= height;
             press.release(false);
             if (landed)
                 tile.activated();
         }
         onCanceled: {
+            longPress.stop();
             tapDelay.stop();
             moved = true;
             press.release(true);
