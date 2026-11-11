@@ -242,6 +242,14 @@ TestCase {
         compare(delayed.calls, [["respond", "geheim"]]);
     }
 
+    // Ends the pause after a failure at once instead of waiting it out; its interval is held to two seconds below.
+    function runOutPause() {
+        const pause = findChild(Unlock, "pause");
+        verify(pause.running, "the pause after a failure runs");
+        pause.stop();
+        pause.triggered();
+    }
+
     function test_after_a_failure_pam_gets_the_next_answer_no_sooner_than_two_seconds_later() {
         ask();
         Unlock.submit("falsch", false);
@@ -251,9 +259,9 @@ TestCase {
         compare(pause.interval, 2000);
         Unlock.submit("geheim", false);
         ask();
-        wait(50);
         compare(responses(), [["respond", "falsch"]], "not yet");
-        tryVerify(() => responses().length === 2, 3000);
+        runOutPause();
+        compare(responses().length, 2);
         compare(responses()[1], ["respond", "geheim"]);
     }
 
@@ -314,7 +322,8 @@ TestCase {
         compare(part("password").error, findChild(other, "password").error);
         other.submitted("anders");
         ask();
-        tryVerify(() => responses().length === 2, 3000);
+        runOutPause();
+        compare(responses().length, 2);
         compare(responses()[1], ["respond", "anders"], "the other monitor's password reaches PAM");
     }
 
