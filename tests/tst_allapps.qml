@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import Start
+import "ContactSheets.js" as ContactSheets
 
 // "alle apps" as a panorama: a section for each initial under the strip of their names, their widths and rows, a split
 // letter, the letter jump, the wheel and swipe at its ends, the keys, a change of height, and compact. The start place is
@@ -757,6 +758,8 @@ TestCase {
     // Contact sheets
 
     function test_contact_sheets_of_alle_apps_in_both_themes_at_four_sizes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         const sizes = [Qt.size(1920, 1080), Qt.size(2560, 1440), Qt.size(1080, 1920), Qt.size(720, 1280)];
         for (const theme of ["light", "dark"]) {
             for (const size of sizes) {

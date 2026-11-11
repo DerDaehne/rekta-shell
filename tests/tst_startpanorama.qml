@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import Start
+import "ContactSheets.js" as ContactSheets
 
 // The start place as a panorama: the strip of section titles, the sections "läuft" and "angeheftet", the wheel and swipe
 // at its ends, the keys, and the search in its place. The Start's other behaviour is tst_start.qml.
@@ -980,6 +981,8 @@ TestCase {
     // Contact sheets
 
     function test_contact_sheets_of_the_panorama_in_both_themes_at_three_sizes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         const sizes = [Qt.size(1920, 1080), Qt.size(2560, 1440), Qt.size(1080, 1920)];
         for (const theme of ["light", "dark"]) {
             for (const size of sizes) {
@@ -1008,6 +1011,8 @@ TestCase {
     }
 
     function test_contact_sheets_of_the_compact_start_in_both_themes_at_720_by_1280() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             testCase.width = 720;
