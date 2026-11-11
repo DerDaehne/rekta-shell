@@ -90,6 +90,8 @@ TestCase {
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
+        // Without motion unless a test is about it: the keys and their targets are the same either way.
+        Prefs.motion = "off";
         makeStart(1600, 900, {});
     }
 
@@ -119,9 +121,10 @@ TestCase {
 
     // Opens the Start without motion, as a reduced-motion user sees it at once.
     function openNow() {
+        const motion = Prefs.motion;
         Prefs.motion = "off";
         start.open();
-        Prefs.motion = "system";
+        Prefs.motion = motion;
         waitForRendering(start);
         tryVerify(() => named("pinned").contentHeight > 0);
     }
@@ -284,6 +287,7 @@ TestCase {
     }
 
     function test_pinned_keeps_its_width_while_the_start_waits_hidden_for_the_windows() {
+        Prefs.motion = "on";
         makeStart(1600, 900, {
             pinned: appsPinned(40)
         });
@@ -539,6 +543,7 @@ TestCase {
     }
 
     function test_a_wheel_past_the_end_as_the_search_comes_in_changes_no_place() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_K);
         verify(start.searching);
@@ -548,6 +553,7 @@ TestCase {
     }
 
     function test_a_click_on_alle_apps_as_the_search_comes_in_changes_no_place() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_K);
         verify(start.searching);
@@ -559,6 +565,7 @@ TestCase {
     }
 
     function test_the_arrow_keys_on_the_pivot_as_the_search_comes_in_change_no_place() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_K);
         verify(start.searching);
@@ -568,6 +575,7 @@ TestCase {
     }
 
     function test_a_click_on_alle_apps_while_the_start_closes_changes_no_place() {
+        Prefs.motion = "on";
         openNow();
         start.close(null);
         verify(start.turning);
@@ -576,6 +584,7 @@ TestCase {
     }
 
     function test_the_arrow_keys_on_the_pivot_while_the_start_closes_change_no_place() {
+        Prefs.motion = "on";
         openNow();
         named("pivot").forceActiveFocus();
         start.close(null);
@@ -595,12 +604,14 @@ TestCase {
     }
 
     function test_a_wheel_past_the_end_while_the_start_closes_changes_no_place() {
+        Prefs.motion = "on";
         mouseWheel(closeAtTheEnd(), 300, 300, -120, 0);
         compare(named("pivot").currentIndex, 0);
         verify(start.turning, "the close turns on");
     }
 
     function test_a_swipe_past_the_end_while_the_start_closes_changes_no_place() {
+        Prefs.motion = "on";
         mouseDrag(closeAtTheEnd(), 800, 600, -200, 0);
         compare(named("pivot").currentIndex, 0);
         verify(start.turning, "the close turns on");
@@ -947,6 +958,7 @@ TestCase {
     // The turn
 
     function test_the_titles_of_both_pivots_turn_with_the_start_place() {
+        Prefs.motion = "on";
         start.open();
         const turner = findChild(start, "turn");
         tryVerify(() => turner.running, 2000);
@@ -956,6 +968,7 @@ TestCase {
     }
 
     function test_a_change_of_place_takes_the_strip_out_and_back_in() {
+        Prefs.motion = "on";
         openNow();
         named("pivot").select(1);
         const going = findChild(start, "turn").leavingTurns.map(turn => turn.part.item);

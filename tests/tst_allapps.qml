@@ -81,6 +81,8 @@ TestCase {
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
+        // Without motion unless a test is about it: the keys and their targets are the same either way.
+        Prefs.motion = "off";
         calls = [];
     }
 
@@ -109,10 +111,11 @@ TestCase {
     }
 
     function showAllApps() {
+        const motion = Prefs.motion;
         Prefs.motion = "off";
         start.open();
         named("pivot").select(1);
-        Prefs.motion = "system";
+        Prefs.motion = motion;
         waitForRendering(start);
     }
 
@@ -298,6 +301,7 @@ TestCase {
     // The letter jump
 
     function test_a_typed_letter_focuses_the_first_app_it_starts_and_its_section_glides_flush_left() {
+        Prefs.motion = "on";
         openOnAllApps(desktopApps, 1920, 1080);
         const panorama = named("appsPanorama");
         keyClick("o");
@@ -311,6 +315,7 @@ TestCase {
     }
 
     function test_the_glide_takes_rekta_s_pivot_glide() {
+        Prefs.motion = "on";
         openOnAllApps(desktopApps, 1920, 1080);
         const panorama = named("appsPanorama");
         keyClick("w");
@@ -352,6 +357,7 @@ TestCase {
     }
 
     function test_a_letter_typed_while_the_start_turns_to_alle_apps_ends_the_turn_and_jumps() {
+        Prefs.motion = "on";
         openOnAllApps(desktopApps, 1600, 900);
         named("pivot").select(0);
         tryVerify(() => !start.turning, 3000);

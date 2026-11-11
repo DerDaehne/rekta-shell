@@ -107,6 +107,8 @@ TestCase {
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
+        // Without motion unless a test is about it: the keys and their targets are the same either way.
+        Prefs.motion = "off";
         calls = [];
         start = createTemporaryObject(startComponent, testCase);
         turner = findChild(start, "turn");
@@ -134,9 +136,10 @@ TestCase {
 
     // Opens the Start without motion, as a reduced-motion user sees it at once.
     function openNow() {
+        const motion = Prefs.motion;
         Prefs.motion = "off";
         start.open();
-        Prefs.motion = "system";
+        Prefs.motion = motion;
         waitForRendering(start);
     }
 
@@ -237,6 +240,7 @@ TestCase {
 
     // A preview streams its window while it has it, so the stream ends with the Start.
     function test_a_preview_has_its_window_from_the_opening_until_the_start_has_gone() {
+        Prefs.motion = "on";
         start.preview = previewComponent;
         const window = () => findChild(tilesIn("running")[0], "preview").item.window;
         compare(window(), null, "not while the Start is closed");
@@ -267,6 +271,7 @@ TestCase {
     }
 
     function test_closing_without_a_press_gives_the_keyboard_back_to_the_window_that_had_it_once_the_parts_are_out() {
+        Prefs.motion = "on";
         start.windows = windowsWithTheDocsActive();
         openNow();
         keyClick(Qt.Key_Escape);
@@ -323,6 +328,7 @@ TestCase {
 
     // A launched app's window comes while the Start turns out, and the running tiles are made anew.
     function test_a_window_that_comes_while_the_start_turns_out_after_a_launch_leaves_no_glass() {
+        Prefs.motion = "on";
         openNow();
         mouseClick(tilesIn("pinned")[1]);
         verify(turner.running);
@@ -342,6 +348,7 @@ TestCase {
     }
 
     function test_window_tiles_made_anew_while_the_start_turns_out_leave_the_pinned_apps_whole_at_the_next_opening() {
+        Prefs.motion = "on";
         openNow();
         mouseClick(tilesIn("pinned")[1]);
         start.windows = [...start.windows, fakeWindow("dolphin", 40)];
@@ -353,6 +360,7 @@ TestCase {
 
     // Desktop entries that come late, or a new start.json, make the pinned tiles anew.
     function test_pinned_apps_that_come_while_the_start_turns_in_all_show() {
+        Prefs.motion = "on";
         start.open();
         tryVerify(() => turner.running, 2000);
         start.pinned = [fakeApp("kate", 1), ...start.pinned];
@@ -462,6 +470,7 @@ TestCase {
     }
 
     function test_a_new_count_on_a_tile_in_the_start_peeks_and_under_reduced_motion_stands_at_once() {
+        Prefs.motion = "on";
         mouseMove(testCase, testCase.width - 1, testCase.height - 1);
         start.pinned = [fakeApp("Konsole", 1)];
         start.unseen = { "org.example.Konsole": 2 };
@@ -608,6 +617,7 @@ TestCase {
     }
 
     function test_a_sideways_wheel_goes_to_alle_apps_once_per_gesture() {
+        Prefs.motion = "on";
         openNow();
         mouseWheel(named("panorama"), 100, 100, -120, 0);
         compare(named("pivot").currentIndex, 1);
@@ -619,6 +629,7 @@ TestCase {
     }
 
     function test_the_parts_turn_in_once_the_windows_are_three_quarters_back_in_half_a_moderate() {
+        Prefs.motion = "on";
         const started = Date.now();
         start.open();
         verify(start.shown);
@@ -645,18 +656,21 @@ TestCase {
     }
 
     function test_the_start_s_parts_turn_in_at_half_rekta_s_pace() {
+        Prefs.motion = "on";
         start.open();
         tryVerify(() => turner.running, 2000);
         verifyPace(turner.arrivingTurns, Tokens.durationModerate, turner.handOverAt, 0.5);
     }
 
     function test_closed_the_start_s_parts_turn_out_at_half_rekta_s_pace() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_Escape);
         verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 0.5);
     }
 
     function test_after_a_tile_press_the_start_turns_out_at_half_rekta_s_pace_the_pressed_tile_once_its_press_is_through() {
+        Prefs.motion = "on";
         openNow();
         const pressed = tilesIn("pinned")[0];
         mouseClick(pressed);
@@ -668,6 +682,7 @@ TestCase {
     }
 
     function test_a_change_of_place_inside_the_start_keeps_rekta_s_pace() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_Right);
         verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 1);
@@ -682,6 +697,7 @@ TestCase {
     }
 
     function test_the_glass_stands_whole_from_the_opening_and_leaves_the_fade_to_kwin() {
+        Prefs.motion = "on";
         start.open();
         verify(glassWhole(), "whole in the frame the windows start to step back");
         tryVerify(() => start.phase === "open", 3000);
@@ -689,6 +705,7 @@ TestCase {
     }
 
     function test_the_start_empties_half_a_moderate_after_the_hand_over_with_the_glass_whole_until_then() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_Escape);
         turner.paused = true;
@@ -705,6 +722,7 @@ TestCase {
     }
 
     function test_escape_turns_the_start_out_back_the_way_it_came() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_Escape);
         verify(turner.running);
@@ -716,6 +734,7 @@ TestCase {
     }
 
     function test_after_a_press_the_start_turns_out_forward_with_the_pressed_tile_last() {
+        Prefs.motion = "on";
         openNow();
         const pressed = tilesIn("pinned")[0];
         mouseClick(pressed);
@@ -728,6 +747,7 @@ TestCase {
     }
 
     function test_the_glass_goes_once_the_last_part_is_three_quarters_out() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_Escape);
         turner.paused = true;
@@ -739,6 +759,7 @@ TestCase {
     }
 
     function test_the_start_holds_the_keyboard_from_opening_until_the_hand_over() {
+        Prefs.motion = "on";
         verify(!start.holdsKeyboard);
         start.open();
         verify(start.holdsKeyboard, "the windows step back as it takes the keyboard");
@@ -787,6 +808,7 @@ TestCase {
     }
 
     function test_meta_down_and_enter_at_once_launch_the_first_tile_well_within_400_ms() {
+        Prefs.motion = "on";
         start.windows = [];
         start.pinned = pinnedAppsThatTellTheTurn();
         const opened = Date.now();
@@ -802,6 +824,7 @@ TestCase {
     }
 
     function test_the_right_arrow_while_the_start_turns_in_goes_to_alle_apps() {
+        Prefs.motion = "on";
         holdTheOpeningTurn();
         keyClick(Qt.Key_Right);
         compare(named("pivot").currentIndex, 1);
@@ -811,6 +834,7 @@ TestCase {
     }
 
     function test_arrows_move_the_focus_while_the_start_turns_in_and_enter_ends_the_turn_and_launches_once() {
+        Prefs.motion = "on";
         holdTheOpeningTurn();
         const pinned = tilesIn("pinned");
         keyClick(Qt.Key_Down);
@@ -829,6 +853,7 @@ TestCase {
     }
 
     function test_space_on_a_tile_while_the_start_turns_in_shows_no_press_and_launches_it_as_it_comes_up() {
+        Prefs.motion = "on";
         holdTheOpeningTurn();
         keyClick(Qt.Key_Down);
         const tile = tilesIn("pinned")[0];
@@ -841,6 +866,7 @@ TestCase {
     }
 
     function test_a_press_while_the_start_turns_in_ends_the_turn_and_launches_once_the_tile_sinking_only_then_in_its_centre() {
+        Prefs.motion = "on";
         holdTheOpeningTurn();
         const tile = tilesIn("pinned")[2];
         const turn = turner.arrivingTurns.find(planned => planned.part.item === tile);
@@ -871,6 +897,7 @@ TestCase {
     }
 
     function test_while_the_start_turns_out_a_tile_takes_no_key_or_press() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Escape);
@@ -881,6 +908,7 @@ TestCase {
     }
 
     function test_escape_while_the_start_turns_to_alle_apps_goes_back_to_the_start_place() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_Right);
         verify(start.turning);
@@ -891,6 +919,7 @@ TestCase {
     }
 
     function test_turning_to_alle_apps_arrows_and_enter_act_amid_the_turn() {
+        Prefs.motion = "on";
         start.apps = ["ark", "Blender", "konsole"].map(name => installedApp(name));
         openNow();
         named("pivot").select(1);
@@ -910,6 +939,7 @@ TestCase {
     }
 
     function test_down_while_the_start_place_still_turns_out_toward_alle_apps_ends_the_turn_and_goes_to_the_first_app() {
+        Prefs.motion = "on";
         start.apps = ["ark", "Blender", "konsole"].map(name => installedApp(name));
         openNow();
         named("pivot").select(1);
@@ -921,6 +951,7 @@ TestCase {
     }
 
     function test_closing_during_the_opening_ends_that_turn_and_goes_out() {
+        Prefs.motion = "on";
         start.open();
         tryVerify(() => turner.running, 2000);
         keyClick(Qt.Key_Escape);
@@ -931,6 +962,7 @@ TestCase {
     }
 
     function test_opening_again_while_closing_ends_the_close_and_comes_back() {
+        Prefs.motion = "on";
         openNow();
         keyClick(Qt.Key_Escape);
         start.open();
@@ -1060,10 +1092,11 @@ TestCase {
     // The Start open on "alle apps" with these apps, at once.
     function openOnAllApps(names: var) {
         start.apps = names.map(name => installedApp(name));
+        const motion = Prefs.motion;
         Prefs.motion = "off";
         start.open();
         named("pivot").select(1);
-        Prefs.motion = "system";
+        Prefs.motion = motion;
         waitForRendering(start);
     }
 
@@ -1097,6 +1130,7 @@ TestCase {
     }
 
     function test_pressing_an_app_launches_it_once_and_turns_the_start_out_forward_at_half_rekta_s_pace_with_it_last() {
+        Prefs.motion = "on";
         openOnAllApps(["ark", "Blender", "konsole"]);
         const pressed = letterTile(1);
         mouseClick(pressed);
@@ -1123,6 +1157,7 @@ TestCase {
     }
 
     function test_going_to_alle_apps_turns_each_tile_in_view_as_one_part() {
+        Prefs.motion = "on";
         start.apps = appNames(60).map(name => installedApp(name));
         openNow();
         named("pivot").select(1);
@@ -1194,10 +1229,11 @@ TestCase {
 
     // Types without motion, so the search stands at once.
     function typeNow(text: string) {
+        const motion = Prefs.motion;
         Prefs.motion = "off";
         for (const character of text)
             keyClick(character);
-        Prefs.motion = "system";
+        Prefs.motion = motion;
         waitForRendering(start);
     }
 
@@ -1409,6 +1445,7 @@ TestCase {
     }
 
     function test_enter_presses_the_first_hit_in_its_centre_launches_it_once_and_turns_the_start_out_forward_with_it_last() {
+        Prefs.motion = "on";
         openWithApps();
         typeNow("ko");
         const first = start.hitTiles()[0];
@@ -1427,6 +1464,7 @@ TestCase {
     }
 
     function test_a_hit_in_focus_launches_once_however_often_it_is_pressed_while_the_start_turns_out() {
+        Prefs.motion = "on";
         openWithApps();
         typeNow("ko");
         keyClick(Qt.Key_Down);
@@ -1442,6 +1480,7 @@ TestCase {
     }
 
     function test_arrows_move_through_the_hits_and_enter_or_space_presses_the_one_in_focus() {
+        Prefs.motion = "on";
         openWithApps();
         typeNow("k");
         const tiles = start.hitTiles();
@@ -1549,6 +1588,7 @@ TestCase {
     }
 
     function test_escape_in_a_search_closes_the_start_back_the_way_it_came_and_it_opens_again_without_the_search() {
+        Prefs.motion = "on";
         openWithApps();
         typeNow("ko");
         keyClick(Qt.Key_Escape);
@@ -1573,6 +1613,7 @@ TestCase {
     }
 
     function test_at_rekta_s_own_pace_the_parts_turn_in_and_out_at_full_length_while_the_windows_stay_at_the_effect_s_pace() {
+        Prefs.motion = "on";
         Prefs.startPace = "rekta";
         start.open();
         compare(named("waitForWindows").interval, Tokens.turnOverlap * FadeBack.duration, "the windows come back at the effect's pace");
@@ -1584,6 +1625,7 @@ TestCase {
     }
 
     function test_the_pace_set_while_the_start_is_open_acts_on_the_next_turn_out() {
+        Prefs.motion = "on";
         openNow();
         Prefs.startPace = "rekta";
         keyClick(Qt.Key_Escape);
@@ -1830,6 +1872,7 @@ TestCase {
     }
 
     function test_a_letter_typed_while_the_parts_turn_in_ends_the_turn_in_its_end_state_and_the_search_follows() {
+        Prefs.motion = "on";
         start.apps = searchableApps();
         start.open();
         tryVerify(() => turner.running, 2000);
@@ -1847,6 +1890,7 @@ TestCase {
     }
 
     function test_arrows_and_enter_act_on_the_hits_right_after_a_letter_typed_while_the_start_opens() {
+        Prefs.motion = "on";
         start.apps = searchableApps();
         start.open();
         keyClick("k");
@@ -1864,6 +1908,7 @@ TestCase {
     }
 
     function test_the_place_s_parts_leave_then_the_title_and_the_hits_arrive() {
+        Prefs.motion = "on";
         openWithApps();
         const presence = named("presence");
         const pinned = tilesIn("pinned");
@@ -1883,6 +1928,7 @@ TestCase {
     }
 
     function test_typing_on_the_hits_that_no_longer_match_leave_and_the_rest_close_up() {
+        Prefs.motion = "on";
         openWithApps();
         typeNow("k");
         const [kate, konsole, kwrite] = start.hitTiles();
@@ -1900,6 +1946,7 @@ TestCase {
     }
 
     function test_erasing_brings_back_the_hits_that_match_again_rising_into_their_place() {
+        Prefs.motion = "on";
         openWithApps();
         typeNow("kw");
         keyClick(Qt.Key_Backspace);
@@ -1916,6 +1963,7 @@ TestCase {
 
     // A fading item draws through a layer whose source Qt puts beside it, among the parts of the view.
     function test_clearing_while_hits_still_fade_in_takes_only_the_hits_and_title_as_parts() {
+        Prefs.motion = "on";
         openWithApps();
         typeNow("kx");
         keyClick(Qt.Key_Backspace);
@@ -2432,6 +2480,7 @@ TestCase {
     }
 
     function test_a_window_hit_brings_the_window_forward_and_the_start_turns_out_forward() {
+        Prefs.motion = "on";
         openWithEverything();
         typeNow("build");
         keyClick(Qt.Key_Return);
@@ -2485,6 +2534,7 @@ TestCase {
     }
 
     function test_without_an_app_up_from_the_first_row_goes_to_the_line_and_enter_or_space_acts_on_the_row_in_focus() {
+        Prefs.motion = "on";
         openWithEverything();
         typeNow("zeit");
         const rows = start.searchRows();
