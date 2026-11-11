@@ -560,6 +560,7 @@ TestCase {
     }
 
     function test_a_closed_and_a_changed_notification_wait_as_one_update_each() {
+        notify({ summary: "zoe" });
         const anna = notify({ summary: "anna" });
         const ben = notify({ summary: "ben" });
         notify({ summary: "cleo" });
@@ -602,7 +603,7 @@ TestCase {
         verify(waitingButton().activeFocus);
         keyClick(Qt.Key_Return);
         compare(inPlace(), ["dora", "cleo", "ben"]);
-        verify(today.holdsFocus);
+        verify(rows()[0].activeFocus, "the focus goes to the first entry, not left on the hidden button");
     }
 
     function test_with_nothing_playing_and_no_notification_heute_stays_and_says_so() {
