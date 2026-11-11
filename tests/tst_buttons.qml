@@ -219,8 +219,9 @@ TestCase {
         const clicks = createTemporaryObject(spy, testCase, { target: button });
         const box = findChild(button, "box");
         mousePress(box);
-        // Past the press-and-hold time, after which a pointer handler would take it for a long press.
-        wait(Qt.styleHints.mousePressAndHoldInterval + 100);
+        // Past the time after which a pointer handler takes a press for a long one, unless told otherwise.
+        const handler = createTemporaryQmlObject("import QtQuick; TapHandler {}", testCase);
+        wait(handler.longPressThreshold * 1000 + 100);
         mouseRelease(box);
         compare(clicks.count, 1);
     }
