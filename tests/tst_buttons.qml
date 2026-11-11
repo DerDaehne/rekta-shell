@@ -219,7 +219,8 @@ TestCase {
         const clicks = createTemporaryObject(spy, testCase, { target: button });
         const box = findChild(button, "box");
         mousePress(box);
-        wait(1500);
+        // Past the press-and-hold time, after which a pointer handler would take it for a long press.
+        wait(Qt.styleHints.mousePressAndHoldInterval + 100);
         mouseRelease(box);
         compare(clicks.count, 1);
     }
