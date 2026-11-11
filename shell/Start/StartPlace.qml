@@ -134,10 +134,12 @@ FocusScope {
             turnIn();
     }
 
-    // The Start's own turns, in and out, run at its tempo; a change of place inside it at Rekta's.
+    // The Start's own turns, in and out, run at its tempo and about the bottom edge it is swiped up from; a change of
+    // place inside it at Rekta's, about the leading edge.
     function turnIn() {
         turn(null, body, {
-            tempo: Prefs.startTempo
+            tempo: Prefs.startTempo,
+            edge: "bottom"
         });
     }
 
@@ -164,7 +166,8 @@ FocusScope {
         turn(body, null, {
             back: options.back,
             pressed: options.pressed,
-            tempo: Prefs.startTempo
+            tempo: Prefs.startTempo,
+            edge: "bottom"
         });
     }
 

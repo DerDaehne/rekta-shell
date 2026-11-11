@@ -630,10 +630,11 @@ TestCase {
         tryVerify(() => start.phase === "open", 3000);
     }
 
-    // The turns against Rekta's plan for the same parts from `from`: each part's time and the starts after `from` are
-    // `pace` of Rekta's. The starts are compared as a set: parts alike in row, place and heft may swap their order.
+    // The turns against Rekta's plan for the same parts from `from`, about the same edge: each part's time and the starts
+    // after `from` are `pace` of Rekta's. The starts are compared as a set: parts alike in row, place and heft may swap
+    // their order.
     function verifyPace(turns: var, rektaDuration: real, from: real, pace: real) {
-        const rekta = Turnstile.plan(turns.map(turn => turn.part), rektaDuration, from);
+        const rekta = Turnstile.plan(turns.map(turn => turn.part), rektaDuration, from, turner.edge);
         verify(turns.length > 0);
         for (const turn of turns)
             fuzzyCompare(turn.duration, pace * rekta.find(planned => planned.part === turn.part).duration, 1e-9, "times");

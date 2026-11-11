@@ -27,6 +27,8 @@ QtObject {
     property bool back: false
     // Its pace against Rekta's place change: every part's start and time is its token's times this.
     property real tempo: 1
+    // The edge its parts turn about (Turnstile.plan): Rekta's leading edge, or "bottom".
+    property string edge: "leading"
     property Tile pressedTile: null
     property real handOverAt: 0
     property bool handedOver: false
@@ -37,7 +39,7 @@ QtObject {
         onTriggered: turner.elapsed = turner.clock.elapsedTime * 1000
     }
 
-    // One part turning: a rotation about its clipping box's leading edge and its opacity, both following the turn's
+    // One part turning: a rotation about its clipping box's edge and its opacity, both following the turn's
     // clock through Qt's own curves. Before it starts it waits in its first pose.
     property Component partTurn: Component {
         QtObject {
@@ -58,11 +60,7 @@ QtObject {
             property bool holding: true
 
             property Rotation rotation: Rotation {
-                axis {
-                    x: 0
-                    y: 1
-                    z: 0
-                }
+                axis: part.turn.axis
                 origin.x: part.turn.originX
                 origin.y: part.turn.originY
                 distanceToPlane: part.turn.perspective
@@ -156,7 +154,7 @@ QtObject {
 
     // Turns from one place to the next; either may be null (nothing to leave, nothing to arrive at). `options.back`
     // runs it the other way round; `options.pressed` is the tile that opened the next place; `options.tempo` is its
-    // pace, Rekta's when not given.
+    // pace, Rekta's when not given; `options.edge` "bottom" turns every part about its box's bottom edge instead.
     function go(from: Item, to: Item, options: var) {
         finish();
         // A place still building in leaves from its end state: the turn wins over the arrival.
@@ -166,6 +164,7 @@ QtObject {
         arrivingPlace = to;
         back = options?.back === true;
         tempo = options?.tempo ?? 1;
+        edge = options?.edge ?? "leading";
         if (to)
             to.visible = false;
         if (Tokens.reducedMotion) {
@@ -198,7 +197,7 @@ QtObject {
         // The pressed tile still sinks for the press's own time, whatever the tempo.
         if (pressedPart) {
             pressedTile = pressed;
-            turns.push(Turnstile.pressedTurn(pressedPart, tempo * Tokens.durationShort, turns, pressed.keepPressed()));
+            turns.push(Turnstile.pressedTurn(pressedPart, tempo * Tokens.durationShort, turns, pressed.keepPressed(), edge));
         }
         leavingTurns = turns;
         arrivingTurns = [];
@@ -253,7 +252,7 @@ QtObject {
 
     // Turnstile.plan at the turn's tempo: each start after `from`, and each part's time, scaled alike.
     function plan(parts: var, duration: real, from: real): var {
-        const turns = Turnstile.plan(parts, duration, from);
+        const turns = Turnstile.plan(parts, duration, from, edge);
         for (const turn of turns) {
             turn.at = from + tempo * (turn.at - from);
             turn.duration *= tempo;
@@ -334,7 +333,7 @@ QtObject {
         return item.children.length === 0 && !(item as MouseArea);
     }
 
-    // Where a part rests on the screen, without its own transform, and the top left of the box that clips it.
+    // Where a part rests on the screen, without its own transform, and the box that clips it.
     function partOf(item: Item, place: Item): var {
         const at = item.parent.mapToItem(null, item.x, item.y);
         let clip = item.parent;
@@ -349,7 +348,9 @@ QtObject {
             height: item.height,
             clip: {
                 x: edge.x,
-                y: edge.y
+                y: edge.y,
+                width: clip.width,
+                height: clip.height
             }
         };
     }
