@@ -941,8 +941,7 @@ TestCase {
         place.strip.select(3);
         compare(place.strip.currentIndex, 3);
         verify(place.panorama.gliding);
-        wait(Tokens.durationPivotGlide / 2);
-        verify(place.panorama.scroller.contentX > 0 && place.panorama.scroller.contentX < place.panorama.startOf(3), "still on its way");
+        tryVerify(() => place.panorama.scroller.contentX > 0 && place.panorama.scroller.contentX < place.panorama.startOf(3), 1000, "on its way");
         compare(place.strip.currentIndex, 3, "sections that pass by do not take the mark");
         tryCompare(place.panorama.scroller, "contentX", place.panorama.startOf(3), 2 * Tokens.durationPivotGlide);
         compare(place.strip.currentIndex, 3);
@@ -1179,10 +1178,16 @@ TestCase {
         keyClick(Qt.Key_End);
         compare(panorama.currentIndex, 4);
         verify(panorama.gliding);
-        wait(Tokens.durationPivotGlide / 2);
-        verify(panorama.scroller.contentX > 0 && panorama.scroller.contentX < panorama.startOf(4), "on its way");
+        tryVerify(() => panorama.scroller.contentX > 0 && panorama.scroller.contentX < panorama.startOf(4), 1000, "on its way");
         tryCompare(panorama.scroller, "contentX", panorama.startOf(4), 2 * Tokens.durationPivotGlide);
         compare(panorama.scroller.contentX, panorama.scroller.contentWidth - panorama.width);
+    }
+
+    // Holds a jump part of its way along, so what the test does next happens during it whatever the machine's pace.
+    function holdGlideUnderWay(panorama: var) {
+        tryVerify(() => panorama.scroller.contentX > 0, 1000, "the glide is under way");
+        verify(panorama.gliding);
+        findChild(panorama, "glide").pause();
     }
 
     function test_another_key_during_a_jump_does_not_cut_it_off() {
@@ -1190,12 +1195,13 @@ TestCase {
         const panorama = makePanorama(5, 100);
         panorama.forceActiveFocus();
         keyClick(Qt.Key_End);
-        wait(Tokens.durationPivotGlide / 5);
+        holdGlideUnderWay(panorama);
         keyClick(Qt.Key_A);
         verify(panorama.gliding, "a key that is no jump leaves the glide running");
+        findChild(panorama, "glide").resume();
         tryCompare(panorama.scroller, "contentX", panorama.startOf(4), 2 * Tokens.durationPivotGlide);
         keyClick(Qt.Key_Home);
-        wait(Tokens.durationPivotGlide / 5);
+        tryVerify(() => panorama.scroller.contentX < panorama.startOf(4), 1000, "the glide is under way");
         const reading = panorama.currentIndex;
         keyClick(Qt.Key_Right);
         compare(panorama.currentIndex, Math.min(4, reading + 1), "the next one from the section the scroll has reached");
@@ -1207,7 +1213,7 @@ TestCase {
         const panorama = makePanorama(5);
         settled(panorama);
         panorama.goTo(4, false, false);
-        wait(Tokens.durationPivotGlide / 5);
+        holdGlideUnderWay(panorama);
         const over = sectionAt(panorama, 0).x - panorama.scroller.contentX + 100;
         panorama.handleWheel(wheelEvent(30, {
             x: Math.max(60, over)
@@ -1223,7 +1229,7 @@ TestCase {
         Prefs.motion = "on";
         const panorama = makePanorama(5, 100);
         panorama.goTo(4, false, false);
-        wait(Tokens.durationPivotGlide / 4);
+        holdGlideUnderWay(panorama);
         verify(panorama.gliding);
         panorama.handleWheel(wheelEvent(10), 1000);
         verify(!panorama.gliding);
