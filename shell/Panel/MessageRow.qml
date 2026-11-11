@@ -25,7 +25,7 @@ Item {
     required property string actions
     property var now: new Date()
     property var locale: Qt.locale()
-    // False where the row is only a view of the centre's: no button, no Delete, no pull.
+    // False where the row is only a view of the centre's: no button and no pull.
     property bool removable: true
     // What the row stands on, which the picture's corners are drawn in (Picture.ground).
     property color ground: Tokens.color.bg
@@ -73,7 +73,7 @@ Item {
     Accessible.onPressAction: pressed()
 
     Keys.onPressed: event => {
-        if (event.key === Qt.Key_Delete && row.removable) {
+        if (event.key === Qt.Key_Delete) {
             removing();
         } else if ([Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space].includes(event.key)) {
             // A held key presses once.

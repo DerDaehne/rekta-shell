@@ -377,6 +377,7 @@ TestCase {
         compare(findChild(anna, "body").maximumLineCount, 1);
         verify(!findChild(anna, "remove").visible);
         verify(!findChild(anna, "offers").visible);
+        compare(findChild(anna, "icon").ground, Qt.rgba(0, 0, 0, 0), "on the glass the picture keeps its square crop");
     }
 
     function test_delete_on_a_row_removes_nothing() {
