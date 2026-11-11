@@ -411,9 +411,10 @@ TestCase {
         fits.text = "a name that has grown too long for its box";
         tryCompare(Tips, "target", fits, Tokens.durationTipDelay * 2);
         compare(Tips.text, "a name that has grown too long for its box");
-        fits.text = "a new name, again too long for its box";
-        compare(Tips.text, "a new name, again too long for its box", "a tip that shows says the new words");
-        compare(findChild(tooltip, "words").text, "a new name, again too long for its box");
+        fits.text = "a new name, again far too long for its box";
+        verify(fits.truncated, "the new words are cut too");
+        compare(Tips.text, "a new name, again far too long for its box", "a tip that shows says the new words");
+        compare(findChild(tooltip, "words").text, "a new name, again far too long for its box");
         fits.width = 900;
         compare(Tips.target, null, "once the words fit, the tip goes");
     }
