@@ -466,7 +466,7 @@ TestCase {
         verify(!rest.enabled, "the hidden parts take nothing");
         const ratio = Tokens.fluid(Tokens.fontSizeNavInactive, 1920) / Tokens.fluid(Tokens.fontSizeNavActive, 1920);
         tryCompare(clock, "shrink", ratio);
-        compare(clock.color, Tokens.color.textContrastMedium);
+        tryCompare(clock, "color", Tokens.color.textContrastMedium, 1000, "it fades to the inactive title's colour");
         face.active = true;
         tryVerify(() => clock.shrink > clock.ratio && clock.shrink < 1, 1000, "it grows, not jumps");
         tryCompare(clock, "shrink", 1);
