@@ -777,6 +777,7 @@ TestCase {
     }
 
     function test_closed_before_its_parts_came_the_start_hands_over_at_once() {
+        Prefs.motion = "on";
         start.open();
         keyClick(Qt.Key_Escape);
         verify(!start.holdsKeyboard);
@@ -800,6 +801,7 @@ TestCase {
     }
 
     function test_the_start_opens_with_no_tile_in_focus_so_none_shows_a_ring_or_holds_its_news() {
+        Prefs.motion = "on";
         start.windows = [];
         start.open();
         verify(start.activeFocus);
@@ -1860,6 +1862,7 @@ TestCase {
     }
 
     function test_a_letter_typed_right_after_opening_shows_the_title_and_the_hits_before_the_opening_could_have_landed() {
+        Prefs.motion = "on";
         start.apps = searchableApps();
         start.open();
         keyClick("k");
@@ -1975,6 +1978,7 @@ TestCase {
     }
 
     function test_more_than_sixty_changes_apply_at_once() {
+        Prefs.motion = "on";
         start.apps = Array.from({ length: 61 }, (_, i) => installedApp(`app ${i}`));
         openNow();
         keyClick("a");
