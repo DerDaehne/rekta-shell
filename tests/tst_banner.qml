@@ -126,10 +126,18 @@ TestCase {
         return opacity;
     }
 
+    // Stops the way in half through its time, whatever the machine's pace.
+    function holdHalfWayIn() {
+        const coming = findChild(banner, "coming");
+        verify(coming.running, "it comes in");
+        coming.pause();
+        banner.phase = 0.5;
+    }
+
     function test_the_whole_banner_fades_in_and_moves_8px_its_fill_and_hairline_too() {
         Prefs.motion = "on";
         banner.set("offline", true, {});
-        wait(Tokens.durationShort / 2);
+        holdHalfWayIn();
         const entry = banner.entry;
         verify(entry > 0 && entry < 1, `on its way: ${entry}`);
         const fill = findChild(banner, "fill");
@@ -144,8 +152,9 @@ TestCase {
         Prefs.motion = "on";
         banner.set("offline", true, {});
         const place = findChild(scene, "place");
-        wait(Tokens.durationShort / 2);
+        holdHalfWayIn();
         verify(banner.height > 0 && banner.height < banner.contentHeight, `on its way: ${banner.height}`);
+        findChild(banner, "coming").resume();
         tryCompare(banner, "height", banner.contentHeight, 1000);
         tryCompare(place, "y", banner.contentHeight, 1000);
     }

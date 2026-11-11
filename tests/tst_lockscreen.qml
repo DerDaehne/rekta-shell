@@ -466,8 +466,7 @@ TestCase {
         tryCompare(clock, "shrink", ratio);
         compare(clock.color, Tokens.color.textContrastMedium);
         face.active = true;
-        wait(Tokens.durationPivotSize / 2);
-        verify(clock.shrink > clock.ratio && clock.shrink < 1, "it grows, not jumps");
+        tryVerify(() => clock.shrink > clock.ratio && clock.shrink < 1, 1000, "it grows, not jumps");
         tryCompare(clock, "shrink", 1);
         tryCompare(rest, "opacity", 1);
         verify(input().activeFocus, "the field takes the keyboard");

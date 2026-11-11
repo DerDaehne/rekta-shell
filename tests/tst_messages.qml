@@ -631,14 +631,11 @@ TestCase {
         const benWas = ben.y;
         keyClick(Qt.Key_Delete);
         const going = findChild(cleo, "content");
-        wait(Geometry.rowLeaveShare * Tokens.durationShort / 2);
-        verify(going.x > 0 && going.x < Geometry.rowLeaveDrift, `drifting: ${going.x}`);
-        verify(going.opacity > 0 && going.opacity < 1, `fading: ${going.opacity}`);
+        tryVerify(() => going.x > 0 && going.x < Geometry.rowLeaveDrift && going.opacity > 0 && going.opacity < 1, 1000, "it drifts and fades together");
         compare(ben.y, benWas, "the rest wait for it");
         tryVerify(() => summaries().length === 2, 1000);
         compare(summaries(), ["ben", "anna"]);
-        wait(Tokens.durationModerate / 2);
-        verify(ben.y < benWas && ben.y > 0, `closing the gap: ${ben.y}`);
+        tryVerify(() => ben.y < benWas && ben.y > 0, 1000, "the rest close the gap, not jump");
         tryCompare(ben, "y", 0, 1000);
     }
 
@@ -649,9 +646,7 @@ TestCase {
         Prefs.motion = "on";
         toaster.open.press();
         const cleo = rows()[0];
-        wait(Tokens.durationShort / 3);
-        verify(cleo.opacity > 0 && cleo.opacity < 1, `fading up: ${cleo.opacity}`);
-        verify(cleo.y < 0 && cleo.y > -Geometry.rowEnterShift, `from above: ${cleo.y}`);
+        tryVerify(() => cleo.opacity > 0 && cleo.opacity < 1 && cleo.y < 0 && cleo.y > -Geometry.rowEnterShift, 1000, "it fades up from above together");
         tryCompare(cleo, "opacity", 1, 1000);
         tryCompare(cleo, "y", 0, 1000);
     }

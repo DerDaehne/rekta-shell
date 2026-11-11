@@ -167,8 +167,7 @@ TestCase {
     function test_a_press_eases_in_over_press_and_back_over_short() {
         const pressed = row(1);
         mousePress(pressed);
-        wait(Tokens.durationPress / 2);
-        verify(pressed.sink > 0 && pressed.sink < 1, `halfway in: ${pressed.sink}`);
+        tryVerify(() => pressed.sink > 0 && pressed.sink < 1, 200, "it eases in, not jumps");
         tryCompare(pressed, "sink", 1, 200);
         mouseRelease(pressed);
         wait(Tokens.durationPress + Tokens.durationShort / 2);
