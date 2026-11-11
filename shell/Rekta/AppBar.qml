@@ -65,10 +65,26 @@ Rectangle {
 
     // Where the tooltip of one of the bar's controls goes, in the bar's coordinates (Placement.tip in `area`).
     function tipPlace(control: Item, size: size): var {
+        return tipPlaceAt(control.mapToItem(bar, 0, 0), control, size);
+    }
+
+    // The same for a control in a window of its own (a popup), which stands at `origin` in the bar's coordinates.
+    function popupTipPlace(control: Item, size: size, origin: point): var {
+        const inWindow = control.mapToItem(null, 0, 0);
+        return tipPlaceAt(Qt.point(origin.x + inWindow.x, origin.y + inWindow.y), control, size);
+    }
+
+    function tipPlaceAt(at: point, control: Item, size: size): var {
         const top = area.height - height;
-        const at = control.mapToItem(bar, 0, 0);
         const place = Placement.tip(Qt.rect(at.x, top + at.y, control.width, control.height), size, area);
         return { x: place.x, y: place.y - top, side: place.side };
+    }
+
+    // Which of `windows`, each `{ window, place }` (a QQuickWindow and, for a popup, where it stands in the bar's
+    // coordinates), holds the control; null when none does.
+    function tipWindow(control: Item, windows: var): var {
+        const window = control.Window.window;
+        return window ? windows.find(entry => entry.window === window) ?? null : null;
     }
 
     // The leading and trailing side around the centre item, or the whole bar; "more" ends the last.

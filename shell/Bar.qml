@@ -192,6 +192,8 @@ PanelWindow {
     }
 
     FloatPopup {
+        id: menuPopup
+
         barWindow: panel
         surface: bar.menu
         place: bar.menuPlace
@@ -200,6 +202,8 @@ PanelWindow {
     }
 
     FloatPopup {
+        id: backgroundPopup
+
         barWindow: panel
         surface: background.menu
         place: bar.floatPlace(background.overflowed ? bar.more : background, Qt.size(background.menu.width, background.menu.height))
@@ -208,6 +212,8 @@ PanelWindow {
     }
 
     FloatPopup {
+        id: calendarPopup
+
         barWindow: panel
         surface: clock.calendar
         place: bar.floatPlace(clock, Qt.size(clock.calendar.width, clock.calendar.height), "centre")
@@ -219,10 +225,20 @@ PanelWindow {
     PopupWindow {
         id: tipHost
 
+        // The windows whose controls this bar's tooltip serves, as QQuickWindows (an Item's Window.window is one, never
+        // the Quickshell window object), and where each popup stands in the bar's coordinates.
+        readonly property var windows: [
+            { window: panel.contentItem.Window.window, place: null },
+            { window: menuPopup.contentItem.Window.window, place: menuPopup.place },
+            { window: backgroundPopup.contentItem.Window.window, place: backgroundPopup.place },
+            { window: calendarPopup.contentItem.Window.window, place: calendarPopup.place }
+        ]
+        readonly property var source: Tips.target ? bar.tipWindow(Tips.target, windows) : null
         readonly property var place: {
             if (!tip.target)
                 return { x: 0, y: 0, side: "above" };
-            return bar.tipPlace(tip.target, Qt.size(tip.width, tip.height));
+            const size = Qt.size(tip.width, tip.height);
+            return source.place ? bar.popupTipPlace(tip.target, size, source.place) : bar.tipPlace(tip.target, size);
         }
 
         anchor.window: panel // qmllint disable missing-property
@@ -236,8 +252,8 @@ PanelWindow {
         Tooltip {
             id: tip
 
-            // Each bar's tip, from a control in the bar's window rather than in the popup's own.
-            target: Tips.target?.Window.window === bar.Window.window ? Tips.target : null
+            // Each bar's tip, from a control in the bar's window or in one of its popups, not in this popup's own.
+            target: tipHost.source ? Tips.target : null
             area: bar.area
             side: tipHost.place.side
         }

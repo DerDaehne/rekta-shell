@@ -291,6 +291,114 @@ TestCase {
         verify(clock.activeFocus);
     }
 
+    function openMonthWithATip() {
+        clock.forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        verify(clock.calendar.open);
+        const previous = findChild(clock.month, "previous");
+        Tips.show(findChild(previous, "box"), "vorheriger monat");
+        verify(Tips.target);
+        return previous;
+    }
+
+    function test_escape_with_a_tip_standing_hides_only_the_tip_and_the_next_one_closes_the_month() {
+        openMonthWithATip();
+        keyClick(Qt.Key_Escape);
+        compare(Tips.target, null);
+        verify(clock.calendar.open, "the month stays open");
+        keyClick(Qt.Key_Escape);
+        verify(!clock.calendar.open);
+    }
+
+    function test_a_press_in_the_month_hides_a_tip_whatever_it_lands_on_and_the_arrow_still_takes_it() {
+        openMonthWithATip();
+        mouseClick(cell(20));
+        compare(Tips.target, null, "a press on a day hides it");
+        Tips.show(findChild(findChild(clock.month, "previous"), "box"), "vorheriger monat");
+        const before = clock.month.cursor.getMonth();
+        mouseClick(findChild(clock.month, "next"));
+        compare(Tips.target, null);
+        compare(clock.month.cursor.getMonth(), (before + 1) % 12, "the arrow takes the click");
+    }
+
+    Component {
+        id: looseItem
+
+        Item {}
+    }
+
+    Component {
+        id: standInWindow
+
+        Window {
+            property alias inside: item
+
+            Item {
+                id: item
+            }
+        }
+    }
+
+    Component {
+        id: tipComponent
+
+        Tooltip {
+            objectName: "tip"
+        }
+    }
+
+    function test_the_window_a_tip_s_control_is_in_picks_its_entry_whatever_stands_in_the_list() {
+        const barWindow = createTemporaryObject(standInWindow, testCase);
+        const popup = createTemporaryObject(standInWindow, testCase);
+        const windows = [
+            { window: barWindow.inside.Window.window, place: null },
+            { window: popup.inside.Window.window, place: Qt.point(7, -300) }
+        ];
+        compare(scene.bar.tipWindow(barWindow.inside, windows), windows[0]);
+        compare(scene.bar.tipWindow(popup.inside, windows), windows[1]);
+        compare(scene.bar.tipWindow(findChild(clock.month, "previous"), windows), null, "a control of any other window has none");
+        const loose = createTemporaryObject(looseItem, null);
+        compare(loose.Window.window, null);
+        compare(scene.bar.tipWindow(loose, [{ window: null, place: Qt.point(7, -300) }]), null, "a control without a window matches no closed popup");
+    }
+
+    function test_a_tip_of_a_control_in_a_popup_is_placed_by_the_popup_s_place_in_the_bar() {
+        const previous = openMonthWithATip();
+        const size = Qt.size(120, 24);
+        const inBar = scene.bar.tipPlace(previous, size);
+        const origin = Qt.point(0, -scene.bar.y);
+        const fromPopup = scene.bar.popupTipPlace(previous, size, origin);
+        compare(fromPopup.x, inBar.x, "the popup's window coordinates plus its place give the bar's");
+        compare(fromPopup.y, inBar.y);
+        compare(fromPopup.side, "above");
+        const moved = scene.bar.popupTipPlace(previous, size, Qt.point(40, origin.y));
+        compare(moved.x, Math.min(inBar.x + 40, scene.bar.width - size.width - Tokens.spaceS));
+    }
+
+    function test_the_month_s_tip_is_drawn_in_ink_above_its_arrow_in_both_themes() {
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const previous = openMonthWithATip();
+            const tip = createTemporaryObject(tipComponent, scene, { text: "vorheriger monat" });
+            const place = scene.bar.popupTipPlace(previous, Qt.size(tip.implicitWidth, tip.implicitHeight), Qt.point(0, -scene.bar.y));
+            tip.x = place.x;
+            tip.y = place.y + scene.bar.y;
+            tip.side = place.side;
+            waitForRendering(scene);
+            wait(Tokens.durationFloat + 50);
+            const arrow = previous.mapToItem(scene, 0, 0);
+            verify(tip.open, "drawn");
+            verify(tip.y + tip.height < arrow.y, "above the arrow");
+            const image = grabImage(scene);
+            const ink = image.pixel(Math.round(tip.x) + 2, Math.round(tip.y + tip.height / 2));
+            compare(Qt.colorEqual(ink, Tokens.color.textPrimary), true, `ink at the tip's edge in ${theme}`);
+            image.save(`clock-tip-sheet-${theme}.png`);
+            tip.destroy();
+            Tips.hide();
+            keyClick(Qt.Key_Escape);
+        }
+    }
+
     function test_contact_sheet() {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
