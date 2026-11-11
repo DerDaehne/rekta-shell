@@ -259,6 +259,8 @@ TestCase {
         compare(pause.interval, 2000);
         Unlock.submit("geheim", false);
         ask();
+        // The answer to a question comes after its handler, a moment later.
+        wait(50);
         compare(responses(), [["respond", "falsch"]], "not yet");
         runOutPause();
         compare(responses().length, 2);
