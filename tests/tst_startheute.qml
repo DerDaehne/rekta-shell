@@ -543,20 +543,26 @@ TestCase {
         compare(more.Accessible.name, "1 aktualisierung wartet · zeigen");
         compare(more.Accessible.role, Accessible.Button);
         compare(findChild(more, "label").color, Tokens.color.textContrastHigh);
+        compare(findChild(more, "label").font.pixelSize, Tokens.fontSizeXs);
         notify({ summary: "eve" });
         compare(findChild(more, "label").text, "2 aktualisierungen warten · zeigen");
+        mouseMove(waitingButton());
+        compare(findChild(more, "label").color, Tokens.color.textPrimary, "under the pointer the words take text-primary");
         mouseMove(testCase, 1, 1);
         verify(!more.visible, "let go, nothing waits");
     }
 
     function test_the_waiting_button_arrives_from_above_and_fades_up() {
+        Prefs.motion = "on";
         three();
         openNow();
         mouseMove(rows()[1]);
         notify({ summary: "dora" });
         const more = waitingButton();
         tryVerify(() => more.opacity > 0 && more.opacity < 1, Tokens.durationShort, "it fades up");
+        verify(more.transform[0].y < 0, "it comes from above");
         tryCompare(more, "opacity", 1, Tokens.durationShort * 4);
+        compare(more.transform[0].y, 0);
     }
 
     function test_a_closed_and_a_changed_notification_wait_as_one_update_each() {
