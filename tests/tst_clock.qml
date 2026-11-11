@@ -393,7 +393,8 @@ TestCase {
             const image = grabImage(scene);
             const ink = image.pixel(Math.round(tip.x) + 2, Math.round(tip.y + tip.height / 2));
             compare(Qt.colorEqual(ink, Tokens.color.textPrimary), true, `ink at the tip's edge in ${theme}`);
-            image.save(`clock-tip-sheet-${theme}.png`);
+            if (ContactSheets.wanted)
+                image.save(`clock-tip-sheet-${theme}.png`);
             tip.destroy();
             Tips.hide();
             keyClick(Qt.Key_Escape);
