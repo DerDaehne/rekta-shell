@@ -185,6 +185,112 @@ TestCase {
         compare(Qt.point(tiles[4].x, tiles[4].y), Qt.point(0, step), "the fifth wraps to the next row");
     }
 
+    function tile(name: string, columns: int, rows: int): var {
+        return Object.assign(fakeApp(name, columns), {
+            rows: rows
+        });
+    }
+
+    // Two of each size, the user's three repeated: a unit, two units wide, two units square.
+    function mixedPinned(count: int): var {
+        return Array.from({
+            length: count
+        }, (_, i) => [tile(`small ${i}`, 1, 1), tile(`wide ${i}`, 2, 1), tile(`large ${i}`, 2, 2)][i % 3]);
+    }
+
+    // Its trailing edge stands at most up to the panorama's inset.
+    function pinnedStopsAtTheInset() {
+        const pinned = named("pinned");
+        verify(pinned.x + pinned.width <= named("panorama").width - Tokens.spaceXl, `${pinned.x + pinned.width} past the inset`);
+    }
+
+    function verifyNothingCut() {
+        const pinned = named("pinned");
+        verify(pinned.contentHeight <= pinned.height, `${pinned.contentHeight} taller than ${pinned.height}`);
+    }
+
+    function test_pinned_with_few_tiles_stays_four_units_wide_data() {
+        return [
+            {
+                tag: "1600 × 900",
+                width: 1600,
+                height: 900
+            },
+            {
+                tag: "2560 × 1440",
+                width: 2560,
+                height: 1440
+            }
+        ];
+    }
+
+    function test_pinned_with_few_tiles_stays_four_units_wide(data) {
+        openAt(data.width, data.height, {
+            pinned: [tile("systemsettings", 1, 1), tile("dolphin", 2, 1), tile("konsole", 2, 2)]
+        });
+        compare(named("pinned").width, unit(4));
+        compare(findChild(named("pinned"), "grid").columns, 4);
+        verifyNothingCut();
+    }
+
+    function test_pinned_with_many_tiles_widens_to_the_fewest_whole_units_that_show_every_row_data() {
+        return [
+            {
+                tag: "single tiles",
+                pinned: appsPinned(40)
+            },
+            {
+                tag: "mixed sizes",
+                pinned: mixedPinned(24)
+            }
+        ];
+    }
+
+    function test_pinned_with_many_tiles_widens_to_the_fewest_whole_units_that_show_every_row(data) {
+        openAt(2560, 1440, {
+            pinned: data.pinned
+        });
+        const pinned = named("pinned");
+        const grid = findChild(pinned, "grid");
+        const units = Math.round(pinned.width / unit(1));
+        compare(pinned.width, unit(units), "whole units");
+        verify(units > 4, `${units} units`);
+        compare(grid.columns, units);
+        verifyNothingCut();
+        verify(grid.rowsOf(data.pinned, units - 1) > start.rowsHeld(named("panorama")), "one unit fewer would cut a row");
+        pinnedStopsAtTheInset();
+        verify(named("panorama").fit);
+    }
+
+    function test_pinned_with_more_tiles_than_the_window_holds_takes_every_unit_up_to_the_trailing_inset() {
+        openAt(1600, 900, {
+            pinned: appsPinned(40)
+        });
+        const pinned = named("pinned");
+        pinnedStopsAtTheInset();
+        verify(pinned.x + pinned.width + unit(1) > named("panorama").width - Tokens.spaceXl, "one unit more would pass the inset");
+        compare(pinned.width, unit(6));
+        verify(named("panorama").fit);
+    }
+
+    function test_pinned_falls_back_to_four_units_when_the_panorama_runs_past_the_window() {
+        openAt(1000, 700, {
+            pinned: appsPinned(40)
+        });
+        compare(named("pinned").width, unit(4));
+        compare(findChild(named("pinned"), "grid").columns, 4);
+        verify(!named("panorama").fit);
+    }
+
+    function test_pinned_keeps_its_width_while_the_start_waits_hidden_for_the_windows() {
+        makeStart(1600, 900, {
+            pinned: appsPinned(40)
+        });
+        start.open();
+        verify(!named("running").visible, "the parts wait hidden");
+        compare(named("pinned").width, unit(6), "as wide as with running beside it");
+    }
+
     function test_running_tiles_are_two_units_wide_one_to_a_row() {
         openNow();
         const tiles = tilesIn("running");

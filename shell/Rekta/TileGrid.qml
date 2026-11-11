@@ -23,8 +23,8 @@ Item {
     readonly property var placed: pack()
     readonly property int rows: placed.reduce((most, cell) => Math.max(most, cell.row + cell.tile.rows), 0)
 
-    // The cells a tile covers from `column`, `row`, as "row,column" keys.
-    function cellsOf(column: int, row: int, tile: Tile): var {
+    // The cells a tile or a span ({columns, rows}) covers from `column`, `row`, as "row,column" keys.
+    function cellsOf(column: int, row: int, tile: var): var {
         const keys = [];
         for (let r = row; r < row + tile.rows; r++) {
             for (let c = column; c < column + tile.columns; c++)
@@ -34,28 +34,34 @@ Item {
     }
 
     // A tile wider than the grid still takes the first column, as an implicit grid column would.
-    function fits(taken: var, column: int, row: int, tile: Tile): bool {
-        if (column > 0 && column + tile.columns > across)
+    function fits(taken: var, column: int, row: int, tile: var, wide: int): bool {
+        if (column > 0 && column + tile.columns > wide)
             return false;
         return cellsOf(column, row, tile).every(key => !taken.has(key));
     }
 
-    // Dense packing: every tile scans from the first cell for the first place it fits.
-    function pack(): var {
+    // Dense packing into `wide` columns: every span ({columns, rows}) scans from the first cell for the first place it
+    // fits. [{column, row}] in the order of the spans. It reads nothing of the grid, so a host may ask about any width.
+    function packed(spans: var, wide: int): var {
         const taken = new Set();
-        const cells = [];
-        for (const child of children) {
-            const tile = child as Tile;
-            if (!tile?.visible)
-                continue;
+        return spans.map(size => {
             let at = 0;
-            while (!fits(taken, at % across, Math.floor(at / across), tile))
+            while (!fits(taken, at % wide, Math.floor(at / wide), size, wide))
                 at++;
-            const cell = { tile: tile, column: at % across, row: Math.floor(at / across) };
-            cellsOf(cell.column, cell.row, tile).forEach(key => taken.add(key));
-            cells.push(cell);
-        }
-        return cells;
+            const cell = { column: at % wide, row: Math.floor(at / wide) };
+            cellsOf(cell.column, cell.row, size).forEach(key => taken.add(key));
+            return cell;
+        });
+    }
+
+    // The rows the spans take, packed into `wide` columns.
+    function rowsOf(spans: var, wide: int): int {
+        return packed(spans, wide).reduce((most, cell, k) => Math.max(most, cell.row + spans[k].rows), 0);
+    }
+
+    function pack(): var {
+        const tiles = [...children].filter(child => (child as Tile)?.visible);
+        return packed(tiles, across).map((cell, k) => ({ tile: tiles[k], column: cell.column, row: cell.row }));
     }
 
     // A tile spanning cells spans the gaps between them too.

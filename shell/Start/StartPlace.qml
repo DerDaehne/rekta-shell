@@ -78,7 +78,10 @@ FocusScope {
     // The sections of "alle apps", [{title, first, count, units}] (Rules.letterSections).
     property var letterSections: []
     // The rows of tiles a section of "alle apps" holds under its heading; stacked, no letter splits.
-    readonly property real letterRows: appsPanorama.sideways ? Math.max(1, Math.floor((appsPanorama.height - 2 * Tokens.spaceXl - headingMeasure.height - Tokens.spaceL + Tokens.spaceS) / unitStep)) : Infinity
+    readonly property real letterRows: rowsHeld(appsPanorama)
+    // "angeheftet" is as many units wide as its tiles need in the rows it holds, at least four and only while it fits
+    // before the trailing inset; on a panorama past the window it keeps four (layout.md:146–148 against :31–32).
+    readonly property int pinnedUnits: fittedPinnedUnits()
     // What was typed: the text of the search's line.
     property alias query: line.text
     // The search shows, or is on its way, in place of the pivot and the places.
@@ -92,6 +95,24 @@ FocusScope {
     property string searchEscape: "close"
 
     signal closed
+
+    // The rows of tiles a section of `place` holds under its heading; stacked, as many as it has.
+    function rowsHeld(place: Panorama): real {
+        if (!place.sideways)
+            return Infinity;
+        return Math.max(1, Math.floor((place.height - 2 * Tokens.spaceXl - headingMeasure.height - Tokens.spaceL + Tokens.spaceS) / unitStep));
+    }
+
+    function fittedPinnedUnits(): int {
+        // Not runningSection.visible: that is false while the Start is hidden, and the width would change as it shows.
+        const before = running.length > 0 ? runningSection.sectionWidth + panorama.gap : 0;
+        const room = Math.floor((panorama.width - 2 * panorama.inset - before) / unitStep);
+        const rows = rowsHeld(panorama);
+        let units = 4;
+        while (units < room && pinnedGrid.rowsOf(pinned, units) > rows)
+            units++;
+        return units;
+    }
 
     function open() {
         if (wanted)
@@ -969,7 +990,7 @@ FocusScope {
 
                     objectName: "pinned"
                     title: "angeheftet"
-                    sectionWidth: 4 * start.unitStep
+                    sectionWidth: start.pinnedUnits * start.unitStep
                     verticalInset: Tokens.spaceXl
                     headingSpacing: Tokens.spaceL
                     headingToken: Tokens.fontSizeXl
@@ -981,7 +1002,7 @@ FocusScope {
 
                         objectName: "grid"
                         width: parent.width
-                        columns: 4
+                        columns: start.pinnedUnits
                         placeWidth: start.width
                         viewportHeight: start.height
 
