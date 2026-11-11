@@ -710,14 +710,15 @@ TestCase {
         keyClick(Qt.Key_Escape);
         turner.paused = true;
         turner.elapsed = turner.handOverAt;
-        const handedOver = Date.now();
         verify(!start.holdsKeyboard);
         compare(findChild(start, "glassOut").interval, Tokens.durationModerate / 2);
-        wait(Tokens.durationModerate / 4);
+        const glassOut = findChild(start, "glassOut");
+        verify(glassOut.running);
         verify(glassWhole(), "the windows come forward under it as KWin fades it");
         compare(closedSpy.count, 0);
-        tryVerify(() => closedSpy.count === 1, 2000);
-        verify(Date.now() - handedOver >= Tokens.durationModerate / 2 - 2);
+        glassOut.stop();
+        glassOut.triggered();
+        compare(closedSpy.count, 1);
         verify(!findChild(start, "glass").visible);
     }
 

@@ -421,7 +421,7 @@ TestCase {
         named("sectionStrip").select(1);
         verify(panorama.gliding);
         start.windows = [];
-        wait(2 * Tokens.durationPivotGlide);
+        tryVerify(() => !panorama.gliding, 2 * Tokens.durationPivotGlide);
         compare(panorama.scroller.contentX, 0, "nothing scrolls past the start of a panorama that now fits");
         compare(marked(), named("pinned"));
     }
