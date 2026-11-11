@@ -653,12 +653,21 @@ TestCase {
 
     function test_the_tiles_are_packed_in_the_order_of_the_file() {
         openNow();
+        Prefs.motion = "off";
         file.text = fileText([{ id: "org.kde.kate", columns: 4, rows: 2 }, { id: "org.kde.konsole" }, { id: "systemsettings" }, { id: "org.kde.dolphin" }]);
         tryVerify(() => !named("presence").running, 2000);
         const tiles = ["Kate", "Konsole", "Systemeinstellungen", "Dolphin"].map(pinnedTile);
         compare(Qt.point(tiles[0].x, tiles[0].y), Qt.point(0, 0));
         verify(tiles[1].y > tiles[0].y && tiles[1].x === 0, "below the wide one");
         verify(tiles[2].x > tiles[1].x && tiles[3].x > tiles[2].x, "then on in a row");
+    }
+
+    function test_a_change_while_the_start_turns_in_shows_at_once_the_turn_being_its_arrival() {
+        start.open();
+        tryVerify(() => findChild(start, "turn").running, 2000);
+        file.text = fileText([{ id: "org.kde.kate" }, { id: "org.kde.konsole" }]);
+        verify(!named("presence").running);
+        compare(pinnedNames(), ["Kate", "Konsole"]);
     }
 
     function test_a_tile_that_stays_pinned_is_the_same_tile_after_a_change() {
