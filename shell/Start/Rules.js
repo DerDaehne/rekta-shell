@@ -54,7 +54,7 @@ function span(units) {
 function pinnedTiles(pinned, installed) {
     const listed = Array.isArray(pinned) ? pinned : Settings.Pins.defaultPinned;
     return listed.map(tile => ({
-        id: String(tile.id ?? "").replace(/\.desktop$/, ""),
+        id: Settings.Pins.bareId(tile.id),
         columns: span(tile.columns),
         rows: span(tile.rows)
     })).filter(tile => tile.id !== "" && installed(tile.id));

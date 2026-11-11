@@ -7,10 +7,23 @@ import Settings
 Scope {
     StartFile {
         id: start
+
+        // What a pin of REKTA_EARLY_PIN before the file's first load returned, "" without one.
+        property string earlyPin: ""
+
+        Component.onCompleted: {
+            const early = Quickshell.env("REKTA_EARLY_PIN") ?? "";
+            if (early !== "")
+                earlyPin = String(pin(early));
+        }
     }
 
     IpcHandler {
         target: "start"
+
+        function earlyPin(): string {
+            return start.earlyPin;
+        }
 
         function settled(): bool {
             return start.settled;
