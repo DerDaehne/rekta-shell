@@ -231,8 +231,8 @@ TestCase {
 
     function test_under_reduced_motion_every_part_turns_about_the_bottom_edge_at_once_and_in_no_time() {
         Tokens.reducedMotion = true;
-        const turns = Turnstile.plan([boxed(100, 200, tile, tile), boxed(100, 400, 700, 400)], Tokens.durationModerate, 0, "bottom");
-        compare(turns.map(turn => turn.at), [0, 0]);
-        compare(turns.map(turn => turn.duration), [0, 0]);
+        const turns = Turnstile.plan([boxed(100, 200, tile, tile), boxed(300, 200, tile, tile), boxed(100, 400, 700, 400)], Tokens.durationModerate, 0, "bottom");
+        compare(turns.map(turn => turn.at), [0, 0, 0]);
+        compare(turns.map(turn => turn.duration), [0, 0, 0]);
     }
 }
