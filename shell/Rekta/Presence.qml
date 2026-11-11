@@ -136,6 +136,8 @@ QtObject {
     function change(going: var, staying: var, apply: var, arrived: var, arriving: int) {
         finish();
         if (Tokens.durationShort === 0 || going.length + arriving > Geometry.presenceAtOnceAbove) {
+            // What still moves from before lands too, or it would go on from where the change no longer is.
+            complete();
             apply();
             return;
         }

@@ -13,6 +13,9 @@ Item {
 
     // The columns sideways. The tiles take at least one: in none a tile would look for a place forever.
     property int columns: 4
+    // The tiles in the order they take their cells; null for the order of its children. A Repeater whose model moves
+    // its items keeps them in the model's order, not its parent's children, so its host gives that order here.
+    property var order: null
     property real placeWidth: Window.width
     property real viewportHeight: Window.height
     readonly property bool stretched: Prefs.sizeClass(placeWidth, viewportHeight) === "compact"
@@ -65,7 +68,7 @@ Item {
     }
 
     function pack(): var {
-        const tiles = [...children].filter(child => (child as Tile)?.visible);
+        const tiles = [...(order ?? children)].filter(child => (child as Tile)?.visible);
         return packed(tiles.map(spanOf), across).map((cell, k) => ({ tile: tiles[k], column: cell.column, row: cell.row }));
     }
 

@@ -181,6 +181,27 @@ TestCase {
         compare(grid.implicitHeight, 3 * Tokens.tileUnit + 2 * Tokens.spaceS);
     }
 
+    function test_a_grid_given_an_order_packs_its_tiles_in_it_and_not_in_its_childrens() {
+        const small = findChild(grid, "small3");
+        const wide = findChild(grid, "wide");
+        grid.order = [small, ...grid.children.filter(child => child !== small)];
+        compare(Qt.point(small.x, small.y), Qt.point(0, 0));
+        compare(wide.x, Tokens.tileUnit + Tokens.spaceS);
+    }
+
+    function test_compact_a_tile_three_or_four_units_wide_takes_the_whole_row() {
+        grid = createTemporaryObject(compactComponent, testCase, {
+            width: 600
+        });
+        const wide = findChild(grid, "wide");
+        wide.columns = 4;
+        compare(Qt.point(wide.x, wide.y), Qt.point(0, 0));
+        compare(wide.width, grid.width, "not past the grid's edge");
+        compare(findChild(grid, "small1").y, Tokens.tileUnit + Tokens.spaceS, "the next row takes the rest");
+        wide.columns = 3;
+        compare(wide.width, grid.width);
+    }
+
     function test_compact_a_grid_that_widens_without_room_for_another_column_stretches_its_cells_along() {
         grid = createTemporaryObject(compactComponent, testCase, {
             width: 600

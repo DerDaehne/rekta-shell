@@ -33,6 +33,11 @@ TestCase {
             Tile {
                 objectName: "tile"
                 x: 10
+
+                Facts {
+                    objectName: "content"
+                    text: "30 of 30 runs"
+                }
             }
 
             Rectangle {
@@ -134,6 +139,35 @@ TestCase {
         compare(other.mapToItem(null, 0, 0).x, 10);
     }
 
+    function test_a_resized_tile_scales_from_its_old_size_and_its_content_shows_over_the_last_45_percent() {
+        const tile = named("tile");
+        const facts = findChild(tile, "content");
+        presence.change([], [tile], () => tile.columns = 2, () => [], 0);
+        const glide = motionOf(tile);
+        verify(glide !== undefined);
+        fuzzyCompare(glide.from.sx, Tokens.tileUnit / (2 * Tokens.tileUnit + Tokens.spaceS), 0.001, "from one unit of the two");
+        compare(glide.from.sy, 1);
+        compare(glide.duration, Tokens.durationModerate);
+        compare(glide.curve, Tokens.easeBase);
+        verify(glide.resized);
+        fuzzyCompare(tile.mapToItem(null, tile.width, 0).x - tile.mapToItem(null, 0, 0).x, Tokens.tileUnit, 2, "shows its old width at first");
+        compare(tile.contentOpacity, 0);
+        compare(facts.parent.opacity, 0, "its content hidden");
+        wait(Tokens.durationModerate * 0.4);
+        compare(tile.contentOpacity, 0, "still hidden before 55%");
+        tryVerify(() => tile.contentOpacity > 0 && tile.contentOpacity < 1, Tokens.durationModerate);
+        tryVerify(() => !presence.running, 1000);
+        compare(tile.contentOpacity, 1);
+        compare(tile.width, 2 * Tokens.tileUnit + Tokens.spaceS);
+    }
+
+    function test_a_tile_that_only_moves_keeps_its_content_shown() {
+        const other = named("other");
+        presence.change([], [other], () => other.x = 400, () => [], 0);
+        verify(!motionOf(other).resized);
+        compare(other.contentOpacity, 1);
+    }
+
     function test_more_than_sixty_changes_apply_at_once() {
         presence.change([named("tile")], [], apply, () => [named("row")], Geometry.presenceAtOnceAbove);
         compare(applied, 1);
@@ -146,6 +180,15 @@ TestCase {
         compare(applied, 1);
         verify(!presence.running);
         compare(named("row").opacity, 1);
+    }
+
+    function test_a_change_without_motion_lands_what_still_moves_from_before() {
+        presence.change([], [], apply, () => [named("tile")], 1);
+        verify(presence.running);
+        Prefs.motion = "off";
+        presence.change([], [], apply, () => [], 0);
+        verify(!presence.running);
+        compare(named("tile").opacity, 1);
     }
 
     function test_a_newer_change_makes_the_waiting_one_at_once() {

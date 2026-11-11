@@ -337,6 +337,83 @@ TestCase {
         compare(activations.count, 1);
     }
 
+    Component {
+        id: menuSpy
+
+        SignalSpy {
+            signalName: "menuAsked"
+        }
+    }
+
+    function test_a_right_click_asks_for_the_menu_at_the_pointer_and_neither_presses_nor_activates() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true, hasMenu: true });
+        const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
+        const activations = createTemporaryObject(spy, testCase, { target: tile });
+        mousePress(tile, 30, 50, Qt.RightButton);
+        verify(!tile.pressed, "no sink");
+        mouseRelease(tile, 30, 50, Qt.RightButton);
+        compare(asked.count, 1);
+        compare(asked.signalArguments[0][0], Qt.point(30, 50));
+        compare(activations.count, 0);
+    }
+
+    function test_a_tile_without_a_menu_leaves_the_right_click_to_what_lies_beneath() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
+        const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
+        mouseClick(tile, 30, 50, Qt.RightButton);
+        compare(asked.count, 0);
+    }
+
+    function test_shift_f10_and_the_menu_key_ask_for_the_menu_below_the_leading_edge() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true, hasMenu: true, columns: 2 });
+        const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
+        tile.forceActiveFocus();
+        keyClick(Qt.Key_F10, Qt.ShiftModifier);
+        keyClick(Qt.Key_Menu);
+        compare(asked.count, 2);
+        const below = Qt.point(Geometry.contextMenuAtX, Geometry.contextMenuAtY);
+        compare(asked.signalArguments[0][0], below);
+        compare(asked.signalArguments[1][0], below);
+        verify(!tile.pressed);
+        keyClick(Qt.Key_F10);
+        compare(asked.count, 2, "F10 alone is no menu key");
+    }
+
+    function test_a_long_press_asks_for_the_menu_at_the_finger_and_its_release_activates_nothing() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true, hasMenu: true });
+        const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
+        const activations = createTemporaryObject(spy, testCase, { target: tile });
+        const touch = touchEvent(tile);
+        touch.press(0, tile, 40, 60).commit();
+        wait(Tokens.durationLongPress * 0.8);
+        compare(asked.count, 0, "not before long-press");
+        tryCompare(asked, "count", 1, Tokens.durationLongPress);
+        compare(asked.signalArguments[0][0], Qt.point(40, 60));
+        touch.release(0, tile, 40, 60).commit();
+        compare(activations.count, 0);
+    }
+
+    function test_a_finger_that_moves_more_than_eight_pixels_asks_for_no_menu() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true, hasMenu: true });
+        const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
+        const touch = touchEvent(tile);
+        touch.press(0, tile, 40, 40).commit();
+        touch.move(0, tile, 49, 40).commit();
+        wait(Tokens.durationLongPress * 1.5);
+        touch.release(0, tile, 49, 40).commit();
+        compare(asked.count, 0);
+    }
+
+    function test_a_long_press_on_a_tile_without_a_menu_is_a_press() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
+        const activations = createTemporaryObject(spy, testCase, { target: tile });
+        const touch = touchEvent(tile);
+        touch.press(0, tile, 40, 40).commit();
+        wait(Tokens.durationLongPress * 1.5);
+        touch.release(0, tile, 40, 40).commit();
+        compare(activations.count, 1);
+    }
+
     function test_enter_activates_as_it_goes_down_and_space_as_it_comes_up() {
         const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
         const activations = createTemporaryObject(spy, testCase, { target: tile });

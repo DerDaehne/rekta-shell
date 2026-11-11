@@ -133,6 +133,17 @@ TestCase {
         verify(placed.y >= edge && placed.y + size.height <= window.height - edge, `${label}: y ${placed.y}`);
     }
 
+    function test_a_context_menu_opens_with_its_corner_at_the_point() {
+        compare(Placement.at(Qt.point(100, 120), Qt.size(200, 150), window), { x: 100, y: 120, side: "below" });
+    }
+
+    function test_a_context_menu_turns_to_the_other_side_of_the_point_where_it_would_come_near_an_edge() {
+        const nearCorner = Qt.point(window.width - 100, window.height - 50);
+        compare(Placement.at(nearCorner, Qt.size(200, 150), window), { x: nearCorner.x - 200, y: nearCorner.y - 150, side: "above" });
+        const tooBig = Placement.at(Qt.point(30, 30), Qt.size(window.width, window.height), window);
+        compare(Qt.point(tooBig.x, tooBig.y), Qt.point(Tokens.spaceM, Tokens.spaceM), "kept space-m from the edge");
+    }
+
     function test_a_surface_opens_below_its_control_at_its_leading_edge() {
         const placed = Placement.float(Qt.rect(100, 100, 80, 32), Qt.size(200, 150), window);
         compare(placed.side, "below");

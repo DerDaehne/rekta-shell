@@ -416,31 +416,36 @@ FocusScope {
 
     // The tiles of "angeheftet", in its order.
     function pinTiles(): var {
-        return pinnedGrid.children.filter(item => (item as Tile) !== null);
+        return Array.from({
+            length: pinnedRepeater.count
+        }, (_, k) => pinnedRepeater.itemAt(k));
     }
 
     // The pinned apps change: the tiles of apps no longer pinned leave, the others glide to their places and sizes, and
     // those of newly pinned apps arrive (motion.md:22–24); at once while the Start is hidden or turns, the turn being
     // the arrival.
     function followPinned() {
+        // A change still waiting is made first, as it was meant: its tiles leave before this one is weighed.
+        presence.finish();
+        const next = pinned;
         const tiles = pinTiles();
-        const kept = new Set(pinned.map(app => app.id));
+        const kept = new Set(next.map(app => app.id));
         const before = new Set(tiles.map(tile => tile.appId));
-        const coming = pinned.filter(app => !before.has(app.id)).map(app => app.id);
+        const coming = next.filter(app => !before.has(app.id)).map(app => app.id);
         const going = tiles.filter(tile => !kept.has(tile.appId));
         if (going.includes(menu.control))
             menu.close(false);
         if (!shown || turning) {
-            showPins();
+            showPins(next);
             return;
         }
-        presence.change(going, tiles.filter(tile => kept.has(tile.appId)), showPins, () => pinTiles().filter(tile => coming.includes(tile.appId)), coming.length);
+        presence.change(going, tiles.filter(tile => kept.has(tile.appId)), () => showPins(next), () => pinTiles().filter(tile => coming.includes(tile.appId)), coming.length);
     }
 
-    // Brings the tiles in line with `pinned`, step by step, so that a tile that stays is the same tile.
-    function showPins() {
-        shownPins = pinned;
-        for (const step of Rules.steps(pinTiles().map(tile => tile.appId), pinned.map(app => app.id))) {
+    // Brings the tiles in line with `list`, step by step, so that a tile that stays is the same tile.
+    function showPins(list: var) {
+        shownPins = list;
+        for (const step of Rules.steps(pinTiles().map(tile => tile.appId), list.map(app => app.id))) {
             if (step.remove !== undefined)
                 pinnedModel.remove(step.remove);
             else if (step.move !== undefined)
@@ -448,6 +453,7 @@ FocusScope {
             else
                 pinnedModel.insert(step.insert, { appId: step.id });
         }
+        pinnedGrid.order = pinTiles();
         if (focusEmptyPins && pinnedModel.count === 0)
             toAllApps.forceActiveFocus();
         focusEmptyPins = false;
@@ -999,7 +1005,7 @@ FocusScope {
     onWantedChanged: menu.close(false)
     onWidthChanged: menu.close(false)
     onHeightChanged: menu.close(false)
-    Component.onCompleted: showPins()
+    Component.onCompleted: showPins(pinned)
     onQueryChanged: refresh()
     onAppsChanged: {
         refresh();
@@ -1049,6 +1055,15 @@ FocusScope {
         id: presence
 
         objectName: "presence"
+    }
+
+    // A change of place, or a turn to the other one, closes the menu.
+    Connections {
+        target: pivot
+
+        function onCurrentIndexChanged() {
+            menu.close(false);
+        }
     }
 
     PlaceTurn {
@@ -1227,6 +1242,8 @@ FocusScope {
 
                         // A tile for each app as long as it stays pinned, so a change moves the tiles it keeps.
                         Repeater {
+                            id: pinnedRepeater
+
                             model: ListModel {
                                 id: pinnedModel
                             }
