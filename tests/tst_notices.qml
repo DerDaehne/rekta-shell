@@ -22,12 +22,16 @@ TestCase {
     // The wall clock the toasts run against, in ms.
     property double time: 0
     // What the fake notifications were asked to do and told, oldest first.
-    property var calls: []
+    property alias calls: fakes.calls
     property Item scene
     property Toaster toaster
     property NoticeBoard board
     property SignalSpy wanted
     property SignalSpy sounding
+
+    FakeNotifications {
+        id: fakes
+    }
 
     Component {
         id: sceneComponent
@@ -81,53 +85,9 @@ TestCase {
         Prefs.theme = "system";
     }
 
-    // A signal as a notification has them, to connect() to; the test emit()s it.
-    function signal() {
-        const handlers = [];
-        return {
-            connect: handler => handlers.push(handler),
-            emit: (...args) => handlers.forEach(handler => handler(...args))
-        };
-    }
-
-    // A notification arrives as the server hands it over: plain JS, as QML reserves "transient". `actions` are
-    // [identifier, text] pairs; invoking one tells the app and closes the notification, as the server does for one that
-    // is not resident. The server closes a notification once; a second close is a mistake the calls show.
+    // A notification arrives as the server hands it over.
     function notify(properties, actions) {
-        const fake = Object.assign({
-            lastGeneration: false,
-            appName: "chat",
-            appIcon: "",
-            summary: "anna",
-            body: "lunch at noon?",
-            urgency: NoticeBoard.Normal,
-            expireTimeout: -1,
-            transient: false,
-            desktopEntry: "org.example.chat",
-            image: "",
-            hints: {},
-            closedWith: 0,
-            closed: signal(),
-            summaryChanged: signal(),
-            bodyChanged: signal()
-        }, properties);
-        fake.close = reason => {
-            testCase.calls = [...testCase.calls, `${fake.summary} closed ${fake.closedWith ? "again " : ""}${reason}`];
-            if (fake.closedWith)
-                return;
-            fake.closedWith = reason;
-            fake.closed.emit(reason);
-        };
-        fake.expire = () => fake.close(NoticeBoard.Expired);
-        fake.dismiss = () => fake.close(NoticeBoard.Dismissed);
-        fake.actions = (actions ?? []).map(([identifier, text]) => ({
-            identifier,
-            text,
-            invoke: () => {
-                testCase.calls = [...testCase.calls, `${fake.summary} invoked ${identifier}`];
-                fake.dismiss();
-            }
-        }));
+        const fake = fakes.make(properties, actions);
         board.arrive(fake);
         return fake;
     }

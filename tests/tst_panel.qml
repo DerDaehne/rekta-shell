@@ -131,6 +131,10 @@ TestCase {
         }
     }
 
+    FakeNotifications {
+        id: fakes
+    }
+
     Component {
         id: sceneComponent
 
@@ -655,36 +659,9 @@ TestCase {
         return Array.from(findChild(select, "options").children).filter(row => row.objectName === "option");
     }
 
-    // A signal as a notification has them, to connect() to; the test emit()s it.
-    function signal() {
-        const handlers = [];
-        return {
-            connect: handler => handlers.push(handler),
-            emit: (...args) => handlers.forEach(handler => handler(...args))
-        };
-    }
-
-    // A notification as the server hands it over, in plain JS (see tst_notices).
+    // A notification arrives as the server hands it over.
     function notify(properties) {
-        const fake = Object.assign({
-            lastGeneration: false,
-            appName: "chat",
-            appIcon: "",
-            summary: "anna",
-            body: "lunch at noon?",
-            urgency: NoticeBoard.Normal,
-            expireTimeout: -1,
-            transient: false,
-            desktopEntry: "org.example.chat",
-            image: "",
-            hints: {},
-            actions: [],
-            closed: signal(),
-            summaryChanged: signal(),
-            bodyChanged: signal()
-        }, properties);
-        fake.expire = () => fake.closed.emit(NoticeBoard.Expired);
-        fake.dismiss = () => fake.closed.emit(NoticeBoard.Dismissed);
+        const fake = fakes.make(properties, []);
         board.arrive(fake);
         return fake;
     }

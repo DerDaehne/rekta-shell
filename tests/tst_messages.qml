@@ -25,7 +25,7 @@ TestCase {
     // The wall clock the toasts run against, in ms.
     property double time: 0
     // What the fake notifications were asked to do and told, oldest first.
-    property var calls: []
+    property alias calls: fakes.calls
     property Item scene
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var side
@@ -52,6 +52,10 @@ TestCase {
             board: panel.board
             onActed: panel.close()
         }
+    }
+
+    FakeNotifications {
+        id: fakes
     }
 
     Component {
@@ -124,48 +128,9 @@ TestCase {
         Prefs.theme = "system";
     }
 
-    // A signal as a notification has them, to connect() to; the test emit()s it.
-    function signal() {
-        const handlers = [];
-        return {
-            connect: handler => handlers.push(handler),
-            emit: (...args) => handlers.forEach(handler => handler(...args))
-        };
-    }
-
-    // A notification as the server hands it over, in plain JS as QML reserves "transient"; `actions` are [identifier,
-    // text] pairs. Invoking one tells the app and closes the notification, as the server does for one not resident.
+    // A notification arrives as the server hands it over.
     function notify(properties, actions) {
-        const fake = Object.assign({
-            lastGeneration: false,
-            appName: "chat",
-            appIcon: "",
-            summary: "anna",
-            body: "",
-            urgency: NoticeBoard.Normal,
-            expireTimeout: -1,
-            transient: false,
-            desktopEntry: "org.example.chat",
-            image: testCase.picture,
-            hints: {},
-            closed: signal(),
-            summaryChanged: signal(),
-            bodyChanged: signal()
-        }, properties);
-        fake.close = reason => {
-            testCase.calls = [...testCase.calls, `${fake.summary} closed ${reason}`];
-            fake.closed.emit(reason);
-        };
-        fake.expire = () => fake.close(NoticeBoard.Expired);
-        fake.dismiss = () => fake.close(NoticeBoard.Dismissed);
-        fake.actions = (actions ?? []).map(([identifier, text]) => ({
-            identifier,
-            text,
-            invoke: () => {
-                testCase.calls = [...testCase.calls, `${fake.summary} invoked ${identifier}`];
-                fake.dismiss();
-            }
-        }));
+        const fake = fakes.make(Object.assign({ body: "", image: testCase.picture }, properties), actions);
         board.arrive(fake);
         return fake;
     }
