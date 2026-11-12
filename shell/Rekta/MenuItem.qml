@@ -1,7 +1,9 @@
 import QtQuick
 
 // One row of a menu (states.md, "Floating surfaces"; rekta.css:1013–1021): a lowercase verb or option at the density's
-// row height; a checkbox or radio option starts with a 10px square, filled when chosen; a key hint sits at the end.
+// row height; a checkbox or radio option starts with a 10px square, filled when chosen; an option of a list that picks
+// a field's value keeps a 10 × 6px room at the start for the tick it carries when chosen (rekta.css:464–465); a key
+// hint sits at the end.
 // A disabled item stays in the list, greyed, and says why in its label ("print (needs a printer)"). The menu moves the
 // focus between rows; the focused row shows the ring inside and the hover colour, and an enabled row under the pointer
 // takes the hover colour too (rekta.css:1017, :1338). In a row narrower than its words they are cut.
@@ -9,8 +11,10 @@ Item {
     id: item
 
     property string text
-    // item | checkbox | radio
+    // item | checkbox | radio | option
     property string kind: "item"
+    // The option the keys are on in a list whose focus stays in its field: it looks focused (rekta.css:463).
+    property bool active: false
     property bool checked: false
     // An image at the front of the row, 20px; when one row of a menu has one, every row's text starts at the same edge
     // (rekta.css:1024–1025).
@@ -39,9 +43,14 @@ Item {
     property bool isBack: false
     readonly property bool disabled: disabledReason !== "" || dimmed
     readonly property bool checkable: kind !== "item"
+    readonly property bool ticks: kind === "option"
     readonly property string label: disabledReason !== "" ? `${text} (${disabledReason})` : text
     readonly property color ink: disabled ? Tokens.color.disabled : isBack ? Tokens.color.textContrastHigh : Tokens.color.textPrimary
-    readonly property real checkSpace: !isBack && ((checkable && !checkInIconSlot) || menuHasCheckWithIcon) ? Geometry.menuCheck + Tokens.spaceS : 0
+    readonly property real checkSpace: {
+        if (ticks)
+            return Geometry.optionTickWidth + Geometry.optionTickGap + Tokens.spaceS;
+        return !isBack && ((checkable && !checkInIconSlot) || menuHasCheckWithIcon) ? Geometry.menuCheck + Tokens.spaceS : 0;
+    }
     readonly property bool hasIcon: !isBack && (icon.toString() !== "" || glyph !== "")
     readonly property var menuRows: Array.from(parent?.children ?? []).filter(row => row.visible || !item.visible)
     readonly property bool menuHasIcons: menuRows.some(row => row.hasIcon === true)
@@ -70,10 +79,12 @@ Item {
     width: parent ? parent.width : implicitWidth
     implicitWidth: 2 * inset + chevronSpace + checkSpace + iconSpace + leadSpace + words.implicitWidth + endSpace + keyGap + key.implicitWidth + onwardSpace
     implicitHeight: Tokens.rowHeight
-    Accessible.role: Accessible.MenuItem
+    Accessible.role: ticks ? Accessible.ListItem : Accessible.MenuItem
     Accessible.name: spoken
     Accessible.checkable: checkable
     Accessible.checked: checked
+    // aria-selected: the option the keys are on, while the focus stays in the field (rekta.js:4320–4321).
+    Accessible.selected: active
 
     // Focus the keyboard gives shows the whole of a cut label at once; focus a pointer gave does not (`:focus-visible`,
     // rekta.js:3081).
@@ -87,7 +98,7 @@ Item {
     Rectangle {
         objectName: "tint"
         anchors.fill: parent
-        visible: item.activeFocus || (pointer.hovered && !item.disabled)
+        visible: item.activeFocus || item.active || (pointer.hovered && !item.disabled)
         color: Tokens.color.hover
     }
 
@@ -97,10 +108,36 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: Geometry.menuCheck
         height: Geometry.menuCheck
-        visible: item.checkable
+        visible: item.checkable && !item.ticks
         color: item.checked ? item.ink : "transparent"
         border.width: Geometry.menuCheckBorder
         border.color: item.ink
+    }
+
+    // A box with a left and a bottom stroke, turned; its negative top margin in a row that centres it raises it by half.
+    Item {
+        objectName: "tick"
+        x: item.inset
+        y: (item.height - height - Geometry.optionTickRaise) / 2
+        width: Geometry.optionTickWidth
+        height: Geometry.optionTickHeight
+        rotation: Geometry.optionTickAngle
+        visible: item.ticks && item.checked
+
+        Rectangle {
+            width: Geometry.optionTickStroke
+            height: parent.height
+            color: item.ink
+            antialiasing: true
+        }
+
+        Rectangle {
+            y: parent.height - Geometry.optionTickStroke
+            width: parent.width
+            height: Geometry.optionTickStroke
+            color: item.ink
+            antialiasing: true
+        }
     }
 
     PictureIcon {
@@ -209,6 +246,7 @@ Item {
         id: ring
 
         objectName: "ring"
+        shown: item.activeFocus || item.active
         offset: item.inset > 0 ? -Geometry.focusRingInsetInRow : Geometry.focusRingOffset
     }
 

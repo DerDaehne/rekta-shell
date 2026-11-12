@@ -1,11 +1,17 @@
 .pragma library
 
-// Brings an item of the given height whole into the scroller it stands in, its top first, as focus does on the web,
-// with `padding` clear of the view's edges.
-function intoView(item, height, padding = 0) {
+// The scroller an item stands in, or null.
+function scrollerOf(item) {
     let view = item.parent;
     while (view && !(view.contentItem && view.contentY !== undefined))
         view = view.parent;
+    return view;
+}
+
+// Brings an item of the given height whole into the scroller it stands in, its top first, as focus does on the web,
+// with `padding` clear of the view's edges.
+function intoView(item, height, padding = 0) {
+    const view = scrollerOf(item);
     if (!view)
         return;
     const top = item.mapToItem(view.contentItem, 0, 0).y - padding;

@@ -28,6 +28,7 @@ internal BusySegment BusySegment.qml
 internal TextRole TextRole.qml
 Hint 1.0 Hint.qml
 Field 1.0 Field.qml
+Combobox 1.0 Combobox.qml
 Toggle 1.0 Toggle.qml
 ToggleButton 1.0 ToggleButton.qml
 Slider 1.0 Slider.qml

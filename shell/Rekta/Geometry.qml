@@ -53,6 +53,20 @@ QtObject {
     readonly property real selectCaretEnd: 13
     readonly property real selectCaretHalf: 5
     readonly property real selectCaretDown: 0.55
+    // A combobox (rekta.css:455–460): `.rk-combo > .rk-input { padding-right: 40px }`; its button `inset: 1px 1px 1px
+    // auto; width: 36px`, the chevron's two 4px arms from 14px into it, 8 × 4px in all (forms.md:77)
+    readonly property real comboPaddingEnd: 40
+    readonly property real comboButton: 36
+    readonly property real comboChevronStart: 14
+    readonly property real comboChevronWidth: 8
+    // An option of a combobox's list (rekta.css:464–465): `::before { width: 10px; height: 6px; margin: -3px 2px 0 0 }`,
+    // chosen a tick, `border-width: 0 0 2px 2px; transform: rotate(-45deg)`
+    readonly property real optionTickWidth: 10
+    readonly property real optionTickHeight: 6
+    readonly property real optionTickRaise: 3
+    readonly property real optionTickGap: 2
+    readonly property real optionTickStroke: 2
+    readonly property real optionTickAngle: -45
     // `.rk-toggle-track { width: 46px; height: 22px; padding: 2px; border: 2px }`, the thumb `width: 12px` moving
     // `translateX(34px)`, the fill `calc(100% - 14px)` of the content box (rekta.css:475–485; border-box, :40)
     readonly property real toggleWidth: 46
