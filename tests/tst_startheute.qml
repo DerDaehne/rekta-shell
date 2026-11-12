@@ -117,6 +117,7 @@ TestCase {
 
     function fakeApp(name: string, columns: int): var {
         return {
+            id: name,
             name: name,
             icon: testCase.pinkIcon,
             columns: columns,

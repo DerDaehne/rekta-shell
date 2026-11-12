@@ -555,7 +555,7 @@ FocusScope {
 
     // Unpinning the focused tile hands the focus to the next tile, at the end to the one before, and without any to the
     // empty section's way on (collections.md:167–169).
-    // ponytail: an undo counts by the index the entry had; a change made meanwhile elsewhere can shift it.
+    // ponytail: an undo counts by the index the entry had; a change made meanwhile elsewhere can shift it; look the place up by app id once pins can be reordered.
     function unpinApp(app: var, tile: Tile) {
         const focused = tile?.activeFocus ?? false;
         const tiles = pinTiles();

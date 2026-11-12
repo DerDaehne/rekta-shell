@@ -5,6 +5,7 @@ import QtTest
 import Rekta
 import Settings
 import Start
+import "ContactSheets.js" as ContactSheets
 
 // Pinning, unpinning and sizing apps in the Start through an app tile's context menu, with undo in a toast.
 TestCase {
@@ -339,6 +340,16 @@ TestCase {
         verify(menu.open);
     }
 
+    function test_a_finger_that_moves_exactly_eight_pixels_still_opens_the_menu() {
+        openNow();
+        const tile = pinnedTile("Konsole");
+        const touch = touchEvent(tile);
+        touch.press(0, tile, 50, 60).commit();
+        touch.move(0, tile, 50, 68).commit();
+        tryVerify(() => menu.open, Tokens.durationLongPress * 2);
+        touch.release(0, tile, 50, 68).commit();
+    }
+
     function test_a_finger_that_moves_more_than_eight_pixels_opens_no_menu() {
         openNow();
         const tile = pinnedTile("Konsole");
@@ -374,8 +385,11 @@ TestCase {
         openNow();
         rightClick(pinnedTile("Dolphin"), 30, 40);
         const section = named("pinned");
-        section.contentY += Geometry.contextMenuScrollSlop;
+        section.contentY += 2;
         verify(menu.open, "within the slop");
+        section.contentY += 1;
+        verify(!menu.open, "one pixel past the slop");
+        rightClick(pinnedTile("Dolphin"), 30, 40);
         named("running").contentY += 20;
         verify(menu.open, "a scroller that does not hold the tile");
         section.contentY += 10;
@@ -731,6 +745,8 @@ TestCase {
     }
 
     function test_contact_sheets_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
         for (const theme of ["light", "dark"]) {
             sheet("menu-pointer", theme, () => rightClick(pinnedTile("Dolphin"), 60, 50));
             menu.close(false);

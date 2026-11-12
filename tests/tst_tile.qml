@@ -393,6 +393,27 @@ TestCase {
         compare(activations.count, 0);
     }
 
+    function test_a_finger_that_moves_exactly_eight_pixels_still_asks_for_the_menu() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true, hasMenu: true });
+        const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
+        const touch = touchEvent(tile);
+        touch.press(0, tile, 40, 40).commit();
+        touch.move(0, tile, 48, 40).commit();
+        tryCompare(asked, "count", 1, Tokens.durationLongPress * 2);
+        touch.release(0, tile, 48, 40).commit();
+    }
+
+    function test_a_finger_that_moves_diagonally_past_eight_pixels_asks_for_no_menu() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true, hasMenu: true });
+        const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
+        const touch = touchEvent(tile);
+        touch.press(0, tile, 40, 40).commit();
+        touch.move(0, tile, 46, 46).commit();
+        wait(Tokens.durationLongPress * 1.5);
+        touch.release(0, tile, 46, 46).commit();
+        compare(asked.count, 0);
+    }
+
     function test_a_finger_that_moves_more_than_eight_pixels_asks_for_no_menu() {
         const tile = createTemporaryObject(tileComponent, testCase, { opens: true, hasMenu: true });
         const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
