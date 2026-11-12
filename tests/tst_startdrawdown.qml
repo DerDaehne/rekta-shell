@@ -259,8 +259,7 @@ TestCase {
         const letGo = Date.now();
         finger.letGo();
         compare(start.phase, "returningIn");
-        if (from > handOver())
-            compare(lastToldWindows(), [from - handOver(), -1], "KWin's windows run back the same way");
+        compare(lastToldWindows(), [Math.max(0, from - handOver()), -1], "KWin's windows run back the same way");
         tryCompare(start, "phase", "open", 2000);
         const took = Date.now() - letGo;
         verify(took < from + 200, `in the time it had come: ${took} ms for ${from}`);
@@ -331,16 +330,28 @@ TestCase {
         compare(calls, [], "and a drag by mouse never starts the tile either");
     }
 
-    function test_nothing_closes_while_the_start_turns() {
+    function test_nothing_closes_while_the_start_turns_in_or_to_another_place() {
         start.close(null);
         tryCompare(start, "phase", "closed", 2000);
         start.open();
         verify(start.turning);
-        const finger = drawnTo(0.7);
-        verify(start.phase !== "followingOut");
-        finger.letGo();
+        drawnTo(0.7).letGo();
         tryCompare(start, "phase", "open", 3000);
         verify(!turner.paused);
+        named("pivot").select(1);
+        verify(start.turning);
+        drawnTo(0.7).letGo();
+        compare(start.phase, "open");
+        compare(windowsSpy.count, 0);
+    }
+
+    function test_in_a_search_a_finger_drawn_mostly_sideways_does_not_close() {
+        keyClick(Qt.Key_K);
+        tryCompare(start, "searching", true);
+        start.forceActiveFocus();
+        draw(glassX(), glassY(), -300, 200).letGo();
+        compare(start.phase, "open");
+        compare(windowsSpy.count, 0);
     }
 
     function test_nothing_closes_while_the_keys_are_in_the_search_line() {
