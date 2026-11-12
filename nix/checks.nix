@@ -24,7 +24,7 @@ let
     "plasma-plasmashell.service.d/rekta-session.conf"
     "plasma-workspace.target.d/rekta-shell.conf"
   ];
-  # The home-manager module evaluated with a stand-in for home.packages, so the checks need no home-manager input.
+  # The home-manager module evaluated with a stand-in for home.packages and fonts.fontconfig.enable, so the checks need no home-manager input.
   homeConfig =
     modules:
     (lib.evalModules {
@@ -449,6 +449,14 @@ in
           }
         ]).home.packages
     ) "installFont = false still installs the typeface in the profile";
+    assert lib.assertMsg (
+      !(homeConfig [
+        {
+          programs.rekta-shell.enable = true;
+          fonts.fontconfig.enable = false;
+        }
+      ]).fonts.fontconfig.enable
+    ) "the home-manager module overrides a user's own fonts.fontconfig.enable = false";
     pkgs.runCommand "rekta-shell-home-module" { } "touch $out";
 
   # The Fedora VM's source ISO must list exactly the tracked files, whatever else lies in the checkout.

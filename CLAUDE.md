@@ -179,7 +179,10 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   `homeManagerModules.default` (`nix/home-module.nix`) is the per-user counterpart.
   Both build the package with the importing configuration's pkgs. The `nixos-module`
   and `home-module` checks evaluate them: with defaults a system's `toplevel` stays
-  the same, enabled the session is registered. New options default to off.
+  the same, enabled the session is registered and the typeface Atkinson Hyperlegible Next
+  installed (`installFont`, default on, `false` to opt out). New options take effect only
+  with `enable`: an option may default on once enabled, but importing a module without
+  `enable` still changes nothing.
 - The nested session is isolated: it starts from an empty environment (allow-list)
   with its own HOME, runtime and config directories and a session
   bus without service activation. Never pass the desktop's environment, runtime

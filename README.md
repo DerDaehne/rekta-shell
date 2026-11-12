@@ -50,9 +50,11 @@ as it is.
 The module builds the shell with your system's nixpkgs, so Quickshell shares
 Qt with your Plasma. `homeManagerModules.default` offers the same
 `programs.rekta-shell.enable` per user; it puts the `rekta-shell` command into
-the user's profile and will carry per-user settings. Every option of both
-modules is off by default: importing them changes nothing until a
-configuration enables them.
+the user's profile and will carry per-user settings. Importing the modules
+changes nothing until a configuration sets `programs.rekta-shell.enable`, which is
+off by default. Once enabled, `installFont` (default on) also installs the typeface
+Atkinson Hyperlegible Next; set it to `false` when your configuration provides the
+typeface itself.
 
 Without the modules, the flake provides `packages.<system>.rekta-shell` and
 `overlays.default`. The package carries the session as well: register it with
