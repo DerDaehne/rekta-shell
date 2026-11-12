@@ -18,6 +18,15 @@ Scope {
         }
     }
 
+    // REKTA_FOLLOWERS more readers of the file, none of them writing: each reads at a moment of its own, so together
+    // they meet a change at many points of a read.
+    Instantiator {
+        id: followers
+
+        model: Number(Quickshell.env("REKTA_FOLLOWERS") ?? 0)
+        delegate: StartFile {}
+    }
+
     IpcHandler {
         target: "start"
 
@@ -29,8 +38,14 @@ Scope {
             return start.settled;
         }
 
+        // The list, or "behind" while a follower shows another one.
         function list(): string {
-            return JSON.stringify(start.list);
+            const own = JSON.stringify(start.list);
+            for (let i = 0; i < followers.count; ++i) {
+                if (JSON.stringify(followers.objectAt(i).list) !== own)
+                    return "behind";
+            }
+            return own;
         }
 
         function fault(): string {

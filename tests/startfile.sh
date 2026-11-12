@@ -25,7 +25,8 @@ shell=$!
 quickshell --path "$here/startfile" > "$work/app.log" 2>&1 &
 app=$!
 early=""
-trap 'kill $shell $app $early 2>/dev/null; wait; rm -rf "$work"' EXIT
+followers=""
+trap 'kill $shell $app $early $followers 2>/dev/null; wait; rm -rf "$work"' EXIT
 
 call() {
 	pid=$1
@@ -101,3 +102,14 @@ await $early settled true "a third writer reads the file"
 [ "$(call $early earlyPin)" = false ] || fail "a change before the file's first load is refused"
 cmp -s "$work/own" "$file" || fail "a change before the file's first load leaves the file as it was"
 echo "PASS: a change before the file's first load is refused and leaves the file as it was"
+
+# Two quick changes replace the file twice in a row; the second may land while a reader still reads the first or
+# arms its watch anew. Many readers in one instance meet it at many such moments, round after round.
+REKTA_FOLLOWERS=30 quickshell --path "$here/startfile" > "$work/followers.log" 2>&1 &
+followers=$!
+await $followers list "$(call $shell list)" "thirty more readers read the file"
+for round in $(seq 20); do
+	[ "$(call $shell pinBoth "first$round.app" "second$round.app")" = true ] || fail "two quick changes write"
+	await $followers list "$(call $shell list)" "every reader shows the second of two quick changes (round $round)"
+done
+echo "PASS: every reader shows the second of two quick changes"
