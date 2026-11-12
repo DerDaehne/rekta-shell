@@ -63,47 +63,10 @@ TestCase {
         { id: "org.kde.konsole", columns: 1, rows: 1 }
     ])
 
-    // start.json on a text, written as StartFile writes the file.
     Component {
         id: fileComponent
 
-        QtObject {
-            property string text
-            readonly property var current: Pins.read(text)
-            readonly property var list: current.list
-            readonly property string fault: current.fault
-
-            function write(next: var): bool {
-                if (next === null)
-                    return false;
-                text = next;
-                return true;
-            }
-
-            function pin(id: string): bool {
-                return write(Pins.pin(current.content, id));
-            }
-
-            function unpin(index: int): bool {
-                return write(Pins.unpin(current.content, index));
-            }
-
-            function resize(index: int, columns: int, rows: int): bool {
-                return write(Pins.resize(current.content, index, columns, rows));
-            }
-
-            function insert(index: int, entry: var): bool {
-                return write(Pins.insert(current.content, index, entry));
-            }
-
-            function replace(index: int, entry: var): bool {
-                return write(Pins.replace(current.content, index, entry));
-            }
-
-            function entry(index: int): var {
-                return Pins.entry(current.content, index);
-            }
-        }
+        FakeStartFile {}
     }
 
     Component {

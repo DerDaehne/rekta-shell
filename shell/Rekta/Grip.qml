@@ -5,6 +5,8 @@ import QtQuick
 // does not move does nothing; once the pointer has moved gripDragStart up or down, `dragged` follows it. Picked up from
 // the keyboard or under the pointer it takes the primary text colour. A finger on it never scrolls what holds it
 // (`touch-action: none`). A pointer gives no focus, so the ring shows only for the keyboard, like :focus-visible.
+// Disabled, it greys, stays focusable and moves nothing; the reason is read with it (forms.md, "Disabled controls say
+// why"), and the list's owner says it in words.
 Item {
     id: grip
 
@@ -12,6 +14,8 @@ Item {
     property string name
     // Picked up from the keyboard, like aria-pressed.
     property bool grabbed: false
+    property string disabledReason
+    readonly property bool disabled: disabledReason !== ""
     readonly property bool dragging: pointer.dragging
 
     // dy: how far the pointer has moved up or down since the press, in scene pixels.
@@ -25,13 +29,14 @@ Item {
     Accessible.name: `${name} verschieben`
     Accessible.checkable: true
     Accessible.checked: grabbed
+    Accessible.description: disabledReason
 
     Icon {
         objectName: "squares"
         anchors.centerIn: parent
         name: "grip"
         size: Geometry.gripGlyph
-        color: grip.grabbed || pointer.containsMouse ? Tokens.color.textPrimary : Tokens.color.textContrastMedium
+        color: grip.disabled ? Tokens.color.disabled : grip.grabbed || pointer.containsMouse ? Tokens.color.textPrimary : Tokens.color.textContrastMedium
     }
 
     FocusRing {
@@ -57,6 +62,7 @@ Item {
 
         anchors.fill: parent
         hoverEnabled: true
+        enabled: !grip.disabled
         preventStealing: true
         cursorShape: dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 

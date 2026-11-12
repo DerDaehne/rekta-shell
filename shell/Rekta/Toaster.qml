@@ -15,9 +15,10 @@ import QtQuick
 // another notification's toast comes next (motion.md:14, the place change's hand-over; rekta.js:594). It came from
 // another program, so it glides whole from the bottom edge and back without a fade (states.md:84–88; motion.md:36;
 // rekta.css:1197–1203, :1407); a toast of the product's own rises 12px with a fade.
-// Deliberate deviations: sideways Rekta hangs toasts from the top centre (rekta.css:1158, :1417), a notification's from
-// the top edge; here every toast comes from the bar, as a compact one does, so that a notification comes from the
-// control that counts it. Rekta's toast layer lies above the app bar (states.md:225–227), so its notification glides
+// A window without an app bar hangs its toasts from the top centre, as Rekta does sideways (`hangsFromTop`;
+// rekta.css:1156–1158, :1417). Deliberate deviations: sideways Rekta hangs toasts from the top centre, a notification's
+// from the top edge; in the shell every toast comes from the bar, as a compact one does, so that a notification comes
+// from the control that counts it. Rekta's toast layer lies above the app bar (states.md:225–227), so its notification glides
 // over the bar; here the toasts' surface ends at the bar's top edge, and a notification comes from behind the bar.
 // A toast that has to leave while it still comes in goes from where it stands, where Rekta's jumps to its place first.
 // A notification's title is the one it brings, so its sender's name may be missing from the toast's words, where Rekta
@@ -40,6 +41,8 @@ Item {
     property real trailingEdge: width
     // Whether that control is in sight to give way; while it is not, a notification's toast comes in at once.
     property bool countInSight: false
+    // Hung from the top centre, space-m below the top edge, as in a window without an app bar.
+    property bool hangsFromTop: false
     // While a notification's toast is on its way in, stands or is on its way down: the count gives way. Set here only.
     property bool countAway: false
     // The count leaves as the old count of a peek does; a notification's toast comes in turn-overlap into that way.
@@ -170,8 +173,8 @@ Item {
         return true;
     }
 
-    // Toasts stand space-s above the bar (rekta.css:1407).
-    implicitHeight: Tokens.spaceS + Array.from(cell.children).reduce((tallest, toast) => Math.max(tallest, toast.height), 0)
+    // Toasts stand space-s above the bar (rekta.css:1407), or space-m below the top.
+    implicitHeight: (hangsFromTop ? Tokens.spaceM : Tokens.spaceS) + Array.from(cell.children).reduce((tallest, toast) => Math.max(tallest, toast.height), 0)
     z: Tokens.layerToast
 
     Component.onCompleted: removeKeyLayers = [

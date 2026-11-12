@@ -176,6 +176,21 @@ TestCase {
         compare(toast.x + toast.width, toaster.width - Tokens.spaceM, "nor to its trailing side");
     }
 
+    function test_hung_from_the_top_a_toast_stands_centred_space_m_below_it_and_comes_12px_from_above_with_a_fade() {
+        toaster.hangsFromTop = true;
+        toaster.trailingEdge = 600;
+        Prefs.motion = "on";
+        const toast = toaster.show("a very long sentence that says what happened in many words, and then some more words, so it wraps", {});
+        compare(toast.width, Geometry.toastMaxWidth, "at most 32rem");
+        compare(toast.x, (toaster.width - toast.width) / 2, "centred, whatever trailing edge it is given");
+        compare(toast.y, Tokens.spaceM - Geometry.toastRise, "it starts 12px above its place");
+        compare(toast.opacity, 0);
+        compare(findChild(toast, "rising").duration, Tokens.durationShort);
+        tryCompare(toast, "y", Tokens.spaceM, Tokens.durationShort + 500);
+        compare(toast.opacity, 1);
+        compare(toaster.implicitHeight, Tokens.spaceM + toast.height, "the host's window holds it");
+    }
+
     function test_a_success_is_the_plain_ink_strip_without_a_status() {
         Prefs.theme = "dark";
         const toast = toaster.show("schedule saved", {});

@@ -6,6 +6,7 @@ import Quickshell.Io
 import Rekta
 import Settings
 import SettingsApp
+import Start
 
 ShellRoot {
     SystemMotion {}
@@ -15,6 +16,16 @@ ShellRoot {
         id: settingsFiles
 
         writable: true
+    }
+
+    // start.json, the same file the Start reads and writes, live both ways.
+    StartFile {
+        id: startJson
+    }
+
+    // The apps "alle apps" lists, to pin from; the app starts none.
+    Apps {
+        id: installed
     }
 
     Binding {
@@ -40,6 +51,8 @@ ShellRoot {
 
             anchors.fill: parent
             settings: settingsFiles
+            startFile: startJson
+            apps: installed.list
             onCloseRequested: Qt.quit()
         }
     }

@@ -12,6 +12,13 @@ FocusScope {
 
     // The settings the fields show and write; the app opens the gate to all of them.
     required property Layers settings
+    // start.json, which "angeheftet" lists and changes: the app's StartFile.
+    required property var startFile
+    // The installed apps as the Start lists them, {id, name, icon}; null until they have been read.
+    property var apps: null
+    readonly property alias toaster: toaster
+    // A name a row cuts off shows whole as its tip (OverflowTip).
+    readonly property bool overflowTips: true
 
     readonly property var places: [
         {
@@ -51,6 +58,7 @@ FocusScope {
     readonly property var contents: ({
             "fläche": echoField,
             "suche": escapeField,
+            "angeheftet": pinnedField,
             "zuletzt": recentField
         })
     // Why the fields cannot be changed (forms.md, "Disabled controls say why"): the short cause stands beside each
@@ -211,6 +219,16 @@ FocusScope {
     }
 
     Component {
+        id: pinnedField
+
+        PinnedApps {
+            file: view.startFile
+            apps: view.apps
+            toaster: view.toaster
+        }
+    }
+
+    Component {
         id: comingSoon
 
         Hint {
@@ -295,5 +313,26 @@ FocusScope {
                 }
             }
         }
+    }
+
+    // The app has no app bar: its toasts hang from the top centre, as Rekta's do sideways (rekta.css:1156–1170, :1417).
+    Toaster {
+        id: toaster
+
+        objectName: "toaster"
+        width: view.width
+        hangsFromTop: true
+        undoWord: "rückgängig"
+    }
+
+    // The tip of any control in the window, over everything.
+    Tooltip {
+        readonly property var place: target ? Placement.tip(parent.mapFromItem(target, 0, 0, target.width, target.height), Qt.size(width, height), area) : null
+
+        objectName: "tip"
+        area: Qt.size(view.width, view.height)
+        x: place?.x ?? 0
+        y: place?.y ?? 0
+        side: place?.side ?? "above"
     }
 }

@@ -52,6 +52,10 @@ TestCase {
                 id: shellSettings
             }
 
+            FakeStartFile {
+                id: pins
+            }
+
             Backdrop {
                 id: ground
 
@@ -63,6 +67,7 @@ TestCase {
 
                 anchors.fill: parent
                 settings: appSettings
+                startFile: pins
             }
         }
     }

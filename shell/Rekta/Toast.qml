@@ -238,9 +238,10 @@ FocusScope {
             run();
     }
 
-    // Flush with the trailing edge it is given, space-m inside the region's sides (rekta.css:1159), space-s above the bar.
-    x: Math.max(Tokens.spaceM, Math.min(toaster.trailingEdge, toaster.width - Tokens.spaceM) - width)
-    y: toaster.height - Tokens.spaceS - height + below * travel
+    // Flush with the trailing edge it is given, space-m inside the region's sides (rekta.css:1159), space-s above the bar;
+    // hung from the top, centred space-m below the region's top and coming down from above (rekta.css:1156–1158, :1417).
+    x: toaster.hangsFromTop ? (toaster.width - width) / 2 : Math.max(Tokens.spaceM, Math.min(toaster.trailingEdge, toaster.width - Tokens.spaceM) - width)
+    y: toaster.hangsFromTop ? Tokens.spaceM - below * travel : toaster.height - Tokens.spaceS - height + below * travel
     opacity: notification ? 1 : entry
     width: Math.min(Geometry.toastMaxWidth, toaster.width - 2 * Tokens.spaceM, front.width + words.implicitWidth + tagBox.width + actionBox.width)
     height: Math.max(Tokens.controlHeight + Tokens.spaceXs, words.height)

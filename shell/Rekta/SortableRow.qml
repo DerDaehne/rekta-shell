@@ -8,6 +8,8 @@ Item {
     required property int index
     // What the row is called, in the grip's name and every announcement.
     property string name
+    // Why it cannot be moved now; its grip greys and moves nothing.
+    property string disabledReason
     default property alias content: body.data
 
     readonly property SortableRows rows: parent as SortableRows
@@ -76,6 +78,7 @@ Item {
 
         height: row.height
         name: row.name
+        disabledReason: row.disabledReason
         grabbed: row.rows?.grabbedRow === row
         onDragged: dy => row.rows.dragTo(row, dy)
         onDropped: canceled => row.rows.drop(canceled)

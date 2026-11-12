@@ -19,6 +19,8 @@ Item {
     property var tops: []
     property SortableRow draggedRow: null
     property SortableRow grabbedRow: null
+    // A row whose drag stop() ended; its pointer moves nothing until it lets go.
+    property SortableRow stoppedRow: null
     // The last thing announced.
     property string spoken
 
@@ -91,7 +93,7 @@ Item {
     }
 
     function dragTo(row: SortableRow, dy: real) {
-        if (grabbedRow)
+        if (grabbedRow || row === stoppedRow)
             return;
         if (!drag) {
             drag = { from: row.index, to: row.index, tops: tops.slice(), heights: all().map(other => other.height) };
@@ -104,6 +106,7 @@ Item {
 
     // A cancel (the pointer taken away) puts the row back.
     function drop(canceled: bool) {
+        stoppedRow = null;
         if (!drag)
             return;
         const { from, to } = drag;
@@ -120,6 +123,18 @@ Item {
         shown.forEach((y, other) => other.settleFrom(y));
         if (moves)
             say(`${row.name}: platz ${to + 1} von ${count}.`);
+    }
+
+    // Ends a drag or a pick-up where the rows stand, as when the owner's model changed from elsewhere.
+    function stop() {
+        grabbedRow = null;
+        if (!drag)
+            return;
+        stoppedRow = draggedRow;
+        drag = null;
+        draggedRow = null;
+        for (const row of all())
+            row.offset = 0;
     }
 
     function pickUp(row: SortableRow) {
@@ -152,7 +167,7 @@ Item {
     function key(row: SortableRow, event: KeyEvent) {
         const by = { [Qt.Key_Up]: -1, [Qt.Key_Down]: 1 }[event.key] ?? 0;
         const toggles = [Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter].includes(event.key);
-        if (drag)
+        if (drag || row.grip.disabled)
             return;
         if (grabbedRow === row) {
             event.accepted = by !== 0 || toggles || event.key === Qt.Key_Escape;

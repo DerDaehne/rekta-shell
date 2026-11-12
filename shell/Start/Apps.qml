@@ -1,16 +1,16 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Start
 
 // The installed apps this desktop shows, A–Z, one list for every place that lists or searches them: Quickshell's
 // desktop entries, less those whose OnlyShowIn or NotShowIn keeps them from XDG_CURRENT_DESKTOP. Quickshell gives
-// neither key to QML, so grep reads them from the same files whenever the entries change.
+// neither key to QML, so grep reads them from the same files whenever the entries change. The shell hands it its
+// Launcher and Usage to start apps with; the settings app only lists them and hands neither.
 Scope {
     id: apps
 
-    required property Launcher launcher
-    required property Usage usage
+    property var launcher: null
+    property var usage: null
     // {id, name, genericName, keywords, exec, icon, launch()}; null until the files have been read once.
     property var list: null
     // The System Settings pages, shaped alike; they have no place in `list`, their entries carry NoDisplay.

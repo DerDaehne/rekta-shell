@@ -9,8 +9,8 @@ import QtQuick
 // clear (forms.md:71–75). A press on the field opens, on an option chooses, outside closes. It keeps only a choice from
 // its list: leaving it with other text puts the last choice back, leaving it empty takes the choice away. The chosen
 // option carries a tick without a box; the chevron points up while the list is open (forms.md:76–84). Disabled, it
-// greys, stays focusable and says why below it.
-Item {
+// greys, stays focusable and says why below it. Focus given to it goes to its field.
+FocusScope {
     id: combo
 
     // Each { label, value }, with a key hint (`hint`), more words the filter matches (`keywords`) and why it cannot be
@@ -232,6 +232,7 @@ Item {
             id: input
 
             objectName: "input"
+            focus: true
             anchors.fill: parent
             leftPadding: Geometry.inputPadding
             rightPadding: Geometry.comboPaddingEnd
