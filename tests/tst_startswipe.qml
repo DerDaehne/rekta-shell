@@ -142,6 +142,8 @@ TestCase {
         fuzzyCompare(start.openingAt, start.openingTime / 2, 1e-6);
         fuzzyCompare(turner.elapsed, Math.max(0, start.openingTime / 2 - partsWait()), 1e-6);
         compare(lastToldWindows(), [start.openingAt, 0], "KWin holds the windows, and with them the glass, there");
+        wait(60);
+        fuzzyCompare(turner.elapsed, Math.max(0, start.openingTime / 2 - partsWait()), 1e-6, "it stays with the finger");
         start.followFinger(wholeWay);
         compare(start.openingAt, start.openingTime);
         compare(turner.elapsed, start.openingTime - partsWait());
@@ -258,6 +260,17 @@ TestCase {
         compare(start.phase, "opening");
         compare(lastToldWindows(), [at, 1]);
         tryCompare(start, "phase", "open", 2000);
+    }
+
+    function test_meta_while_the_let_go_opening_goes_on_closes_the_start_back_as_ever() {
+        start.followFinger(wholeWay * 0.6);
+        start.letFingerGo();
+        wait(30);
+        start.toggle();
+        compare(start.phase, "closing");
+        verify(turner.back);
+        verify(!turner.paused);
+        tryCompare(start, "phase", "closed", 3000);
     }
 
     function test_after_running_back_meta_opens_the_start_as_ever() {
