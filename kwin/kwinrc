@@ -14,3 +14,12 @@ scaleEnabled=false
 BlurStrength=5
 NoiseStrength=0
 Saturation=100
+
+# rekta-fadeback holds the bottom touch edge for the Start, which opens over a full-screen window too. KWin keeps every
+# edge active then, so the pointer corner KWin gives the overview by default would open it over a game or a video.
+[ScreenEdges]
+RemainActiveOnFullscreen=true
+
+# KWin's ElectricNone: no corner. The overview stays on its shortcut.
+[Effect-overview]
+BorderActivate=9

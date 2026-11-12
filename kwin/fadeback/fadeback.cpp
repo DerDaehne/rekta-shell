@@ -10,6 +10,7 @@
 #include "window.h"
 #include "workspace.h"
 
+#include <QAction>
 #include <QDBusConnection>
 #include <QHash>
 #include <QPointer>
@@ -47,19 +48,28 @@ struct Retreat {
     bool keyboard = false;
     bool handOverUnconfirmed = false;
     std::optional<std::chrono::nanoseconds> setOffAt;
+    // The time since they set off from `from` towards `to`: from `base` on, running forward (1), held (0) or back (-1).
+    std::chrono::nanoseconds base = 0ns;
+    int pace = 1;
     std::chrono::nanoseconds elapsed = 0ns;
     qreal from = 0;
     qreal to = 0;
     qreal progress = 0;
 
+    // Forward to `to`, held where they are, or back the way they came to `from`.
+    qreal heading() const
+    {
+        return pace > 0 ? to : pace < 0 ? from : progress;
+    }
+
     bool moving() const
     {
-        return progress != to;
+        return progress != heading();
     }
 
     bool active() const
     {
-        return progress > 0 || to > 0;
+        return progress > 0 || heading() > 0;
     }
 };
 
@@ -81,6 +91,10 @@ struct Splash {
 // screen step back the same way behind a clear surface. Either surface sets them off by taking the keyboard and brings
 // them forward by handing it over. After login the splash fades onto the shell's ground. How far and how fast come
 // from the shell's Rekta module.
+//
+// A finger swiping up from the bottom edge of the primary screen opens the Start: the effect holds that edge while the
+// Start is gone, tells the shell over D-Bus how far up the finger has come and when it lets go, and the shell sets the
+// windows on the opening's timeline. KWin swallows a second finger and reports a cancelled touch as a release.
 class FadeBackEffect : public Effect
 {
     Q_OBJECT
@@ -101,12 +115,21 @@ public Q_SLOTS:
     // The Start's tempo as the shell has it; the windows take it as they next set off. Only a tempo the Start can
     // have counts: above 0 and at most Rekta's own.
     Q_SCRIPTABLE void setStartTempo(double tempo);
+    // The windows behind the Start stand `elapsed` ms into its opening and go on from there: on (1), held (0) or back
+    // to its beginning (-1).
+    Q_SCRIPTABLE void setStartAt(double elapsed, int pace);
+
+Q_SIGNALS:
+    // A finger on the bottom edge of the primary screen is `distance` px above where it set down.
+    Q_SCRIPTABLE void fingerMoved(double distance);
+    Q_SCRIPTABLE void fingerLetGo();
 
 private:
     void watch(LayerSurfaceV1Interface *layer);
     void follow(Retreat &retreat, LayerSurfaceV1Interface *layer);
     void committed(Retreat &retreat, bool keyboard, bool takesInput);
     void head(Retreat &retreat, qreal target);
+    void run(Retreat &retreat, std::chrono::nanoseconds from, int pace);
     void tearDown(Retreat &retreat);
     void advance(Retreat &retreat, std::chrono::nanoseconds presentation);
     qreal progress(const Retreat &retreat) const;
@@ -118,6 +141,9 @@ private:
     void holdSplash(EffectWindow *w);
     void fadeSplash(std::chrono::nanoseconds presentation);
     bool fading() const;
+    void holdEdge();
+    void fingerAt(const QPointF &delta, LogicalOutput *output);
+    void letGo();
 
     template<typename... Args>
     qreal rule(const char *name, Args... args) const
@@ -134,6 +160,10 @@ private:
     Look m_onPrimary;
     Look m_elsewhere;
     Splash m_splash;
+    // KWin triggers it as the finger on the edge lets go.
+    QAction m_finger;
+    bool m_fingerDown = false;
+    bool m_edgeHeld = false;
 };
 
 FadeBackEffect::FadeBackEffect()
@@ -146,10 +176,12 @@ FadeBackEffect::FadeBackEffect()
     m_startTempo = m_rules->property("startTempo").toDouble();
     // ponytail: a surface made before the effect loads goes unseen until the shell makes it anew, and the Start's tempo
     // until the shell starts anew or the setting changes; the rekta session loads the effect before the shell starts.
-    QDBusConnection::sessionBus().registerObject(QStringLiteral("/RektaFadeBack"), this, QDBusConnection::ExportScriptableSlots);
+    QDBusConnection::sessionBus().registerObject(QStringLiteral("/RektaFadeBack"), this, QDBusConnection::ExportScriptableContents);
     connect(waylandServer()->findChild<LayerShellV1Interface *>(), &LayerShellV1Interface::surfaceCreated,
             this, &FadeBackEffect::watch);
     connect(effects, &EffectsHandler::windowClosed, this, &FadeBackEffect::holdSplash);
+    connect(&m_finger, &QAction::triggered, this, &FadeBackEffect::letGo);
+    holdEdge();
 }
 
 FadeBackEffect::~FadeBackEffect()
@@ -205,16 +237,39 @@ void FadeBackEffect::setStartTempo(double tempo)
     }
 }
 
+void FadeBackEffect::setStartAt(double elapsed, int pace)
+{
+    if (!(elapsed >= 0) || pace < -1 || pace > 1) {
+        return;
+    }
+    m_rules->setProperty("startTempo", m_startTempo);
+    m_start.from = 0;
+    m_start.to = 1;
+    run(m_start, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double, std::milli>(elapsed)), pace);
+}
+
+// Windows already bound there, as a finger's opening holds them, go on from where they stand rather than anew.
 void FadeBackEffect::head(Retreat &retreat, qreal target)
 {
     // The Start's windows change their tempo only as they set off, never on the way.
     if (&retreat == &m_start) {
         m_rules->setProperty("startTempo", m_startTempo);
     }
+    if (target == retreat.to) {
+        run(retreat, retreat.elapsed, 1);
+        return;
+    }
     retreat.from = retreat.progress;
     retreat.to = target;
+    run(retreat, 0ns, 1);
+}
+
+void FadeBackEffect::run(Retreat &retreat, std::chrono::nanoseconds from, int pace)
+{
+    retreat.base = from;
+    retreat.pace = pace;
+    retreat.elapsed = from;
     retreat.setOffAt.reset();
-    retreat.elapsed = 0ns;
     step();
     effects->addRepaintFull();
 }
@@ -223,6 +278,7 @@ void FadeBackEffect::tearDown(Retreat &retreat)
 {
     retreat.keyboard = false;
     retreat.handOverUnconfirmed = false;
+    retreat.pace = 1;
     retreat.from = 0;
     retreat.to = 0;
     step();
@@ -239,7 +295,7 @@ void FadeBackEffect::advance(Retreat &retreat, std::chrono::nanoseconds presenta
     if (!retreat.setOffAt) {
         retreat.setOffAt = presentation;
     }
-    retreat.elapsed = presentation - *retreat.setOffAt;
+    retreat.elapsed = std::max(0ns, retreat.base + retreat.pace * (presentation - *retreat.setOffAt));
 }
 
 // Under reduced motion the windows stand where they head at once.
@@ -249,7 +305,7 @@ qreal FadeBackEffect::progress(const Retreat &retreat) const
         return retreat.from;
     }
     if (effects->animationTimeFactor() == 0) {
-        return retreat.to;
+        return retreat.heading();
     }
     const double elapsed = std::chrono::duration<double, std::milli>(retreat.elapsed).count();
     return rule(retreat.rule, retreat.from, retreat.to, elapsed);
@@ -268,6 +324,7 @@ void FadeBackEffect::step()
     m_onPrimary = look(std::max(m_start.progress, m_leave.progress));
     m_elsewhere = look(m_leave.progress);
     fadeStart(m_start.progress);
+    holdEdge();
 }
 
 // The window's own opacity, not the paint data's: KWin's blur follows it as well, and it holds once the effect rests
@@ -323,6 +380,45 @@ void FadeBackEffect::fadeSplash(std::chrono::nanoseconds presentation)
 bool FadeBackEffect::fading() const
 {
     return !m_splash.windows.isEmpty();
+}
+
+// The edge is the Start's way in only while the Start is gone, so a finger at the bottom of the open Start reaches the
+// Start; a finger swiping keeps it until it lets go. The edge alone sets nothing in motion.
+void FadeBackEffect::holdEdge()
+{
+    const bool wanted = m_fingerDown || !m_start.active();
+    if (wanted == m_edgeHeld) {
+        return;
+    }
+    m_edgeHeld = wanted;
+    if (!wanted) {
+        effects->unregisterTouchBorder(ElectricBottom, &m_finger);
+        return;
+    }
+    // KWin holds the bottom edge of every screen with nothing below it; only the primary screen's opens the Start.
+    effects->registerRealtimeTouchBorder(ElectricBottom, &m_finger, [this](ElectricBorder, const QPointF &delta, LogicalOutput *output) {
+        fingerAt(delta, output);
+    });
+}
+
+void FadeBackEffect::fingerAt(const QPointF &delta, LogicalOutput *output)
+{
+    if (output != primaryScreen()) {
+        return;
+    }
+    m_fingerDown = true;
+    Q_EMIT fingerMoved(-delta.y());
+}
+
+// The edge is left as it is: KWin is still handing the release along it. The shell's answer moves the windows, and
+// the next step frees the edge.
+void FadeBackEffect::letGo()
+{
+    if (!m_fingerDown) {
+        return;
+    }
+    m_fingerDown = false;
+    Q_EMIT fingerLetGo();
 }
 
 void FadeBackEffect::prePaintScreen(ScreenPrePaintData &data)

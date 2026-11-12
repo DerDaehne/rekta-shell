@@ -6,6 +6,8 @@ import Quickshell.Io
 import Quickshell.Wayland
 import org.kde.pipewire as PipeWire
 import org.kde.taskmanager as TaskManager
+import org.kde.plasma.workspace.dbus as DBus
+import RektaShell.DBus
 import Settings
 import Start
 import Notices
@@ -137,6 +139,7 @@ PanelWindow {
             Quickshell.clipboardText = text;
         }
         searchEscape: surface.searchEscape
+        screenHeight: surface.height
         starts: usage.starts
         unseen: surface.notices.unseenByApp
         lines: Rules.playingLines(surface.media.player, surface.media.appId)
@@ -157,6 +160,27 @@ PanelWindow {
         onHoldsKeyboardChanged: {
             if (!place.holdsKeyboard && place.shown)
                 surface.confirmingHandOver = true;
+        }
+        onWindowsAt: (time, pace) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setStartAt", [time, pace], "di")
+    }
+
+    // KWin's rekta-fadeback, which holds the bottom edge of the primary screen for a finger that swipes the Start open;
+    // outside the rekta session nothing answers.
+    DBusConnection {
+        id: kwin
+    }
+
+    DBus.SignalWatcher {
+        service: "org.kde.KWin"
+        path: "/RektaFadeBack"
+        iface: "org.rekta.FadeBack"
+
+        function dbusfingerMoved(distance: real) {
+            place.followFinger(distance);
+        }
+
+        function dbusfingerLetGo() {
+            place.letFingerGo();
         }
     }
 

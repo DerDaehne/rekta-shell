@@ -67,7 +67,8 @@ FocusScope {
     // What "heute" shows: the notifications and the choice of player.
     property NoticeBoard board: null
     property PlayerChoice playerChoice: null
-    // closed, opening (the glass comes, then the parts turn in), open, or closing (the parts turn out, the glass goes).
+    // closed, opening (the glass comes, then the parts turn in), open, or closing (the parts turn out, the glass goes); or
+    // following a finger that swipes it open, and returning when the finger let go short of half its way.
     property string phase: "closed"
     // From opening until it has closed; the host shows its surface while this holds.
     readonly property bool shown: phase !== "closed"
@@ -116,8 +117,19 @@ FocusScope {
     // What Escape does in a search: "close" closes the Start at once, "back" clears the search first like the other ways
     // back.
     property string searchEscape: "close"
+    // The height of the screen the Start covers: a finger swiping up from its bottom edge opens the Start all the way
+    // at half of it.
+    property real screenHeight: height
+    // How far of that way the finger has come, 0 to 1.
+    property real fingerShare: 0
+    // The opening a finger takes along, in ms since it began: where it stands, and its end, the last part landed.
+    property real openingAt: 0
+    property real openingTime: 0
 
     signal closed
+    // The windows behind the Start stand `time` ms into its opening and go on from there: held (0), on (1) or back to
+    // its beginning (-1). KWin's fade-back moves them, and the glass with them.
+    signal windowsAt(real time, int pace)
 
     // The rows of tiles a section of `place` holds under its heading; stacked, as many as it has.
     function rowsHeld(place: Panorama): real {
@@ -138,24 +150,130 @@ FocusScope {
         return units;
     }
 
+    // An opening a finger has taken along goes on from where it stands.
     function open() {
         if (wanted)
             return;
-        quietly(() => turner.finish());
-        endSearch();
-        returnTo = windows.find(window => window.active) ?? null;
-        panorama.goTo(0, false, true);
-        appsPanorama.goTo(0, false, true);
-        phase = "opening";
-        glassOut.stop();
-        pivot.focus = false;
-        forgetTileFocus();
-        body.visible = false;
+        if (phase === "following" || phase === "returning") {
+            goOn();
+            return;
+        }
+        setOut("opening");
         // The parts wait until the windows are three quarters back, as the next place waits for the last part leaving.
         if (waitForWindows.interval > 0)
             waitForWindows.restart();
         else
             turnIn();
+    }
+
+    // The Start sets out to open, `how`: "opening", or "following" a finger.
+    function setOut(how: string) {
+        quietly(() => turner.finish());
+        endSearch();
+        returnTo = windows.find(window => window.active) ?? null;
+        panorama.goTo(0, false, true);
+        appsPanorama.goTo(0, false, true);
+        phase = how;
+        glassOut.stop();
+        pivot.focus = false;
+        forgetTileFocus();
+        body.visible = false;
+    }
+
+    // A finger `distance` px up from where it set down on the screen's bottom edge: the whole opening, windows, glass and
+    // parts, stands where the finger has taken it. Under reduced motion nothing follows it.
+    // ponytail: Rekta has no rule for a place that follows a finger; the way is half the screen's height and the finger
+    // decides at half of it, as a dragged row does (motion.md:25). Take Rekta's rule once it gives one.
+    function followFinger(distance: real) {
+        fingerShare = Math.min(1, Math.max(0, distance / (screenHeight / 2)));
+        if (Tokens.reducedMotion)
+            return;
+        if (phase === "closed")
+            beginFollowing();
+        if (phase !== "following")
+            return;
+        showAt(fingerShare * openingTime);
+        windowsAt(openingAt, 0);
+    }
+
+    // Let go past half its way, the opening goes on from where it stands; short of it, it runs back to its beginning.
+    function letFingerGo() {
+        const past = fingerShare >= 0.5;
+        fingerShare = 0;
+        if (phase === "following") {
+            if (past)
+                goOn();
+            else
+                runBack();
+        } else if (past && Tokens.reducedMotion) {
+            open();
+        }
+    }
+
+    // The parts stand ready to turn in, held at whatever moment the finger names; not one lets go before the end, so
+    // the opening can go back.
+    function beginFollowing() {
+        setOut("following");
+        turnIn();
+        turner.paused = true;
+        turner.keepsLanded = true;
+        openingTime = waitForWindows.interval + Math.max(0, ...turner.arrivingTurns.map(turn => turn.at + turn.duration));
+    }
+
+    // The opening `time` ms after it began: the parts turn in from when the windows are three quarters back.
+    function showAt(time: real) {
+        openingAt = time;
+        turner.elapsed = Math.max(0, time - waitForWindows.interval);
+    }
+
+    // On in its own times, and the Start takes the keyboard as after Meta.
+    function goOn() {
+        phase = "opening";
+        windowsAt(openingAt, 1);
+        runFinger(1);
+    }
+
+    // Back the same way in the same times; the Start never takes the keyboard.
+    function runBack() {
+        phase = "returning";
+        windowsAt(openingAt, -1);
+        runFinger(-1);
+    }
+
+    function runFinger(pace: int) {
+        fingerClock.from = openingAt;
+        fingerClock.pace = pace;
+        fingerClock.reset();
+        fingerClock.start();
+    }
+
+    function fingerTick(time: real) {
+        // Typing or a press has ended the turn meanwhile.
+        if (!turner.running) {
+            fingerClock.stop();
+            return;
+        }
+        showAt(Math.min(openingTime, Math.max(0, time)));
+        if (fingerClock.pace > 0 && openingAt >= openingTime)
+            landFinger();
+        else if (fingerClock.pace < 0 && openingAt <= 0)
+            returned();
+    }
+
+    function landFinger() {
+        fingerClock.stop();
+        turner.paused = false;
+        turner.finish();
+    }
+
+    // At its beginning the Start is gone again, and the window that had the keyboard has kept it.
+    function returned() {
+        fingerClock.stop();
+        quietly(() => turner.finish());
+        turner.paused = false;
+        body.visible = false;
+        returnTo = null;
+        hide();
     }
 
     // The Start's own turns, in and out, run at its tempo and about the bottom edge it is swiped up from; a change of
@@ -222,6 +340,8 @@ FocusScope {
     // A turn takes the parts at rest, as a swap does, and holds their opacity alone.
     function turn(from: Item, to: Item, options: var) {
         presence.complete();
+        fingerClock.stop();
+        turner.paused = false;
         quietly(() => turner.go(from, to, options));
         // Under reduced motion the turn lands at once.
         if (!turner.running)
@@ -1047,6 +1167,16 @@ FocusScope {
         objectName: "waitForWindows"
         interval: Tokens.turnOverlap * FadeBack.duration
         onTriggered: start.turnIn()
+    }
+
+    // Runs the opening a finger has let go on or back from where it stood.
+    FrameAnimation {
+        id: fingerClock
+
+        property real from: 0
+        property int pace: 1
+
+        onTriggered: start.fingerTick(from + pace * elapsedTime * 1000)
     }
 
     Presence {

@@ -17,6 +17,8 @@ QtObject {
     // of the turn.
     property real elapsed: 0
     property bool paused: false
+    // While set, a landed part stays held, so a paused turn may be set back to any earlier moment, as a finger takes it.
+    property bool keepsLanded: false
     // The plans (Turnstile.plan) of the place leaving and of the one arriving; each turn's `part.item` is its item.
     property var leavingTurns: []
     property var arrivingTurns: []
@@ -165,6 +167,7 @@ QtObject {
         back = options?.back === true;
         tempo = options?.tempo ?? 1;
         edge = options?.edge ?? "leading";
+        keepsLanded = false;
         if (to)
             to.visible = false;
         if (Tokens.reducedMotion) {
@@ -213,7 +216,7 @@ QtObject {
             return;
         if (!handedOver && elapsed >= handOverAt)
             handOver();
-        if (!handedOver)
+        if (!handedOver || keepsLanded)
             return;
         // Each arriving part is let go in the frame it lands; a late frame may be past several landings at once.
         const landing = turning.filter(part => elapsed >= part.turn.at + part.turn.duration);
