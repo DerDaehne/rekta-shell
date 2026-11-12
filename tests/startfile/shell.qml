@@ -42,7 +42,7 @@ Scope {
         function list(): string {
             const own = JSON.stringify(start.list);
             for (let i = 0; i < followers.count; ++i) {
-                if (JSON.stringify(followers.objectAt(i).list) !== own)
+                if (JSON.stringify((followers.objectAt(i) as StartFile).list) !== own)
                     return "behind";
             }
             return own;
