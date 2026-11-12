@@ -10,6 +10,8 @@ let
   shared = import ./shell-options.nix { inherit lib; };
 in
 {
+  imports = shared.removed;
+
   options.programs.rekta-shell = {
     enable = lib.mkEnableOption "the rekta session: Plasma's services with rekta-shell in place of plasmashell";
 

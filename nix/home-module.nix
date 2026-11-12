@@ -11,6 +11,8 @@ let
   shared = import ./shell-options.nix { inherit lib; };
 in
 {
+  imports = shared.removed;
+
   options.programs.rekta-shell = {
     enable = lib.mkEnableOption "rekta-shell in the user's profile";
 

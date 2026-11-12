@@ -297,7 +297,7 @@ FocusScope {
     // place inside it at Rekta's, about the leading edge.
     function turnIn() {
         turn(null, body, {
-            tempo: Prefs.startTempo,
+            tempo: Geometry.startTempo,
             edge: "bottom"
         });
     }
@@ -325,7 +325,7 @@ FocusScope {
         turn(body, null, {
             back: options.back,
             pressed: options.pressed,
-            tempo: Prefs.startTempo,
+            tempo: Geometry.startTempo,
             edge: "bottom"
         });
     }

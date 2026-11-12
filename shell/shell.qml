@@ -29,14 +29,6 @@ ShellRoot {
         value: settingsFiles.value("density")
     }
 
-    Binding {
-        target: Prefs
-        property: "startPace"
-        value: settingsFiles.value("startTempo")
-    }
-
-    FadeBackTempo {}
-
     Windows {
         id: running
     }

@@ -122,7 +122,6 @@ TestCase {
         Prefs.motion = "system";
         Prefs.theme = "system";
         Prefs.density = "auto";
-        Prefs.startPace = "fast";
         Tokens.moreContrast = false;
     }
 
@@ -1613,26 +1612,6 @@ TestCase {
         verify(start.hitTiles()[0].activeFocus);
         keyClick(Qt.Key_Escape);
         verify(!start.wanted);
-    }
-
-    function test_at_rekta_s_own_pace_the_parts_turn_in_and_out_at_full_length_while_the_windows_stay_at_the_effect_s_pace() {
-        Prefs.motion = "on";
-        Prefs.startPace = "rekta";
-        start.open();
-        compare(named("waitForWindows").interval, Tokens.turnOverlap * FadeBack.duration, "the windows come back at the effect's pace");
-        tryVerify(() => turner.running, 2000);
-        verifyPace(turner.arrivingTurns, Tokens.durationModerate, turner.handOverAt, 1);
-        tryVerify(() => start.phase === "open", 3000);
-        keyClick(Qt.Key_Escape);
-        verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 1);
-    }
-
-    function test_the_pace_set_while_the_start_is_open_acts_on_the_next_turn_out() {
-        Prefs.motion = "on";
-        openNow();
-        Prefs.startPace = "rekta";
-        keyClick(Qt.Key_Escape);
-        verifyPace(turner.leavingTurns, Tokens.durationShort, 0, 1);
     }
 
     function test_escape_in_a_search_clears_it_and_stays_when_the_setting_says_back() {

@@ -20,7 +20,7 @@ FocusScope {
         },
         {
             title: "start",
-            groups: ["öffnen und schließen", "suche", "angeheftet"]
+            groups: ["suche", "angeheftet"]
         },
         {
             title: "sitzung",
@@ -37,16 +37,6 @@ FocusScope {
     // Taller than Rekta's short viewport, so the window stays sideways (layout.md, size classes), with a space-xl of
     // margin.
     readonly property real minimumHeight: Tokens.bpShortHeight + Tokens.spaceXl
-    readonly property var tempoChoices: [
-        {
-            value: "fast",
-            text: "doppelt so schnell"
-        },
-        {
-            value: "rekta",
-            text: "wie rekta"
-        }
-    ]
     readonly property var escapeChoices: [
         {
             value: "close",
@@ -60,7 +50,6 @@ FocusScope {
     // The fields of the groups that have any, by group; a group without one says its fields are still to come.
     readonly property var contents: ({
             "fläche": echoField,
-            "öffnen und schließen": tempoField,
             "suche": escapeField
         })
     // Why the fields cannot be changed (forms.md, "Disabled controls say why"): the short cause stands beside each
@@ -148,29 +137,6 @@ FocusScope {
     }
 
     // A choice made in a field ends its binding; it comes back, so a refused write shows what the shell has.
-    Component {
-        id: tempoField
-
-        Setting {
-            label: "tempo des start"
-            hint: "wie schnell sich der start öffnet und schließt. rekta selbst dreht im vollen tempo."
-            problem: view.problem
-            presetWord: view.presetWord("startTempo", view.tempoChoices)
-
-            Segments {
-                objectName: "startTempo"
-                width: parent.width
-                disabledReason: view.disabledReason
-                options: view.tempoChoices.map(choice => choice.text)
-                currentIndex: view.choiceIndex("startTempo", view.tempoChoices)
-                onActivated: index => {
-                    view.settings.set("startTempo", view.tempoChoices[index].value);
-                    currentIndex = Qt.binding(() => view.choiceIndex("startTempo", view.tempoChoices));
-                }
-            }
-        }
-    }
-
     Component {
         id: escapeField
 

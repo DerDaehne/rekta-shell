@@ -24,13 +24,26 @@ let
     "plasma-plasmashell.service.d/rekta-session.conf"
     "plasma-workspace.target.d/rekta-shell.conf"
   ];
-  # The home-manager module evaluated with a stand-in for home.packages and fonts.fontconfig.enable, so the checks need no home-manager input.
+  # The removed start tempo, once set, fails an assertion that says why.
+  removedOptionStops =
+    assertions:
+    lib.any (
+      a:
+      !a.assertion
+      && lib.hasInfix "The Start always turns at Rekta's pace for a called place; there is no setting." a.message
+    ) assertions;
+
+  # The home-manager module evaluated with stand-ins for home.packages, fonts.fontconfig.enable and assertions, so the checks need no home-manager input.
   homeConfig =
     modules:
     (lib.evalModules {
       modules = [
         {
           options.fonts.fontconfig.enable = lib.mkEnableOption "fontconfig";
+          options.assertions = lib.mkOption {
+            type = lib.types.listOf lib.types.unspecified;
+            default = [ ];
+          };
           options.home.packages = lib.mkOption {
             type = lib.types.listOf lib.types.package;
             default = [ ];
@@ -337,14 +350,9 @@ in
       toplevel [ plasma ] == toplevel [
         plasma
         module
-        {
-          programs.rekta-shell = {
-            startTempo = "rekta";
-            searchEscape = "back";
-          };
-        }
+        { programs.rekta-shell.searchEscape = "back"; }
       ]
-    ) "the start tempo and search escape options changed a system that does not enable the module";
+    ) "the search escape option changed a system that does not enable the module";
     assert lib.assertMsg (
       toplevel [ plasma ] == toplevel [
         plasma
@@ -352,6 +360,9 @@ in
         { programs.rekta-shell.installFont = false; }
       ]
     ) "the installFont option changed a system that does not enable the module";
+    assert lib.assertMsg (removedOptionStops
+      (withSettings { startTempo = "rekta"; }).assertions
+    ) "a start tempo set in the NixOS module does not stop the build with the reason";
     assert lib.assertMsg (lib.elem pkgs.atkinson-hyperlegible-next enabled.fonts.packages)
       "the enabled NixOS module does not install the typeface";
     assert lib.assertMsg (
@@ -392,18 +403,15 @@ in
         exit 1
       }
       defaults=${enabled.programs.rekta-shell.package}/share/rekta-shell/defaults.json
-      if grep -q -e startTempo -e searchEscape $defaults; then
-        echo "the module names a start tempo or search escape without being asked to" >&2
+      if grep -q searchEscape $defaults; then
+        echo "the module names a search escape without being asked to" >&2
         exit 1
       fi
       chosen=${
-        (withSettings {
-          startTempo = "rekta";
-          searchEscape = "back";
-        }).programs.rekta-shell.package
+        (withSettings { searchEscape = "back"; }).programs.rekta-shell.package
       }/share/rekta-shell/defaults.json
-      grep -qF '"startTempo":"rekta"' $chosen && grep -qF '"searchEscape":"back"' $chosen || {
-        echo "the start tempo or search escape option is not in the package defaults" >&2
+      grep -qF '"searchEscape":"back"' $chosen || {
+        echo "the search escape option is not in the package defaults" >&2
         exit 1
       }
       # With both modules on, whichever rekta-settings comes first in PATH names the same defaults.
@@ -457,6 +465,12 @@ in
         }
       ]).fonts.fontconfig.enable
     ) "the home-manager module overrides a user's own fonts.fontconfig.enable = false";
+    assert lib.assertMsg (removedOptionStops
+      (homeConfig [ { programs.rekta-shell.startTempo = "rekta"; } ]).assertions
+    ) "a start tempo set in the home-manager module does not stop the build with the reason";
+    assert lib.assertMsg (
+      !removedOptionStops (homeConfig [ ]).assertions
+    ) "the home-manager module stops a build that sets no start tempo";
     pkgs.runCommand "rekta-shell-home-module" { } "touch $out";
 
   # The Fedora VM's source ISO must list exactly the tracked files, whatever else lies in the checkout.

@@ -1,40 +1,36 @@
 pragma Singleton
 import QtQuick
 
-// How far the windows have stepped back, 0 in front and 1 all the way back, and how a window looks that far back. They
-// step back with ease-out and come forward with ease-in, each way in duration-moderate: behind the Start at the Start's
-// tempo, as the session is left at Rekta's own. A change on the way turns them round from where they are. After login
-// the splash fades onto the ground as they step back, at Rekta's tempo.
+// How far the windows have stepped back, 0 in front and 1 all the way back, and how a window looks that far back.
+// Behind the Start they step back with ease-in and come forward with ease-out (motion.md:125–135), at the Start's tempo;
+// as the session is left they step back with ease-out at Rekta's own (shell.md:172) and come forward with ease-in. A
+// change on the way turns them round from where they are, with the curve of the new way. After login the splash fades
+// onto the ground as they step back, at Rekta's tempo.
 QtObject {
-    readonly property easingCurve stepBack: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
-    readonly property easingCurve comeForward: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
-    // The Start's tempo, Prefs.startTempo: the shell binds it, KWin's fade-back sets it from what the shell tells it.
-    // Never Prefs itself: KWin loads this singleton into the engine its other effects share, and Prefs there would
-    // override their Tokens.
-    property real startTempo: Geometry.startTempo
-    readonly property real duration: startTempo * Tokens.durationModerate
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
+    readonly property real duration: Geometry.startTempo * Tokens.durationModerate
     readonly property real leaveDuration: Tokens.durationModerate
 
     // Where the windows behind the Start are `elapsed` ms after they set off from `from` towards `to`; exactly `to` once
     // there.
     function progress(from: real, to: real, elapsed: real): real {
-        return along(from, to, elapsed, duration);
+        return along(from, to, elapsed, duration, to > from ? easeIn : easeOut);
     }
 
     // The same for the windows of every screen as the session is left.
     function leaveProgress(from: real, to: real, elapsed: real): real {
-        return along(from, to, elapsed, leaveDuration);
+        return along(from, to, elapsed, leaveDuration, to > from ? easeOut : easeIn);
     }
 
     // How much of the splash still shows `elapsed` ms after it closed: all of it as it closes, nothing once gone.
-    // ponytail: ease-out, as the windows step back, is the shell's from before Rekta had this transition; 0.6.0 fades
-    // the loading screen to the ground with ease-in (motion.md:118).
+    // ponytail: ease-out, as the windows once stepped back, is the shell's from before Rekta had this transition; 0.6.0
+    // fades the loading screen to the ground with ease-in (motion.md:118).
     function splashOpacity(elapsed: real): real {
-        return 1 - along(0, 1, elapsed, Tokens.durationModerate);
+        return 1 - along(0, 1, elapsed, Tokens.durationModerate, easeOut);
     }
 
-    function along(from: real, to: real, elapsed: real, span: real): real {
-        const curve = to > from ? stepBack : comeForward;
+    function along(from: real, to: real, elapsed: real, span: real, curve: easingCurve): real {
         const share = span > 0 ? Math.min(1, elapsed / span) : 1;
         return to - (to - from) * (1 - curve.valueForProgress(share));
     }

@@ -19,7 +19,6 @@ QtObject {
     readonly property var builtIn: ({
             background: "rekta",
             density: "auto",
-            startTempo: "fast",
             searchEscape: "close"
         })
     readonly property var nixValues: parsed(defaultsText) ?? {}

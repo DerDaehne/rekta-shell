@@ -18,15 +18,20 @@ TestCase {
         Tokens.reducedMotion = false;
     }
 
-    function test_the_windows_step_back_in_half_a_duration_moderate_with_ease_out() {
+    function test_behind_the_start_the_windows_step_back_in_half_a_duration_moderate_with_ease_in() {
+        compare(FadeBack.duration, Geometry.startTempo * Tokens.durationModerate);
         compare(FadeBack.progress(0, 1, 0), 0);
-        fuzzyCompare(FadeBack.progress(0, 1, halfway), easeOut.valueForProgress(0.5), 1e-9);
+        fuzzyCompare(FadeBack.progress(0, 1, halfway), easeIn.valueForProgress(0.5), 1e-9);
         compare(FadeBack.progress(0, 1, Tokens.durationModerate / 2), 1);
     }
 
-    function test_they_come_forward_in_half_a_duration_moderate_with_ease_in() {
+    function test_the_start_s_tempo_is_fixed_and_nothing_can_set_it() {
+        verify(!("startTempo" in FadeBack));
+    }
+
+    function test_they_come_forward_in_half_a_duration_moderate_with_ease_out() {
         compare(FadeBack.progress(1, 0, 0), 1);
-        fuzzyCompare(FadeBack.progress(1, 0, halfway), 1 - easeIn.valueForProgress(0.5), 1e-9);
+        fuzzyCompare(FadeBack.progress(1, 0, halfway), 1 - easeOut.valueForProgress(0.5), 1e-9);
         compare(FadeBack.progress(1, 0, Tokens.durationModerate / 2), 0);
     }
 
@@ -34,10 +39,10 @@ TestCase {
         verify(Math.abs(FadeBack.progress(0, 1, halfway) - (1 - FadeBack.progress(1, 0, halfway))) > 0.05);
     }
 
-    function test_a_change_on_the_way_turns_them_round_from_where_they_are() {
+    function test_a_change_on_the_way_turns_them_round_from_where_they_are_with_the_curve_of_the_new_way() {
         compare(FadeBack.progress(0.4, 0, 0), 0.4);
-        fuzzyCompare(FadeBack.progress(0.4, 0, halfway), 0.4 * (1 - easeIn.valueForProgress(0.5)), 1e-9);
-        fuzzyCompare(FadeBack.progress(0.4, 1, halfway), 0.4 + 0.6 * easeOut.valueForProgress(0.5), 1e-9);
+        fuzzyCompare(FadeBack.progress(0.4, 0, halfway), 0.4 * (1 - easeOut.valueForProgress(0.5)), 1e-9);
+        fuzzyCompare(FadeBack.progress(0.4, 1, halfway), 0.4 + 0.6 * easeIn.valueForProgress(0.5), 1e-9);
         compare(FadeBack.progress(0.4, 1, Tokens.durationModerate / 2), 1);
     }
 
@@ -77,12 +82,6 @@ TestCase {
         compare(FadeBack.splashOpacity(5 * Tokens.durationModerate), 0);
     }
 
-    function test_the_splash_keeps_rekta_s_tempo_whatever_the_start_s() {
-        FadeBack.startTempo = 0.5;
-        verify(FadeBack.splashOpacity(Tokens.durationModerate / 2) > 0);
-        FadeBack.startTempo = Geometry.startTempo;
-    }
-
     function test_all_the_way_back_a_window_is_86_percent_and_dimmed_to_0_78() {
         compare(FadeBack.scale(0), 1);
         compare(FadeBack.brightness(0), 1);
@@ -90,20 +89,5 @@ TestCase {
         fuzzyCompare(FadeBack.brightness(1), 0.78, 1e-9);
         fuzzyCompare(FadeBack.scale(0.5), 0.93, 1e-9);
         fuzzyCompare(FadeBack.brightness(0.5), 0.89, 1e-9);
-    }
-
-    // KWin's effects share one engine; Prefs there would override the turnstile's Tokens.
-    function test_fadeback_does_not_follow_the_pace_of_prefs_on_its_own() {
-        Prefs.startPace = "rekta";
-        compare(FadeBack.duration, Geometry.startTempo * Tokens.durationModerate);
-        Prefs.startPace = "fast";
-    }
-
-    function test_at_the_tempo_set_on_it_the_windows_step_back_in_a_whole_duration_moderate() {
-        FadeBack.startTempo = 1;
-        compare(FadeBack.duration, Tokens.durationModerate);
-        verify(FadeBack.progress(0, 1, Tokens.durationModerate / 2) < 1);
-        compare(FadeBack.progress(0, 1, Tokens.durationModerate), 1);
-        FadeBack.startTempo = Geometry.startTempo;
     }
 }

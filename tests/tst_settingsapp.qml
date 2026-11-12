@@ -52,12 +52,6 @@ TestCase {
                 id: shellSettings
             }
 
-            Binding {
-                target: Prefs
-                property: "startPace"
-                value: shellSettings.value("startTempo")
-            }
-
             Backdrop {
                 id: ground
 
@@ -94,7 +88,6 @@ TestCase {
 
     function cleanup() {
         Prefs.motion = "system";
-        Prefs.startPace = "fast";
     }
 
     function pivot(): var {
@@ -265,26 +258,15 @@ TestCase {
         return JSON.parse(host.app.userText);
     }
 
-    function test_the_start_place_offers_the_tempo_as_segments_and_escape_as_a_select() {
+    function test_the_start_place_offers_escape_as_a_select_and_no_tempo() {
         pivot().select(1);
-        compare(Array.from(control("startTempo").options), ["doppelt so schnell", "wie rekta"]);
-        compare(control("startTempo").currentIndex, 0);
+        compare(control("startTempo"), null);
         compare(control("searchEscape").currentText, "leert die suche und schließt den start");
     }
 
     function test_the_aussehen_place_offers_the_tile_echo_as_a_toggle_that_is_on_by_default() {
         verify(control("echo").checked);
         compare(control("echo").label, "kachel-echo");
-    }
-
-    function test_choosing_a_tempo_writes_it_and_the_shell_follows_at_once() {
-        compare(Prefs.startTempo, Geometry.startTempo);
-        control("startTempo").choose(1);
-        compare(written().startTempo, "rekta");
-        compare(host.shell.value("startTempo"), "rekta");
-        compare(Prefs.startTempo, 1);
-        control("startTempo").choose(0);
-        compare(Prefs.startTempo, Geometry.startTempo);
     }
 
     function test_choosing_what_escape_does_writes_it_and_the_shell_follows() {
@@ -309,11 +291,10 @@ TestCase {
     }
 
     function test_a_value_that_differs_from_the_nix_default_names_the_default_in_the_hint() {
-        host.app.defaultsText = '{"startTempo":"rekta","searchEscape":"back","background":"solid"}';
-        compare(control("startTempo").currentIndex, 1);
-        verify(!hintOf("startTempo").includes("vorgabe"));
-        host.app.userText = '{"version":1,"startTempo":"fast","searchEscape":"close","background":"rekta"}';
-        verify(hintOf("startTempo").endsWith("vorgabe: wie rekta."));
+        host.app.defaultsText = '{"searchEscape":"back","background":"solid"}';
+        compare(control("searchEscape").currentIndex, 1);
+        verify(!hintOf("searchEscape").includes("vorgabe"));
+        host.app.userText = '{"version":1,"searchEscape":"close","background":"rekta"}';
         verify(hintOf("searchEscape").endsWith("vorgabe: leert die suche, zurück zum ort davor."));
         verify(hintOf("echo").endsWith("vorgabe: aus."));
     }
@@ -321,37 +302,33 @@ TestCase {
     function test_a_broken_file_keeps_the_defaults_and_locks_the_fields_with_the_cause_and_the_remedy() {
         ignoreWarning(/settings.json holds no JSON object/);
         host.app.userText = "{ not json";
-        compare(Prefs.startTempo, Geometry.startTempo);
         let writes = 0;
         host.app.writeRequested.connect(() => writes++);
-        for (const name of ["startTempo", "searchEscape", "echo"]) {
+        for (const name of ["searchEscape", "echo"]) {
             verify(control(name).disabled, name);
             compare(control(name).disabledReason, "datei nicht lesbar", name);
             verify(hintOf(name).includes("kein gültiges json") && hintOf(name).includes("korrigiere oder lösche"), name);
             const why = findChild(control(name), "why");
             verify(why.x + why.width <= control(name).width, `${name}: the reason stays within the column`);
         }
-        control("startTempo").choose(1);
-        verify(findChild(control("startTempo"), "options").children[0].lit, "the chosen word does not flicker");
         control("echo").activate();
         compare(writes, 0);
         compare(host.app.userText, "{ not json");
-        compare(control("startTempo").currentIndex, 0);
         verify(control("echo").checked);
     }
 
     function test_a_newer_file_locks_the_fields_and_says_it_comes_from_a_newer_version() {
-        host.app.userText = '{"version":2,"startTempo":"rekta"}';
-        compare(control("startTempo").currentIndex, 1, "it is still read");
-        verify(control("startTempo").disabled);
-        compare(control("startTempo").disabledReason, "datei zu neu");
-        verify(hintOf("startTempo").includes("neueren rekta-version") && hintOf("startTempo").includes("aktualisiere rekta"));
-        control("startTempo").choose(0);
-        compare(host.app.userText, '{"version":2,"startTempo":"rekta"}');
+        host.app.userText = '{"version":2,"searchEscape":"back"}';
+        compare(control("searchEscape").currentIndex, 1, "it is still read");
+        verify(control("searchEscape").disabled);
+        compare(control("searchEscape").disabledReason, "datei zu neu");
+        verify(hintOf("searchEscape").includes("neueren rekta-version") && hintOf("searchEscape").includes("aktualisiere rekta"));
+        control("searchEscape").activated(0);
+        compare(host.app.userText, '{"version":2,"searchEscape":"back"}');
     }
 
     function test_a_usable_file_leaves_the_fields_enabled() {
-        for (const name of ["startTempo", "searchEscape", "echo"])
+        for (const name of ["searchEscape", "echo"])
             verify(!control(name).disabled, name);
     }
 
@@ -362,22 +339,18 @@ TestCase {
         verify(!control("echo").checked);
     }
 
-    function test_the_tempo_field_carries_a_label_like_the_other_fields() {
-        compare(findChild(control("startTempo").parent.parent, "label").text, "tempo des start");
-    }
-
     function test_a_missing_file_keeps_the_defaults() {
         compare(host.app.userText, "");
-        compare(control("startTempo").currentIndex, 0);
         verify(control("echo").checked);
         compare(control("searchEscape").currentIndex, 0);
     }
 
-    function test_a_choice_keeps_the_keys_the_app_does_not_know() {
-        host.app.userText = '{"version":1,"accent":"ink"}';
-        control("startTempo").choose(1);
+    function test_a_choice_keeps_the_keys_the_app_does_not_know_also_a_start_tempo_of_old() {
+        host.app.userText = '{"version":1,"accent":"ink","startTempo":"rekta"}';
+        control("echo").activate();
         compare(written().accent, "ink");
         compare(written().startTempo, "rekta");
+        compare(written().background, "solid");
     }
 
     function test_escape_in_a_text_field_does_not_go_back_but_outside_it_does() {

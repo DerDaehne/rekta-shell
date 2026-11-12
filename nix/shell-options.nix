@@ -28,17 +28,6 @@
       description = "How much room the shell's controls take: \"comfortable\" (larger targets) or \"compact\". Null leaves it automatic: compact for a fine pointer. It takes effect with the default package once the module is enabled, as the default that a \"density\" in the user's ~/.config/rekta-shell/settings.json overrides.";
     };
 
-    startTempo = lib.mkOption {
-      type = lib.types.nullOr (
-        lib.types.enum [
-          "fast"
-          "rekta"
-        ]
-      );
-      default = null;
-      description = "How fast the Start opens, closes and turns: \"fast\" at twice Rekta's pace, \"rekta\" at Rekta's own. Null leaves it at \"fast\". It takes effect with the default package once the module is enabled, as the default that a \"startTempo\" in the user's ~/.config/rekta-shell/settings.json overrides.";
-    };
-
     searchEscape = lib.mkOption {
       type = lib.types.nullOr (
         lib.types.enum [
@@ -51,11 +40,20 @@
     };
   };
 
+  # Options that are gone; setting one stops the build with a word on why.
+  removed = [
+    (lib.mkRemovedOptionModule [
+      "programs"
+      "rekta-shell"
+      "startTempo"
+    ] "The Start always turns at Rekta's pace for a called place; there is no setting.")
+  ];
+
   # The settings a module's options hand to the package as its defaults; unset ones stay out.
   defaultsOf =
     cfg:
     {
       inherit (cfg) background;
     }
-    // lib.filterAttrs (_: value: value != null) { inherit (cfg) density startTempo searchEscape; };
+    // lib.filterAttrs (_: value: value != null) { inherit (cfg) density searchEscape; };
 }

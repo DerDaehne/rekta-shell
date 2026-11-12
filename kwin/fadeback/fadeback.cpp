@@ -112,9 +112,6 @@ public:
     bool isActive() const override;
 
 public Q_SLOTS:
-    // The Start's tempo as the shell has it; the windows take it as they next set off. Only a tempo the Start can
-    // have counts: above 0 and at most Rekta's own.
-    Q_SCRIPTABLE void setStartTempo(double tempo);
     // The windows behind the Start stand `elapsed` ms into its opening and go on from there: on (1), held (0) or back
     // to its beginning (-1).
     Q_SCRIPTABLE void setStartAt(double elapsed, int pace);
@@ -154,7 +151,6 @@ private:
     }
 
     QObject *m_rules;
-    double m_startTempo = 0;
     Retreat m_start{"rekta-start", "progress"};
     Retreat m_leave{"rekta-leave", "leaveProgress"};
     Look m_onPrimary;
@@ -173,9 +169,8 @@ FadeBackEffect::FadeBackEffect()
         qWarning("rekta-fadeback: the Rekta module is not on KWin's QML import path");
         return;
     }
-    m_startTempo = m_rules->property("startTempo").toDouble();
-    // ponytail: a surface made before the effect loads goes unseen until the shell makes it anew, and the Start's tempo
-    // until the shell starts anew or the setting changes; the rekta session loads the effect before the shell starts.
+    // ponytail: a surface made before the effect loads goes unseen until the shell makes it anew; the rekta session loads
+    // the effect before the shell starts.
     QDBusConnection::sessionBus().registerObject(QStringLiteral("/RektaFadeBack"), this, QDBusConnection::ExportScriptableContents);
     connect(waylandServer()->findChild<LayerShellV1Interface *>(), &LayerShellV1Interface::surfaceCreated,
             this, &FadeBackEffect::watch);
@@ -230,19 +225,11 @@ void FadeBackEffect::committed(Retreat &retreat, bool keyboard, bool takesInput)
     }
 }
 
-void FadeBackEffect::setStartTempo(double tempo)
-{
-    if (tempo > 0 && tempo <= 1) {
-        m_startTempo = tempo;
-    }
-}
-
 void FadeBackEffect::setStartAt(double elapsed, int pace)
 {
     if (!(elapsed >= 0) || pace < -1 || pace > 1) {
         return;
     }
-    m_rules->setProperty("startTempo", m_startTempo);
     m_start.from = 0;
     m_start.to = 1;
     run(m_start, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double, std::milli>(elapsed)), pace);
@@ -251,10 +238,6 @@ void FadeBackEffect::setStartAt(double elapsed, int pace)
 // Windows already bound there, as a finger's opening holds them, go on from where they stand rather than anew.
 void FadeBackEffect::head(Retreat &retreat, qreal target)
 {
-    // The Start's windows change their tempo only as they set off, never on the way.
-    if (&retreat == &m_start) {
-        m_rules->setProperty("startTempo", m_startTempo);
-    }
     if (target == retreat.to) {
         run(retreat, retreat.elapsed, 1);
         return;
