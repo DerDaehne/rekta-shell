@@ -284,6 +284,8 @@ TestCase {
         compare(findChild(empty, "sentence").color, Tokens.color.textContrastHigh);
         verify(findChild(empty, "line").visible);
         compare(empty.x, Tokens.spaceM);
+        const sentence = findChild(empty, "sentence");
+        compare(sentence.lineHeight, Tokens.lineHeightCompact * sentence.font.pixelSize, "in the floating list's compact line height");
         compare(combo.active, -1);
         keyClick(Qt.Key_Return);
         compare(activated.count, 0, "Enter chooses nothing");
@@ -367,6 +369,27 @@ TestCase {
         verify(inkIn(image, slot(chosen)) > 6, "a tick is drawn on the choice");
         // The active row's ring runs through its slot, so the ink count looks at a row with neither.
         verify(inkIn(image, slot(options[4])) === 0, "and none on another option");
+    }
+
+    function test_the_tick_sits_a_little_above_the_middle_of_its_row() {
+        combo.take(apps[2]);
+        input(combo).forceActiveFocus();
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        waitForRendering(scene);
+        const image = grabImage(window());
+        const chosen = rows(combo)[2];
+        const at = inScene(chosen);
+        const inked = [];
+        for (let y = 0; y < chosen.height; y++) {
+            if (inkIn(image, Qt.rect(at.x + Tokens.spaceM - 2, at.y + y, 14, 1)) > 0)
+                inked.push(y);
+        }
+        verify(inked.length > 0, "a tick is drawn");
+        // Turned by -45°, its ink reaches its height over 2√2 further below its centre than above it.
+        const tickCentre = chosen.height / 2 - Geometry.optionTickRaise / 2;
+        const inkMiddle = (inked[0] + inked[inked.length - 1] + 1) / 2;
+        fuzzyCompare(inkMiddle, tickCentre + Geometry.optionTickHeight / (2 * Math.SQRT2), 1, "raised by half its negative top margin");
     }
 
     function test_escape_closes_then_clears_and_only_then_lets_the_key_go_on() {
@@ -516,6 +539,18 @@ TestCase {
         verify(!combo.expanded);
     }
 
+    function test_disabled_escape_and_leaving_keep_the_choice() {
+        combo.take(apps[0]);
+        combo.disabledReason = "no apps installed";
+        input(combo).forceActiveFocus();
+        keyClick(Qt.Key_Escape);
+        compare(input(combo).text, "firefox");
+        compare(combo.value, "firefox.desktop");
+        keyClick(Qt.Key_Tab);
+        compare(combo.value, "firefox.desktop");
+        compare(activated.count, 0);
+    }
+
     function test_the_list_comes_in_as_every_floating_surface_does_and_at_once_under_reduced_motion() {
         input(combo).forceActiveFocus();
         keyClick(Qt.Key_Down);
@@ -557,6 +592,18 @@ TestCase {
         compare(list(combo).Accessible.role, Accessible.List);
         compare(rows(combo)[0].Accessible.role, Accessible.ListItem);
         compare(rows(combo)[3].Accessible.name, "kate (already pinned)");
+    }
+
+    function test_moving_through_the_options_announces_each_active_one_while_the_focus_stays_in_the_field() {
+        input(combo).forceActiveFocus();
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        tryCompare(combo, "announcement", "firefox");
+        keyClick(Qt.Key_Up);
+        tryCompare(combo, "announcement", "system settings");
+        keyClick(Qt.Key_Up);
+        tryCompare(combo, "announcement", "kate (already pinned)");
+        verify(input(combo).activeFocus);
     }
 
     // Each pair of theme and density, with each list open in turn: a filter typed, the choice, nothing matching.

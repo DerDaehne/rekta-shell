@@ -83,7 +83,7 @@ Item {
     Accessible.name: spoken
     Accessible.checkable: checkable
     Accessible.checked: checked
-    // aria-selected: the option the keys are on, while the focus stays in the field (rekta.js:4320–4321).
+    // aria-selected: the option the keys are on, while the focus stays in the field (rekta.js:4318).
     Accessible.selected: active
 
     // Focus the keyboard gives shows the whole of a cut label at once; focus a pointer gave does not (`:focus-visible`,

@@ -35,6 +35,8 @@ Item {
     // language (states.md:12).
     property var noMatch: typed => `Nothing matches “${typed}”.`
     property string nothingYet: "Nothing to choose yet."
+    // What the screen reader was last told: the active option, as aria-activedescendant has it read (rekta.js:4320).
+    property string announcement
 
     // A choice made here: the chosen option's value, or null once its words are cleared.
     signal activated(var value)
@@ -83,8 +85,12 @@ Item {
 
     function revealActive() {
         const row = optionRows()[active];
-        if (row)
-            list.reveal(row);
+        if (!row)
+            return;
+        list.reveal(row);
+        // Qt has no active descendant and the focus stays in the field, so the option is said instead.
+        announcement = row.spoken;
+        Accessible.announce(announcement, Accessible.Polite);
     }
 
     function optionRows(): var {
@@ -99,7 +105,7 @@ Item {
         return list.rows[0]?.parent ?? null;
     }
 
-    // Without a choice of its own in the field, leaving it keeps only a choice from the list (rekta.js:4344–4349).
+    // Without a choice of its own in the field, leaving it keeps only a choice from the list (rekta.js:4342–4348).
     function settle() {
         if (query === "") {
             if (chosen)
@@ -144,7 +150,10 @@ Item {
         return false;
     }
 
+    // Disabled, it changes nothing and lets the key go on.
     function closeOrClear(): bool {
+        if (disabled)
+            return false;
         if (list.open) {
             close();
             return true;
@@ -264,7 +273,7 @@ Item {
         }
 
         // `.rk-combo-btn`: out of the focus order and unheard, a press on it opens or closes the list and puts the focus
-        // in the field (rekta.js:4276, :4355).
+        // in the field (rekta.js:4274, :4360, :4367).
         Rectangle {
             objectName: "button"
             x: box.width - Geometry.inputBorder - width
@@ -354,7 +363,7 @@ Item {
         }
     }
 
-    // Above everything in its window, as wide as the field at least (rekta.js:4328).
+    // Above everything in its window, as wide as the field at least (rekta.js:4324).
     FloatSurface {
         id: list
 
@@ -374,6 +383,8 @@ Item {
             x: Tokens.spaceM
             width: parent.width - 2 * Tokens.spaceM
             visible: combo.shown.length === 0
+            // `.rk-float` sets the compact line height (rekta.css:1007).
+            lineHeightFactor: Tokens.lineHeightCompact
             text: combo.filtering ? combo.noMatch(combo.query) : combo.nothingYet
         }
 

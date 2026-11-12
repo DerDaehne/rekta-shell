@@ -7,6 +7,7 @@ Item {
     id: empty
 
     property string text
+    property alias lineHeightFactor: sentence.lineHeightFactor
     // The way on, such as a button that clears the filters.
     default property alias wayOn: way.data
 
