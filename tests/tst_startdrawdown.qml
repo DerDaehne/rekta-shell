@@ -59,6 +59,7 @@ TestCase {
             height: testCase.height
             windows: [testCase.fakeWindow("konsole", true)]
             pinned: [testCase.fakeApp("systemsettings"), testCase.fakeApp("dolphin"), testCase.fakeApp("konsole")]
+            showRecent: false
         }
     }
 
