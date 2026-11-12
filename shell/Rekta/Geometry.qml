@@ -120,8 +120,8 @@ QtObject {
     // `@keyframes rk-float-in { from { opacity: 0; transform: translateY(var(--_rk-from, -4px)) } }`, 4px from below
     // when above its control (rekta.css:1009–1011; the tip :576–577)
     readonly property real floatShift: 4
-    // `.rk-menu-item:focus-visible { outline-offset: -2px }` (rekta.css:1017), and the active row of a long list's
-    // (rekta.css:631)
+    // `.rk-menu-item:focus-visible { outline-offset: -2px }` (rekta.css:1017), the active row of a long list's
+    // (rekta.css:631) and the grip's (rekta.css:616)
     readonly property real focusRingInsetInRow: 2
     // `[data-rk-select] > [aria-selected='true']:focus-visible { outline-color: currentColor; outline-offset: -4px }`
     // (rekta.css:967): on a chosen row the ring sits further in
@@ -257,6 +257,14 @@ QtObject {
     // `@keyframes rk-from-top { from { opacity: 0; transform: translateY(-16px) } }` (rekta.css:1117); a sheet leaves
     // back up the same way (rekta.js:1826)
     readonly property real sheetShift: 16
+
+    // `.rk-grip { width: 24px }`, its six squares `center / 20px` (rekta.css:614–615)
+    readonly property real gripWidth: 24
+    readonly property real gripGlyph: 20
+    // A grip's drag starts once the pointer has moved 4px up or down: `if (Math.abs(dy) < 4) return` (rekta.js:3426)
+    readonly property real gripDragStart: 4
+    // The lifted item: `outline: 1px solid var(--rk-text-contrast-medium); outline-offset: -1px` (rekta.css:618)
+    readonly property real liftedEdge: 1
 
     // A wheel line counts 16 px (`deltaMode === 1 ? 16`, rekta.js:1025, :1127)
     readonly property real wheelLinePixels: 16

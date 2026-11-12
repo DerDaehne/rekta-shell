@@ -91,5 +91,8 @@ Reveal 1.0 Reveal.js
 Section 1.0 Section.qml
 RowArrival 1.0 RowArrival.qml
 RowsMakeRoom 1.0 RowsMakeRoom.qml
+Grip 1.0 Grip.qml
+SortableRows 1.0 SortableRows.qml
+SortableRow 1.0 SortableRow.qml
 Panorama 1.0 Panorama.qml
 WheelLatch 1.0 WheelLatch.js
