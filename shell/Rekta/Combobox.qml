@@ -35,11 +35,14 @@ Item {
     // language (states.md:12).
     property var noMatch: typed => `Nothing matches “${typed}”.`
     property string nothingYet: "Nothing to choose yet."
-    // What the screen reader was last told: the active option, as aria-activedescendant has it read (rekta.js:4320).
-    property string announcement
+    // The option last said to the screen reader while the list is open; as with aria-activedescendant (rekta.js:4320),
+    // the same option set again is not said again.
+    property var said: null
 
     // A choice made here: the chosen option's value, or null once its words are cleared.
     signal activated(var value)
+    // The words just said to the screen reader.
+    signal announced(string words)
 
     function open() {
         if (disabled || list.open)
@@ -51,6 +54,7 @@ Item {
 
     function close() {
         list.open = false;
+        said = null;
     }
 
     // Empties the field and the choice, such as after the choice has been acted on.
@@ -88,9 +92,15 @@ Item {
         if (!row)
             return;
         list.reveal(row);
-        // Qt has no active descendant and the focus stays in the field, so the option is said instead.
-        announcement = row.spoken;
-        Accessible.announce(announcement, Accessible.Polite);
+        if (shown[active] !== said)
+            announce(row.spoken);
+        said = shown[active];
+    }
+
+    // Qt has no active descendant and the focus stays in the field, so the active option is said instead.
+    function announce(words: string) {
+        Accessible.announce(words, Accessible.Polite);
+        announced(words);
     }
 
     function optionRows(): var {

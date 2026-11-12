@@ -371,25 +371,45 @@ TestCase {
         verify(inkIn(image, slot(options[4])) === 0, "and none on another option");
     }
 
+    // Where the ink of the turned tick weighs most: its leading arm and its foot, each a stroke wide, turned about the
+    // middle of their box.
+    function tickInkCentreBelowItsBox(): real {
+        const stroke = Geometry.optionTickStroke;
+        const width = Geometry.optionTickWidth;
+        const height = Geometry.optionTickHeight;
+        const arm = { area: stroke * height, x: (stroke - width) / 2, y: 0 };
+        const foot = { area: (width - stroke) * stroke, x: stroke / 2, y: (height - stroke) / 2 };
+        const area = arm.area + foot.area;
+        const x = (arm.area * arm.x + foot.area * foot.x) / area;
+        const y = (arm.area * arm.y + foot.area * foot.y) / area;
+        const angle = Geometry.optionTickAngle * Math.PI / 180;
+        return x * Math.sin(angle) + y * Math.cos(angle);
+    }
+
     function test_the_tick_sits_a_little_above_the_middle_of_its_row() {
         combo.take(apps[2]);
         input(combo).forceActiveFocus();
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Down);
+        mouseMove(scene, 900, 500);
         waitForRendering(scene);
         const image = grabImage(window());
         const chosen = rows(combo)[2];
         const at = inScene(chosen);
-        const inked = [];
+        const distance = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b);
+        const full = distance(Tokens.color.textPrimary, Tokens.color.bg);
+        let weighted = 0;
+        let ink = 0;
         for (let y = 0; y < chosen.height; y++) {
-            if (inkIn(image, Qt.rect(at.x + Tokens.spaceM - 2, at.y + y, 14, 1)) > 0)
-                inked.push(y);
+            for (let x = Tokens.spaceM - 2; x < Tokens.spaceM + 12; x++) {
+                const weight = distance(image.pixel(at.x + x, at.y + y), Tokens.color.bg) / full;
+                weighted += weight * (y + 0.5);
+                ink += weight;
+            }
         }
-        verify(inked.length > 0, "a tick is drawn");
-        // Turned by -45°, its ink reaches its height over 2√2 further below its centre than above it.
+        verify(ink > 6, "a tick is drawn");
         const tickCentre = chosen.height / 2 - Geometry.optionTickRaise / 2;
-        const inkMiddle = (inked[0] + inked[inked.length - 1] + 1) / 2;
-        fuzzyCompare(inkMiddle, tickCentre + Geometry.optionTickHeight / (2 * Math.SQRT2), 1, "raised by half its negative top margin");
+        fuzzyCompare(weighted / ink, tickCentre + tickInkCentreBelowItsBox(), 0.5, "raised by half its negative top margin");
     }
 
     function test_escape_closes_then_clears_and_only_then_lets_the_key_go_on() {
@@ -595,15 +615,41 @@ TestCase {
     }
 
     function test_moving_through_the_options_announces_each_active_one_while_the_focus_stays_in_the_field() {
+        const said = createTemporaryObject(spyComponent, testCase, { target: combo, signalName: "announced" });
         input(combo).forceActiveFocus();
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Down);
-        tryCompare(combo, "announcement", "firefox");
         keyClick(Qt.Key_Up);
-        tryCompare(combo, "announcement", "system settings");
         keyClick(Qt.Key_Up);
-        tryCompare(combo, "announcement", "kate (already pinned)");
+        tryCompare(said, "count", 3);
+        compare(said.signalArguments.map(words => words[0]), ["firefox", "system settings", "kate (already pinned)"]);
         verify(input(combo).activeFocus);
+    }
+
+    function test_a_list_opened_again_on_the_choice_says_it_again() {
+        const said = createTemporaryObject(spyComponent, testCase, { target: combo, signalName: "announced" });
+        combo.take(apps[2]);
+        input(combo).forceActiveFocus();
+        keyClick(Qt.Key_Down);
+        tryCompare(said, "count", 1);
+        keyClick(Qt.Key_Escape);
+        keyClick(Qt.Key_Down);
+        tryCompare(said, "count", 2);
+        compare(said.signalArguments.map(words => words[0]), ["konsole", "konsole"]);
+    }
+
+    function test_the_same_active_option_is_not_said_again() {
+        const said = createTemporaryObject(spyComponent, testCase, { target: combo, signalName: "announced" });
+        focusAndType(combo, "kon");
+        tryCompare(said, "count", 1);
+        compare(said.signalArguments[0][0], "konsole");
+        type("s");
+        waitForRendering(scene);
+        const row = rows(combo)[0];
+        for (let x = 30; x < 130; x += 10)
+            mouseMove(row, x, row.height / 2);
+        wait(50);
+        compare(said.count, 1, "neither a letter keeping the best match nor the pointer moving within its row");
     }
 
     // Each pair of theme and density, with each list open in turn: a filter typed, the choice, nothing matching.
