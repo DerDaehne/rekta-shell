@@ -108,6 +108,35 @@ TestCase {
         SignalSpy {}
     }
 
+    readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
+
+    // Two rows in a column whose gap closes when the first hides; the second moves up by `travel`, half faded.
+    Component {
+        id: roomComponent
+
+        Column {
+            property alias gone: first.visible
+            readonly property alias second: next
+
+            move: RowsMakeRoom {}
+
+            Rectangle {
+                id: first
+
+                width: 50
+                height: 100
+            }
+
+            Rectangle {
+                id: next
+
+                width: 50
+                height: 50
+                opacity: 0.2
+            }
+        }
+    }
+
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         Prefs.motion = "off";
@@ -602,6 +631,38 @@ TestCase {
         compare(summaries(), ["ben", "anna"]);
         tryVerify(() => ben.y < benWas && ben.y > 0, 1000, "the rest close the gap, not jump");
         tryCompare(ben, "y", 0, 1000);
+    }
+
+    // How far the glide of the row (100 to 0, opacity 0.2 to 1) strays from ease-base over duration-moderate, at the
+    // most, for the best guess at the frame the glide began in: it starts a frame or two after the move.
+    function glideError(samples: var): real {
+        let best = Infinity;
+        for (let lag = 0; lag <= 60; lag += 4) {
+            let worst = 0;
+            for (const sample of samples) {
+                const share = Math.max(0, Math.min(1, (sample.at - lag) / Tokens.durationModerate));
+                const expected = easeBase.valueForProgress(share);
+                worst = Math.max(worst, Math.abs(sample.moved - expected), Math.abs(sample.faded - expected));
+            }
+            best = Math.min(best, worst);
+        }
+        return best;
+    }
+
+    function test_the_others_make_room_along_ease_base_over_duration_moderate() {
+        Prefs.motion = "on";
+        const column = createTemporaryObject(roomComponent, testCase);
+        const row = column.second;
+        const samples = [];
+        const started = Date.now();
+        column.gone = false;
+        while (Date.now() - started < Tokens.durationModerate + 100) {
+            wait(8);
+            samples.push({ at: Date.now() - started, moved: (100 - row.y) / 100, faded: (row.opacity - 0.2) / 0.8 });
+        }
+        verify(glideError(samples) < 0.06, `it follows ease-base over duration-moderate, off by ${glideError(samples)}`);
+        compare(row.y, 0);
+        compare(row.opacity, 1);
     }
 
     function test_a_row_that_comes_back_slides_in_from_above_and_fades_up() {
