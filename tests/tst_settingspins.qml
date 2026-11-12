@@ -60,6 +60,7 @@ TestCase {
             id: host
 
             property string startText
+            property bool settled: true
             property alias view: inner
             property alias file: pins
 
@@ -77,6 +78,7 @@ TestCase {
                 id: pins
 
                 text: host.startText
+                settled: host.settled
             }
 
             SettingsView {
@@ -373,11 +375,14 @@ TestCase {
         compare(kate.opacity, 1);
     }
 
-    function test_the_first_rows_do_not_arrive() {
+    function test_nothing_shows_until_the_file_has_been_read_and_its_rows_then_do_not_arrive() {
         Prefs.motion = "on";
-        const fresh = createTemporaryObject(hostComponent, testCase, { startText: usersFile });
+        const fresh = createTemporaryObject(hostComponent, testCase, { startText: usersFile, settled: false });
         const pinned = findChild(fresh.view, "group-angeheftet").children[1].item;
-        compare(rowsOf(pinned).length, 4);
+        compare(rowsOf(pinned).length, 0, "not the defaults");
+        verify(!findChild(pinned, "empty").visible, "nor the empty state");
+        fresh.settled = true;
+        compare(rowsOf(pinned).map(row => row.title), ["Systemeinstellungen", "Dolphin", "org.gone.app", "Konsole"]);
         for (const each of rowsOf(pinned))
             compare(each.arriving, 0);
     }

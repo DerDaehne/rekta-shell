@@ -22,14 +22,15 @@ Column {
     property Toaster toaster: null
     readonly property string disabledReason: file.fault === "broken" ? "datei nicht lesbar" : ""
     readonly property string problem: file.fault === "broken" ? "start.json ist kein gültiges json. korrigiere oder lösche die datei, dann lässt sich hier wieder etwas ändern." : ""
-    readonly property var entries: Array.isArray(file.list) ? file.list : Pins.defaultPinned
+    // None until the file has been read, so neither the defaults nor the empty state show before the list does.
+    readonly property var entries: !file.settled ? [] : Array.isArray(file.list) ? file.list : Pins.defaultPinned
     readonly property var sizes: Rules.pinSizes.map(size => ({
                 value: `${size.columns}×${size.rows}`,
                 text: size.name
             }))
     property alias rows: list
     property alias choice: combo
-    // False until the first rows stand: they do not arrive.
+    // Whether the file had been read at the last sync: the rows it first brings do not arrive.
     property bool ready: false
     // Set while this group writes the file, so its own change does not end a pick-up or drag.
     property bool writing: false
@@ -74,6 +75,8 @@ Column {
     // them. Rows that came glide in from above, the others glide from where they showed (FLIP).
     function sync() {
         const next = wanted();
+        const arrives = ready;
+        ready = file.settled;
         const shown = new Map(list.all().map(row => [row.key, row.y]));
         const focused = focusedPart();
         let changed = false;
@@ -93,17 +96,17 @@ Column {
         if (!changed)
             return;
         list.layout();
-        settle(shown);
+        settle(shown, arrives);
         // The row with the focus went with a change from elsewhere: the focus goes on as on unpinning.
         if (focused && keyIndex(focused.key, 0) < 0)
             focusAfter(focused.index, focused.part);
     }
 
-    function settle(shown: var) {
+    function settle(shown: var, arrives: bool) {
         for (const row of list.all()) {
             if (shown.has(row.key))
                 row.settleFrom(shown.get(row.key));
-            else if (ready)
+            else if (arrives)
                 row.arrive();
         }
     }
@@ -206,10 +209,7 @@ Column {
         sync();
     }
     onAppsChanged: sync()
-    Component.onCompleted: {
-        sync();
-        ready = true;
-    }
+    Component.onCompleted: sync()
 
     ListModel {
         id: model
@@ -219,7 +219,7 @@ Column {
     Empty {
         objectName: "empty"
         width: pinned.width
-        visible: model.count === 0
+        visible: pinned.file.settled && model.count === 0
         text: "nichts angeheftet."
     }
 
