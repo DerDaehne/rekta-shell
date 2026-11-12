@@ -374,7 +374,11 @@ TestCase {
     }
 
     function test_the_first_rows_do_not_arrive() {
-        for (const each of rows())
+        Prefs.motion = "on";
+        const fresh = createTemporaryObject(hostComponent, testCase, { startText: usersFile });
+        const pinned = findChild(fresh.view, "group-angeheftet").children[1].item;
+        compare(rowsOf(pinned).length, 4);
+        for (const each of rowsOf(pinned))
             compare(each.arriving, 0);
     }
 
