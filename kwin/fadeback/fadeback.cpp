@@ -94,7 +94,8 @@ struct Splash {
 //
 // A finger swiping up from the bottom edge of the primary screen opens the Start: the effect holds that edge while the
 // Start is gone, tells the shell over D-Bus how far up the finger has come and when it lets go, and the shell sets the
-// windows on the opening's timeline. KWin swallows a second finger and reports a cancelled touch as a release.
+// windows on the opening's timeline; a finger drawing the open Start down, which the shell has itself, sets them on the
+// closing's. KWin swallows a second finger and reports a cancelled touch as a release.
 class FadeBackEffect : public Effect
 {
     Q_OBJECT
@@ -115,6 +116,8 @@ public Q_SLOTS:
     // The windows behind the Start stand `elapsed` ms into its opening and go on from there: on (1), held (0) or back
     // to its beginning (-1).
     Q_SCRIPTABLE void setStartAt(double elapsed, int pace);
+    // The same on their way forward as the Start closes back, from all the way back.
+    Q_SCRIPTABLE void setStartOutAt(double elapsed, int pace);
 
 Q_SIGNALS:
     // A finger on the bottom edge of the primary screen is `distance` px above where it set down.
@@ -127,6 +130,7 @@ private:
     void committed(Retreat &retreat, bool keyboard, bool takesInput);
     void head(Retreat &retreat, qreal target);
     void run(Retreat &retreat, std::chrono::nanoseconds from, int pace);
+    void setStartOn(qreal from, qreal to, double elapsed, int pace);
     void tearDown(Retreat &retreat);
     void advance(Retreat &retreat, std::chrono::nanoseconds presentation);
     qreal progress(const Retreat &retreat) const;
@@ -227,11 +231,21 @@ void FadeBackEffect::committed(Retreat &retreat, bool keyboard, bool takesInput)
 
 void FadeBackEffect::setStartAt(double elapsed, int pace)
 {
+    setStartOn(0, 1, elapsed, pace);
+}
+
+void FadeBackEffect::setStartOutAt(double elapsed, int pace)
+{
+    setStartOn(1, 0, elapsed, pace);
+}
+
+void FadeBackEffect::setStartOn(qreal from, qreal to, double elapsed, int pace)
+{
     if (!(elapsed >= 0) || pace < -1 || pace > 1) {
         return;
     }
-    m_start.from = 0;
-    m_start.to = 1;
+    m_start.from = from;
+    m_start.to = to;
     run(m_start, std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double, std::milli>(elapsed)), pace);
 }
 
@@ -285,7 +299,7 @@ void FadeBackEffect::advance(Retreat &retreat, std::chrono::nanoseconds presenta
 qreal FadeBackEffect::progress(const Retreat &retreat) const
 {
     if (retreat.handOverUnconfirmed) {
-        return retreat.from;
+        return retreat.progress;
     }
     if (effects->animationTimeFactor() == 0) {
         return retreat.heading();

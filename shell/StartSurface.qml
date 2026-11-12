@@ -165,6 +165,7 @@ PanelWindow {
                 surface.confirmingHandOver = true;
         }
         onWindowsAt: (time, pace) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setStartAt", [time, pace], "di")
+        onWindowsOutAt: (time, pace) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setStartOutAt", [time, pace], "di")
     }
 
     // KWin's rekta-fadeback, which holds the bottom edge of the primary screen for a finger that swipes the Start open;

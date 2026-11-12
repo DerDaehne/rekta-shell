@@ -723,6 +723,28 @@ TestCase {
         compare(landedSpy.count, 1, "with nothing to arrive at it lands at the hand-over");
     }
 
+    function test_a_held_turn_keeps_the_place_leaving_past_the_hand_over_its_parts_set_back_whole_and_dropped_at_rest() {
+        turner.go(first, null, {
+            back: true,
+            edge: "bottom"
+        });
+        turner.paused = true;
+        turner.keepsLanded = true;
+        const tile = named("tile0");
+        turner.elapsed = Math.max(...turner.leavingTurns.map(turn => turn.at + turn.duration));
+        verify(first.visible, "no hand-over while held");
+        compare(tile.opacity, 0, "gone at its end");
+        compare(landedSpy.count, 0);
+        turner.elapsed = 0;
+        compare(tile.opacity, 1, "whole again before its fade");
+        compare(rotationOf(tile).angle, 0);
+        turner.drop();
+        verify(!turner.running);
+        verify(first.visible);
+        compare(rotationOf(tile), null, "let go");
+        compare(tile.opacity, 1);
+    }
+
     function test_a_paused_turn_shows_whatever_moment_its_elapsed_time_names_earlier_ones_too() {
         turnToSecond({
             edge: "bottom"

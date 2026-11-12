@@ -70,16 +70,20 @@ FocusScope {
     // "zuletzt" shows; off, it is not there and nothing reads the files used.
     property bool showRecent: true
     // closed, opening (the glass comes, then the parts turn in), open, or closing (the parts turn out, the glass goes); or
-    // following a finger that swipes it open, and returning when the finger let go short of half its way.
+    // following a finger that swipes it open, and returning when the finger let go short of half its way; from open,
+    // followingOut a finger that draws it down, and returningIn when that finger let go short of half its way.
     property string phase: "closed"
     // From opening until it has closed; the host shows its surface while this holds.
     readonly property bool shown: phase !== "closed"
     // From open() to close(): the Start is open or on its way.
     readonly property bool wanted: phase === "opening" || phase === "open"
+    // A finger has taken the closing along: the Start keeps the keyboard and its focus, but takes no keys or presses.
+    readonly property bool fingerCloses: phase === "followingOut" || phase === "returningIn"
     // From open() to the hand-over, when the glass starts to go. KWin's fade-back steps the windows back when the
     // surface takes the keyboard and brings them forward when it gives it back; the surface, glass and blur, fades
-    // along with them.
-    readonly property bool holdsKeyboard: wanted || (phase === "closing" && !glassOut.running)
+    // along with them. A finger taking the closing along keeps it. Read from the phase itself: `wanted` and
+    // `fingerCloses` change one after the other, and the keyboard must not drop between them.
+    readonly property bool holdsKeyboard: wanted || phase === "followingOut" || phase === "returningIn" || (phase === "closing" && !glassOut.running)
     readonly property bool turning: turner.running || waitForWindows.running
     readonly property var running: Rules.recentFirst(windows)
     // The time of the last wheel event, to tell one gesture from the next.
@@ -127,11 +131,16 @@ FocusScope {
     // The opening a finger takes along, in ms since it began: where it stands, and its end, the last part landed.
     property real openingAt: 0
     property real openingTime: 0
+    // The same for the closing back a finger takes along; its windows come forward from the hand-over on.
+    property real closingAt: 0
+    property real closingTime: 0
 
     signal closed
     // The windows behind the Start stand `time` ms into its opening and go on from there: held (0), on (1) or back to
     // its beginning (-1). KWin's fade-back moves them, and the glass with them.
     signal windowsAt(real time, int pace)
+    // The same on the way the windows come forward as the Start closes, from all the way back.
+    signal windowsOutAt(real time, int pace)
 
     // The rows of tiles a section of `place` holds under its heading; stacked, as many as it has.
     function rowsHeld(place: Panorama): real {
@@ -154,7 +163,7 @@ FocusScope {
 
     // An opening a finger has taken along goes on from where it stands.
     function open() {
-        if (wanted)
+        if (wanted || fingerCloses)
             return;
         if (phase === "following" || phase === "returning") {
             goOn();
@@ -245,7 +254,7 @@ FocusScope {
         }
         phase = "opening";
         windowsAt(openingAt, 1);
-        runFinger(1);
+        runFinger(openingAt, 1, false);
     }
 
     // Back the same way in the same times; the Start never takes the keyboard.
@@ -256,12 +265,14 @@ FocusScope {
         }
         phase = "returning";
         windowsAt(openingAt, -1);
-        runFinger(-1);
+        runFinger(openingAt, -1, false);
     }
 
-    function runFinger(pace: int) {
-        fingerClock.from = openingAt;
+    // The clock runs the opening, or with `closes` the closing, from `from` on or back.
+    function runFinger(from: real, pace: int, closes: bool) {
+        fingerClock.from = from;
         fingerClock.pace = pace;
+        fingerClock.closes = closes;
         fingerClock.reset();
         fingerClock.start();
     }
@@ -295,6 +306,117 @@ FocusScope {
         hide();
     }
 
+    // A finger `distance` px down from where it set down over the open Start: the whole closing back, parts, windows and
+    // glass, stands where the finger has taken it, the Start keeping the keyboard. Under reduced motion nothing follows.
+    // ponytail: as for followFinger, Rekta has no rule for it; the way is half the screen's height and the finger decides
+    // at half of it (motion.md:25). Take Rekta's rule once it gives one.
+    function followFingerOut(distance: real) {
+        fingerShare = Math.min(1, Math.max(0, distance / (screenHeight / 2)));
+        if (Tokens.reducedMotion)
+            return;
+        if (phase === "open")
+            planClosing();
+        if (phase !== "followingOut")
+            return;
+        showClosingAt(fingerShare * closingTime);
+        windowsOutAt(windowsComeAt(), 0);
+    }
+
+    // Let go past half its way, the closing goes on from where it stands; short of it, it runs back to the open Start.
+    function letFingerGoOut() {
+        const past = fingerShare >= 0.5;
+        fingerShare = 0;
+        if (phase === "followingOut") {
+            if (past)
+                goOut();
+            else
+                runBackIn();
+        } else if (past && Tokens.reducedMotion) {
+            close(null);
+        }
+    }
+
+    // The parts stand ready to turn out as Escape turns them, held at whatever moment the finger names.
+    function planClosing() {
+        phase = "followingOut";
+        turnOut(true, null);
+        turner.paused = true;
+        turner.keepsLanded = true;
+        closingTime = turner.handOverAt + FadeBack.duration;
+    }
+
+    // The closing `time` ms after it began: from the hand-over on the parts are gone and the windows come forward.
+    function showClosingAt(time: real) {
+        closingAt = time;
+        turner.elapsed = Math.min(time, turner.handOverAt);
+        body.opacity = time < turner.handOverAt ? 1 : 0;
+    }
+
+    function windowsComeAt(): real {
+        return Math.max(0, closingAt - turner.handOverAt);
+    }
+
+    // On in its own times; once the parts are out, the glass goes and the keyboard goes back as after Escape.
+    function goOut() {
+        phase = "closing";
+        runFinger(closingAt, 1, true);
+        if (closingAt >= turner.handOverAt)
+            partsGone();
+    }
+
+    // Back the same way in the same times; the Start stays open with the keyboard and the focus it had.
+    function runBackIn() {
+        phase = "returningIn";
+        windowsOutAt(windowsComeAt(), -1);
+        runFinger(closingAt, -1, true);
+    }
+
+    function closingTick(time: real) {
+        showClosingAt(Math.min(closingTime, Math.max(0, time)));
+        if (fingerClock.pace > 0 && closingAt >= turner.handOverAt)
+            partsGone();
+        else if (fingerClock.pace < 0 && closingAt <= 0)
+            stayed();
+    }
+
+    // The windows come forward from where they stand, and the glass goes with them for the rest of their way.
+    function partsGone() {
+        fingerClock.stop();
+        glassOut.ahead = windowsComeAt();
+        windowsOutAt(glassOut.ahead, 1);
+        turner.paused = false;
+        turner.keepsLanded = false;
+        turner.finish();
+        body.opacity = 1;
+    }
+
+    function stayed() {
+        fingerClock.stop();
+        quietly(() => turner.drop());
+        turner.paused = false;
+        body.opacity = 1;
+        phase = "open";
+    }
+
+    // Under the press at `point` in the Start the nearest scroller is off its top: a finger moving down scrolls it.
+    function scrollsDownAt(point: point): bool {
+        return scrollerAt(body, point)?.atYBeginning === false;
+    }
+
+    // The innermost scroller under `point` in `item`, or null. Not by childAt: an overlay that only reads the wheel lies
+    // above the panorama's scroller.
+    function scrollerAt(item: Item, point: point): Flickable {
+        for (const child of item.children) {
+            const at = item.mapToItem(child, point.x, point.y);
+            if (!child.visible || !child.contains(at))
+                continue;
+            const view = scrollerAt(child, at) ?? (child as Flickable);
+            if (view?.interactive)
+                return view;
+        }
+        return null;
+    }
+
     // The Start's own turns, in and out, run at its tempo and about the bottom edge it is swiped up from; a change of
     // place inside it at Rekta's, about the leading edge.
     function turnIn() {
@@ -306,6 +428,10 @@ FocusScope {
 
     // `pressed` is the tile that was pressed to leave; without one the Start goes back the way it came.
     function close(pressed: Tile) {
+        if (fingerCloses) {
+            goOut();
+            return;
+        }
         leave({
             back: pressed === null,
             pressed: pressed
@@ -324,16 +450,20 @@ FocusScope {
             partsOut();
             return;
         }
+        turnOut(options.back, options.pressed);
+    }
+
+    function turnOut(back: bool, pressed: Tile) {
         turn(body, null, {
-            back: options.back,
-            pressed: options.pressed,
+            back: back,
+            pressed: pressed,
             tempo: Geometry.startTempo,
             edge: "bottom"
         });
     }
 
     function toggle() {
-        if (wanted)
+        if (wanted || fingerCloses)
             close(null);
         else
             open();
@@ -411,6 +541,7 @@ FocusScope {
 
     function hide() {
         phase = "closed";
+        glassOut.ahead = 0;
         pivot.currentIndex = 0;
         endSearch();
         closed();
@@ -1177,12 +1308,15 @@ FocusScope {
         visible: start.shown
     }
 
-    // The glass goes as the windows come forward from the hand-over; then the Start empties.
+    // The glass goes as the windows come forward from the hand-over, or from `ahead` ms into their way, where a finger
+    // let them go; then the Start empties.
     Timer {
         id: glassOut
 
+        property real ahead: 0
+
         objectName: "glassOut"
-        interval: FadeBack.duration
+        interval: FadeBack.duration - ahead
         onTriggered: start.hide()
     }
 
@@ -1194,14 +1328,21 @@ FocusScope {
         onTriggered: start.turnIn()
     }
 
-    // Runs the opening a finger has let go on or back from where it stood.
+    // Runs the opening or the closing a finger has let go on or back from where it stood.
     FrameAnimation {
         id: fingerClock
 
         property real from: 0
         property int pace: 1
+        property bool closes: false
 
-        onTriggered: start.fingerTick(from + pace * elapsedTime * 1000)
+        onTriggered: {
+            const time = from + pace * elapsedTime * 1000;
+            if (closes)
+                start.closingTick(time);
+            else
+                start.fingerTick(time);
+        }
     }
 
     Presence {
@@ -1260,6 +1401,39 @@ FocusScope {
                 if (!active && dx !== 0)
                     pivot.select(dx < 0 ? 1 : 0);
                 dx = 0;
+            }
+        }
+
+        // A finger drawing down over the open Start takes its closing back along; a mouse scrolls or selects. Only a
+        // gesture that sets out mostly down is the Start's (collections.md:170–177), and none over a scroller off its
+        // top: a gesture belongs to one scroller (layout.md:54–68), so a scroll that reaches the top on the way does
+        // not close. Taking the finger over cancels a tile's press (platforms.md:197–198).
+        DragHandler {
+            property bool closes: false
+            property bool scrollsHere: false
+
+            objectName: "drawDown"
+            target: null
+            acceptedDevices: PointerDevice.TouchScreen
+            xAxis.enabled: false
+            enabled: active || (!scrollsHere && start.phase === "open" && !start.turning && !line.activeFocus && line.selectedText === "")
+            onGrabChanged: (transition, point) => {
+                if (transition === PointerDevice.GrabPassive)
+                    scrollsHere = start.scrollsDownAt(body.mapFromItem(null, point.scenePressPosition));
+                else if (transition === PointerDevice.UngrabPassive || transition === PointerDevice.CancelGrabPassive)
+                    scrollsHere = false;
+            }
+            onActiveChanged: {
+                if (active)
+                    closes = centroid.scenePosition.y > centroid.scenePressPosition.y && !scrollsHere;
+                else if (closes)
+                    start.letFingerGoOut();
+                if (!active)
+                    closes = false;
+            }
+            onActiveTranslationChanged: {
+                if (active && closes)
+                    start.followFingerOut(activeTranslation.y);
             }
         }
 

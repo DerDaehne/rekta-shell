@@ -17,7 +17,8 @@ QtObject {
     // of the turn.
     property real elapsed: 0
     property bool paused: false
-    // While set, a landed part stays held, so a paused turn may be set back to any earlier moment, as a finger takes it.
+    // While set, a landed part stays held and the place leaving does not hand over, so a paused turn may be set back to
+    // any earlier moment, as a finger takes it.
     property bool keepsLanded: false
     // The plans (Turnstile.plan) of the place leaving and of the one arriving; each turn's `part.item` is its item.
     property var leavingTurns: []
@@ -95,33 +96,33 @@ QtObject {
                 when: part.holding
             }
 
-            // Leaving, whole for the first share of its time, then fading; arriving, whole after its first share.
             property AnimationController motion: AnimationController {
                 progress: part.progress
-                animation: ParallelAnimation {
-                    NumberAnimation {
-                        target: part
-                        property: "angle"
-                        from: part.fromAngle
-                        to: part.toAngle
-                        duration: part.turn.duration
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: part.leaving ? Tokens.easeTurnOut : Tokens.easeTurnIn
-                    }
-                    SequentialAnimation {
-                        PauseAnimation {
-                            duration: part.leaving ? Tokens.turnOutWhole * part.turn.duration : 0
-                        }
-                        NumberAnimation {
-                            target: part
-                            property: "fade"
-                            from: part.leaving ? 1 : 0
-                            to: part.leaving ? 0 : 1
-                            duration: (part.leaving ? 1 - Tokens.turnOutWhole : Tokens.turnInWhole) * part.turn.duration
-                            easing.type: Easing.Bezier
-                            easing.bezierCurve: part.leaving ? Tokens.easeTurnOut : Tokens.easeTurnIn
-                        }
-                    }
+                animation: NumberAnimation {
+                    target: part
+                    property: "angle"
+                    from: part.fromAngle
+                    to: part.toAngle
+                    duration: part.turn.duration
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: part.leaving ? Tokens.easeTurnOut : Tokens.easeTurnIn
+                }
+            }
+
+            // Leaving, whole for the first share of its time, then fading; arriving, whole after its first share. A
+            // controller of its own rather than a pause before it: a turn a finger sets back into that pause would
+            // leave the fade where it was.
+            readonly property real fadeShare: part.leaving ? 1 - Tokens.turnOutWhole : Tokens.turnInWhole
+            property AnimationController fading: AnimationController {
+                progress: Math.min(1, Math.max(0, part.leaving ? (part.progress - Tokens.turnOutWhole) / part.fadeShare : part.progress / part.fadeShare))
+                animation: NumberAnimation {
+                    target: part
+                    property: "fade"
+                    from: part.leaving ? 1 : 0
+                    to: part.leaving ? 0 : 1
+                    duration: part.fadeShare * part.turn.duration
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: part.leaving ? Tokens.easeTurnOut : Tokens.easeTurnIn
                 }
             }
 
@@ -193,6 +194,13 @@ QtObject {
         land();
     }
 
+    // Ends a turn held before its hand-over as if it had not run: every part back at rest, the place leaving still shown.
+    function drop() {
+        clock.stop();
+        letAllGo();
+        land();
+    }
+
     function leave(pressed: Tile) {
         const parts = leavingPlace ? partsOf(leavingPlace) : [];
         const pressedPart = parts.find(part => part.item === pressed);
@@ -214,7 +222,7 @@ QtObject {
     function step() {
         if (!clock.running)
             return;
-        if (!handedOver && elapsed >= handOverAt)
+        if (!handedOver && elapsed >= handOverAt && !keepsLanded)
             handOver();
         if (!handedOver || keepsLanded)
             return;
