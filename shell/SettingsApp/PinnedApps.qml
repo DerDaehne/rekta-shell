@@ -48,8 +48,8 @@ Column {
             title: app?.name ?? id,
             icon: app?.icon ?? "",
             missing: apps !== null && app === null,
-            columns: Rules.span(entry?.columns, 4),
-            rows: Rules.span(entry?.rows, 2)
+            // As the tile shows it: "2×1".
+            size: `${Rules.span(entry?.columns, 4)}×${Rules.span(entry?.rows, 2)}`
         };
     }
 

@@ -19,9 +19,8 @@ SortableRow {
     required property string title
     required property string icon
     required property bool missing
-    required property int columns
-    required property int rows
-    readonly property string size: `${columns}×${rows}`
+    // "‹columns›×‹rows›".
+    required property string size
     // The four sizes, and a size written by hand as one more, only in its own row.
     readonly property var sizeOptions: group.sizes.some(option => option.value === size) ? group.sizes : [...group.sizes, {
             value: size,
