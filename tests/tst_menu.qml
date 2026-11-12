@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "Ink.js" as Ink
 
 TestCase {
     id: testCase
@@ -748,6 +749,84 @@ TestCase {
         levelled.choose(findChild(levelled, "deeper"));
         compare(told.count, 1);
         verify(levelled.open);
+    }
+
+    // The chevron on as drawn: the bounds of its ink at the row's end, where nothing else stands in these rows, in the
+    // row's own coordinates. The window is grabbed whole, as a grab of an item inside the menu misses where it stands.
+    function onwardInk(row: Item): var {
+        waitForRendering(row);
+        wait(Tokens.durationFloat);
+        const reach = Tokens.spaceM + 3 * Geometry.chevronSize;
+        const at = row.mapToItem(testCase, row.width - reach, 0);
+        const area = { x: Math.round(at.x), y: Math.round(at.y), width: Math.round(reach), height: Math.round(row.height) };
+        const ink = Ink.bounds(grabImage(testCase), area, row.ink, Tokens.color.bg);
+        if (ink === null)
+            return null;
+        const dx = area.x - Math.round(row.width - reach);
+        return { left: ink.left - dx, right: ink.right - dx, top: ink.top - area.y, bottom: ink.bottom - area.y };
+    }
+
+    function test_a_row_that_opens_a_level_ends_in_a_chevron_pointing_on_in_the_colour_of_its_words() {
+        const deeper = findChild(openedLevel(), "deeper");
+        const onward = findChild(deeper, "onward");
+        verify(onward.visible);
+        compare([onward.width, onward.height], [Geometry.chevronSize, Geometry.chevronSize]);
+        compare(onward.rotation, Geometry.chevronOnTurn);
+        compare(onward.x + onward.width, deeper.width - Tokens.spaceM - Geometry.chevronOnNudge, "at the end, set inwards");
+        compare(onward.color, Tokens.color.textPrimary);
+        const ink = onwardInk(deeper);
+        verify(ink !== null, "it is drawn");
+        const middle = deeper.width - Tokens.spaceM - Geometry.chevronOnNudge - Geometry.chevronSize / 2;
+        // Turned 45° about its middle, the corner of its two strokes points on, half a diagonal from the middle.
+        const tip = middle + Geometry.chevronSize / Math.SQRT2;
+        verify(Math.abs(ink.right + 1 - tip) <= 1, `the tip at ${tip}, drawn to ${ink.right + 1}`);
+        verify((ink.left + ink.right + 1) / 2 > middle, "it points on, not back");
+        verify(ink.bottom - ink.top > ink.right - ink.left, "taller than wide, as a > is");
+        verify(Math.abs((ink.top + ink.bottom + 1) / 2 - deeper.height / 2) <= 1, "centred in the row");
+    }
+
+    function test_a_row_without_a_level_has_no_chevron() {
+        const plain = findChild(openedLevel(), "plain");
+        verify(!findChild(plain, "onward").visible);
+        compare(onwardInk(plain), null, "nothing is drawn at its end");
+    }
+
+    Component {
+        id: onwardRowComponent
+
+        MenuItem {
+            text: "Nextcloud"
+            opensLevel: true
+        }
+    }
+
+    function test_the_chevron_stands_space_s_after_the_words_and_takes_the_colour_of_a_greyed_row() {
+        const row = createTemporaryObject(onwardRowComponent, testCase);
+        const label = findChild(row, "label");
+        compare(row.implicitWidth, 2 * Tokens.spaceM + label.implicitWidth + Tokens.spaceS + Geometry.chevronSize);
+        row.width = row.implicitWidth - Tokens.spaceL;
+        verify(label.truncated, "the words are cut, the chevron stays");
+        compare(label.x + label.width, row.width - Tokens.spaceM - Geometry.chevronSize - Tokens.spaceS);
+        row.dimmed = true;
+        compare(findChild(row, "onward").color, Tokens.color.disabled);
+        for (const stroke of ["top", "right"])
+            compare(findChild(findChild(row, "onward"), stroke).color, Tokens.color.disabled, `its ${stroke} stroke too`);
+    }
+
+    function test_a_key_hint_stands_space_s_before_the_chevron_and_is_cut_first_while_the_chevron_stays() {
+        const row = createTemporaryObject(onwardRowComponent, testCase, { keyHint: "Synchronisiert" });
+        const label = findChild(row, "label");
+        const key = findChild(row, "key");
+        const onwardEdge = row.width - Tokens.spaceM - Geometry.chevronSize;
+        compare(row.implicitWidth, 2 * Tokens.spaceM + label.implicitWidth + Tokens.spaceS + Tokens.spaceL + key.implicitWidth + Tokens.spaceS + Geometry.chevronSize);
+        compare(key.x + key.width, onwardEdge - Tokens.spaceS);
+        verify(!key.truncated && !label.truncated);
+        row.width = row.implicitWidth - key.implicitWidth / 2;
+        verify(key.truncated, "the hint is cut");
+        verify(!label.truncated, "the words stay whole");
+        compare(key.x + key.width, row.width - Tokens.spaceM - Geometry.chevronSize - Tokens.spaceS, "it keeps its end");
+        compare(key.x, label.x + label.implicitWidth + Tokens.spaceS + Tokens.spaceL, "and its gap to the words");
+        verify(findChild(row, "onward").visible);
     }
 
     function test_a_dimmed_row_is_grey_with_the_apps_own_words_and_does_nothing() {

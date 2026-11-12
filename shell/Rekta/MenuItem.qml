@@ -31,7 +31,8 @@ Item {
     property real inset: Tokens.spaceM
     // Keeps the icon's room also for a row without one, so every text of a list starts at one edge.
     property bool iconSlot: false
-    // Choosing it opens a deeper level the host swaps in, so the menu stays open.
+    // Choosing it opens a deeper level the host swaps in, so the menu stays open. The row ends in a chevron pointing on
+    // (rekta.css:1029–1032).
     property bool opensLevel: false
     // The back row of a level (rekta.css:1033–1037): a chevron pointing back instead of an icon, words in text-contrast-high
     // and semibold, a hairline below. It is no row with an icon, so it takes no part in the edge the others share.
@@ -53,14 +54,21 @@ Item {
     readonly property real iconSpace: !isBack && (menuHasIcons || iconSlot) ? Geometry.iconSize + Tokens.spaceS : 0
     readonly property real leadSpace: lead !== "" ? leadWords.implicitWidth + Tokens.spaceS : 0
     readonly property real chevronSpace: isBack ? Geometry.chevronSize + Tokens.spaceS : 0
+    readonly property bool hasOnward: opensLevel && !isBack
+    readonly property real onwardSpace: hasOnward ? Tokens.spaceS + Geometry.chevronSize : 0
     readonly property real textEdge: inset + chevronSpace + checkSpace + iconSpace + leadSpace
     readonly property string spoken: lead !== "" ? `${lead} ${label}` : label
     // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:1014, :1021)
-    readonly property real keySpace: keyHint !== "" ? Tokens.spaceS + Tokens.spaceL + key.implicitWidth : 0
+    readonly property real keyGap: keyHint !== "" ? Tokens.spaceS + Tokens.spaceL : 0
+    readonly property real keySpace: keyGap + key.width
     readonly property real endSpace: end.implicitWidth > 0 ? Tokens.spaceS + end.implicitWidth : 0
+    // ponytail: Rekta does not yet say how a key hint and the chevron on share the row's end (both `margin-left: auto`,
+    // rekta.css:1021, :1032); its proposal stands meanwhile: the hint before the chevron, space-s between, the hint
+    // shortened with an ellipsis so the chevron stays. Follow Rekta's answer once it comes.
+    readonly property real keyRoom: width - textEdge - words.implicitWidth - endSpace - keyGap - onwardSpace - inset
 
     width: parent ? parent.width : implicitWidth
-    implicitWidth: 2 * inset + chevronSpace + checkSpace + iconSpace + leadSpace + words.implicitWidth + endSpace + keySpace
+    implicitWidth: 2 * inset + chevronSpace + checkSpace + iconSpace + leadSpace + words.implicitWidth + endSpace + keyGap + key.implicitWidth + onwardSpace
     implicitHeight: Tokens.rowHeight
     Accessible.role: Accessible.MenuItem
     Accessible.name: spoken
@@ -133,7 +141,7 @@ Item {
         objectName: "label"
         x: item.textEdge
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.max(0, item.width - item.textEdge - item.endSpace - item.keySpace - item.inset)
+        width: Math.max(0, item.width - item.textEdge - item.endSpace - item.keySpace - item.onwardSpace - item.inset)
         text: item.label
         elide: Text.ElideRight
         font.family: Tokens.fontSans
@@ -155,6 +163,15 @@ Item {
         visible: item.isBack
     }
 
+    Chevron {
+        objectName: "onward"
+        x: item.width - item.inset - width - Geometry.chevronOnNudge
+        anchors.verticalCenter: parent.verticalCenter
+        rotation: Geometry.chevronOnTurn
+        color: item.ink
+        visible: item.hasOnward
+    }
+
     Hairline {
         objectName: "hairline"
         y: parent.height - height
@@ -166,7 +183,7 @@ Item {
 
         objectName: "end"
         anchors.right: parent.right
-        anchors.rightMargin: item.inset + item.keySpace
+        anchors.rightMargin: item.inset + item.keySpace + item.onwardSpace
         anchors.verticalCenter: parent.verticalCenter
         spacing: Tokens.spaceS
     }
@@ -176,8 +193,10 @@ Item {
 
         objectName: "key"
         anchors.right: parent.right
-        anchors.rightMargin: item.inset
+        anchors.rightMargin: item.inset + item.onwardSpace
         anchors.verticalCenter: parent.verticalCenter
+        width: item.hasOnward ? Math.max(0, Math.min(implicitWidth, item.keyRoom)) : implicitWidth
+        elide: Text.ElideRight
         visible: item.keyHint !== ""
         text: item.keyHint
         font.family: Tokens.fontSans
