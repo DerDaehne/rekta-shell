@@ -20,7 +20,7 @@ FocusScope {
         },
         {
             title: "start",
-            groups: ["suche", "angeheftet"]
+            groups: ["suche", "angeheftet", "zuletzt"]
         },
         {
             title: "sitzung",
@@ -50,7 +50,8 @@ FocusScope {
     // The fields of the groups that have any, by group; a group without one says its fields are still to come.
     readonly property var contents: ({
             "fläche": echoField,
-            "suche": escapeField
+            "suche": escapeField,
+            "zuletzt": recentField
         })
     // Why the fields cannot be changed (forms.md, "Disabled controls say why"): the short cause stands beside each
     // control, as Rekta's disabled examples do, and the hint below says cause and remedy in one sentence.
@@ -180,6 +181,30 @@ FocusScope {
                 onToggled: {
                     view.settings.set("background", checked ? "rekta" : "solid");
                     checked = Qt.binding(() => view.echoOn());
+                }
+            }
+        }
+    }
+
+    Component {
+        id: recentField
+
+        Setting {
+            hint: "die zuletzt geöffneten dateien als letzter abschnitt im start. aus liest die shell nicht, was du geöffnet hast."
+            problem: view.problem
+            presetWord: view.settings.differs("showRecent") ? (view.settings.preset("showRecent") ? "an" : "aus") : ""
+
+            Toggle {
+                objectName: "showRecent"
+                width: parent.width
+                disabledReason: view.disabledReason
+                label: "zuletzt zeigen"
+                onWord: "an"
+                offWord: "aus"
+                checked: view.settings.value("showRecent")
+                onToggled: {
+                    view.settings.set("showRecent", checked);
+                    checked = Qt.binding(() => view.settings.value("showRecent"));
                 }
             }
         }

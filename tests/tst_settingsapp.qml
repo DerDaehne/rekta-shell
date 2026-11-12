@@ -290,6 +290,26 @@ TestCase {
         verify(!host.backdrop.solid);
     }
 
+    function test_the_start_place_offers_zuletzt_as_a_toggle_that_is_on_by_default_and_the_shell_follows_it() {
+        pivot().select(1);
+        verify(groupAt("zuletzt"));
+        compare(control("showRecent").label, "zuletzt zeigen");
+        verify(control("showRecent").checked);
+        control("showRecent").activate();
+        compare(written().showRecent, false);
+        compare(host.shell.value("showRecent"), false);
+        control("showRecent").activate();
+        compare(written().showRecent, true);
+    }
+
+    function test_with_zuletzt_off_in_nix_the_hint_names_that_default() {
+        host.app.defaultsText = '{"showRecent":false}';
+        verify(!control("showRecent").checked);
+        host.app.userText = '{"version":1,"showRecent":true}';
+        verify(control("showRecent").checked);
+        verify(hintOf("showRecent").endsWith("vorgabe: aus."));
+    }
+
     function test_a_value_that_differs_from_the_nix_default_names_the_default_in_the_hint() {
         host.app.defaultsText = '{"searchEscape":"back","background":"solid"}';
         compare(control("searchEscape").currentIndex, 1);

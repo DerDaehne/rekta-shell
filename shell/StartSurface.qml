@@ -35,6 +35,8 @@ PanelWindow {
     property bool drawn: false
     // What Escape does in a search: "close" or "back" (the setting searchEscape).
     property string searchEscape: "close"
+    // "zuletzt" shows in the Start (the setting showRecent).
+    property bool showRecent: true
     // From the moment it opens until it starts to close.
     readonly property alias opened: place.wanted
     // The window that had the keyboard as the Start opened is full screen: back the way it came, the Start hands it back.
@@ -139,6 +141,7 @@ PanelWindow {
             Quickshell.clipboardText = text;
         }
         searchEscape: surface.searchEscape
+        showRecent: surface.showRecent
         screenHeight: surface.height
         starts: usage.starts
         unseen: surface.notices.unseenByApp

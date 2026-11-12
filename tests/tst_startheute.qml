@@ -82,6 +82,8 @@ TestCase {
                 objectName: "start"
                 width: scene.width
                 height: scene.height
+                // "heute" is the last section here; "zuletzt" has tests of its own (tst_startzuletzt).
+                showRecent: false
                 pinned: [testCase.fakeApp("systemsettings", 1), testCase.fakeApp("dolphin", 2), testCase.fakeApp("konsole", 1)]
                 board: noticeBoard
                 playerChoice: playerChoice

@@ -38,6 +38,12 @@
       default = null;
       description = "What Escape does in the Start's search: \"close\" clears the search and closes the Start, \"back\" clears the search and goes back to the place before. Null leaves it at \"close\". It takes effect with the default package once the module is enabled, as the default that a \"searchEscape\" in the user's ~/.config/rekta-shell/settings.json overrides.";
     };
+
+    showRecent = lib.mkOption {
+      type = lib.types.nullOr lib.types.bool;
+      default = null;
+      description = "Whether the Start shows \"zuletzt\", the files used last, as KDE's activity manager keeps them. False hides the section, and the shell then reads nothing of what was opened. Null leaves it shown. It takes effect with the default package once the module is enabled, as the default that a \"showRecent\" in the user's ~/.config/rekta-shell/settings.json overrides.";
+    };
   };
 
   # Options that are gone; setting one stops the build with a word on why.
@@ -55,5 +61,11 @@
     {
       inherit (cfg) background;
     }
-    // lib.filterAttrs (_: value: value != null) { inherit (cfg) density searchEscape; };
+    // lib.filterAttrs (_: value: value != null) {
+      inherit (cfg)
+        density
+        searchEscape
+        showRecent
+        ;
+    };
 }

@@ -165,6 +165,16 @@ TestCase {
         compare(layers.value("searchEscape"), "back");
     }
 
+    function test_zuletzt_shows_unless_the_nix_default_or_the_user_turns_it_off() {
+        compare(layers.value("showRecent"), true);
+        layers.defaultsText = '{"showRecent":false}';
+        compare(layers.value("showRecent"), false);
+        layers.userText = '{"version":1,"showRecent":true}';
+        compare(layers.value("showRecent"), true);
+        layers.userText = '{"version":1,"showRecent":"no"}';
+        compare(layers.value("showRecent"), false, "a value of the wrong type is ignored");
+    }
+
     function test_escape_in_the_search_of_the_wrong_type_is_ignored() {
         layers.userText = '{"version":1,"searchEscape":true}';
         compare(layers.value("searchEscape"), "close");

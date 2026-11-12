@@ -19,7 +19,8 @@ QtObject {
     readonly property var builtIn: ({
             background: "rekta",
             density: "auto",
-            searchEscape: "close"
+            searchEscape: "close",
+            showRecent: true
         })
     readonly property var nixValues: parsed(defaultsText) ?? {}
     // null when the user's file holds no JSON object.

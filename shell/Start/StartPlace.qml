@@ -8,7 +8,7 @@ import State
 // The Start, after the shell's decision for it: glass over the windows, across the whole surface. Its pivot
 // "start · alle apps" picks the place; the start place is a panorama of sections under a strip of their titles:
 // "läuft", a tile for each open window, the most recent first, then "angeheftet", the pinned apps, then "heute", what
-// plays and the newest notifications (Today); "alle apps" is a
+// plays and the newest notifications (Today), then "zuletzt", the files used last (Recent); "alle apps" is a
 // panorama of the installed apps A–Z, a section for each initial, where a typed letter jumps to the next app it
 // starts. It opens once the windows are three quarters back (Rekta's hand-over between places), its parts turning in
 // as a place arrives, and closes turning them out: back the way they came, or forward after a press, the pressed tile
@@ -67,6 +67,8 @@ FocusScope {
     // What "heute" shows: the notifications and the choice of player.
     property NoticeBoard board: null
     property PlayerChoice playerChoice: null
+    // "zuletzt" shows; off, it is not there and nothing reads the files used.
+    property bool showRecent: true
     // closed, opening (the glass comes, then the parts turn in), open, or closing (the parts turn out, the glass goes); or
     // following a finger that swipes it open, and returning when the finger let go short of half its way.
     property string phase: "closed"
@@ -104,7 +106,7 @@ FocusScope {
     // The rows of tiles a section of "alle apps" holds under its heading; stacked, no letter splits.
     readonly property real letterRows: rowsHeld(appsPanorama)
     // "angeheftet" is as many units wide as its tiles need in the rows it holds, at least four and only while it fits
-    // with "heute" before the trailing inset; on a panorama past the window it keeps four (layout.md:146–148 against :31–32).
+    // with "heute" and "zuletzt" before the trailing inset; on a panorama past the window it keeps four (layout.md:146–148 against :31–32).
     readonly property int pinnedUnits: fittedPinnedUnits()
     // What was typed: the text of the search's line.
     property alias query: line.text
@@ -141,7 +143,7 @@ FocusScope {
     function fittedPinnedUnits(): int {
         // Not runningSection.visible: that is false while the Start is hidden, and the width would change as it shows.
         const before = running.length > 0 ? runningSection.sectionWidth + panorama.gap : 0;
-        const after = todaySection.sectionWidth + panorama.gap;
+        const after = todaySection.sectionWidth + panorama.gap + (showRecent ? recentSection.sectionWidth + panorama.gap : 0);
         const room = Math.floor((panorama.width - 2 * panorama.inset - before - after) / unitStep);
         const rows = rowsHeld(panorama);
         let units = 4;
@@ -768,7 +770,7 @@ FocusScope {
     }
 
     function allTiles(): var {
-        return [...runningGrid.children, ...pinnedGrid.children, ...hitsGrid.children].filter(item => (item as Tile) !== null).concat(today.entries(), letterTiles());
+        return [...runningGrid.children, ...pinnedGrid.children, ...hitsGrid.children].filter(item => (item as Tile) !== null).concat(today.entries(), recent.entries(), letterTiles());
     }
 
     // The tiles of the section being read, in reading order.
@@ -1304,7 +1306,7 @@ FocusScope {
                 y: start.placeTop
                 width: parent.width - 2 * start.stripInset
                 enabled: start.wanted
-                titles: start.running.length > 0 ? ["läuft", "angeheftet", "heute"] : ["angeheftet", "heute"]
+                titles: (start.running.length > 0 ? ["läuft"] : []).concat(["angeheftet", "heute"], start.showRecent ? ["zuletzt"] : [])
                 placeWidth: start.width
                 viewportHeight: start.height
             }
@@ -1454,6 +1456,34 @@ FocusScope {
                         board: start.board
                         choice: start.playerChoice
                         windows: start.windows
+                        onChosen: start.leave({
+                            back: false,
+                            pressed: null
+                        })
+                    }
+                }
+
+                // The last section, two units wide; its rows scroll within it. A press opens the file and leaves forward. Off,
+                // it is out of the panorama, which counts every section while it is hidden itself.
+                Section {
+                    id: recentSection
+
+                    objectName: "recent"
+                    title: "zuletzt"
+                    sectionWidth: 2 * start.unitStep
+                    verticalInset: Tokens.spaceXl
+                    headingSpacing: Tokens.spaceL
+                    headingToken: Tokens.fontSizeXl
+                    placeWidth: start.width
+                    parent: start.showRecent ? panorama.sectionParent : null
+                    enabled: start.wanted
+
+                    Recent {
+                        id: recent
+
+                        active: start.showRecent
+                        inSight: start.wanted
+                        openUrl: start.openUrl
                         onChosen: start.leave({
                             back: false,
                             pressed: null

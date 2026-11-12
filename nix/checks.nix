@@ -350,9 +350,14 @@ in
       toplevel [ plasma ] == toplevel [
         plasma
         module
-        { programs.rekta-shell.searchEscape = "back"; }
+        {
+          programs.rekta-shell = {
+            searchEscape = "back";
+            showRecent = false;
+          };
+        }
       ]
-    ) "the search escape option changed a system that does not enable the module";
+    ) "the Start options changed a system that does not enable the module";
     assert lib.assertMsg (
       toplevel [ plasma ] == toplevel [
         plasma
@@ -403,15 +408,18 @@ in
         exit 1
       }
       defaults=${enabled.programs.rekta-shell.package}/share/rekta-shell/defaults.json
-      if grep -q searchEscape $defaults; then
-        echo "the module names a search escape without being asked to" >&2
+      if grep -q -e searchEscape -e showRecent $defaults; then
+        echo "the module names a search escape or showRecent without being asked to" >&2
         exit 1
       fi
       chosen=${
-        (withSettings { searchEscape = "back"; }).programs.rekta-shell.package
+        (withSettings {
+          searchEscape = "back";
+          showRecent = false;
+        }).programs.rekta-shell.package
       }/share/rekta-shell/defaults.json
-      grep -qF '"searchEscape":"back"' $chosen || {
-        echo "the search escape option is not in the package defaults" >&2
+      grep -qF '"searchEscape":"back"' $chosen && grep -qF '"showRecent":false' $chosen || {
+        echo "the search escape or showRecent option is not in the package defaults" >&2
         exit 1
       }
       # With both modules on, whichever rekta-settings comes first in PATH names the same defaults.

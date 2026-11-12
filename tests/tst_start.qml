@@ -58,6 +58,8 @@ TestCase {
         id: startComponent
 
         StartPlace {
+            // The panorama these tests measure ends with "heute"; "zuletzt" has tests of its own (tst_startzuletzt).
+            showRecent: false
             width: testCase.width
             height: testCase.height
             windows: [testCase.fakeWindow("konsole: build", 10), testCase.fakeWindow("Rekta Design — docs", 30)]

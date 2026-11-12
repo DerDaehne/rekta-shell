@@ -122,6 +122,7 @@ ShellRoot {
         id: start
 
         searchEscape: settingsFiles.value("searchEscape")
+        showRecent: settingsFiles.value("showRecent")
         commands: shellCommands.list
         metaHold: shortcutList.hold
         windows: running

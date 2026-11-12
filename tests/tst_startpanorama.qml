@@ -55,6 +55,8 @@ TestCase {
         id: startComponent
 
         StartPlace {
+            // The panorama these tests measure ends with "heute"; "zuletzt" has tests of its own (tst_startzuletzt).
+            showRecent: false
             windows: testCase.windowsOpen()
             pinned: [testCase.fakeApp("systemsettings", 1), testCase.fakeApp("dolphin", 2), testCase.fakeApp("konsole", 1)]
         }
