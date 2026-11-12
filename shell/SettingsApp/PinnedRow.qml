@@ -33,6 +33,8 @@ SortableRow {
     property real leaving: 0
     property real arriving: 0
     readonly property bool going: leaving > 0 || goingOut.running
+    // A hairline row holds its controls space-s from its hairlines (rekta.css:74), at least the density's row height.
+    readonly property real lineHeight: Math.max(Tokens.rowHeight, Tokens.controlHeight + 2 * Tokens.spaceS)
 
     function arrive() {
         arriving = 1;
@@ -137,7 +139,7 @@ SortableRow {
     Item {
         objectName: "pullArea"
         width: sizeSelect.x
-        height: Tokens.rowHeight
+        height: row.lineHeight
 
         DragHandler {
             id: pull
@@ -204,7 +206,7 @@ SortableRow {
 
         objectName: "size"
         x: remove.x - Tokens.spaceS - width
-        y: (Tokens.rowHeight - Tokens.controlHeight) / 2
+        y: (row.lineHeight - Tokens.controlHeight) / 2
         width: Geometry.inputPadding + widest.width + Geometry.selectPaddingEnd
         label: `größe von ${row.title}`
         disabledReason: row.group.disabledReason
@@ -231,7 +233,7 @@ SortableRow {
 
         objectName: "remove"
         x: row.width - row.grip.width - width
-        y: (Tokens.rowHeight - height) / 2
+        y: (row.lineHeight - height) / 2
         inRow: true
         variant: "quiet"
         icon: "close"

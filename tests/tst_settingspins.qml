@@ -56,7 +56,7 @@ TestCase {
     Component {
         id: hostComponent
 
-        Item {
+        Rectangle {
             id: host
 
             property string startText
@@ -65,6 +65,7 @@ TestCase {
 
             width: 900
             height: 700
+            color: Tokens.color.bg
 
             Layers {
                 id: layers
@@ -154,6 +155,7 @@ TestCase {
     property var file: null
 
     function make(text: string) {
+        host?.destroy();
         host = createTemporaryObject(hostComponent, testCase, { startText: text });
         view = host.view;
         file = host.file;
@@ -240,7 +242,7 @@ TestCase {
         compare(remove.variant, "quiet");
         compare(remove.tip, "lösen");
         verify(findChild(dolphin, "size").x < remove.x, "the size stands before lösen");
-        compare(dolphin.height, Tokens.rowHeight);
+        compare(dolphin.height, Math.max(Tokens.rowHeight, Tokens.controlHeight + 2 * Tokens.spaceS));
         compare(findChild(dolphin, "hairline").y, 0, "on a hairline");
     }
 
