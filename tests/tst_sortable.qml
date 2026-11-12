@@ -81,6 +81,14 @@ TestCase {
                             TapHandler {
                                 onTapped: fixture.selected = row.title
                             }
+
+                            Item {
+                                objectName: "control"
+                                x: parent.width - width
+                                width: Tokens.rowHeight
+                                height: row.height
+                                activeFocusOnTab: true
+                            }
                         }
                     }
                 }
@@ -394,6 +402,31 @@ TestCase {
         compare(list.grabbedRow, null);
         verify(!kalender.lifted);
         compare(titles(), ["mail", "dateien", "kalender", "konsole"]);
+    }
+
+    function test_focus_moving_to_a_control_in_the_row_keeps_it_picked_up_and_leaving_from_there_puts_it_down() {
+        const kalender = row("kalender");
+        kalender.grip.forceActiveFocus();
+        keyClick(Qt.Key_Space);
+        findChild(kalender, "control").forceActiveFocus();
+        compare(list.grabbedRow, kalender, "inside the row");
+        fixture.outside.forceActiveFocus();
+        compare(list.grabbedRow, null);
+        verify(!kalender.lifted);
+    }
+
+    function test_tabbing_on_through_the_row_into_the_next_puts_the_picked_up_row_down() {
+        const kalender = row("kalender");
+        kalender.grip.forceActiveFocus();
+        keyClick(Qt.Key_Space);
+        keyClick(Qt.Key_Tab);
+        verify(findChild(kalender, "control").activeFocus);
+        compare(list.grabbedRow, kalender);
+        keyClick(Qt.Key_Tab);
+        verify(row("dateien").grip.activeFocus);
+        compare(list.grabbedRow, null);
+        verify(!kalender.lifted);
+        compare(moves.count, 0);
     }
 
     function test_a_keyboard_move_glides_with_flip_in_duration_moderate() {

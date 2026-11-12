@@ -173,6 +173,18 @@ Item {
         }
     }
 
+    // Focus that leaves the picked-up row, from its grip or any control in it, puts it down where it is (rekta.js `blur`,
+    // on focusout of the whole list).
+    Connections {
+        target: rows.Window.window
+        enabled: rows.grabbedRow !== null
+
+        function onActiveFocusItemChanged() {
+            if (!rows.grabbedRow.holds(rows.Window.window.activeFocusItem))
+                rows.putDownInPlace();
+        }
+    }
+
     Repeater {
         id: repeater
 

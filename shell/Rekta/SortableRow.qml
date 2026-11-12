@@ -80,11 +80,6 @@ Item {
         onDragged: dy => row.rows.dragTo(row, dy)
         onDropped: canceled => row.rows.drop(canceled)
         Keys.onPressed: event => row.rows.key(row, event)
-        // Focus that leaves the row puts the item down where it is (rekta.js `blur`).
-        onActiveFocusChanged: {
-            if (!activeFocus && grabbed && !row.holds(Window.activeFocusItem))
-                row.rows.putDownInPlace();
-        }
     }
 
     Item {
