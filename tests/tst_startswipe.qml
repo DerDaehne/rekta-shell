@@ -226,6 +226,16 @@ TestCase {
         compare(closedSpy.count, 1);
     }
 
+    function test_the_finger_decides_at_half_its_way() {
+        start.followFinger(wholeWay * 0.49);
+        start.letFingerGo();
+        compare(start.phase, "returning");
+        tryCompare(start, "phase", "closed", 2000);
+        start.followFinger(wholeWay * 0.5);
+        start.letFingerGo();
+        compare(start.phase, "opening");
+    }
+
     function test_meta_while_the_finger_holds_the_opening_opens_it_all_from_there() {
         start.followFinger(wholeWay * 0.3);
         const from = start.openingAt;
