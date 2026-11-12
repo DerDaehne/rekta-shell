@@ -2,8 +2,8 @@ import QtQuick
 import Rekta
 
 // "im hintergrund N" in the app bar: a glyph, the word and the number of apps (navigation.md, "App bar"), opening the menu
-// of the background apps. With no app in the background the control is gone from the bar until one comes. The number
-// changes in place: nothing moves when an app comes or goes.
+// of the background apps. With no app in the background the control is gone from the bar until one comes. A new number
+// peeks in, and the bar glides when it widens or narrows (navigation.md:400, :375–380).
 AppBarButton {
     id: background
 
@@ -14,7 +14,8 @@ AppBarButton {
     readonly property alias menu: list
 
     icon: "window"
-    text: `im hintergrund ${apps.length}`
+    text: "im hintergrund"
+    count: apps.length
     present: apps.length > 0
     onClicked: {
         if (list.open)

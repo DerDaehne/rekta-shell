@@ -9,7 +9,7 @@ import "TrayRules.js" as TrayRules
 // word and state. A row's menu replaces the list, headed by a back row; an entry with children opens the next level the
 // same way. Escape and ← go back one level, Tab closes everything, choosing a leaf triggers it and closes.
 //
-// `apps` are objects with word, icon, state, hasMenu, onlyMenu, menu and activate(). `opener` makes an object with a
+// `apps` are objects with word, icon, state, hasMenu, menu and activate(). `opener` makes an object with a
 // `menu` property and `children.values`, the entries of that menu (Quickshell's QsMenuOpener), one per level.
 Menu {
     id: tray
@@ -80,10 +80,10 @@ Menu {
     }
 
     function press(app: var, row: Item) {
-        if (!app.onlyMenu)
-            app.activate();
-        else if (app.hasMenu)
+        if (app.hasMenu)
             enter(app, app.menu, row);
+        else
+            app.activate();
     }
 
     function pressEntry(entry: var, row: Item) {
@@ -161,7 +161,8 @@ Menu {
         }
     }
 
-    // A running app. Pressing it brings it forward; an app that is only a menu opens its menu in place.
+    // A running app. Pressing an app with a menu of its own opens that menu in place, even when the app has a window;
+    // pressing one without brings it forward.
     component AppRow: MenuItem {
         required property int at
         readonly property var app: tray.shown[at] ?? null
@@ -169,7 +170,7 @@ Menu {
         text: app?.word ?? ""
         icon: TrayRules.shownIcon(app?.icon ?? "", tray.iconKnown)
         keyHint: app?.state ?? ""
-        opensLevel: app?.onlyMenu ?? false
+        opensLevel: app?.hasMenu ?? false
         Accessible.name: keyHint !== "" ? `${text}, ${keyHint}` : text
     }
 

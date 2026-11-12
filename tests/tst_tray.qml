@@ -5,6 +5,7 @@ import QtTest
 import Rekta
 import Tray
 import "ContactSheets.js" as ContactSheets
+import "Ink.js" as Ink
 
 TestCase {
     id: testCase
@@ -52,7 +53,6 @@ TestCase {
         property string icon
         property string state
         property bool hasMenu: menu !== null
-        property bool onlyMenu: false
         property FakeMenu menu: null
 
         function activate() {
@@ -182,6 +182,7 @@ TestCase {
     function cleanup() {
         Prefs.theme = "system";
         Prefs.density = "auto";
+        Prefs.motion = "system";
     }
 
     function entry(text: string, props: var): QtObject {
@@ -196,12 +197,12 @@ TestCase {
         return createTemporaryObject(appComponent, testCase, Object.assign({ word, icon: blueIcon }, props ?? {}));
     }
 
-    // Three apps: one with a menu and a submenu, one that is only a menu, one that has none.
+    // Three apps: one with a state, a menu and a submenu, one with a menu, one that has none.
     function threeApps(): var {
         const device = entry("Pair", { entries: [entry("Ping"), entry("Send file")] });
         return [
             app("Nextcloud", { state: "Synchronisiert", menu: menuOf([entry("Open folder"), entry("Pause", { buttonType: 1 }), entry("Devices", { entries: [device, entry("Refresh")] })]) }),
-            app("KDE Connect", { onlyMenu: true, menu: menuOf([entry("Browse"), entry("Quit", { enabled: false })]) }),
+            app("KDE Connect", { menu: menuOf([entry("Browse"), entry("Quit", { enabled: false })]) }),
             app("Steam", {})
         ];
     }
@@ -244,41 +245,81 @@ TestCase {
         compare(rowAt(menu, "Steam").Accessible.name, "Steam");
     }
 
-    function test_pressing_an_app_brings_it_forward_and_closes_the_menu() {
-        const menu = open(threeApps());
-        mouseClick(rowAt(menu, "Nextcloud"));
-        compare(calls, ["activate Nextcloud"]);
-        verify(!menu.open);
+    // Presses an app's row as the pointer, the keys or → do.
+    function pressRow(menu: var, word: string, how: string) {
+        const row = rowAt(menu, word);
+        if (how === "click" || how === "right click") {
+            mouseClick(row, undefined, undefined, how === "click" ? Qt.LeftButton : Qt.RightButton);
+            return;
+        }
+        menu.focusAt(menu.items().indexOf(row));
+        keyClick({ "enter": Qt.Key_Return, "space": Qt.Key_Space, "right": Qt.Key_Right }[how]);
     }
 
-    function test_pressing_an_app_that_is_only_a_menu_opens_its_menu_in_place() {
-        const menu = open(threeApps());
-        mouseClick(rowAt(menu, "KDE Connect"));
-        compare(calls, []);
-        verify(menu.open, "the menu stays");
-        compare(rowNames(menu), ["zurück · KDE Connect", "Browse", "Quit"]);
+    function test_any_press_on_an_app_with_a_menu_opens_it_in_place_even_when_the_app_has_a_window() {
+        for (const how of ["click", "right click", "enter", "space", "right"]) {
+            calls = [];
+            const menu = open(threeApps());
+            pressRow(menu, "Nextcloud", how);
+            compare(calls, [], `${how}: the app is not brought forward`);
+            verify(menu.open, `${how}: the menu stays`);
+            compare(rowNames(menu), ["zurück · Nextcloud", "Open folder", "Pause", "Devices"], how);
+            menu.close(false);
+        }
     }
 
-    function test_pressing_an_app_that_is_only_a_menu_without_one_does_nothing() {
-        const menu = open([app("Odd", { onlyMenu: true })]);
-        mouseClick(rowAt(menu, "Odd"));
-        compare(calls, []);
-        verify(menu.open);
-        compare(rowNames(menu), ["Odd"]);
+    function test_a_press_enter_or_space_on_an_app_without_a_menu_brings_it_forward_and_closes_the_menu() {
+        for (const how of ["click", "enter", "space"]) {
+            calls = [];
+            const menu = open(threeApps());
+            pressRow(menu, "Steam", how);
+            compare(calls, ["activate Steam"], how);
+            verify(!menu.open, how);
+        }
     }
 
-    function test_right_opens_the_menu_of_an_app_that_is_pressed_to_activate() {
-        const menu = open(threeApps());
-        keyClick(Qt.Key_Right);
-        compare(rowNames(menu)[0], "zurück · Nextcloud");
-        compare(calls, []);
+    function test_right_or_a_right_click_on_an_app_without_a_menu_does_nothing() {
+        for (const how of ["right click", "right"]) {
+            calls = [];
+            const menu = open(threeApps());
+            pressRow(menu, "Steam", how);
+            compare(calls, [], how);
+            verify(menu.open, how);
+            compare(rowNames(menu), ["Nextcloud", "KDE Connect", "Steam"], how);
+            menu.close(false);
+        }
     }
 
-    function test_right_on_an_app_without_a_menu_does_nothing() {
+    function test_an_app_with_a_menu_ends_in_the_chevron_on_and_one_without_has_none() {
         const menu = open(threeApps());
-        keyClick(Qt.Key_End);
-        keyClick(Qt.Key_Right);
-        compare(rowNames(menu), ["Nextcloud", "KDE Connect", "Steam"]);
+        const onward = row => findChild(row, "onward");
+        verify(onward(rowAt(menu, "Nextcloud")).visible);
+        verify(onward(rowAt(menu, "KDE Connect")).visible);
+        verify(!onward(rowAt(menu, "Steam")).visible);
+        waitForRendering(scene);
+        wait(Tokens.durationFloat);
+        const image = grabImage(testCase);
+        for (const word of ["KDE Connect", "Steam"]) {
+            const row = rowAt(menu, word);
+            const end = row.mapToItem(testCase, row.width - Tokens.spaceM - 3 * Geometry.chevronSize, 0);
+            const area = { x: Math.round(end.x), y: Math.round(end.y), width: 3 * Geometry.chevronSize, height: Math.round(row.height) };
+            compare(Ink.bounds(image, area, Tokens.color.textPrimary, Tokens.color.bg) !== null, word === "KDE Connect", `${word}: drawn at its end or not`);
+        }
+    }
+
+    function test_an_app_s_state_stands_before_the_chevron_and_is_cut_first_while_the_chevron_stays() {
+        const menu = open([app("Nextcloud", { state: "Synchronisiere 12 Dateien", menu: menuOf([entry("Open folder")]) })]);
+        const row = rowAt(menu, "Nextcloud");
+        const key = findChild(row, "key");
+        const onward = findChild(row, "onward");
+        compare(key.x + key.width, onward.x + Geometry.chevronOnNudge - Tokens.spaceS, "space-s before the chevron");
+        verify(!key.truncated);
+        row.width = row.implicitWidth - key.implicitWidth / 2;
+        verify(key.truncated, "the state is cut");
+        verify(!findChild(row, "label").truncated, "the word stays whole");
+        verify(onward.visible);
+        compare(onward.x + onward.width, row.width - Tokens.spaceM - Geometry.chevronOnNudge, "the chevron keeps the end");
+        compare(key.x + key.width, onward.x + Geometry.chevronOnNudge - Tokens.spaceS);
     }
 
     function test_the_menu_of_an_app_shows_checks_separators_and_greyed_entries() {
@@ -523,17 +564,35 @@ TestCase {
         compare(rowNames(menu), ["KDE Connect", "Steam"]);
     }
 
-    function test_the_number_follows_the_apps_in_place() {
-        const apps = threeApps();
-        open(apps);
-        const control = scene.control;
-        compare(control.text, "im hintergrund 3");
-        const messages = findChild(scene, "messages");
-        scene.apps = apps.slice(0, 2);
-        compare(control.text, "im hintergrund 2");
-        compare(findChild(control, "label").text, "im hintergrund 2");
-        verify(!findChild(control, "press").opacity, "nothing blinks or peeks");
-        verify(messages.x > 0);
+    // The bar with `before` apps once it has laid itself out, then with `after`.
+    function countFrom(before: int, after: int): var {
+        const apps = Array.from({ length: Math.max(before, after) }, (_, at) => app(`App ${at}`, {}));
+        scene = createTemporaryObject(sceneComponent, testCase, { apps: apps.slice(0, before) });
+        tryVerify(() => !scene.bar.settling && !scene.bar.gliding);
+        scene.apps = apps.slice(0, after);
+        return scene.control;
+    }
+
+    function test_a_new_number_peeks_in_and_the_bar_glides_as_the_control_widens() {
+        Prefs.motion = "on";
+        const control = countFrom(9, 10);
+        compare(control.count, 10);
+        compare(findChild(control, "label").text, "im hintergrund", "the number is no part of the word");
+        verify(findChild(control, "peekRun").running, "it peeks");
+        compare(findChild(control, "ghost").text, " 9");
+        compare(findChild(control, "count").text, " 10");
+        verify(scene.bar.gliding, "the others glide to their new places");
+        compare(control.Accessible.name, "im hintergrund 10");
+    }
+
+    function test_under_reduced_motion_a_new_number_stands_at_once() {
+        Prefs.motion = "off";
+        const control = countFrom(9, 10);
+        tryVerify(() => !findChild(control, "peekRun").running);
+        verify(!scene.bar.gliding);
+        compare(findChild(control, "count").opacity, 1);
+        compare(findChild(control, "count").text, " 10");
+        verify(!findChild(control, "ghost").visible);
     }
 
     function test_with_no_app_the_control_is_gone_from_the_bar_and_leaves_no_gap() {
@@ -548,7 +607,7 @@ TestCase {
         tryVerify(() => messages.x < withControl, 1000, "the controls after it close up");
         scene.apps = [app("Steam", {})];
         verify(control.visible, "it comes back with the first app");
-        compare(control.text, "im hintergrund 1");
+        compare(control.count, 1);
     }
 
     function test_the_bar_does_not_count_the_gone_control_when_it_fits_the_others_without_more() {
@@ -559,22 +618,6 @@ TestCase {
         scene.apps = [app("Steam", {})];
         compare(scene.bar.plan.more, true, "with the third the least important moves into more");
         verify(scene.bar.plan.moved.includes(scene.control));
-    }
-
-    function test_right_click_opens_the_menu_of_an_app_that_has_a_window_in_place() {
-        const menu = open(threeApps());
-        mouseClick(rowAt(menu, "Nextcloud"), undefined, undefined, Qt.RightButton);
-        compare(calls, [], "the app is not brought forward");
-        verify(menu.open, "the list stays");
-        compare(rowNames(menu), ["zurück · Nextcloud", "Open folder", "Pause", "Devices"]);
-    }
-
-    function test_right_click_on_an_app_without_a_menu_does_nothing() {
-        const menu = open(threeApps());
-        mouseClick(rowAt(menu, "Steam"), undefined, undefined, Qt.RightButton);
-        compare(calls, []);
-        verify(menu.open);
-        compare(rowNames(menu), ["Nextcloud", "KDE Connect", "Steam"]);
     }
 
     function test_right_click_on_an_entry_with_children_opens_the_next_level() {

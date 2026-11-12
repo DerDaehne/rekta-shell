@@ -29,7 +29,6 @@ Scope {
         readonly property string icon: modelData.icon
         readonly property string state: TrayRules.state(modelData.status, modelData.tooltipTitle, modelData.tooltipDescription)
         readonly property bool hasMenu: modelData.hasMenu
-        readonly property bool onlyMenu: modelData.onlyMenu
         readonly property var menu: modelData.menu
 
         // Brings the app forward, over the session's own bus.
