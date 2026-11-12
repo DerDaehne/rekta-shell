@@ -30,6 +30,7 @@ let
     (lib.evalModules {
       modules = [
         {
+          options.fonts.fontconfig.enable = lib.mkEnableOption "fontconfig";
           options.home.packages = lib.mkOption {
             type = lib.types.listOf lib.types.package;
             default = [ ];
@@ -344,6 +345,18 @@ in
         }
       ]
     ) "the start tempo and search escape options changed a system that does not enable the module";
+    assert lib.assertMsg (
+      toplevel [ plasma ] == toplevel [
+        plasma
+        module
+        { programs.rekta-shell.installFont = false; }
+      ]
+    ) "the installFont option changed a system that does not enable the module";
+    assert lib.assertMsg (lib.elem pkgs.atkinson-hyperlegible-next enabled.fonts.packages)
+      "the enabled NixOS module does not install the typeface";
+    assert lib.assertMsg (
+      !lib.elem pkgs.atkinson-hyperlegible-next (withSettings { installFont = false; }).fonts.packages
+    ) "installFont = false still installs the typeface";
     assert lib.assertMsg (lib.elem "rekta" enabled.services.displayManager.sessionData.sessionNames)
       "the enabled NixOS module does not register the rekta session";
     assert lib.assertMsg (lib.elem enabled.programs.rekta-shell.package enabled.systemd.packages)
@@ -422,6 +435,20 @@ in
     ) "the home-manager module adds packages with its defaults";
     assert lib.assertMsg (lib.elem enabled.programs.rekta-shell.package enabled.home.packages)
       "the enabled home-manager module leaves its package out of home.packages";
+    assert lib.assertMsg (
+      lib.elem pkgs.atkinson-hyperlegible-next enabled.home.packages && enabled.fonts.fontconfig.enable
+    ) "the enabled home-manager module does not install the typeface";
+    assert lib.assertMsg (
+      !lib.elem pkgs.atkinson-hyperlegible-next
+        (homeConfig [
+          {
+            programs.rekta-shell = {
+              enable = true;
+              installFont = false;
+            };
+          }
+        ]).home.packages
+    ) "installFont = false still installs the typeface in the profile";
     pkgs.runCommand "rekta-shell-home-module" { } "touch $out";
 
   # The Fedora VM's source ISO must list exactly the tracked files, whatever else lies in the checkout.

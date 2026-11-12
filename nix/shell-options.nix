@@ -2,6 +2,12 @@
 { lib }:
 {
   options = {
+    installFont = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Install the typeface Atkinson Hyperlegible Next, which the shell, the lock screen and KWin's QML are set in, once the module is enabled. Turn it off when the configuration provides the typeface itself.";
+    };
+
     background = lib.mkOption {
       type = lib.types.enum [
         "rekta"

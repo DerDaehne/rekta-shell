@@ -25,5 +25,8 @@ in
   }
   // shared.options;
 
-  config = lib.mkIf cfg.enable { home.packages = [ cfg.package ]; };
+  config = lib.mkIf cfg.enable {
+    home.packages = [ cfg.package ] ++ lib.optional cfg.installFont pkgs.atkinson-hyperlegible-next;
+    fonts.fontconfig.enable = lib.mkIf cfg.installFont true;
+  };
 }

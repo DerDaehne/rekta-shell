@@ -31,6 +31,8 @@ in
       }
     ];
 
+    fonts.packages = lib.optional cfg.installFont pkgs.atkinson-hyperlegible-next;
+
     services.displayManager.sessionPackages = [ cfg.package ];
     systemd.packages = [ cfg.package ];
     # On the system's XDG data path, so the desktop entries the package brings are found.
