@@ -19,7 +19,8 @@ Row {
     property string disabledReason
     // The words of its tooltip (navigation.md, "Tooltips"): a name the glyph stands for, or a shortcut.
     property string tip
-    // In a list row or a table an icon button takes the row's height.
+    // In a list row or a table an icon button takes the row's height; there the row says why it cannot act, below its
+    // controls, as a hairline row wraps (rekta.css:74), so the reason is not said again beside each button.
     property bool inRow: false
     // A running action refuses clicks but keeps its colours (rekta.css:332–334).
     readonly property bool refuses: pending || disabledReason !== ""
@@ -249,7 +250,7 @@ Row {
     Hint {
         objectName: "why"
         anchors.baseline: box.baseline
-        visible: button.disabledReason !== "" && !button.inActions
+        visible: button.disabledReason !== "" && !button.inActions && !button.inRow
         text: button.disabledReason
     }
 }

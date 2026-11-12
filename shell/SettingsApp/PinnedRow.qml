@@ -178,7 +178,7 @@ SortableRow {
 
             objectName: "name"
             x: Tokens.spaceS + Geometry.iconSize + Tokens.spaceS
-            width: Math.min(implicitWidth, parent.width - x - (row.missing ? absent.width + Tokens.spaceS : 0) - Tokens.spaceS)
+            width: Math.max(0, Math.min(implicitWidth, parent.width - x - (row.missing ? absent.width + Tokens.spaceS : 0) - Tokens.spaceS))
             anchors.verticalCenter: parent.verticalCenter
             text: row.title
             textFormat: Text.PlainText

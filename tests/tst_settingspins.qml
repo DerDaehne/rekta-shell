@@ -304,10 +304,26 @@ TestCase {
             compare(each.grip.disabledReason, "datei nicht lesbar");
             compare(findChild(each, "size").disabledReason, "datei nicht lesbar");
             compare(findChild(each, "remove").disabledReason, "datei nicht lesbar");
+            verify(!findChild(findChild(each, "remove"), "why").visible, "the row says it once, below its size");
+            verify(findChild(findChild(each, "size"), "why").visible);
         }
         compare(combo().disabledReason, "datei nicht lesbar");
         compare(pinButton().disabledReason, "datei nicht lesbar");
         compare(findChild(findChild(group(), "add"), "hint").text, "start.json ist kein gültiges json. korrigiere oder lösche die datei, dann lässt sich hier wieder etwas ändern.");
+    }
+
+    // A long name is cut, with its whole as the tip; a short one shows whole.
+    function test_in_the_narrowest_window_a_disabled_row_still_shows_its_name() {
+        Prefs.density = "comfortable";
+        make("{ not json");
+        host.width = view.minimumWidth;
+        waitForRendering(view);
+        for (const each of rows()) {
+            const name = findChild(each, "name");
+            verify(name.width >= Math.min(name.implicitWidth, Tokens.tileUnit / 2), each.title);
+            verify(findChild(each, "size").x > name.x + name.width, each.title);
+        }
+        verify(!findChild(row("Dolphin"), "name").truncated);
     }
 
     function test_a_broken_file_stays_byte_identical_whatever_is_tried() {
