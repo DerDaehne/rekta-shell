@@ -410,8 +410,8 @@ void FadeBackEffect::fingerAt(const QPointF &delta, LogicalOutput *output)
     Q_EMIT fingerMoved(-delta.y());
 }
 
-// The edge is left as it is: KWin is still handing the release along it. The shell's answer moves the windows, and
-// the next step frees the edge.
+// KWin may still be handing the release along the edge, so it is freed only on the event loop's next turn. The shell
+// may answer nothing, the Start having opened all the way while the finger held.
 void FadeBackEffect::letGo()
 {
     if (!m_fingerDown) {
@@ -419,6 +419,7 @@ void FadeBackEffect::letGo()
     }
     m_fingerDown = false;
     Q_EMIT fingerLetGo();
+    QMetaObject::invokeMethod(this, &FadeBackEffect::holdEdge, Qt::QueuedConnection);
 }
 
 void FadeBackEffect::prePaintScreen(ScreenPrePaintData &data)
