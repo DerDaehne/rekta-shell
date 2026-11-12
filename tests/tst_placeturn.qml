@@ -701,6 +701,28 @@ TestCase {
         verify(topLean(tile) > 1, `${topLean(tile)}`);
     }
 
+    function test_a_turn_that_keeps_its_landed_parts_can_be_set_back_from_its_end_and_the_next_turn_lets_them_go() {
+        turner.go(null, second, {
+            edge: "bottom"
+        });
+        turner.paused = true;
+        turner.keepsLanded = true;
+        const turns = turner.arrivingTurns;
+        const end = Math.max(...turns.map(turn => turn.at + turn.duration));
+        turner.elapsed = end;
+        compare(turner.turning.length, turns.length, "landed, every part is still held");
+        compare(landedSpy.count, 0);
+        const first = turns[0];
+        turner.elapsed = first.at + first.duration / 2;
+        const angle = rotationOf(first.part.item).angle;
+        verify(angle > 0 && angle < Tokens.turnstileInAngle, `${angle}`);
+        turner.go(second, null);
+        landedSpy.clear();
+        verify(!turner.keepsLanded, "a new turn keeps nothing unless told");
+        turner.elapsed = turner.handOverAt;
+        compare(landedSpy.count, 1, "with nothing to arrive at it lands at the hand-over");
+    }
+
     function test_a_paused_turn_shows_whatever_moment_its_elapsed_time_names_earlier_ones_too() {
         turnToSecond({
             edge: "bottom"
