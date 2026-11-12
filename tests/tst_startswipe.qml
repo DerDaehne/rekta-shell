@@ -281,6 +281,41 @@ TestCase {
         verify(start.holdsKeyboard);
     }
 
+    // Under a full-screen window the Start's surface maps only as the finger comes, and has no size before its first
+    // configure.
+    function test_the_parts_are_planned_once_the_start_has_its_size_and_then_stand_where_the_finger_is() {
+        start.width = 0;
+        start.followFinger(wholeWay / 2);
+        compare(start.phase, "following", "the surface shows");
+        verify(!turner.running);
+        compare(windowsSpy.count, 0);
+        start.width = testCase.width;
+        verify(turner.running);
+        verify(turner.arrivingTurns.length > 0);
+        fuzzyCompare(start.openingAt, start.openingTime / 2, 1e-6);
+        compare(lastToldWindows(), [start.openingAt, 0]);
+    }
+
+    function test_let_go_past_half_before_the_start_had_its_size_it_opens_as_meta_opens_it() {
+        start.width = 0;
+        start.followFinger(wholeWay * 0.8);
+        start.letFingerGo();
+        compare(start.phase, "opening");
+        verify(named("waitForWindows").running, "the parts wait for the windows, as after Meta");
+        verify(start.holdsKeyboard);
+        start.width = testCase.width;
+        tryCompare(start, "phase", "open", 3000);
+    }
+
+    function test_let_go_short_of_half_before_the_start_had_its_size_it_goes_again() {
+        start.width = 0;
+        start.followFinger(wholeWay * 0.3);
+        start.letFingerGo();
+        compare(start.phase, "closed");
+        compare(keyboardSpy.count, 0);
+        compare(windowsSpy.count, 0);
+    }
+
     function test_under_reduced_motion_let_go_short_of_half_nothing_happens() {
         Prefs.motion = "off";
         start.followFinger(wholeWay * 0.45);

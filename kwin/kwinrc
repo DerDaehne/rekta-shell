@@ -7,6 +7,8 @@ slideEnabled=false
 loginEnabled=false
 # scale opens every layer surface of a namespace KWin does not know, the shell's too; Rekta gives it no meaning.
 scaleEnabled=false
+# screenedge lights an edge as a finger or the pointer comes near it; Rekta gives it no meaning.
+screenedgeEnabled=false
 
 # KWin has one blur for every surface and no radius: strength 5 comes closest to Rekta's 12px. Rekta adds no noise
 # and no saturation.

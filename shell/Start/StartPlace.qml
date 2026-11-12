@@ -189,9 +189,17 @@ FocusScope {
         if (Tokens.reducedMotion)
             return;
         if (phase === "closed")
-            beginFollowing();
-        if (phase !== "following")
+            setOut("following");
+        standWithFinger();
+    }
+
+    // The opening where the finger has taken it, once its parts are planned. They are as the Start has its size: under a
+    // full-screen window its surface maps only as the finger comes.
+    function standWithFinger() {
+        if (phase !== "following" || width <= 0 || height <= 0)
             return;
+        if (!turner.running)
+            planFollowing();
         showAt(fingerShare * openingTime);
         windowsAt(openingAt, 0);
     }
@@ -212,8 +220,7 @@ FocusScope {
 
     // The parts stand ready to turn in, held at whatever moment the finger names; not one lets go before the end, so
     // the opening can go back.
-    function beginFollowing() {
-        setOut("following");
+    function planFollowing() {
         turnIn();
         turner.paused = true;
         turner.keepsLanded = true;
@@ -226,8 +233,14 @@ FocusScope {
         turner.elapsed = Math.max(0, time - waitForWindows.interval);
     }
 
-    // On in its own times, and the Start takes the keyboard as after Meta.
+    // On in its own times, and the Start takes the keyboard as after Meta. Let go before its parts were planned, it
+    // opens as Meta opens it.
     function goOn() {
+        if (!turner.running) {
+            phase = "closed";
+            open();
+            return;
+        }
         phase = "opening";
         windowsAt(openingAt, 1);
         runFinger(1);
@@ -235,6 +248,10 @@ FocusScope {
 
     // Back the same way in the same times; the Start never takes the keyboard.
     function runBack() {
+        if (!turner.running) {
+            returned();
+            return;
+        }
         phase = "returning";
         windowsAt(openingAt, -1);
         runFinger(-1);
@@ -1125,6 +1142,8 @@ FocusScope {
     onHeightChanged: menu.close(false)
     Component.onCompleted: showPins(pinned)
     onQueryChanged: refresh()
+    onWidthChanged: standWithFinger()
+    onHeightChanged: standWithFinger()
     onAppsChanged: {
         refresh();
         regroup();
