@@ -214,7 +214,7 @@ SortableRow {
         onActivated: index => {
             const option = row.sizeOptions[index];
             if (option.value !== row.size)
-                row.group.resize(row.appId, row.title, option.value, option.text);
+                row.group.resize(row.key, row.title, option.value, option.text);
             currentIndex = Qt.binding(() => row.sizeOptions.findIndex(option => option.value === row.size));
         }
 

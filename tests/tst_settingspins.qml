@@ -462,6 +462,72 @@ TestCase {
         verify(row("org.gone.app").grip.activeFocus);
     }
 
+    function test_with_a_broken_file_no_row_lifts_leaves_or_follows_a_pull_and_the_grip_says_why() {
+        make("{ not json");
+        Prefs.motion = "on";
+        const first = rows()[0];
+        compare(first.grip.Accessible.description, "datei nicht lesbar");
+        const list = group().rows;
+        const x = Geometry.gripWidth / 2;
+        const y = first.height / 2;
+        mousePress(list, x, y);
+        mouseMove(list, x, y + first.height, -1, Qt.LeftButton);
+        mouseMove(list, x, y + 2 * first.height, -1, Qt.LeftButton);
+        verify(!first.lifted, "a disabled grip drags nothing");
+        mouseRelease(list, x, y + 2 * first.height);
+        first.grip.forceActiveFocus();
+        keyClick(Qt.Key_Delete);
+        compare(first.leaving, 0, "Delete lets nothing go");
+        verify(!first.going);
+        const scene = view.Window.window.contentItem;
+        const from = findChild(first, "pullArea").mapToItem(scene, 40, first.height / 2);
+        mousePress(scene, from.x, from.y);
+        mouseMove(scene, from.x + 20, from.y);
+        mouseMove(scene, from.x + 0.3 * first.width, from.y);
+        compare(first.pulled, 0, "a pull moves nothing");
+        mouseRelease(scene, from.x + 0.3 * first.width, from.y);
+    }
+
+    function test_before_the_apps_have_been_read_no_row_says_nicht_installiert() {
+        view.apps = null;
+        waitForRendering(view);
+        for (const each of rows())
+            verify(!findChild(each, "missing").visible, each.title);
+        compare(row("org.gone.app").appId, "org.gone.app");
+    }
+
+    readonly property string twiceFile: fileText([
+        { id: "org.kde.dolphin" },
+        { id: "org.kde.dolphin", columns: 2, rows: 1, group: "files" }
+    ])
+
+    function test_a_size_chosen_in_the_second_row_of_an_app_pinned_twice_changes_that_row_and_undo_restores_it() {
+        make(twiceFile);
+        findChild(rows()[1], "size").activated(2);
+        const pinned = JSON.parse(file.text).pinned;
+        compare(pinned[0], { id: "org.kde.dolphin" });
+        compare([pinned[1].columns, pinned[1].rows], [2, 2]);
+        toast().undo();
+        compare(file.text, twiceFile);
+    }
+
+    function test_undoing_the_unpin_of_one_of_an_apps_two_rows_puts_it_back_byte_identically() {
+        make(twiceFile);
+        findChild(rows()[1], "remove").clicked();
+        tryCompare(testCase, "listedIdsNow", ["org.kde.dolphin"]);
+        toast().undo();
+        compare(file.text, twiceFile);
+    }
+
+    function test_undoing_an_unpin_brings_nothing_when_the_entry_came_back_from_elsewhere_meanwhile() {
+        make(twiceFile);
+        findChild(rows()[1], "remove").clicked();
+        tryCompare(testCase, "listedIdsNow", ["org.kde.dolphin"]);
+        file.text = twiceFile;
+        toast().undo();
+        compare(file.text, twiceFile);
+    }
+
     function test_a_row_pulled_past_half_its_width_is_unpinned() {
         pull(row("Dolphin"), 0.5 + 0.02);
         tryCompare(testCase, "listedIdsNow", ["systemsettings", "org.gone.app", "org.kde.konsole"]);

@@ -148,6 +148,10 @@ Column {
         return entries.findIndex(entry => Pins.bareId(entry?.id) === id);
     }
 
+    function countOf(id: string): int {
+        return entries.filter(entry => Pins.bareId(entry?.id) === id).length;
+    }
+
     function pin(id: string) {
         const app = appOf(id);
         if (!write(() => file.pin(id)))
@@ -164,10 +168,13 @@ Column {
     function unpin(key: string, name: string): bool {
         const at = keyIndex(key, 0);
         const entry = file.entry(at);
+        const id = Pins.bareId(entry?.id);
+        const left = countOf(id) - 1;
         if (at < 0 || !write(() => file.unpin(at)))
             return false;
         tell(`${name} gelöst`, () => {
-            if (indexOf(Pins.bareId(entry.id)) < 0)
+            // Counted, not searched: the same app may stay pinned more than once, and undo must not bring it twice.
+            if (countOf(id) <= left)
                 write(() => file.insert(Math.min(at, entries.length), entry));
         });
         return true;
@@ -189,14 +196,15 @@ Column {
         row.leave();
     }
 
-    function resize(appId: string, name: string, value: string, sizeName: string) {
-        const at = indexOf(appId);
+    // Found by the row's key, not its app: the same app may be pinned more than once.
+    function resize(key: string, name: string, value: string, sizeName: string) {
+        const at = keyIndex(key, 0);
         const entry = file.entry(at);
         const [columns, rows] = value.split("×").map(Number);
         if (at < 0 || !write(() => file.resize(at, columns, rows)))
             return;
         tell(`${name}: ${sizeName}`, () => {
-            const now = indexOf(appId);
+            const now = keyIndex(key, 0);
             if (now >= 0)
                 write(() => file.replace(now, entry));
         });
