@@ -1138,12 +1138,16 @@ FocusScope {
     onFocusItemChanged: reveal(focusItem)
     onPinnedChanged: followPinned()
     onWantedChanged: menu.close(false)
-    onWidthChanged: menu.close(false)
-    onHeightChanged: menu.close(false)
+    onWidthChanged: {
+        menu.close(false);
+        standWithFinger();
+    }
+    onHeightChanged: {
+        menu.close(false);
+        standWithFinger();
+    }
     Component.onCompleted: showPins(pinned)
     onQueryChanged: refresh()
-    onWidthChanged: standWithFinger()
-    onHeightChanged: standWithFinger()
     onAppsChanged: {
         refresh();
         regroup();
