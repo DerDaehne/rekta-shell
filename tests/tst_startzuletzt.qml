@@ -423,6 +423,15 @@ TestCase {
         compare(recent.source, null);
     }
 
+    function test_switched_off_while_the_shell_runs_zuletzt_lets_go_of_its_model_and_its_title() {
+        use("a.pdf", 1);
+        start.showRecent = false;
+        compare(recent.source, null);
+        compare(named("sectionStrip").titles, ["angeheftet", "heute"]);
+        start.showRecent = true;
+        tryVerify(() => recent.source !== null, 2000, "on again, it asks and reads anew");
+    }
+
     function test_a_row_has_no_remove_button_and_delete_and_a_pull_remove_nothing() {
         three();
         openNow();
