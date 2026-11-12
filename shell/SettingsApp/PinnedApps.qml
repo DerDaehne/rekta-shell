@@ -203,10 +203,12 @@ Column {
         const [columns, rows] = value.split("×").map(Number);
         if (at < 0 || !write(() => file.resize(at, columns, rows)))
             return;
+        // Undo looks for the entry as written: a move may have changed the keys of an app pinned twice since.
+        const written = JSON.stringify(file.entry(at));
         tell(`${name}: ${sizeName}`, () => {
-            const now = keyIndex(key, 0);
-            if (now >= 0)
-                write(() => file.replace(now, entry));
+            const found = entries.map((each, index) => JSON.stringify(each) === written ? index : -1).filter(index => index >= 0);
+            if (found.length === 1)
+                write(() => file.replace(found[0], entry));
         });
     }
 

@@ -511,6 +511,26 @@ TestCase {
         compare(file.text, twiceFile);
     }
 
+    function test_undoing_a_resize_after_moving_that_row_above_its_apps_other_row_restores_only_its_size() {
+        make(twiceFile);
+        findChild(rows()[1], "size").activated(2);
+        rows()[1].grip.forceActiveFocus();
+        keyClick(Qt.Key_Up, Qt.AltModifier);
+        toast().undo();
+        compare(file.text, fileText([
+            { id: "org.kde.dolphin", columns: 2, rows: 1, group: "files" },
+            { id: "org.kde.dolphin" }
+        ]));
+    }
+
+    function test_undoing_a_resize_that_made_two_entries_alike_changes_nothing_as_it_cannot_tell_them_apart() {
+        make(fileText([{ id: "org.kde.dolphin" }, { id: "org.kde.dolphin", columns: 2, rows: 1 }]));
+        findChild(rows()[0], "size").activated(1);
+        const alike = file.text;
+        toast().undo();
+        compare(file.text, alike);
+    }
+
     function test_undoing_the_unpin_of_one_of_an_apps_two_rows_puts_it_back_byte_identically() {
         make(twiceFile);
         findChild(rows()[1], "remove").clicked();
