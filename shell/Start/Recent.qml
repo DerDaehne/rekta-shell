@@ -11,7 +11,8 @@ import RektaShell.DBus
 // removed here. A press opens the file. KDE's activity manager keeps what was used; Kickoff's model reads it. A file
 // used anew enters at the top and the eleventh leaves (motion.md, "Arriving, leaving"); held under the pointer or the
 // focus it stands still and counts the waiting updates (live.md, "Holding still"). Without the activity manager it
-// says so with a retry (states.md, "Data states"), and asks again each time the Start opens.
+// says so with a retry that has the bus start it, keeps the rows it had as from before (states.md, "Data states"), and
+// asks again each time the Start opens.
 Column {
     id: recent
 
@@ -30,6 +31,8 @@ Column {
     readonly property int lastUpdateRole: Qt.UserRole + 4
     // Whether the activity manager answers on the bus: "" until asked, "up" or "down".
     property string service: ""
+    // Asks the bus itself: (method, args, signature, done), done as DBusConnection.call calls back; replaceable for tests.
+    property var askBus: (method, args, signature, done) => bus.call("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", method, args, signature, done)
     readonly property var source: models.object
     // The files the model lists, newest first: {url, name, folder, icon, stamp}.
     property var listed: []
@@ -53,12 +56,20 @@ Column {
     function check() {
         if (!active)
             return;
-        bus.call("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "NameHasOwner", ["org.kde.ActivityManager"], "s", (error, values) => {
+        askBus("NameHasOwner", ["org.kde.ActivityManager"], "s", (error, values) => {
             recent.service = !error && values[0] === true ? "up" : "down";
         });
     }
 
+    // Asking whether it runs starts nothing: the retry has the bus start the activity manager, then asks.
+    function retry() {
+        askBus("StartServiceByName", ["org.kde.ActivityManager", 0], "su", () => recent.check());
+    }
+
     function relist() {
+        // Gone away, the activity manager takes its model along; the rows stay as they were, from before.
+        if (service !== "up")
+            return;
         const stamps = source?.sourceModel;
         const files = [];
         for (let k = 0; k < rows.count; k++) {
@@ -175,6 +186,8 @@ Column {
             check();
     }
     onActiveChanged: check()
+    // A model made anew may list nothing, which no added row would tell.
+    onSourceChanged: Qt.callLater(relist)
     onHeldChanged: follow()
 
     DBusConnection {
@@ -241,10 +254,23 @@ Column {
         }
     }
 
+    Empty {
+        objectName: "recentFailed"
+        width: recent.width
+        visible: recent.service === "down"
+        failed: true
+        text: "zuletzt geöffnete dateien ließen sich nicht laden: der aktivitätsdienst von kde läuft nicht, neu laden startet ihn." + (shown.count > 0 ? " was du siehst, ist von vorher." : "")
+
+        Button {
+            objectName: "retry"
+            text: "neu laden"
+            onClicked: recent.retry()
+        }
+    }
+
     Column {
         objectName: "recentRows"
         width: recent.width
-        visible: recent.service === "up"
         add: RowArrival {}
         move: RowsMakeRoom {}
 
@@ -278,7 +304,7 @@ Column {
 
     Hairline {
         width: recent.width
-        visible: recent.service === "up" && shown.count > 0
+        visible: shown.count > 0
     }
 
     Empty {
@@ -286,20 +312,6 @@ Column {
         width: recent.width
         visible: recent.service === "up" && shown.count === 0
         text: "noch keine datei geöffnet."
-    }
-
-    Empty {
-        objectName: "recentFailed"
-        width: recent.width
-        visible: recent.service === "down"
-        failed: true
-        text: "zuletzt geöffnete dateien lassen sich nicht laden: der dienst von kde, der sie sich merkt, läuft nicht. eine neue anmeldung startet ihn."
-
-        Button {
-            objectName: "retry"
-            text: "neu laden"
-            onClicked: recent.check()
-        }
     }
 
     LiveMore {

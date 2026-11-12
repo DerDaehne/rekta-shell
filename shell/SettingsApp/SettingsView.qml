@@ -190,7 +190,7 @@ FocusScope {
         id: recentField
 
         Setting {
-            hint: "die zuletzt geöffneten dateien als letzter abschnitt im start. aus liest die shell nicht, was du geöffnet hast."
+            hint: "die zuletzt geöffneten dateien als letzter abschnitt im start. ausgeschaltet liest die shell nicht, was du geöffnet hast."
             problem: view.problem
             presetWord: view.settings.differs("showRecent") ? (view.settings.preset("showRecent") ? "an" : "aus") : ""
 

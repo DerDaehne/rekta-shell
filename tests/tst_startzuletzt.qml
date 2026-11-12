@@ -27,6 +27,10 @@ TestCase {
     property var start
     property var recent
     property var owner
+    // What "zuletzt" asked the bus itself since the scene was made, oldest first.
+    property var asked: []
+    // Whether the bus starts the activity manager when asked to: its name is then owned.
+    property bool activatable: false
     // The time the files are used against; the rows tell it against `clock`.
     property double base: new Date(2026, 10, 12, 18, 0).getTime()
 
@@ -95,6 +99,7 @@ TestCase {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         Prefs.motion = "system";
         calls = [];
+        activatable = false;
         owner = createTemporaryObject(ownerComponent, testCase);
         makeScene(testCase, testCase.width, testCase.height, true);
     }
@@ -116,9 +121,23 @@ TestCase {
         recent = findChild(start, "zuletzt");
         recent.clock = () => new Date(testCase.base);
         recent.now = recent.clock();
+        asked = [];
+        recent.askBus = standInBus(recent.askBus);
         if (shown)
             tryVerify(() => recent.source !== null, 2000, "the activity manager answers and the model is made");
         return scene;
+    }
+
+    // Records what is asked and passes it on, but starts no service the test's bus might find on the machine.
+    function standInBus(bus: var): var {
+        return (method, args, signature, done) => {
+            asked = [...asked, method];
+            if (method !== "StartServiceByName")
+                return bus(method, args, signature, done);
+            if (activatable)
+                owner = createTemporaryObject(ownerComponent, testCase);
+            done(activatable ? null : "org.freedesktop.DBus.Error.ServiceUnknown", activatable ? [1] : []);
+        };
     }
 
     function named(name: string): var {
@@ -374,7 +393,7 @@ TestCase {
         const failed = findChild(recent, "recentFailed");
         verify(failed.visible);
         verify(failed.failed);
-        compare(failed.text, "zuletzt geöffnete dateien lassen sich nicht laden: der dienst von kde, der sie sich merkt, läuft nicht. eine neue anmeldung startet ihn.");
+        compare(failed.text, "zuletzt geöffnete dateien ließen sich nicht laden: der aktivitätsdienst von kde läuft nicht, neu laden startet ihn.");
         compare(findChild(failed, "sentence").color, Tokens.color.textPrimary);
         verify(findChild(failed, "errorMark").visible);
         compare(findChild(failed, "errorMark").color, Tokens.color.statusErrorFull);
@@ -398,6 +417,56 @@ TestCase {
         }, 3000);
         verify(!findChild(recent, "recentFailed").visible);
         verify(findChild(recent, "recentEmpty").visible);
+    }
+
+    function test_the_retry_has_the_bus_start_the_activity_manager_and_then_asks_again() {
+        owner.destroy();
+        tryVerify(() => {
+            recent.check();
+            return recent.service === "down";
+        }, 3000);
+        openNow();
+        activatable = true;
+        asked = [];
+        mouseClick(findChild(recent, "retry"));
+        tryCompare(recent, "service", "up", 3000);
+        compare(asked, ["StartServiceByName", "NameHasOwner"]);
+        verify(findChild(recent, "recentEmpty").visible);
+    }
+
+    function test_rows_shown_before_the_activity_manager_went_away_stay_marked_as_from_before() {
+        three();
+        openNow();
+        start.close(null);
+        tryCompare(start, "phase", "closed", 4000);
+        owner.destroy();
+        wait(200);
+        openNow();
+        tryCompare(recent, "service", "down", 3000);
+        settle();
+        compare(recent.source, null, "the model has gone with it");
+        compare(inPlace(), ["c.pdf", "b.pdf", "a.pdf"]);
+        verify(findChild(recent, "recentRows").visible);
+        const failed = findChild(recent, "recentFailed");
+        verify(failed.visible);
+        compare(failed.text, "zuletzt geöffnete dateien ließen sich nicht laden: der aktivitätsdienst von kde läuft nicht, neu laden startet ihn. was du siehst, ist von vorher.");
+        verify(failed.y < findChild(recent, "recentRows").y, "the sentence stands on the first hairline, above the rows");
+        owner = createTemporaryObject(ownerComponent, testCase);
+        mouseClick(findChild(failed, "retry"));
+        tryCompare(recent, "service", "up", 3000);
+        tryVerify(() => inPlace().length === 0, 2000, "back, it shows what the activity manager lists now: nothing");
+        verify(!failed.visible);
+    }
+
+    function test_switched_off_zuletzt_asks_the_bus_nothing() {
+        makeScene(testCase, testCase.width, testCase.height, false);
+        openNow();
+        wait(100);
+        compare(recent.service, "", "neither when it was made");
+        compare(asked, [], "nor when the Start opened");
+        start.showRecent = true;
+        tryCompare(recent, "service", "up", 2000);
+        compare(asked, ["NameHasOwner"]);
     }
 
     function test_each_opening_of_the_start_asks_the_activity_manager_again() {
