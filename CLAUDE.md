@@ -120,7 +120,7 @@ nix flake check   # package, qmllint (warnings fail), token drift, QML tests, mo
 nix develop       # qs, qmllint, qmlformat, node, gitleaks, nixfmt, rekta-qmllint
 nix build         # result/bin/rekta-shell, a wrapper around quickshell --path
 nix fmt           # formats the Nix files
-nix run .#nested -- [--window] [--outputs N] [--size WxH] [--background rekta|solid]   # own KWin, hot reload
+nix run .#nested -- [--window] [--outputs N] [--size WxH] [--background rekta|solid] [--touch-edges]   # own KWin, hot reload
 nix run .#nested-shot -- <file.png>                         # screenshot of the whole nested desktop (all outputs)
 nix run .#vm -- [--window] [QEMU args]                      # throwaway NixOS VM with Plasma 6, started from the checkout root
 nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   # Fedora 45 test VM for the RPM, from the checkout root
@@ -131,6 +131,13 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   the VM runs with `-display none`. Look at them with `nested-shot` or the
   monitor's `screendump`. `--window` restores the window in the desktop (a
   nested KWin window, QEMU's GTK window), which takes focus.
+- The nested KWin runs without global shortcuts, and KWin then also has no screen
+  edges. `--touch-edges` turns both on, so a synthetic finger (KWin's
+  `org_kde_kwin_fake_input` on the session's socket) can swipe in from an edge.
+  Its kglobalaccel lives inside that KWin on the session's private bus, and its
+  input comes only from its own socket (or, with `--window`, from the focused
+  window, after the desktop's KWin has run its own shortcuts): the desktop's
+  shortcuts stay untouched.
 - `shell/Rekta/` is the QML library (module `Rekta`). `Tokens.qml` is generated from the
   pinned Rekta Design and checked in, like `IconData.js` (the icons, drawn by `Icon.qml`):
   regenerate both with `nix run .#tokens`, never edit them; the `tokens-drift` check
