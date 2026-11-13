@@ -82,6 +82,40 @@ TestCase {
         }
     }
 
+    // The shell's bar as it was when the review found "stumm" over "meldungen 4": the words after "meldungen".
+    Component {
+        id: beside
+
+        Item {
+            id: besideScene
+
+            property alias bar: besideBar
+            property var shown: []
+
+            width: 1800
+            height: 300
+
+            AppBar {
+                id: besideBar
+
+                y: besideScene.height - height
+                width: 1600
+                area: Qt.size(width, besideScene.height)
+                centre: besideClock
+                centreReserve: Tokens.tileUnit
+
+                AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects"] }
+                AppBarClock { id: besideClock; objectName: "clock"; area: besideBar.area; locale: Qt.locale("de_DE"); now: testCase.widestClock }
+                AppBarButton { objectName: "background"; icon: "window"; text: "im hintergrund"; priority: 0 }
+                AppBarButton { objectName: "messages"; icon: "bell"; text: "meldungen"; count: 4; priority: 2 }
+                AppBarStatus { keys: testCase.keys; words: besideScene.shown; more: besideModel.more }
+                AppBarButton { objectName: "controls"; icon: "tune"; text: "steuerung"; priority: 1 }
+            }
+
+            StatusWords { id: besideModel }
+        }
+    }
+
     Component {
         id: pressSpy
 
@@ -92,7 +126,6 @@ TestCase {
 
     property var scene
     readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
-    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
@@ -134,22 +167,27 @@ TestCase {
     }
 
     // Makes `change` and checks that nothing that shows overlaps the clock or another item while what goes fades out, and at
-    // every tenth of the glide that follows. What comes stands where it rests from the start, so the others may still be
-    // leaving its place; once they have, nothing overlaps at all.
+    // every tenth of the glide that follows. What comes waits unseen where it rests all along the glide and shows once the
+    // glide has ended.
     function checkClearAllAlong(what: string, change: var) {
         const all = ["middle", "clock", "background", "messages", "controls"].map(name => findChild(scene, name)).concat(testCase.keys.map(word), [scene.bar.more]);
         const before = all.filter(item => item.visible);
         change();
         checkClear(`${what}, as it changes`, all);
         holdGlide();
-        const coming = all.filter(item => item.visible && !before.includes(item));
+        const coming = all.filter(item => (item as AppBarButton)?.wanted && !before.includes(item));
         const resting = coming.map(drawnX);
         for (let step = 0; step <= 10; step++) {
             scene.bar.reflow.progress = step / 10;
-            checkClear(`${what} at ${step / 10}`, all.filter(item => step === 10 || !coming.includes(item)));
-            coming.forEach((item, i) => compare(drawnX(item), resting[i], `${what} at ${step / 10}: ${item.objectName} stands where it rests`));
+            checkClear(`${what} at ${step / 10}`, all);
+            coming.forEach((item, i) => {
+                verify(!item.visible, `${what} at ${step / 10}: ${item.objectName} waits unseen`);
+                compare(drawnX(item), resting[i], `${what} at ${step / 10}: ${item.objectName} waits where it rests`);
+            });
         }
         scene.bar.reflow.run.complete();
+        coming.forEach(item => verify(item.visible, `${what}: ${item.objectName} shows once the others have made room`));
+        checkClear(`${what}, at rest`, all);
     }
 
     function checkClear(what: string, items: var) {
@@ -282,23 +320,72 @@ TestCase {
         tryVerify(() => scene.status.width === scene.status.widthAt(2));
     }
 
-    function test_a_word_that_comes_fades_in_where_it_rests_while_the_middle_glides_aside() {
+    function test_a_word_that_comes_waits_unseen_where_it_rests_while_the_middle_glides_aside_then_fades_in() {
         Prefs.motion = "on";
         makeScene({ shown: [muted] });
         settle();
         const from = middle().x;
         scene.shown = [microphone, muted];
-        tryVerify(() => word("microphone").visible && word("microphone").opacity < 1, 1000, "it fades in");
         holdGlide();
+        const microphoneWord = word("microphone");
+        verify(!microphoneWord.visible, "unseen as the glide begins");
         scene.bar.reflow.progress = 0;
-        const at = drawnX(word("microphone"));
+        const at = drawnX(microphoneWord);
         compare(middle().x, from, "the middle starts where it stood");
         scene.bar.reflow.progress = easeBase.valueForProgress(0.5);
         const half = middle().x;
+        verify(!microphoneWord.visible, "unseen halfway");
         scene.bar.reflow.run.complete();
-        compare(drawnX(word("microphone")), at, "it stood where it rests from the start");
+        verify(microphoneWord.visible, "it comes once the glide has ended");
+        compare(microphoneWord.opacity, 0, "from nothing");
+        verify(findChild(microphoneWord, "fadeRun").running, "fading in");
+        compare(drawnX(microphoneWord), at, "where it waited");
         verify(middle().x > from, "the middle made room");
         verify(Math.abs(half - (from + (middle().x - from) * easeBase.valueForProgress(0.5))) <= 1, `halfway at ${half}`);
+        tryCompare(microphoneWord, "opacity", 1);
+    }
+
+    function test_two_words_that_come_at_once_both_wait_for_the_glide_and_then_fade_in_together() {
+        Prefs.motion = "on";
+        makeScene({ shown: [muted] });
+        settle();
+        scene.shown = [microphone, battery, muted];
+        holdGlide();
+        const coming = [word("microphone"), word("battery")];
+        verify(coming.every(item => !item.visible), "both unseen while the others glide");
+        scene.bar.reflow.run.complete();
+        verify(coming.every(item => item.visible && item.opacity === 0), "both come from nothing");
+        verify(coming.every(item => findChild(item, "fadeRun").running), "together");
+    }
+
+    function test_a_word_that_comes_goes_and_comes_again_waits_for_the_glide_each_time() {
+        Prefs.motion = "on";
+        makeScene({ shown: [muted] });
+        settle();
+        const microphoneWord = word("microphone");
+        for (const round of [1, 2]) {
+            scene.shown = [microphone, muted];
+            holdGlide();
+            verify(!microphoneWord.visible, `round ${round}: it waits unseen`);
+            scene.bar.reflow.run.complete();
+            verify(microphoneWord.visible && microphoneWord.opacity < 1, `round ${round}: then fades in`);
+            tryCompare(microphoneWord, "opacity", 1);
+            scene.shown = [muted];
+            verify(microphoneWord.fading, `round ${round}: it fades out`);
+            settle();
+            verify(!microphoneWord.visible);
+        }
+    }
+
+    // The bar of the review that found "stumm" over "meldungen 4": the words on the trailing side, right after it.
+    function test_a_word_that_comes_beside_messages_never_lies_over_it() {
+        Prefs.motion = "on";
+        scene = createTemporaryObject(beside, testCase);
+        settle();
+        const messages = findChild(scene, "messages");
+        compare(messages.words, "meldungen 4");
+        checkClearAllAlong("stumm beside meldungen 4", () => (scene.shown = [muted]));
+        verify(endOf(messages) + scene.bar.gap <= drawnX(word("muted")) + 0.5, "it rests after meldungen");
     }
 
     function test_the_first_word_to_come_fades_in_at_the_start_of_the_bar_where_it_rests() {
@@ -350,8 +437,9 @@ TestCase {
         leaving.resume();
         holdGlide();
         verify(!word("microphone").visible);
-        verify(word("doNotDisturb").visible, "and comes as the others glide");
+        verify(!word("doNotDisturb").visible, "and still while the others glide");
         scene.bar.reflow.run.complete();
+        verify(word("doNotDisturb").visible, "it comes once they have made room");
     }
 
     function test_after_a_change_of_the_bar_s_width_a_word_that_goes_fades_out_again() {
@@ -387,8 +475,9 @@ TestCase {
         verify(!word("more").visible, "the count waits out of sight");
         holdGlide();
         verify(!word("muted").visible);
-        verify(word("more").visible, "and comes as the others glide");
+        verify(!word("more").visible, "and still while the others glide");
         scene.bar.reflow.run.complete();
+        verify(word("more").visible, "it comes once they have made room");
     }
 
     function test_while_words_come_and_go_nothing_runs_into_the_clock_or_another_control() {
@@ -414,6 +503,7 @@ TestCase {
         scene.shown = [microphone, muted];
         tryVerify(() => middle().x > from);
         verify(!scene.bar.gliding);
+        verify(word("microphone").visible);
         compare(word("microphone").opacity, 1);
         compare(scene.status.x + scene.status.width + scene.bar.gap, middle().x);
     }
@@ -542,7 +632,7 @@ TestCase {
     }
 
     // The bar before, a quarter and half the way through and after "mikrofon an" comes while "meldungen" counts from 9 to
-    // 10: the word fades in where it rests, the count peeks, the others glide aside.
+    // 10: the word waits unseen where it rests while the count peeks and the others glide aside, then fades in.
     function test_reflow_contact_sheet() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
@@ -563,14 +653,11 @@ TestCase {
         }
     }
 
-    // Holds a bar that has begun to glide at `share` of the glide's time, its new word and count as they are then.
+    // Holds a bar that has begun to glide at `share` of the glide's time, its count as it is then.
     function holdAt(bar: var, share: real) {
         tryVerify(() => bar.gliding);
         bar.reflow.run.pause();
         bar.reflow.progress = easeBase.valueForProgress(share);
-        const coming = findChild(bar, "status-microphone");
-        coming.animated = false;
-        coming.opacity = easeIn.valueForProgress(Math.min(1, share * Tokens.durationModerate / Tokens.durationShort));
         findChild(bar.messages, "peekRun").pause();
         findChild(bar.messages, "peek").phase = share;
     }

@@ -9,7 +9,8 @@ import QtQuick
 // the bar and the controls make room. The glass is the bar's; the blur behind it is the host's.
 //
 // When a control widens, comes or goes, the others glide to their new places (motion.md, "Resize and re-flow"); one that
-// goes, into "more" or for good, fades out first, and one that comes fades in (motion.md, "Arriving, leaving").
+// goes, into "more" or for good, fades out first, and one that comes fades in once they have made room (motion.md,
+// "Arriving, leaving").
 //
 // Away (under a full-screen window) it slides down out of sight, and comes back the same way: it leaves with ease-out
 // and arrives with ease-in, as everything that leaves and arrives does (motion.md).
@@ -225,11 +226,10 @@ Rectangle {
     }
 
     // What changes at once: what goes, into "more" or for good, starts fading out; the middle and the words follow the
-    // plan. Once nothing fades any more, the rest glide to their places while what comes fades in where it rests; until
-    // then it waits out of sight. A change of the room the sides have, such as the window's width, lays out at once: what
-    // that change brings comes and goes without a fade, what comes or goes after it fades again.
-    // ponytail: fading in while the rest glide is Rekta 0.5.0's presence(); 0.6.0 holds a bar control that comes unseen
-    // until the others have made room and fades it in after (motion.md:24; rekta.js:4101–4105, :4121–4127).
+    // plan. Once nothing fades any more, the rest glide to their places; what comes waits unseen where it will rest until
+    // they have made room, then fades in, so nothing lies over anything (motion.md, "Arriving, leaving"). A change of the
+    // room the sides have, such as the window's width, lays out at once: what that change brings comes and goes without a
+    // fade, what comes or goes after it fades again.
     function apply() {
         const room = roomKey();
         const still = ready && room === laidOutIn;
@@ -256,6 +256,12 @@ Rectangle {
             layOut(still);
             laidOutIn = room;
         }
+        // One held for a glide stays held through a newer one that starts before it ends.
+        buttons().forEach(control => (control.held = !motion.known.includes(control) || (gliding && control.held)));
+    }
+
+    // The others have made room: what waited for them fades in.
+    function release() {
         buttons().forEach(control => (control.held = !motion.known.includes(control)));
     }
 
@@ -318,6 +324,15 @@ Rectangle {
         id: motion
 
         frame: bar
+    }
+
+    // Only a glide that has ended: one stopped for a newer change goes on from where it showed.
+    Connections {
+        target: motion.run
+
+        function onFinished() {
+            bar.release();
+        }
     }
 
     Hairline {

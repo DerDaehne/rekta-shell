@@ -143,26 +143,29 @@ TestCase {
     }
 
     // Makes `change` and checks that no two shown items overlap while what goes fades out, and at every tenth of the glide
-    // that follows. What comes stands where it rests from the start, so the others may still be leaving its place; once
-    // they have, nothing overlaps at all.
+    // that follows. What comes waits unseen where it rests all along the glide and shows once the glide has ended.
     function checkClearAllAlong(what: string, change: var) {
         const before = laidOut().filter(item => item.visible);
         change();
-        const coming = () => laidOut().filter(item => item.visible && !before.includes(item));
-        checkClear(`${what}, as it changes`, coming());
+        checkClear(`${what}, as it changes`);
         holdGlide();
-        const arriving = coming();
-        const resting = arriving.map(item => item.x);
+        const coming = laidOut().filter(item => (item as AppBarButton)?.wanted && !before.includes(item));
+        const resting = coming.map(item => item.x);
         for (let step = 0; step <= 10; step++) {
             bar.reflow.progress = step / 10;
-            checkClear(`${what} at ${step / 10}`, step === 10 ? [] : arriving);
-            arriving.forEach((item, i) => compare(item.x, resting[i], `${what} at ${step / 10}: ${item.objectName} stands where it rests`));
+            checkClear(`${what} at ${step / 10}`);
+            coming.forEach((item, i) => {
+                verify(!item.visible, `${what} at ${step / 10}: ${item.objectName} waits unseen`);
+                compare(item.x, resting[i], `${what} at ${step / 10}: ${item.objectName} waits where it rests`);
+            });
         }
         bar.reflow.run.complete();
+        coming.forEach(item => verify(item.visible, `${what}: ${item.objectName} shows once the others have made room`));
+        checkClear(`${what}, at rest`);
     }
 
-    function checkClear(what: string, except = []) {
-        const shown = laidOut().filter(item => item.visible && !except.includes(item)).sort((a, b) => a.x - b.x);
+    function checkClear(what: string) {
+        const shown = laidOut().filter(item => item.visible).sort((a, b) => a.x - b.x);
         for (let i = 1; i < shown.length; i++)
             verify(endOf(shown[i - 1]) <= shown[i].x, `${what}: ${shown[i - 1].objectName} runs into ${shown[i].objectName}`);
     }
@@ -876,6 +879,8 @@ TestCase {
         makeScene({ viewportHeight: 400, backgroundShown: false });
         const background = named("in the background");
         scene.backgroundShown = true;
+        holdGlide();
+        bar.reflow.run.complete();
         for (const share of [0, 0.25, 0.5, 0.75, 1])
             fuzzyCompare(opacityAt(background, share * Tokens.durationShort), easeIn.valueForProgress(share), 1e-6, `at ${share * Tokens.durationShort} ms`);
         findChild(background, "fadeRun").complete();
@@ -928,7 +933,8 @@ TestCase {
         scene.barWidth = 1100;
         settle();
         scene.backgroundShown = true;
-        verify(background.visible && background.opacity < 1);
+        tryVerify(() => background.visible, 1000, "it comes once the others have made room");
+        verify(background.opacity < 1, "with a fade");
     }
 
     function test_while_a_control_goes_nothing_overlaps() {
@@ -937,28 +943,67 @@ TestCase {
         checkClearAllAlong("going", () => (scene.backgroundShown = false));
     }
 
-    function test_a_control_that_comes_fades_in_where_it_rests_while_the_others_glide_aside() {
+    function test_a_control_that_comes_waits_unseen_where_it_rests_until_the_others_have_glided_aside_then_fades_in() {
         Prefs.motion = "on";
         makeScene({ viewportHeight: 400, backgroundShown: false });
         const background = named("in the background");
         const pause = named("pause");
-        verify(!background.visible);
         const from = pause.x;
         scene.backgroundShown = true;
-        verify(background.visible);
-        verify(background.opacity < 1, "it fades in, also the first time it comes");
+        verify(!background.visible, "unseen as the glide begins");
         holdGlide();
         bar.reflow.progress = 0;
         const at = background.x;
         compare(pause.x, from, "the others start where they stood");
+        for (const share of [0.25, 0.5, 0.75, 1]) {
+            bar.reflow.progress = easeBase.valueForProgress(share);
+            verify(!background.visible, `still unseen at ${share} of the glide`);
+        }
         bar.reflow.run.complete();
-        compare(background.x, at, "it stood where it rests from the start");
+        verify(background.visible, "it comes once the glide has ended");
+        compare(background.opacity, 0, "from nothing");
+        verify(findChild(background, "fadeRun").running, "fading in");
+        compare(background.x, at, "where it waited");
         verify(pause.x < from, "the others made room");
         compare(endOf(pause), background.x - bar.gap);
         tryCompare(background, "opacity", 1);
     }
 
-    function test_while_a_control_comes_nothing_overlaps_but_the_place_it_fades_in_at() {
+    // A newer change while the others glide, here a count that widens, glides on from where they show; what came waits
+    // for that glide too.
+    function test_a_control_that_comes_waits_through_a_newer_glide_that_begins_before_the_first_ends() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400, backgroundShown: false });
+        const background = named("in the background");
+        scene.backgroundShown = true;
+        holdGlide();
+        bar.reflow.progress = 0.5;
+        named("messages").count = 10;
+        holdGlide();
+        verify(!background.visible, "it still waits");
+        bar.reflow.run.complete();
+        verify(background.visible, "and comes once that glide has ended");
+    }
+
+    function test_a_control_that_comes_leaves_and_comes_again_waits_for_the_glide_each_time() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400, backgroundShown: false });
+        const background = named("in the background");
+        for (const round of [1, 2]) {
+            scene.backgroundShown = true;
+            holdGlide();
+            verify(!background.visible, `round ${round}: it waits unseen`);
+            bar.reflow.run.complete();
+            verify(background.visible && background.opacity < 1, `round ${round}: then fades in`);
+            tryCompare(background, "opacity", 1);
+            scene.backgroundShown = false;
+            verify(background.fading, `round ${round}: it fades out`);
+            settle();
+            verify(!background.visible);
+        }
+    }
+
+    function test_while_a_control_comes_nothing_overlaps_and_it_shows_only_once_the_others_have_made_room() {
         Prefs.motion = "on";
         makeScene({ viewportHeight: 400, backgroundShown: false });
         checkClearAllAlong("coming", () => (scene.backgroundShown = true));
@@ -975,9 +1020,9 @@ TestCase {
         verify(!bar.more.visible, "more waits for them");
         holdGlide();
         verify(moving.every(control => !control.visible));
-        verify(bar.more.visible);
-        verify(bar.more.opacity < 1, "more fades in");
+        verify(!bar.more.visible, "more waits while the rest glide");
         bar.reflow.run.complete();
+        verify(bar.more.visible && bar.more.opacity < 1, "then fades in");
         checkClear("full");
     }
 
@@ -993,7 +1038,8 @@ TestCase {
         verify(!bar.settling && !bar.gliding);
         compare(endOf(named("pause")), messages.x - bar.gap, "the gap closed at once");
         scene.backgroundShown = true;
-        compare(named("in the background").opacity, 1, "back at once");
+        verify(named("in the background").visible, "back at once");
+        compare(named("in the background").opacity, 1);
         verify(!bar.gliding);
         named("pause").text = "pause every build of every branch, every pull request and every nightly run of the shell and its tests";
         verify(bar.more.visible, "more at once");

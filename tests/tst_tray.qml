@@ -606,7 +606,7 @@ TestCase {
         verify(!control.disabled);
         tryVerify(() => messages.x < withControl, 1000, "the controls after it close up");
         scene.apps = [app("Steam", {})];
-        verify(control.visible, "it comes back with the first app");
+        tryVerify(() => control.visible, Tokens.durationModerate + 1000, "it comes back with the first app, once the others have made room");
         compare(control.count, 1);
     }
 
