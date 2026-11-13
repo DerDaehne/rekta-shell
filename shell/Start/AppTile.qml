@@ -59,9 +59,11 @@ Tile {
         visible: tile.glyph === ""
     }
 
+    // Drawn into a layer first: under the tile's flattened 3D matrix the curve renderer draws nothing.
     Icon {
         objectName: "glyph"
         parent: tile
+        layer.enabled: true
         x: Geometry.tilePadding
         y: Geometry.tilePadding
         size: tile.rows > 1 ? Tokens.tileIconLarge : Tokens.tileIcon
