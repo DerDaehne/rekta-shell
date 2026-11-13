@@ -359,6 +359,16 @@ TestCase {
         verify(!menu.open);
     }
 
+    function test_a_sideways_scroll_of_the_panorama_that_moves_the_tile_closes_the_menu() {
+        openNow();
+        rightClick(pinnedTile("Dolphin"), 30, 40);
+        const scroller = named("panorama").scroller;
+        scroller.contentX += Geometry.contextMenuScrollSlop;
+        verify(menu.open, "within the slop");
+        scroller.contentX += 1;
+        verify(!menu.open, "one pixel past the slop");
+    }
+
     function test_closing_the_start_closes_the_menu() {
         openNow();
         rightClick(pinnedTile("Dolphin"), 30, 40);
