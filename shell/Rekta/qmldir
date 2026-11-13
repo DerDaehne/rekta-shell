@@ -57,6 +57,7 @@ FloatAnchor 1.0 FloatAnchor.qml
 Menu 1.0 Menu.qml
 MenuItem 1.0 MenuItem.qml
 MenuSeparator 1.0 MenuSeparator.qml
+FieldLabel 1.0 FieldLabel.qml
 MenuLabel 1.0 MenuLabel.qml
 ExpandedState 1.0 ExpandedState.qml
 Select 1.0 Select.qml

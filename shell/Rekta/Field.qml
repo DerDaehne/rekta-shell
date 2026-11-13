@@ -36,13 +36,9 @@ Column {
 
     // The label in xs semibold (rekta.css:387); "(optional)" after it in regular (:409).
     Row {
-        Text {
+        FieldLabel {
             objectName: "label"
             text: field.label
-            font.family: Tokens.fontSans
-            font.pixelSize: Tokens.fontSizeXs
-            font.weight: Tokens.fontWeightSemibold
-            color: Tokens.color.textContrastHigh
         }
 
         Text {

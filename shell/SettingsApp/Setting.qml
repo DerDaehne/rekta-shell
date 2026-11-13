@@ -16,14 +16,10 @@ Column {
 
     spacing: Tokens.spaceXs
 
-    Text {
+    FieldLabel {
         objectName: "label"
         visible: setting.label !== ""
         text: setting.label
-        font.family: Tokens.fontSans
-        font.pixelSize: Tokens.fontSizeXs
-        font.weight: Tokens.fontWeightSemibold
-        color: Tokens.color.textContrastHigh
     }
 
     Item {

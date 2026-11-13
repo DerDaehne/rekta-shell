@@ -801,8 +801,8 @@ Column {
     }
 
     // The default device of one kind in a select of the devices of that kind; choosing one asks for it as the default.
-    // The select always shows the default PipeWire has, so a change from elsewhere shows at once. It has no words before
-    // it: the glyph of the row below says the kind, and its name is read with it.
+    // The select always shows the default PipeWire has, so a change from elsewhere shows at once. Its label stands above
+    // it as a field's does, and the select reads it with the chosen device.
     component DeviceRow: PanelRow {
         id: deviceRow
 
@@ -818,13 +818,9 @@ Column {
         Column {
             spacing: Tokens.spaceXs
 
-            Text {
+            FieldLabel {
                 objectName: `${deviceRow.kind}DeviceLabel`
                 text: deviceRow.name
-                font.family: Tokens.fontSans
-                font.pixelSize: Tokens.fontSizeXs
-                font.weight: Tokens.fontWeightSemibold
-                color: Tokens.color.textContrastHigh
             }
 
             Select {

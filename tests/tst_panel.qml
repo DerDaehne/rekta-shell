@@ -3640,6 +3640,26 @@ TestCase {
         compare(commands, []);
     }
 
+    // The dense case of ton: three streams between the output and the input, so the eye finds where the input begins.
+    function test_contact_sheet_of_ton_with_three_streams_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const contact = createTemporaryObject(contactComponent, testCase);
+            contact.height = 800;
+            const panel = findChild(contact, "panel");
+            giveSound(panel.controls);
+            giveStreams(panel.controls);
+            panel.show(0);
+            waitForRendering(contact);
+            tryVerify(() => shownRows(findChild(contact, "sound")).filter(row => row.objectName === "stream").length === 3);
+            grabImage(contact).save(`panel-sound-sheet-${theme}.png`);
+            verify(findChild(contact, "inputDeviceLabel").mapToItem(contact, 0, 0).y + findChild(contact, "inputDeviceLabel").height <= contact.height, theme);
+            contact.destroy();
+        }
+    }
+
     // The panel follows the one current theme and density, so the contact sheet is drawn once per pair.
     function test_contact_sheet_of_the_panel_in_both_themes_and_densities() {
         if (!ContactSheets.wanted)
