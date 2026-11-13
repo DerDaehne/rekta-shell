@@ -42,6 +42,12 @@ TestCase {
         compare(texts(model), ["mikrofon an", "akku 9 %"]);
     }
 
+    function test_an_open_microphone_and_a_shared_screen_take_the_error_colour_ahead_of_the_neutral_choices() {
+        const model = make({ muted: true, doNotDisturb: true, microphoneInUse: true, screenShared: true });
+        compare(texts(model), ["mikrofon an", "bildschirm geteilt", "stumm", "nicht stören"]);
+        compare(model.deviations.map(word => word.status), ["error", "error", "", ""]);
+    }
+
     function test_the_shared_screen_stands_second_in_the_error_colour_and_names_the_background_menu() {
         const model = make({ muted: true, batteryLow: true, batteryPercent: 9, microphoneInUse: true, screenShared: true });
         compare(texts(model), ["mikrofon an", "bildschirm geteilt", "akku 9 %", "stumm"]);
