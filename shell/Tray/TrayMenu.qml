@@ -161,17 +161,76 @@ Menu {
         }
     }
 
+    // Loads an app's picture unseen and hands it on only once it is no checkerboard of Quickshell's for a picture it
+    // could not get, so a row never shows that, not even for a frame. Quickshell hands that over as a ready picture of
+    // the size asked for, like a real one, so only its pixels tell. Until a new picture is judged, the last one stays.
+    component PictureCheck: Item {
+        id: check
+
+        property string source
+        // The last source known to be a real picture, else empty.
+        property string real: ""
+
+        function verdict(): string {
+            // A row that has left its window has no context.
+            const context = reader.available ? reader.getContext("2d") : null;
+            if (context === null || loaded.status !== Image.Ready)
+                return "";
+            // The image `loaded` has just put into Qt's cache, so the canvas takes it from there at once and never
+            // asks the provider itself: on a reader thread Quickshell's providers are unsafe (QQuickPixmap::load).
+            const url = loaded.source.toString();
+            reader.loadImage(url);
+            const shown = reader.isImageLoaded(url) && !TrayRules.checkerboard(context.createImageData(url));
+            // The canvas keeps every image it loaded until unloaded, and an app may send a new picture each second.
+            reader.unloadImage(url);
+            return shown ? url : "";
+        }
+
+        objectName: "pictureCheck"
+        visible: false
+
+        // Loads in the GUI thread, where Quickshell's providers expect to be asked.
+        Image {
+            id: loaded
+
+            objectName: "pictureLoaded"
+            source: check.source
+            asynchronous: false
+            onStatusChanged: {
+                if (status !== Image.Loading)
+                    check.real = check.verdict();
+            }
+        }
+
+        Canvas {
+            id: reader
+
+            objectName: "pictureReader"
+            width: 1
+            height: 1
+            onAvailableChanged: check.real = check.verdict()
+        }
+    }
+
     // A running app. Pressing an app with a menu of its own opens that menu in place, even when the app has a window;
     // pressing one without brings it forward.
     component AppRow: MenuItem {
+        id: appRow
+
         required property int at
         readonly property var app: tray.shown[at] ?? null
 
         text: app?.word ?? ""
-        icon: TrayRules.shownIcon(app?.icon ?? "", tray.iconKnown)
+        icon: picture.real
         keyHint: app?.state ?? ""
         opensLevel: app?.hasMenu ?? false
         Accessible.name: keyHint !== "" ? `${text}, ${keyHint}` : text
+
+        PictureCheck {
+            id: picture
+
+            source: TrayRules.shownIcon(appRow.app?.icon ?? "", tray.iconKnown)
+        }
     }
 
     // An entry of an app's menu; its words and its icon, if it has one, are the app's own.
@@ -182,7 +241,7 @@ Menu {
         readonly property var entry: tray.shown[at] ?? null
 
         text: entry?.text ?? ""
-        icon: TrayRules.shownIcon(entry?.icon ?? "", tray.iconKnown)
+        icon: picture.real
         kind: entry?.buttonType === 1 ? "checkbox" : entry?.buttonType === 2 ? "radio" : "item"
         checked: entry?.checkState === Qt.Checked
         dimmed: !(entry?.enabled ?? true)
@@ -191,6 +250,12 @@ Menu {
         // The choice flips the box on its own; this lets the app's answer set it right again.
         function follow() {
             checked = Qt.binding(() => entry?.checkState === Qt.Checked);
+        }
+
+        PictureCheck {
+            id: picture
+
+            source: TrayRules.shownIcon(row.entry?.icon ?? "", tray.iconKnown)
         }
     }
 }

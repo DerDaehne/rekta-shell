@@ -30,11 +30,23 @@ function state(status, tooltipTitle, tooltipDescription) {
 // (?path=<directory>) its provider also loads <directory>/<name> with any image suffix, as libappindicator apps expect.
 const themeIcon = /^image:\/\/icon\/([^?]*)$/;
 
-// The icon a row shows: none for a name the icon theme does not know (`known` asks it), where Quickshell's provider
-// would draw a checkerboard; any other picture, a name with the app's own directory among them, as it comes.
-// ponytail: a name found neither in the theme nor in the app's directory still shows the checkerboard; telling it apart
-// needs a look into that directory.
+// The icon a row may show: none for a name the icon theme does not know (`known` asks it), so it is never loaded; any
+// other picture, a name with the app's own directory among them, as it comes, for `checkerboard` to look at.
 function shownIcon(url, known) {
     const named = themeIcon.exec(url);
     return named === null || known(named[1]) ? url : "";
+}
+
+// What Quickshell draws for a picture it cannot get (missingPixmap in its iconimageprovider.cpp): black, its top
+// trailing and bottom leading quarters in this purple, all opaque. Its colours are Quickshell's, not Rekta's.
+const missingBlack = [0, 0, 0, 255];
+const missingPurple = [0xd9, 0x00, 0xd8, 255];
+
+// Whether a loaded picture (width, height and RGBA data, as a canvas hands it over) is that checkerboard, by its corners.
+function checkerboard(picture) {
+    const is = (x, y, colour) => colour.every((channel, at) => picture.data[4 * (y * picture.width + x) + at] === channel);
+    const right = picture.width - 1;
+    const bottom = picture.height - 1;
+    return is(0, 0, missingBlack) && is(right, 0, missingPurple)
+        && is(0, bottom, missingPurple) && is(right, bottom, missingBlack);
 }

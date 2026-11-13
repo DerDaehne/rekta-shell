@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtTest
+import Qt.labs.sharedimage
 import Rekta
 import Tray
 import "ContactSheets.js" as ContactSheets
@@ -162,6 +163,9 @@ TestCase {
     // A coloured 20 × 20 square as PNG, as an app's own icon is coloured.
     readonly property string blueIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGOQnfmZbMQwqnlU86jmUc0DqxkAaSeYL8S+KvQAAAAASUVORK5CYII="
 
+    // What Quickshell draws for a picture it cannot get, 20 × 20, as an entry hands over its own PNG.
+    readonly property string checkerboardIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAKElEQVQ4y2NkwAtuMtzAI8vEQAEY1TwyNDPiT0PqDBqD0tmjmoeMZgDyiQPY3qN1NAAAAABJRU5ErkJggg=="
+
     // A 16 × 16 one, as a DBusMenu hands over the PNG of an entry at its own size.
     readonly property string smallIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mOwKvtAEmIY1TCqYfhqAAByVKAQbSDPuAAAAABJRU5ErkJggg=="
     // Icon names as Quickshell hands them over; the stand-in for the icon theme knows only mail-client.
@@ -239,7 +243,7 @@ TestCase {
         const menu = open(threeApps());
         compare(rowNames(menu), ["Nextcloud", "KDE Connect", "Steam"]);
         const nextcloud = rowAt(menu, "Nextcloud");
-        compare(nextcloud.icon, blueIcon);
+        tryCompare(nextcloud, "icon", blueIcon);
         compare(findChild(nextcloud, "key").text, "Synchronisiert");
         compare(nextcloud.Accessible.name, "Nextcloud, Synchronisiert", "word and state are read");
         compare(rowAt(menu, "Steam").Accessible.name, "Steam");
@@ -361,7 +365,7 @@ TestCase {
         const menu = open(mail([entry("Compose", { icon: blueIcon }), entry("Settings"), entry("Notify", { buttonType: 1 })]));
         keyClick(Qt.Key_Right);
         const icon = findChild(rowAt(menu, "Compose"), "icon");
-        verify(icon.visible);
+        tryVerify(() => icon.visible, 5000, "the picture is shown once it is judged");
         compare(icon.source, blueIcon);
         compare(icon.x, Tokens.spaceM);
         compare(icon.width, 20);
@@ -407,6 +411,121 @@ TestCase {
         compare(calendar.icon.toString(), "");
         verify(!findChild(calendar, "icon").visible);
         compare(findChild(calendar, "label").x, findChild(rowAt(menu, "Compose"), "label").x);
+    }
+
+    // A picture through an image provider, the way Quickshell hands over an app's own one.
+    function provided(name: string): string {
+        return Qt.resolvedUrl(`pictures/${name}`).toString().replace("file://", "image://shared");
+    }
+
+    // Waits until every row has judged its picture: a canvas gets its context only a moment after its row is made, and
+    // a picture given as data loads in a reader thread.
+    function judged(menu: var): void {
+        for (const row of menu.items()) {
+            const reader = findChild(row, "pictureReader");
+            const loaded = findChild(row, "pictureLoaded");
+            if (reader !== null)
+                tryVerify(() => !!reader.context && loaded.status !== Image.Loading, 5000, `${row.text} judged its picture`);
+        }
+    }
+
+    // An app whose picture the test changes; untyped, as qmllint knows no member of the QtObject that app() returns.
+    function steamWithAPicture(): var {
+        return app("Steam", { icon: blueIcon });
+    }
+
+    // Every picture a row shows from now on, in order.
+    function iconsOf(row: var): var {
+        const shown = [];
+        row.iconChanged.connect(() => shown.push(row.icon.toString()));
+        return shown;
+    }
+
+    function test_an_app_whose_picture_is_quickshells_checkerboard_shows_none_and_its_word_stands_at_the_common_edge() {
+        const menu = open([app("Nextcloud", { icon: provided("checkerboard-20.png") }), app("Mail", { icon: provided("blue-32.png") }), app("Steam", { icon: "" })]);
+        const nextcloud = rowAt(menu, "Nextcloud");
+        const shown = iconsOf(nextcloud);
+        compare(nextcloud.icon.toString(), "", "nothing before it is judged");
+        judged(menu);
+        compare(rowAt(menu, "Mail").icon.toString(), provided("blue-32.png"));
+        compare(nextcloud.icon.toString(), "", "nothing once it is judged");
+        compare(shown, [], "not for a moment either");
+        verify(!findChild(nextcloud, "icon").visible);
+        for (const word of ["Nextcloud", "Steam"])
+            compare(findChild(rowAt(menu, word), "label").x, findChild(rowAt(menu, "Mail"), "label").x, word);
+    }
+
+    function test_an_entry_whose_picture_is_quickshells_checkerboard_shows_none() {
+        const menu = open(mail([entry("Compose", { icon: blueIcon }), entry("Calendar", { icon: checkerboardIcon })]));
+        keyClick(Qt.Key_Right);
+        const calendar = rowAt(menu, "Calendar");
+        const shown = iconsOf(calendar);
+        judged(menu);
+        compare(rowAt(menu, "Compose").icon.toString(), blueIcon);
+        compare(calendar.icon.toString(), "");
+        compare(shown, [], "not for a moment either");
+        verify(!findChild(calendar, "icon").visible);
+        compare(findChild(calendar, "label").x, findChild(rowAt(menu, "Compose"), "label").x);
+    }
+
+    function test_an_unknown_name_in_the_app_s_directory_shows_no_picture_and_real_pictures_show_as_they_come() {
+        const fromDirectory = provided("blue-32.png");
+        const menu = open([app("Nextcloud", { icon: unknownIconInAppDirectory }), app("Mail", { icon: fromDirectory }), app("Steam", { icon: blueIcon })]);
+        judged(menu);
+        compare(rowAt(menu, "Nextcloud").icon.toString(), "", "the provider has nothing for it");
+        compare(rowAt(menu, "Mail").icon.toString(), fromDirectory);
+        compare(rowAt(menu, "Steam").icon.toString(), blueIcon);
+        verify(findChild(rowAt(menu, "Mail"), "icon").visible);
+    }
+
+    // Quickshell's providers are safe only in the GUI thread. A provider's picture is loaded there, so it is ready, and
+    // judged, the moment it is set; only a picture given as data comes from a reader thread.
+    function test_a_provider_s_picture_is_loaded_and_judged_at_once_in_the_gui_thread() {
+        const steam = steamWithAPicture();
+        const menu = open([steam]);
+        judged(menu);
+        const row = rowAt(menu, "Steam");
+        steam.icon = provided("blue-16.png");
+        compare(row.icon.toString(), provided("blue-16.png"), "no waiting for a reader thread");
+        steam.icon = provided("checkerboard-20.png");
+        compare(row.icon.toString(), "");
+    }
+
+    function test_a_changed_picture_replaces_the_last_one_without_a_moment_of_none() {
+        const steam = steamWithAPicture();
+        const menu = open([steam]);
+        judged(menu);
+        const row = rowAt(menu, "Steam");
+        const shown = iconsOf(row);
+        steam.icon = provided("blue-16.png");
+        steam.icon = smallIcon;
+        judged(menu);
+        compare(shown, [provided("blue-16.png"), smallIcon]);
+    }
+
+    function test_a_row_keeps_none_of_the_pictures_it_judged_when_an_app_sends_one_after_another() {
+        const steam = steamWithAPicture();
+        const menu = open([steam]);
+        judged(menu);
+        const row = rowAt(menu, "Steam");
+        const sent = [smallIcon, provided("blue-16.png"), checkerboardIcon, provided("blue-32.png"), provided("checkerboard-20.png")];
+        for (const picture of sent) {
+            steam.icon = picture;
+            judged(menu);
+        }
+        const reader = findChild(row, "pictureReader");
+        compare([blueIcon, ...sent].filter(picture => reader.isImageLoaded(picture)), []);
+        compare(row.icon.toString(), "", "the last one sent was the checkerboard");
+    }
+
+    function test_quickshells_checkerboard_is_told_by_its_corners_from_pictures_that_only_share_its_colours() {
+        const black = [0, 0, 0, 255], purple = [0xd9, 0x00, 0xd8, 255], halfPurple = [0xd9, 0x00, 0xd8, 128];
+        const picture = (corners) => ({ width: 2, height: 2, data: [].concat(...corners) });
+        verify(TrayRules.checkerboard(picture([black, purple, purple, black])));
+        verify(!TrayRules.checkerboard(picture([black, black, black, black])), "all black");
+        verify(!TrayRules.checkerboard(picture([purple, black, black, purple])), "the other way round");
+        verify(!TrayRules.checkerboard(picture([black, halfPurple, purple, black])), "not fully opaque");
+        verify(!TrayRules.checkerboard(picture([black, purple, black, black])), "one purple quarter only");
     }
 
     function test_an_entry_s_small_picture_stands_at_its_own_size_in_the_middle_of_the_icon_field() {
