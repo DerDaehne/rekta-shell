@@ -16,6 +16,7 @@ TestCase {
     height: 700
 
     property var remedied: []
+    property int leakedKeys: 0
     property Item scene
     property Banner banner
     property Toaster toaster
@@ -27,6 +28,8 @@ TestCase {
         Item {
             width: 1000
             height: 700
+
+            Keys.onPressed: event => testCase.leakedKeys++
 
             SystemBanners {
                 id: lights
@@ -80,6 +83,7 @@ TestCase {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         Prefs.motion = "off";
         remedied = [];
+        leakedKeys = 0;
         scene = createTemporaryObject(sceneComponent, testCase);
         banner = findChild(scene, "banner");
         toaster = findChild(scene, "toaster");
@@ -123,19 +127,47 @@ TestCase {
         compare([banner.word, banner.sentence, banner.status, banner.actionLabel], ["speicher", "Root is running out of space (180 MiB free).", "warning", "belegung ansehen"]);
     }
 
-    function test_the_storage_banner_keeps_its_word_and_sentence_but_loses_its_button_once_the_notice_is_gone() {
+    function test_the_storage_remedy_stays_but_refuses_and_says_why_once_the_notice_is_gone() {
+        const remedy = findChild(banner, "remedy");
         turn({ storageFull: true, storageRemedy: true });
-        verify(findChild(banner, "remedy").visible);
+        compare([remedy.visible, remedy.disabled, remedy.text], [true, false, "belegung ansehen"]);
         turn({ storageRemedy: false });
-        compare([banner.word, banner.sentence, banner.actionLabel], ["speicher", "Root is running out of space (180 MiB free).", ""]);
-        verify(!findChild(banner, "remedy").visible);
-        turn({ storageRemedy: true });
-        compare(banner.actionLabel, "belegung ansehen");
+        compare([banner.word, banner.sentence, remedy.visible, remedy.text], ["speicher", "Root is running out of space (180 MiB free).", true, "belegung ansehen"]);
+        verify(remedy.disabled);
+        compare(findChild(remedy, "why").text, "meldung geschlossen");
+        compare(remedy.Accessible.description, "meldung geschlossen");
     }
 
-    function test_the_storage_banner_shows_no_button_while_the_notice_is_not_there_from_the_start() {
+    function test_a_press_on_the_refusing_storage_remedy_does_nothing_and_takes_the_keys() {
+        const remedy = findChild(banner, "remedy");
         turn({ storageFull: true });
-        compare(banner.actionLabel, "");
+        mouseClick(remedy);
+        remedy.forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        keyClick(Qt.Key_Space);
+        compare(remedied, []);
+        compare(leakedKeys, 0, "the keys do not fall through to the banner");
+    }
+
+    function test_the_storage_banner_keeps_its_height_when_the_notice_closes_and_comes_back() {
+        for (const width of [1000, 400]) {
+            banner.width = width;
+            turn({ storageFull: true, storageRemedy: true });
+            const height = banner.contentHeight;
+            const sentenceY = findChild(banner, "sentence").y;
+            turn({ storageRemedy: false });
+            compare(banner.contentHeight, height, `closed at ${width}`);
+            compare(findChild(banner, "sentence").y, sentenceY);
+            turn({ storageRemedy: true });
+            compare(banner.contentHeight, height, `back at ${width}`);
+        }
+    }
+
+    function test_the_storage_remedy_acts_again_once_the_notice_is_back() {
+        turn({ storageFull: true });
+        turn({ storageRemedy: true });
+        mouseClick(findChild(banner, "remedy"));
+        compare(remedied, ["storage"]);
     }
 
     function test_the_time_line_says_seit() {

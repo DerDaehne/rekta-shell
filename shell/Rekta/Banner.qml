@@ -37,6 +37,8 @@ Item {
     property string timeLine
     property string sentence
     property string actionLabel
+    // Why the remedy cannot act now ("" when it can): Rekta's disable(control, reason).
+    property string actionReason
     readonly property string spoken: [word, timeLine, sentence].filter(part => part !== "").join(" ")
     // The app bar follows the banner (behaviour.md, `data-rk-state`): halted for an error, paused for a warning.
     readonly property string appbarState: status === "error" ? "halted" : status === "warning" ? "paused" : ""
@@ -108,7 +110,8 @@ Item {
         return !!turnedOn[name];
     }
 
-    // A state that is on gets a new sentence (a figure that changes): written in place, not announced again; its start
+    // A state that is on gets a new sentence (a figure that changes) and the reason its remedy cannot act, if it has one:
+    // written in place, not announced again; its start
     // stays.
     function update(name: string, text: string) {
         known(name);
@@ -116,7 +119,7 @@ Item {
         if (shown !== name)
             return;
         sentence = text;
-        actionLabel = bannerStates[name].action ?? "";
+        actionReason = bannerStates[name].reason ?? "";
     }
 
     function known(name: string) {
@@ -188,6 +191,7 @@ Item {
         timeLine = timeLineOf(name);
         sentence = textOf(name);
         actionLabel = s.action ?? "";
+        actionReason = s.reason ?? "";
         coming.restart();
         live.Accessible.announce(spoken, alert ? Accessible.Assertive : Accessible.Polite);
     }
@@ -329,6 +333,7 @@ Item {
             y: banner.padY + banner.remedyTop
             visible: banner.hasRemedy
             text: banner.actionLabel
+            disabledReason: banner.actionReason
             onClicked: banner.runRemedy()
         }
     }
