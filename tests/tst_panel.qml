@@ -3627,7 +3627,7 @@ TestCase {
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-sheet-${theme}-${density}.png`);
                 findChild(contact, "outputDevice").forceActiveFocus();
-                keyClick(Qt.Key_Down);
+                keyClick(Qt.Key_Return);
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-select-sheet-${theme}-${density}.png`);
                 verify(findChild(contact, "outputDevice").expanded);
