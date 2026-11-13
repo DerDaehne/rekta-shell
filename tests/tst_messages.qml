@@ -149,6 +149,8 @@ TestCase {
         board = findChild(scene, "board");
         toaster = findChild(scene, "toaster");
         wanted = createTemporaryObject(spyComponent, testCase, { target: board, signalName: "appWanted" });
+        // Where the test before left the pointer resting, a row may come to lie and bring up its tip after tip-delay.
+        mouseMove(scene, 1, 1);
     }
 
     function cleanup() {
