@@ -119,8 +119,23 @@ TestCase {
         compare(banner.actionLabel, "energieprofil");
         turn({ batteryCritical: false, offline: true });
         compare([banner.word, banner.sentence, banner.status, banner.actionLabel], ["offline", "Keine Verbindung zum Netz.", "error", "verbindungen"]);
-        turn({ offline: false, storageFull: true });
-        compare([banner.word, banner.sentence, banner.status, banner.actionLabel], ["speicher", "Root is running out of space (180 MiB free).", "warning", "aufräumen"]);
+        turn({ offline: false, storageFull: true, storageRemedy: true });
+        compare([banner.word, banner.sentence, banner.status, banner.actionLabel], ["speicher", "Root is running out of space (180 MiB free).", "warning", "belegung ansehen"]);
+    }
+
+    function test_the_storage_banner_keeps_its_word_and_sentence_but_loses_its_button_once_the_notice_is_gone() {
+        turn({ storageFull: true, storageRemedy: true });
+        verify(findChild(banner, "remedy").visible);
+        turn({ storageRemedy: false });
+        compare([banner.word, banner.sentence, banner.actionLabel], ["speicher", "Root is running out of space (180 MiB free).", ""]);
+        verify(!findChild(banner, "remedy").visible);
+        turn({ storageRemedy: true });
+        compare(banner.actionLabel, "belegung ansehen");
+    }
+
+    function test_the_storage_banner_shows_no_button_while_the_notice_is_not_there_from_the_start() {
+        turn({ storageFull: true });
+        compare(banner.actionLabel, "");
     }
 
     function test_the_time_line_says_seit() {

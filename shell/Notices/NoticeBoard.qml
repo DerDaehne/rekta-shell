@@ -144,7 +144,8 @@ QtObject {
             storageFull = false;
     }
 
-    // The remedy of the storage state: the notice's first action, which opens the program that clears space.
+    // The remedy of the storage state: the notice's first action besides the default one. freespacenotifier's actions
+    // carry no names, only their order: the program to open comes first, "Configure Warning" last.
     function cleanUp() {
         storageNotice?.actions.find(action => action.identifier !== "default")?.invoke();
     }

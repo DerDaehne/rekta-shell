@@ -22,6 +22,7 @@ Scope {
     // freespacenotifier's notice is open, and what it says (NoticeBoard).
     required property bool storageFull
     required property string storageText
+    required property bool storageRemedy
     readonly property StatusWords words: model
     readonly property SystemBanners banners: bannerModel
     readonly property bool offline: networkManagerRunning && Sources.offline(Networking.connectivity, NetworkConnectivity.None)
@@ -96,5 +97,6 @@ Scope {
         offline: system.offline
         storageFull: system.storageFull
         storageText: system.storageText
+        storageRemedy: system.storageRemedy
     }
 }

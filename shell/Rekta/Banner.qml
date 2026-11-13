@@ -113,8 +113,10 @@ Item {
     function update(name: string, text: string) {
         known(name);
         sentences[name] = text;
-        if (shown === name)
-            sentence = text;
+        if (shown !== name)
+            return;
+        sentence = text;
+        actionLabel = bannerStates[name].action ?? "";
     }
 
     function known(name: string) {

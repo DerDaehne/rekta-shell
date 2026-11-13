@@ -11,12 +11,14 @@ QtObject {
     property bool storageFull: false
     // The words of the notice that says it.
     property string storageText: ""
+    // Whether that notice still stands: only then is there a program to open.
+    property bool storageRemedy: false
 
     readonly property var order: ["battery", "offline", "storage"]
     readonly property var states: ({
             battery: { word: "akku", status: "error", text: "", action: "energieprofil", on: "Akku kritisch", off: "Akku nicht mehr kritisch." },
             offline: { word: "offline", status: "error", text: "Keine Verbindung zum Netz.", action: "verbindungen", on: "Verbindung verloren", off: "Wieder verbunden." },
-            storage: { word: "speicher", status: "warning", text: "", action: "aufräumen", on: "Speicher fast voll", off: "Wieder genug Speicher frei." }
+            storage: { word: "speicher", status: "warning", text: "", action: storageRemedy ? "belegung ansehen" : "", on: "Speicher fast voll", off: "Wieder genug Speicher frei." }
         })
     // Where the remedy goes in the controls panel; a state without a place has its own remedy.
     readonly property var places: ({ battery: "power", offline: "connections" })

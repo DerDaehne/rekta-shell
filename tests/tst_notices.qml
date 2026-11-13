@@ -750,6 +750,21 @@ TestCase {
         verify(board.storageFull, "the server closed the notice after the action; nothing was freed");
     }
 
+    function test_the_storage_remedy_opens_the_program_and_never_configure_warning() {
+        notify({ hints: freeSpaceHints }, [["default", "open"], ["0", "Open in File Manager"], ["1", "Configure Warning…"]]);
+        board.cleanUp();
+        compare(calls, ["anna invoked 0", "anna closed 2"]);
+    }
+
+    function test_the_storage_remedy_is_there_only_while_the_notice_stands() {
+        const notice = notify({ hints: freeSpaceHints }, [["default", "open"], ["0", "Open in Filelight"]]);
+        verify(board.storageNotice !== null);
+        notice.close(NoticeBoard.CloseRequested);
+        compare(board.storageNotice, null);
+        board.cleanUp();
+        compare(calls.filter(call => call.includes("invoked")), []);
+    }
+
     function test_powerdevils_low_battery_notice_is_neither_toast_nor_row() {
         notify({ summary: "Battery Low", hints: { "x-kde-appname": "powerdevil", "x-kde-eventId": "lowbattery" } });
         compare(toaster.open, null);

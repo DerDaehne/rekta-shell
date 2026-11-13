@@ -58,6 +58,7 @@ ShellRoot {
         previewNodes: start.previewNodes
         storageFull: notifications.board.storageFull
         storageText: notifications.board.storageText
+        storageRemedy: notifications.board.storageNotice !== null
     }
 
     PrimaryScreen {

@@ -59,6 +59,10 @@ PanelWindow {
             host.states.apply(banner);
         }
 
+        function onStatesChanged() {
+            host.states.apply(banner);
+        }
+
         function onSentencesChanged() {
             host.states.apply(banner);
         }
