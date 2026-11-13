@@ -10,13 +10,14 @@ import State
 // "läuft", a tile for each open window, the most recent first, then "angeheftet", the pinned apps, then "heute", what
 // plays and the newest notifications (Today), then "zuletzt", the files used last (Recent); "alle apps" is a
 // panorama of the installed apps A–Z, a section for each initial, where a typed letter jumps to the next app it
-// starts. It opens once the windows are three quarters back (Rekta's hand-over between places), its parts turning in
-// as a place arrives, and closes turning them out: back the way they came, or forward after a press, the pressed tile
-// last. While it turns in, its tiles take keys and presses; while it turns out, none. A letter typed in the start place
-// searches, and so does what a calculation starts with: what is typed becomes the title, "suche" beside it, and the
-// apps that match stand below as tiles, the other kinds as rows. The title is a line edited as a field is; Escape
-// there closes the Start. An app's tile has a context menu that pins or unpins the app and, in "angeheftet", sizes its
-// tile; each change offers undo in a toast, and Delete unpins the focused pinned tile.
+// starts. It opens once the windows are three quarters of their way back (Rekta's hand-over between places), its
+// parts folding up in reading order, and closes folding them away: back the way they came, the last part in first, or
+// forward after a press, the pressed tile last. While it turns in, its tiles take keys and presses; while it turns out,
+// none. A letter typed in the start place searches, and so does what a calculation starts with: what is typed becomes
+// the title, "suche" beside it, and the apps that match stand below as tiles, the other kinds as rows. The title is a
+// line edited as a field is; Escape there closes the Start. An app's tile has a context menu that pins or unpins the
+// app and, in "angeheftet", sizes its tile; each change offers undo in a toast, and Delete unpins the focused pinned
+// tile.
 FocusScope {
     id: start
 
@@ -171,7 +172,8 @@ FocusScope {
             return;
         }
         setOut("opening");
-        // The parts wait until the windows are three quarters back, as the next place waits for the last part leaving.
+        // The parts wait until the windows are three quarters of their way back, as the next place waits for the last
+        // part leaving.
         if (waitForWindows.interval > 0)
             waitForWindows.restart();
         else
@@ -239,7 +241,8 @@ FocusScope {
         openingTime = waitForWindows.interval + Math.max(0, ...turner.arrivingTurns.map(turn => turn.at + turn.duration));
     }
 
-    // The opening `time` ms after it began: the parts turn in from when the windows are three quarters back.
+    // The opening `time` ms after it began: the parts turn in from when the windows are three quarters of their way
+    // back.
     function showAt(time: real) {
         openingAt = time;
         turner.elapsed = Math.max(0, time - waitForWindows.interval);
@@ -418,8 +421,8 @@ FocusScope {
         return null;
     }
 
-    // The Start's own turns, in and out, run at its tempo and about the bottom edge it is swiped up from; a change of
-    // place inside it at Rekta's, about the leading edge.
+    // The Start's own turns, in and out, run at its tempo and fold its parts up from the bottom it is swiped up from; a
+    // change of place inside it at Rekta's, about the leading edge.
     function turnIn() {
         turn(null, body, {
             tempo: Geometry.startTempo,
@@ -1330,7 +1333,7 @@ FocusScope {
         id: waitForWindows
 
         objectName: "waitForWindows"
-        interval: Tokens.turnOverlap * FadeBack.duration
+        interval: Math.round(FadeBack.stepBackTime(Tokens.turnOverlap))
         onTriggered: start.turnIn()
     }
 

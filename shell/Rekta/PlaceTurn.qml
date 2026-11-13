@@ -157,7 +157,7 @@ QtObject {
 
     // Turns from one place to the next; either may be null (nothing to leave, nothing to arrive at). `options.back`
     // runs it the other way round; `options.pressed` is the tile that opened the next place; `options.tempo` is its
-    // pace, Rekta's when not given; `options.edge` "bottom" turns every part about its box's bottom edge instead.
+    // pace, Rekta's when not given; `options.edge` "bottom" folds every part about its own bottom edge instead.
     function go(from: Item, to: Item, options: var) {
         finish();
         // A place still building in leaves from its end state: the turn wins over the arrival.
@@ -261,9 +261,10 @@ QtObject {
             }));
     }
 
-    // Turnstile.plan at the turn's tempo: each start after `from`, and each part's time, scaled alike.
+    // Turnstile.plan at the turn's tempo: each start after `from`, and each part's time, scaled alike. Back, a place
+    // folds its parts the other way round.
     function plan(parts: var, duration: real, from: real): var {
-        const turns = Turnstile.plan(parts, duration, from, edge);
+        const turns = Turnstile.plan(parts, duration, from, edge, back);
         for (const turn of turns) {
             turn.at = from + tempo * (turn.at - from);
             turn.duration *= tempo;
@@ -305,12 +306,21 @@ QtObject {
 
     // The parts in view: the units a place shows, its layout boxes opened up (rekta.js turnUnits()).
     function partsOf(place: Item): var {
+        layOut(place);
         let root = place;
         while (root.parent)
             root = root.parent;
         const parts = [];
         collectParts(place, place, root, parts);
         return parts;
+    }
+
+    // A place just shown is laid out by its positioners only in the next frame's polish: its parts are measured where
+    // they will rest, the innermost boxes first, as each one's size places it in the box around it.
+    function layOut(item: Item) {
+        for (const child of item.children)
+            layOut(child);
+        item.ensurePolished();
     }
 
     function collectParts(box: Item, place: Item, root: Item, parts: var) {

@@ -18,6 +18,20 @@ QtObject {
         return along(from, to, elapsed, duration, to > from ? easeIn : easeOut);
     }
 
+    // How long the windows behind the Start take to step `share` of their way back, found on their curve by halving.
+    function stepBackTime(share: real): real {
+        let low = 0;
+        let high = 1;
+        for (let step = 0; step < 30; step++) {
+            const middle = (low + high) / 2;
+            if (easeIn.valueForProgress(middle) < share)
+                low = middle;
+            else
+                high = middle;
+        }
+        return high * duration;
+    }
+
     // The same for the windows of every screen as the session is left.
     function leaveProgress(from: real, to: real, elapsed: real): real {
         return along(from, to, elapsed, leaveDuration, to > from ? easeOut : easeIn);

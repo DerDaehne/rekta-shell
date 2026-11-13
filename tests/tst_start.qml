@@ -629,16 +629,16 @@ TestCase {
         compare(named("pivot").currentIndex, 0);
     }
 
-    function test_the_parts_turn_in_once_the_windows_are_three_quarters_back_in_half_a_moderate() {
+    function test_the_parts_turn_in_once_the_windows_are_three_quarters_of_their_way_back_79_ms_into_their_200() {
         Prefs.motion = "on";
         const started = Date.now();
         start.open();
         verify(start.shown);
         verify(!turner.running, "first only the glass");
         verify(!named("body").visible);
-        compare(named("waitForWindows").interval, Tokens.turnOverlap * Tokens.durationModerate / 2);
+        compare(named("waitForWindows").interval, 79);
         tryVerify(() => turner.running, 2000);
-        verify(Date.now() - started >= Tokens.turnOverlap * Tokens.durationModerate / 2 - 2);
+        verify(Date.now() - started >= 79 - 2);
         verify(turner.arrivingTurns.length > 0);
         tryVerify(() => start.phase === "open", 3000);
     }
@@ -647,7 +647,7 @@ TestCase {
     // after `from` are `pace` of Rekta's. The starts are compared as a set: parts alike in row, place and heft may swap
     // their order.
     function verifyPace(turns: var, rektaDuration: real, from: real, pace: real) {
-        const rekta = Turnstile.plan(turns.map(turn => turn.part), rektaDuration, from, turner.edge);
+        const rekta = Turnstile.plan(turns.map(turn => turn.part), rektaDuration, from, turner.edge, turner.back);
         verify(turns.length > 0);
         for (const turn of turns)
             fuzzyCompare(turn.duration, pace * rekta.find(planned => planned.part === turn.part).duration, 1e-9, "times");
@@ -1850,7 +1850,7 @@ TestCase {
         verify(!start.turning, "the opening stands at its end");
         compare(start.phase, "open");
         verify(start.holdsKeyboard, "the windows stay back");
-        const earliestLanding = Tokens.turnOverlap * FadeBack.duration + Geometry.startTempo * Tokens.heftMin * Tokens.durationModerate;
+        const earliestLanding = named("waitForWindows").interval + Geometry.startTempo * Tokens.heftMin * Tokens.durationModerate;
         tryVerify(() => named("searchTitle").visible, earliestLanding);
         compare(named("typed").text, "k");
         compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
@@ -2260,7 +2260,7 @@ TestCase {
         const turner = findChild(place, "turn");
         place.open();
         if (share < 0) {
-            wait(Tokens.turnOverlap * FadeBack.duration / 2);
+            wait(findChild(place, "waitForWindows").interval / 2);
             return turner;
         }
         tryVerify(() => turner.running, 2000);

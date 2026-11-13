@@ -632,22 +632,18 @@ TestCase {
         return top - bottom;
     }
 
-    function test_about_the_bottom_edge_each_part_turns_on_the_bottom_line_of_the_box_that_clips_it_wherever_its_place_lies() {
+    function test_folded_up_each_part_turns_on_its_own_bottom_line_from_its_middle_wherever_its_place_lies_and_whatever_clips_it() {
         const clipped = createTemporaryObject(clippedComponent, testCase);
         const clippedTurner = findChild(clipped, "turner");
         clippedTurner.go(findChild(clipped, "place"), null, {
             edge: "bottom"
         });
         clippedTurner.paused = true;
-        // The box's bottom against the part's top, from the part's top left, which is also the reach of its row. The
-        // clipping box ends at 80 + 250 on the screen, the place at 30 + 450.
-        const expected = [["flush", 330 - 80], ["lower", 330 - 120], ["beside", 480 - 30]];
-        for (const [name, reach] of expected) {
+        for (const name of ["flush", "lower", "beside"]) {
             const rotation = rotationOf(findChild(clipped, name));
             compare(rotation.axis, Qt.vector3d(1, 0, 0), name);
-            compare(rotation.origin.x, Tokens.tileUnit / 2, name);
-            compare(rotation.origin.y, reach, name);
-            fuzzyCompare(rotation.distanceToPlane, Tokens.turnstilePerspective + Tokens.turnstileReach * reach, 1e-9);
+            compare(rotation.origin, Qt.vector3d(85, 170, 0), name);
+            fuzzyCompare(rotation.distanceToPlane, 1004, 1e-9);
         }
         clippedTurner.finish();
     }
@@ -695,7 +691,7 @@ TestCase {
         const turn = turnOf(turner.leavingTurns, tile);
         compare(turner.leavingTurns[turner.leavingTurns.length - 1], turn, "it goes last");
         compare(turn.axis, Qt.vector3d(1, 0, 0));
-        compare(turn.originY, scene.height - tile.parent.mapToItem(first, tile.x, tile.y).y);
+        compare([turn.originX, turn.originY], [tile.width / 2, tile.height]);
         turner.elapsed = turn.at + turn.duration / 2;
         verify(tile.sink > 0 && tile.sink < 1, "the press lets go along the turn");
         verify(topLean(tile) > 1, `${topLean(tile)}`);

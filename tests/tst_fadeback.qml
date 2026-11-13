@@ -25,6 +25,18 @@ TestCase {
         compare(FadeBack.progress(0, 1, Tokens.durationModerate / 2), 1);
     }
 
+    function test_with_ease_in_the_windows_are_three_quarters_of_their_way_back_78_9_ms_into_their_200_and_all_the_way_at_200() {
+        fuzzyCompare(FadeBack.stepBackTime(0.75), 78.91, 0.01);
+        fuzzyCompare(FadeBack.progress(0, 1, 78.91), 0.75, 1e-3);
+        fuzzyCompare(FadeBack.stepBackTime(1), 200, 1e-6);
+        fuzzyCompare(FadeBack.stepBackTime(0), 0, 1e-6);
+    }
+
+    function test_under_reduced_motion_the_windows_are_three_quarters_back_at_once() {
+        Tokens.reducedMotion = true;
+        compare(FadeBack.stepBackTime(0.75), 0);
+    }
+
     function test_the_start_s_tempo_is_fixed_and_nothing_can_set_it() {
         verify(!("startTempo" in FadeBack));
     }
