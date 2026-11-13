@@ -1984,7 +1984,14 @@ TestCase {
         verify(!select.expanded);
         verify(select.activeFocus, "the focus stays on the select");
         controls.output = sound.headphones;
+        keyClick(Qt.Key_Down);
+        verify(select.activeFocus, "↓ on the last device stays on the select rather than walking on in the panel");
+        compare(chosenDevices, [sound.headphones]);
         keyClick(Qt.Key_Up);
+        compare(chosenDevices, [sound.headphones, sound.speakers]);
+        controls.output = sound.speakers;
+        keyClick(Qt.Key_Up);
+        verify(select.activeFocus, "↑ on the first device stays on the select");
         compare(chosenDevices, [sound.headphones, sound.speakers]);
     }
 

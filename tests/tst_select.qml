@@ -116,6 +116,15 @@ TestCase {
                 currentIndex: 0
             }
 
+            Select {
+                objectName: "atEdge"
+                x: parent.width - width
+                y: Tokens.controlHeight + Tokens.spaceM
+                width: 140
+                options: [{ text: "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) of the monitor on the left", value: 0 }]
+                currentIndex: 0
+            }
+
             Item {
                 id: floats
 
@@ -472,13 +481,13 @@ TestCase {
 
     function test_closed_up_down_home_and_end_change_the_choice_without_opening_and_stop_at_the_ends() {
         select.forceActiveFocus();
-        keyClick(Qt.Key_Up);
+        verify(select.handleKey(keyEvent(Qt.Key_Up, false)), "↑ on the first is used up, not passed on");
         compare(select.currentIndex, 0, "no further than the first");
         compare(activated.count, 0);
         keyClick(Qt.Key_Down);
         compare(select.currentIndex, 1);
         keyClick(Qt.Key_Down);
-        keyClick(Qt.Key_Down);
+        verify(select.handleKey(keyEvent(Qt.Key_Down, false)), "↓ on the last is used up, not passed on");
         compare(select.currentIndex, 2, "no further than the last");
         keyClick(Qt.Key_Home);
         compare(select.currentIndex, 0);
@@ -555,7 +564,16 @@ TestCase {
         const surface = list(hosted);
         compare(surface.parent, findChild(host, "layer"));
         verify(surface.width > hosted.width, "wider than its field for its long option");
-        verify(surface.x >= 0 && surface.x + surface.width <= host.width, `from ${surface.x} to ${surface.x + surface.width} in a host ${host.width} wide`);
+        compare(surface.x + surface.width, hosted.x + hosted.width, "too wide to open from the field's leading edge, it ends with the field");
+    }
+
+    function test_a_list_too_wide_for_its_host_past_the_fields_end_ends_space_s_before_the_hosts_edge() {
+        const host = createTemporaryObject(hostComponent, scene);
+        const atEdge = findChild(host, "atEdge");
+        mouseClick(box(atEdge));
+        const surface = list(atEdge);
+        verify(atEdge.x + atEdge.width > host.width - Tokens.spaceS, "the field reaches into the host's margin");
+        compare(surface.x + surface.width, host.width - Tokens.spaceS);
     }
 
     function test_a_long_option_is_cut_in_the_box_and_in_its_row() {
