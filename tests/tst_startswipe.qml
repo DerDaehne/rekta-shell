@@ -150,7 +150,13 @@ TestCase {
         verify(!start.holdsKeyboard, "the window under the finger keeps the keyboard");
     }
 
+    // "zuletzt" has had the bus's answer whether KDE's activity service runs: both openings measure the same Start.
+    function waitForRecent() {
+        tryVerify(() => named("recentFailed").parent.service !== "", 2000);
+    }
+
     function test_the_opening_a_finger_takes_along_has_the_times_and_parts_of_the_one_meta_plays() {
+        waitForRecent();
         start.open();
         tryVerify(() => turner.running, 2000);
         turner.paused = true;
@@ -158,6 +164,7 @@ TestCase {
         const metaTime = partsWait() + lastLanding(turner.arrivingTurns);
         turner.finish();
         start = makeStart();
+        waitForRecent();
         start.followFinger(1);
         compare(turner.arrivingTurns.map(turn => [turn.part.item.objectName, turn.at, turn.duration, turn.originY]), meta);
         compare(start.openingTime, metaTime);
