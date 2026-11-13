@@ -97,6 +97,34 @@ TestCase {
         }
     }
 
+    // A host narrower than the window that keeps a layer for floating surfaces, as the side panel does.
+    Component {
+        id: hostComponent
+
+        Item {
+            readonly property Item floatLayer: floats
+
+            x: 600
+            width: 300
+            height: 300
+
+            Select {
+                objectName: "hosted"
+                x: 150
+                width: 140
+                options: [{ text: "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) of the monitor on the left", value: 0 }]
+                currentIndex: 0
+            }
+
+            Item {
+                id: floats
+
+                objectName: "layer"
+                anchors.fill: parent
+            }
+        }
+    }
+
     Component {
         id: sheetComponent
 
@@ -505,6 +533,16 @@ TestCase {
         const before = list(scrolled).y;
         view.contentY = 40;
         compare(list(scrolled).y, before - 40);
+    }
+
+    function test_in_a_host_that_keeps_a_layer_for_floating_surfaces_the_list_floats_there_and_stays_within_it() {
+        const host = createTemporaryObject(hostComponent, scene);
+        const hosted = findChild(host, "hosted");
+        mouseClick(box(hosted));
+        const surface = list(hosted);
+        compare(surface.parent, findChild(host, "layer"));
+        verify(surface.width > hosted.width, "wider than its field for its long option");
+        verify(surface.x >= 0 && surface.x + surface.width <= host.width, `from ${surface.x} to ${surface.x + surface.width} in a host ${host.width} wide`);
     }
 
     function test_a_long_option_is_cut_in_the_box_and_in_its_row() {

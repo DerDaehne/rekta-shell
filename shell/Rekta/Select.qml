@@ -226,8 +226,9 @@ Item {
     Connections {
         target: list.open ? select.Window.window : null
 
+        // Destroyed with its host, the select is gone before its list.
         function onActiveFocusItemChanged() {
-            if (!select.holdsFocus())
+            if (select && !select.holdsFocus())
                 select.close();
         }
     }
@@ -240,7 +241,6 @@ Item {
         parent: anchor.stage ?? select
         area: Qt.size(parent.width, parent.height)
         control: select
-        floatsFor: select
         width: Math.max(implicitWidth, select.width)
         height: implicitHeight
         Accessible.role: Accessible.List

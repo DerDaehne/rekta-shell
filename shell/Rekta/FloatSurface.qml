@@ -9,9 +9,6 @@ Rectangle {
     id: surface
 
     property bool open: false
-    // The control it floats for, where the host does not hold it: it stands in that control's hosts, such as one that
-    // offers tips of cut words.
-    property Item floatsFor: null
     // "below" or "above" its control, from Placement.float.
     property string side: "below"
     // The window it has to fit in.
