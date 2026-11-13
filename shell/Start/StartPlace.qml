@@ -194,12 +194,17 @@ FocusScope {
         body.visible = false;
     }
 
-    // A finger `distance` px up from where it set down on the screen's bottom edge: the whole opening, windows, glass and
-    // parts, stands where the finger has taken it. Under reduced motion nothing follows it.
+    // A finger `distance` px up from where it set down on the screen's bottom edge.
     // ponytail: Rekta has no rule for a place that follows a finger; the way is half the screen's height and the finger
     // decides at half of it, as a dragged row does (motion.md:25). Take Rekta's rule once it gives one.
     function followFinger(distance: real) {
-        fingerShare = Math.min(1, Math.max(0, distance / (screenHeight / 2)));
+        followSwipe(distance / (screenHeight / 2));
+    }
+
+    // A swipe up `share` of its whole way, a finger's from the bottom edge or the touchpad's: the whole opening, windows,
+    // glass and parts, stands where the swipe has taken it. Under reduced motion nothing follows it.
+    function followSwipe(share: real) {
+        fingerShare = Math.min(1, Math.max(0, share));
         if (Tokens.reducedMotion)
             return;
         if (phase === "closed")
@@ -310,12 +315,18 @@ FocusScope {
         hide();
     }
 
-    // A finger `distance` px down from where it set down over the open Start: the whole closing back, parts, windows and
-    // glass, stands where the finger has taken it, the Start keeping the keyboard. Under reduced motion nothing follows.
+    // A finger `distance` px down from where it set down over the open Start.
     // ponytail: as for followFinger, Rekta has no rule for it; the way is half the screen's height and the finger decides
     // at half of it (motion.md:25). Take Rekta's rule once it gives one.
     function followFingerOut(distance: real) {
-        fingerShare = Math.min(1, Math.max(0, distance / (screenHeight / 2)));
+        followSwipeOut(distance / (screenHeight / 2));
+    }
+
+    // A swipe down over the open Start `share` of its whole way, a finger's or the touchpad's: the whole closing back,
+    // parts, windows and glass, stands where the swipe has taken it, the Start keeping the keyboard. Under reduced motion
+    // nothing follows.
+    function followSwipeOut(share: real) {
+        fingerShare = Math.min(1, Math.max(0, share));
         if (Tokens.reducedMotion)
             return;
         if (phase === "open")

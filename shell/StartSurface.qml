@@ -168,8 +168,8 @@ PanelWindow {
         onWindowsOutAt: (time, pace) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setStartOutAt", [time, pace], "di")
     }
 
-    // KWin's rekta-fadeback, which holds the bottom edge of the primary screen for a finger that swipes the Start open;
-    // outside the rekta session nothing answers.
+    // KWin's rekta-fadeback, which holds the bottom edge of the primary screen for a finger that swipes the Start open,
+    // and three fingers swiping up or down on the touchpad; outside the rekta session nothing answers.
     DBusConnection {
         id: kwin
     }
@@ -185,6 +185,22 @@ PanelWindow {
 
         function dbusfingerLetGo() {
             place.letFingerGo();
+        }
+
+        function dbustouchpadUp(progress: real) {
+            place.followSwipe(progress);
+        }
+
+        function dbustouchpadUpLetGo() {
+            place.letFingerGo();
+        }
+
+        function dbustouchpadDown(progress: real) {
+            place.followSwipeOut(progress);
+        }
+
+        function dbustouchpadDownLetGo() {
+            place.letFingerGoOut();
         }
     }
 

@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <utility>
 
 using namespace std::chrono_literals;
 
@@ -73,6 +74,13 @@ struct Retreat {
     }
 };
 
+// Three fingers swiping one way on the touchpad. KWin triggers the action as they let go, and also as it drops the swipe,
+// before it has moved, for heading the other way.
+struct TouchpadSwipe {
+    QAction letGo;
+    bool moving = false;
+};
+
 // A window that far back.
 struct Look {
     qreal scale = 1;
@@ -95,7 +103,9 @@ struct Splash {
 // A finger swiping up from the bottom edge of the primary screen opens the Start: the effect holds that edge while the
 // Start is gone, tells the shell over D-Bus how far up the finger has come and when it lets go, and the shell sets the
 // windows on the opening's timeline; a finger drawing the open Start down, which the shell has itself, sets them on the
-// closing's. KWin swallows a second finger and reports a cancelled touch as a release.
+// closing's. KWin swallows a second finger and reports a cancelled touch as a release. Three fingers swiping up on the
+// touchpad do what that finger does, and swiping down what the finger drawing the Start down does: the effect tells
+// the shell how far of KWin's whole swipe they have come and when they let go.
 class FadeBackEffect : public Effect
 {
     Q_OBJECT
@@ -123,6 +133,11 @@ Q_SIGNALS:
     // A finger on the bottom edge of the primary screen is `distance` px above where it set down.
     Q_SCRIPTABLE void fingerMoved(double distance);
     Q_SCRIPTABLE void fingerLetGo();
+    // Three fingers on the touchpad `progress` of their way up or down, KWin's whole swipe being 1, and as they let go.
+    Q_SCRIPTABLE void touchpadUp(double progress);
+    Q_SCRIPTABLE void touchpadUpLetGo();
+    Q_SCRIPTABLE void touchpadDown(double progress);
+    Q_SCRIPTABLE void touchpadDownLetGo();
 
 private:
     void watch(LayerSurfaceV1Interface *layer);
@@ -145,6 +160,8 @@ private:
     void holdEdge();
     void fingerAt(const QPointF &delta, LogicalOutput *output);
     void letGo();
+    void takeSwipe(SwipeDirection direction, TouchpadSwipe &swipe, void (FadeBackEffect::*moved)(double),
+                   void (FadeBackEffect::*letGo)());
 
     template<typename... Args>
     qreal rule(const char *name, Args... args) const
@@ -164,6 +181,8 @@ private:
     QAction m_finger;
     bool m_fingerDown = false;
     bool m_edgeHeld = false;
+    TouchpadSwipe m_swipeUp;
+    TouchpadSwipe m_swipeDown;
 };
 
 FadeBackEffect::FadeBackEffect()
@@ -181,6 +200,11 @@ FadeBackEffect::FadeBackEffect()
     connect(effects, &EffectsHandler::windowClosed, this, &FadeBackEffect::holdSplash);
     connect(&m_finger, &QAction::triggered, this, &FadeBackEffect::letGo);
     holdEdge();
+    // ponytail: KWin runs every swipe of a finger count and direction together; with more than one row of virtual
+    // desktops its own three fingers up and down switch the desktop as well, and nothing in its config turns that off.
+    // The shell follows no desktops; should it matter, take another finger count or direction here.
+    takeSwipe(SwipeDirection::Up, m_swipeUp, &FadeBackEffect::touchpadUp, &FadeBackEffect::touchpadUpLetGo);
+    takeSwipe(SwipeDirection::Down, m_swipeDown, &FadeBackEffect::touchpadDown, &FadeBackEffect::touchpadDownLetGo);
 }
 
 FadeBackEffect::~FadeBackEffect()
@@ -417,6 +441,21 @@ void FadeBackEffect::letGo()
     m_fingerDown = false;
     Q_EMIT fingerLetGo();
     QMetaObject::invokeMethod(this, &FadeBackEffect::holdEdge, Qt::QueuedConnection);
+}
+
+// Holding the swipe sets nothing in motion; only the shell, answering, does.
+void FadeBackEffect::takeSwipe(SwipeDirection direction, TouchpadSwipe &swipe, void (FadeBackEffect::*moved)(double),
+                               void (FadeBackEffect::*letGo)())
+{
+    effects->registerTouchpadSwipeShortcut(direction, 3, &swipe.letGo, [this, &swipe, moved](qreal progress) {
+        swipe.moving = true;
+        Q_EMIT(this->*moved)(progress);
+    });
+    connect(&swipe.letGo, &QAction::triggered, this, [this, &swipe, letGo] {
+        if (std::exchange(swipe.moving, false)) {
+            Q_EMIT(this->*letGo)();
+        }
+    });
 }
 
 void FadeBackEffect::prePaintScreen(ScreenPrePaintData &data)
