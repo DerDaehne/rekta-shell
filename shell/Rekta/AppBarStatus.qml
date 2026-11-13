@@ -31,8 +31,8 @@ Item {
     // False while no word stands; the bar then keeps no room for it.
     readonly property bool present: slots.length > 0
 
-    // The word that was pressed.
-    signal activated(var word)
+    // The word that was pressed, and whether a pointer did it, not the keyboard on the focused word.
+    signal activated(var word, bool byPointer)
 
     // The words that stand with a limit: the first ones and a count of the rest, which at 0 is all there is.
     function shownAt(count: int): var {
@@ -144,7 +144,7 @@ Item {
         onWantedChanged: Qt.callLater(status.count)
         onFadingChanged: Qt.callLater(status.count)
         onImplicitWidthChanged: Qt.callLater(status.count)
-        onClicked: status.activated(shown)
+        onClicked: status.activated(shown, !control.activeFocus)
         Component.onCompleted: {
             if (current)
                 shown = current;

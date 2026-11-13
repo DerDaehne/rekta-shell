@@ -71,9 +71,9 @@ PanelWindow {
     }
 
     // Opens "steuerung" on a screen, at a place of it (a name from Controls.places) or at the top.
-    function openAt(onScreen: ShellScreen, place: string) {
+    function openAt(onScreen: ShellScreen, place: string, byPointer: bool) {
         shownOn = onScreen;
-        panel.show(0, false);
+        panel.show(0, byPointer);
         panel.reveal(controls.places[place] ?? null);
     }
 

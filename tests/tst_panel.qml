@@ -2133,6 +2133,35 @@ TestCase {
         compare(controls.places.power, findChild(side, "session"), "without profiles the group it would stand in");
     }
 
+    function test_revealing_a_place_after_a_pointer_open_shows_no_ring_on_its_control_until_a_key() {
+        const place = controls.places.doNotDisturb;
+        side.show(0, true);
+        side.reveal(place);
+        verify(place.activeFocus, "the focus is on the place's control all the same");
+        compare(ringsShowing(place), 0, "no ring and so no tip");
+        keyClick(Qt.Key_Tab);
+        compare(ringsShowing(scene), 1, "the keyboard brings the ring");
+    }
+
+    function test_revealing_a_place_after_a_keyboard_open_shows_the_ring_on_its_control_at_once() {
+        const place = controls.places.doNotDisturb;
+        side.show(0, false);
+        side.reveal(place);
+        verify(place.activeFocus);
+        compare(ringsShowing(place), 1);
+    }
+
+    function test_a_second_pointer_open_of_a_place_after_closing_shows_no_ring_either() {
+        const place = controls.places.doNotDisturb;
+        side.show(0, true);
+        side.reveal(place);
+        side.close();
+        tryVerify(() => !side.open);
+        side.show(0, true);
+        side.reveal(place);
+        compare(ringsShowing(place), 0);
+    }
+
     function test_revealing_a_place_puts_the_focus_on_its_first_control() {
         giveSound(controls);
         giveBluetooth(controls);

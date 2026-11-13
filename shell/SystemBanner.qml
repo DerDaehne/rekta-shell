@@ -25,7 +25,7 @@ PanelWindow {
         if (name === "storage")
             host.cleanUp();
         else
-            controlPanel.openAt(primaryScreen, states.places[name]);
+            controlPanel.openAt(primaryScreen, states.places[name], true);
     }
 
     signal cleanUp

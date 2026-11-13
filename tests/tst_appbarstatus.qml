@@ -223,6 +223,19 @@ TestCase {
         compare(standing(), ["offline", "muted", "more"], "a press switches nothing");
     }
 
+    function test_a_pointer_press_on_a_word_says_a_pointer_did_it_and_enter_on_the_focused_word_says_the_keyboard_did() {
+        makeScene({ shown: [offline, muted, quiet] });
+        const spy = createTemporaryObject(pressSpy, testCase, { target: scene.status });
+        tryVerify(() => standing().length === 3);
+        mouseClick(word("offline"), 10, 10);
+        compare(spy.signalArguments[0][1], true);
+        word("muted").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Return);
+        compare(spy.count, 2);
+        compare(spy.signalArguments[1][0].key, "muted");
+        compare(spy.signalArguments[1][1], false);
+    }
+
     function test_the_screen_word_stands_in_the_error_colour_and_its_press_names_the_background_menu() {
         makeScene({ shown: [screen, muted] });
         const spy = createTemporaryObject(pressSpy, testCase, { target: scene.status });
