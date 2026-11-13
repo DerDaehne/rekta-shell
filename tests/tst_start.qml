@@ -933,7 +933,8 @@ TestCase {
         verify(start.letterTiles().every(tile => !tile.activeFocus), "no app has the focus as the place shows");
         keyClick(Qt.Key_Down);
         verify(letterTile(0).activeFocus);
-        keyClick(Qt.Key_Right);
+        // The three share one section, a single column: Blender lies below ark.
+        keyClick(Qt.Key_Down);
         verify(letterTile(1).activeFocus);
         verify(turner.running, "the turn runs on");
         keyClick(Qt.Key_Return);

@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import Start
+import "ManyApps.js" as ManyApps
 
 TestCase {
     name: "StartRules"
@@ -240,7 +241,7 @@ TestCase {
     }
 
     function test_alle_apps_has_a_section_per_initial_a_to_z_with_an_accent_under_its_letter_and_digits_and_signs_in_hash_first() {
-        const sections = Rules.letterSections(["3D Viewer", "_scratch", "ark", "Ärger", "Audacity", "Blender", "Écran", "elisa", "Zeal"], 4);
+        const sections = Rules.letterSections(["3D Viewer", "_scratch", "ark", "Ärger", "Audacity", "Blender", "Écran", "elisa", "Zeal"], 1);
         compare(sections.map(section => section.title), ["#", "a", "b", "e", "z"]);
         compare(sections.map(section => [section.first, section.count]), [[0, 2], [2, 3], [5, 1], [6, 2], [8, 1]]);
     }
@@ -268,7 +269,34 @@ TestCase {
         compare(Rules.letterSections(["K3b", ...kde.slice(1), "KÖnig"], 4).map(part => part.title), ["kb–km", "ko–ko"], "letters only, lower case, accents dropped");
     }
 
+
+    function test_neighbouring_letters_that_fill_no_more_than_the_rows_together_share_one_section_at_three_rows() {
+        compare(ManyApps.names.length, 120);
+        compare(Rules.letterSections(ManyApps.names, 3).map(part => [part.title, part.count, part.units]), [["a", 4, 2], ["b", 3, 1], ["c", 2, 1], ["d", 7, 3], ["e", 8, 3], ["f", 4, 2], ["g", 9, 3], ["h", 2, 1], ["i–j", 3, 1], ["k", 16, 6], ["l", 3, 1], ["m", 8, 3], ["n", 3, 1], ["o", 3, 1], ["p", 8, 3], ["r", 3, 1], ["s", 14, 5], ["t", 9, 3], ["u", 2, 1], ["v", 3, 1], ["w", 4, 2], ["x–z", 2, 1]]);
+    }
+
+    function test_neighbouring_letters_that_fill_no_more_than_the_rows_together_share_one_section_at_nine_rows() {
+        compare(Rules.letterSections(ManyApps.names, 9).map(part => [part.title, part.first, part.count, part.units]), [["a–c", 0, 9, 1], ["d", 9, 7, 1], ["e", 16, 8, 1], ["f", 24, 4, 1], ["g", 28, 9, 1], ["h–j", 37, 5, 1], ["k", 42, 16, 2], ["l", 58, 3, 1], ["m", 61, 8, 1], ["n–o", 69, 6, 1], ["p", 75, 8, 1], ["r", 83, 3, 1], ["s", 86, 14, 2], ["t", 100, 9, 1], ["u–w", 109, 9, 1], ["x–z", 118, 2, 1]]);
+    }
+
+    function test_letters_that_together_fill_exactly_the_rows_share_a_section_and_one_more_app_keeps_them_apart() {
+        compare(Rules.letterSections([...names("a", 1), ...names("b", 2)], 3).map(part => [part.title, part.count]), [["a–b", 3]]);
+        compare(Rules.letterSections([...names("a", 2), ...names("b", 2)], 3).map(part => [part.title, part.count]), [["a", 2], ["b", 2]]);
+        compare(Rules.letterSections([...names("a", 3), ...names("b", 1)], 3).map(part => [part.title, part.count]), [["a", 3], ["b", 1]], "a full letter takes no neighbour");
+    }
+
+    function test_a_letter_with_more_apps_than_rows_joins_no_neighbour_and_the_small_ones_on_either_side_stay_apart() {
+        const sections = Rules.letterSections([...names("a", 1), ...names("b", 4), ...names("c", 1)], 3);
+        compare(sections.map(part => [part.title, part.first, part.count, part.units]), [["a", 0, 1, 1], ["b", 1, 4, 2], ["c", 5, 1, 1]]);
+    }
+
+    function test_the_parts_of_a_split_letter_join_no_neighbour_and_the_small_letters_around_them_still_join_each_other() {
+        const sections = Rules.letterSections([...names("a", 1), ...names("b", 1), ...names("k", 13), ...names("l", 1), ...names("m", 1)], 2);
+        compare(sections.map(part => [part.title, part.count, part.units]), [["a–b", 2, 1], ["ka–kg", 7, 4], ["kh–km", 6, 3], ["l–m", 2, 1]]);
+    }
+
     function test_stacked_every_initial_is_one_section_one_unit_wide_and_none_splits() {
+        compare(Rules.letterSections([...names("a", 1), ...names("b", 1), ...names("c", 1)], Infinity).map(part => part.title), ["a", "b", "c"], "stacked, no letters join");
         const sections = Rules.letterSections(names("k", 60), Infinity);
         compare(sections.length, 1);
         compare(sections[0].title, "k");

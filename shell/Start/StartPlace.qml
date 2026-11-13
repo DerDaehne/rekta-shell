@@ -1688,8 +1688,9 @@ FocusScope {
 
         // "alle apps": the installed apps A–Z as a panorama under the strip of its sections' titles, as wide as the
         // surface (layout.md:19–40). A section for each initial, as many tile units wide as its apps need in the rows the
-        // panorama holds, at most six; a letter with more apps splits into near equal parts (Rules.letterSections). Its
-        // tiles are one unit, row by row, and the sections have the start place's spaces and headings.
+        // panorama holds, at most six; short neighbouring letters share one section ("a–c"), a letter with more apps
+        // splits into near equal parts (Rules.letterSections). Its tiles are one unit, row by row, and the sections have
+        // the start place's spaces and headings.
         // ponytail: a tile for every app, made anew whenever the apps or the rows change; a view that makes only the
         // tiles in sight if hundreds of apps make the Start slow.
         Item {

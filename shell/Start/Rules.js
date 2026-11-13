@@ -216,10 +216,12 @@ function twoLetters(name) {
 }
 
 // The sections of "alle apps" over `names`, in the app model's order: one per initial (initialOf), as many tile units
-// wide as its apps need in `rows` rows, at most six. An initial with more apps than six units hold splits into near
-// equal parts, the larger first, each named by the first two letters of its first and its last app ("ka–km"). Each is
-// {title, first, count, units}, `first` and `count` counted in `names`. With `rows` Infinity (stacked) none splits and
-// each is one unit wide, as one column holds all its apps.
+// wide as its apps need in `rows` rows, at most six. Neighbouring initials whose apps together fill no more than the
+// rows share one section, named by its first and last initial ("a–c"), so that a short letter leaves no rows empty
+// (layout.md:146–148). An initial with more apps than six units hold splits into near equal parts, the larger first,
+// each named by the first two letters of its first and its last app ("ka–km"). Each is {title, first, count, units},
+// `first` and `count` counted in `names`. With `rows` Infinity (stacked) none joins or splits and each is one unit
+// wide, as one column holds all its apps.
 function letterSections(names, rows) {
     const sections = [];
     for (let first = 0, count = 0; first < names.length; first += count) {
@@ -227,7 +229,13 @@ function letterSections(names, rows) {
         count = 1;
         while (first + count < names.length && initialOf(names[first + count]) === initial)
             count++;
-        sections.push(...letterParts(names, initial, first, count, rows));
+        const last = sections[sections.length - 1];
+        if (Number.isFinite(rows) && last && last.count + count <= rows) {
+            last.title = `${initialOf(names[last.first])}–${initial}`;
+            last.count += count;
+        } else {
+            sections.push(...letterParts(names, initial, first, count, rows));
+        }
     }
     return sections;
 }

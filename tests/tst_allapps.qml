@@ -5,10 +5,11 @@ import QtTest
 import Rekta
 import Start
 import "ContactSheets.js" as ContactSheets
+import "ManyApps.js" as ManyApps
 
-// "alle apps" as a panorama: a section for each initial under the strip of their names, their widths and rows, a split
-// letter, the letter jump, the wheel and swipe at its ends, the keys, a change of height, and compact. The start place is
-// tst_startpanorama.qml, the rest of the Start tst_start.qml.
+// "alle apps" as a panorama: a section for each initial under the strip of their names, their widths and rows, short
+// neighbouring letters sharing a section, a split letter, the letter jump, the wheel and swipe at its ends, the keys, a
+// change of height, and compact. The start place is tst_startpanorama.qml, the rest of the Start tst_start.qml.
 TestCase {
     id: testCase
 
@@ -189,11 +190,11 @@ TestCase {
         verify(!named("appsStripLine").visible, "no hairline under a sideways strip");
     }
 
-    function test_there_is_a_section_for_each_initial_a_to_z_an_accent_under_its_letter_and_digits_and_signs_first_in_hash() {
+    function test_the_apps_are_filed_by_initial_a_to_z_an_accent_under_its_letter_digits_and_signs_first_in_hash_and_short_neighbours_share_a_section() {
         const names = ["3D Viewer", "_scratch", "ark", "Ärger", "Audacity", "Blender", "Écran", "elisa", "Zeal"];
         openOnAllApps(names, 1600, 900);
-        compare(sections().map(section => section.title), ["#", "a", "b", "e", "z"]);
-        compare(sections().map(section => section.tiles().map(tile => tile.name)), [["3D Viewer", "_scratch"], ["ark", "Ärger", "Audacity"], ["Blender"], ["Écran", "elisa"], ["Zeal"]]);
+        compare(sections().map(section => section.title), ["#", "a", "b–e", "z"]);
+        compare(sections().map(section => section.tiles().map(tile => tile.name)), [["3D Viewer", "_scratch"], ["ark", "Ärger", "Audacity"], ["Blender", "Écran", "elisa"], ["Zeal"]]);
         compare(start.letterTiles().map(tile => findChild(tile, "name").text), names, "every app a tile, in the app model's order");
         verify(start.letterTiles().every(tile => tile.opens && tile.width === Tokens.tileUnit && tile.height === Tokens.tileUnit));
     }
@@ -211,7 +212,7 @@ TestCase {
     function test_at_1920_by_1080_a_section_holds_four_rows_and_is_as_many_units_wide_as_its_apps_need_at_most_six() {
         openOnAllApps(desktopApps, 1920, 1080);
         compare(start.letterRows, 4);
-        compare(titled("a").width, unit(1), "three apps");
+        compare(titled("a–b").width, unit(1), "four apps of two letters");
         compare(titled("s").width, unit(1), "four apps");
         compare(titled("d").width, unit(2), "five apps");
         compare(titled("ka–km").width, unit(4), "fourteen apps");
@@ -304,6 +305,60 @@ TestCase {
         compare(titled("ko–kw").tiles().length, 13);
     }
 
+    // Neighbouring letters
+
+    function test_at_1600_by_900_short_neighbouring_letters_share_a_section_of_three_rows_and_the_strip_names_it() {
+        openOnAllApps(ManyApps.names, 1600, 900);
+        compare(start.letterRows, 3);
+        compare(named("appsStrip").titles, ["a", "b", "c", "d", "e", "f", "g", "h", "i–j", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "v", "w", "x–z"]);
+        compare(titled("i–j").tiles().map(tile => tile.name), ["Inkscape", "Itinerary", "JuK"]);
+        compare(titled("x–z").width, unit(1));
+        compare(start.letterTiles().map(tile => tile.name), ManyApps.names, "every app once");
+    }
+
+    function test_upright_1080_by_1920_a_section_holds_nine_rows_and_up_to_nine_apps_of_neighbouring_letters() {
+        openOnAllApps(ManyApps.names, 1080, 1920);
+        verify(named("appsPanorama").sideways);
+        compare(start.letterRows, 9);
+        compare(named("appsStrip").titles, ["a–c", "d", "e", "f", "g", "h–j", "k", "l", "m", "n–o", "p", "r", "s", "t", "u–w", "x–z"]);
+        const joined = titled("a–c");
+        compare(joined.width, unit(1));
+        compare(joined.tiles().map(tile => tile.name), ["Akregator", "Ark", "Audacity", "AusweisApp", "Blender", "Bottles", "Brave", "Calibre", "Chromium"]);
+        const last = joined.tiles()[8];
+        compare(Qt.point(last.x, last.y), Qt.point(0, unit(8)), "the ninth fills the last row");
+    }
+
+    function test_a_typed_letter_focuses_its_first_app_inside_a_shared_section_and_the_strip_marks_that_section() {
+        openOnAllApps(ManyApps.names, 1080, 1920);
+        const panorama = named("appsPanorama");
+        const strip = named("appsStrip");
+        keyClick("o");
+        keyClick("b");
+        verify(tileOf("Blender").activeFocus, "the first b, not the first app of the section");
+        compare(strip.titles[strip.currentIndex], "a–c");
+        compare(panorama.scroller.contentX, flushLeft(titled("a–c")));
+        keyClick("n");
+        keyClick("o");
+        verify(tileOf("OBS Studio").activeFocus, "o, second in n–o");
+        compare(strip.titles[strip.currentIndex], "n–o");
+        compare(panorama.scroller.contentX, flushLeft(titled("n–o")));
+        verify(inView(tileOf("OBS Studio")));
+    }
+
+    function test_fewer_rows_part_a_shared_section_and_the_app_in_focus_stays_in_view_and_in_focus() {
+        openOnAllApps(ManyApps.names, 1080, 1920);
+        keyClick("c");
+        verify(tileOf("Calibre").activeFocus);
+        compare(sectionOfApp("Calibre").title, "a–c");
+        start.height = 900;
+        compare(start.letterRows, 3);
+        compare(sectionOfApp("Calibre").title, "c");
+        verify(titled("a–c") === undefined);
+        verify(tileOf("Calibre").activeFocus);
+        verify(inView(tileOf("Calibre")));
+        compare(named("appsStrip").titles[named("appsStrip").currentIndex], "c");
+    }
+
     // The strip
 
     function test_the_strip_shows_the_section_names_and_follows_the_panorama_as_it_scrolls() {
@@ -316,7 +371,7 @@ TestCase {
         panorama.scroller.contentX = panorama.mostScroll();
         compare(strip.currentIndex, sections().length - 1, "at the end, the last");
         // Rekta's rule (rekta.js:979–980): the last section whose left edge lies within a third of the width.
-        const at = flushLeft(titled("l"));
+        const at = flushLeft(titled("l–p"));
         panorama.scroller.contentX = at;
         compare(strip.currentIndex, sections().filter(section => section.x - at <= panorama.width / 3).length - 1);
         verify(strip.titles[strip.currentIndex] !== "ka–km");
