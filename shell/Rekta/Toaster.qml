@@ -140,9 +140,10 @@ Item {
             handOver.stop();
     }
 
-    // A notification's toast stands above the count or goes down over it.
+    // A notification's toast stands above the count or goes down over it; one all the way down is gone, though its
+    // destruction waits for the event loop.
     function notificationInSight(): bool {
-        return Array.from(cell.children).some(toast => toast.notification && !toast.waiting);
+        return Array.from(cell.children).some(toast => toast.notification && !toast.waiting && toast.down < 1);
     }
 
     // The toast waiting comes in once the one before has gone and the count has made way.

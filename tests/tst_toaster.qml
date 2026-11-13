@@ -943,6 +943,17 @@ TestCase {
         compare(region.leaving, 0);
     }
 
+    function test_a_notification_s_toast_that_replaces_a_standing_toast_of_the_shell_s_own_makes_the_count_give_way() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        const undo = region.show("meldung entfernt", { undo: () => {} });
+        tryVerify(() => arrived(undo), 1000);
+        verify(!count.away);
+        const toast = region.show("lunch at noon?", { notification: true });
+        verify(count.away, "the count gives way");
+        verify(toast.waiting, "the toast waits for it");
+    }
+
     function test_the_count_keeps_on_its_way_out_when_a_notification_s_toast_replaces_one_still_waiting_for_it() {
         Prefs.motion = "on";
         const { toaster: region, count } = makeCountScene({});
@@ -994,6 +1005,23 @@ TestCase {
         compare(countBack.interval, 113, "turn-overlap into its way down, 0.75 × 150ms");
         tryVerify(() => !count.away, 1000);
         verify(findChild(count, "giveWayRun").running, "it comes back");
+    }
+
+    function test_a_notification_s_toast_that_ends_while_it_waits_behind_one_dismissed_as_it_came_in_leaves_the_count_to_that_one_s_way_down() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        const first = region.show("lunch at noon?", { notification: true });
+        tryVerify(() => !first.waiting, 1000);
+        findChild(first, "rising").pause();
+        region.dismiss();
+        const second = region.show("on my way", { notification: true });
+        verify(second.waiting, "the second waits for the first to go down");
+        second.leave(false, "dismissed");
+        verify(count.away, "still away while the first goes down");
+        const countBack = findChild(region, "countBack");
+        verify(countBack.running);
+        fuzzyCompare(countBack.interval, Tokens.turnOverlap * findChild(first, "gliding").duration, 1);
+        tryVerify(() => !count.away, 1000, "it comes back turn-overlap into that way");
     }
 
     // A notification's toast stands, the next replaces it, and that one ends while it waits for the first to go down.
@@ -1131,6 +1159,16 @@ TestCase {
         compare(moves.count, 2, "it stays as the toast goes");
         compare(findChild(count, "face").opacity, 1);
         compare(region.leaving, 0);
+    }
+
+    function test_under_reduced_motion_a_notification_right_after_one_has_gone_makes_the_count_give_way_again() {
+        const { toaster: region, count } = makeCountScene({});
+        region.show("lunch at noon?", { notification: true });
+        region.dismiss();
+        compare(region.leaving, 0, "the first has gone, though it is not yet destroyed");
+        const moves = createTemporaryObject(spyComponent, testCase, { target: count, signalName: "awayChanged" });
+        region.show("on my way", { notification: true });
+        compare(moves.count, 2, "the count gave way and came back at once");
     }
 
     function test_toasts_stay_on_their_layer_below_floating_surfaces_and_sheets() {
