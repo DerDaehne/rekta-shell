@@ -579,6 +579,25 @@ TestCase {
         compare(panorama.scroller.contentX, 0);
     }
 
+    function test_compact_home_and_end_on_a_tile_still_go_to_the_first_and_the_last_app_and_on_the_panorama_to_its_top_and_bottom() {
+        openOnAllApps(desktopApps, 720, 1280);
+        const panorama = named("appsPanorama");
+        verify(!panorama.sideways);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_End);
+        verify(tileOf("Zettlr").activeFocus);
+        verify(inView(tileOf("Zettlr")));
+        keyClick(Qt.Key_Home);
+        verify(tileOf("Akregator").activeFocus);
+        verify(inView(tileOf("Akregator")));
+        panorama.forceActiveFocus();
+        keyClick(Qt.Key_End);
+        compare(panorama.scroller.contentY, panorama.mostScroll());
+        keyClick(Qt.Key_Home);
+        compare(panorama.scroller.contentY, 0);
+        verify(panorama.activeFocus);
+    }
+
     function test_home_and_end_on_the_focused_panorama_go_to_the_first_and_the_last_section() {
         openOnAllApps(desktopApps, 1600, 900);
         const panorama = named("appsPanorama");

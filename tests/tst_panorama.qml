@@ -896,6 +896,94 @@ TestCase {
         compare(panorama.scroller.contentWidth, 600);
     }
 
+    // Five stacked sections, each 400 px of content under its heading, in a 600 × 500 box of a 900 px high window.
+    function makeStacked() {
+        const panorama = makePanorama(5, 400);
+        panorama.width = 600;
+        panorama.viewportHeight = 900;
+        settled(panorama);
+        verify(!panorama.sideways);
+        return panorama;
+    }
+
+    function test_stacked_the_mark_moves_to_a_section_once_its_top_is_300_px_into_a_900_px_window_scrolling_down_and_up() {
+        const panorama = makeStacked();
+        const tops = [0, 1, 2, 3, 4].map(k => sectionAt(panorama, k).y);
+        verify(tops[4] - 300 <= panorama.mostScroll(), "every top can come 300 px near");
+        for (let k = 1; k < 5; k++) {
+            panorama.scroller.contentY = tops[k] - 301;
+            compare(panorama.currentIndex, k - 1, `down, section ${k} 301 px below the top`);
+            panorama.scroller.contentY = tops[k] - 300;
+            compare(panorama.currentIndex, k, `down, section ${k} 300 px below the top`);
+        }
+        for (let k = 4; k > 0; k--) {
+            panorama.scroller.contentY = tops[k] - 300;
+            compare(panorama.currentIndex, k, `up, section ${k} 300 px below the top`);
+            panorama.scroller.contentY = tops[k] - 301;
+            compare(panorama.currentIndex, k - 1, `up, section ${k} 301 px below the top`);
+        }
+    }
+
+    function test_stacked_a_first_section_that_shrinks_under_a_still_view_hands_the_mark_to_the_one_below() {
+        const panorama = makeStacked();
+        compare(panorama.currentIndex, 0);
+        sectionAt(panorama, 0).tall = 100;
+        tryVerify(() => sectionAt(panorama, 1).y < 300);
+        compare(panorama.currentIndex, 1, "its top came within 300 px without a scroll");
+        sectionAt(panorama, 0).tall = 400;
+        tryVerify(() => sectionAt(panorama, 1).y > 300);
+        compare(panorama.currentIndex, 0);
+    }
+
+    function test_stacked_page_down_and_up_scroll_by_the_500_px_in_view_and_home_and_end_go_to_the_top_and_the_bottom() {
+        const panorama = makeStacked();
+        const most = panorama.mostScroll();
+        verify(most > 1000);
+        panorama.forceActiveFocus();
+        keyClick(Qt.Key_PageDown);
+        compare(panorama.scroller.contentY, 500);
+        keyClick(Qt.Key_PageDown);
+        compare(panorama.scroller.contentY, 1000);
+        keyClick(Qt.Key_PageUp);
+        compare(panorama.scroller.contentY, 500);
+        keyClick(Qt.Key_End);
+        compare(panorama.scroller.contentY, most);
+        compare(panorama.currentIndex, 4, "the mark follows");
+        keyClick(Qt.Key_PageDown);
+        compare(panorama.scroller.contentY, most, "no further than the bottom");
+        keyClick(Qt.Key_PageUp);
+        compare(panorama.scroller.contentY, most - 500);
+        keyClick(Qt.Key_Home);
+        compare(panorama.scroller.contentY, 0);
+        compare(panorama.currentIndex, 0);
+        keyClick(Qt.Key_PageUp);
+        compare(panorama.scroller.contentY, 0, "no further than the top");
+        verify(panorama.activeFocus, "the focus stays");
+    }
+
+    function test_stacked_page_keys_scroll_from_inside_a_section_where_home_and_end_are_not_the_panoramas() {
+        const panorama = makeStacked();
+        sectionAt(panorama, 0).focusHeading();
+        keyClick(Qt.Key_PageDown);
+        compare(panorama.scroller.contentY, 500);
+        keyClick(Qt.Key_End);
+        compare(panorama.scroller.contentY, 500);
+        keyClick(Qt.Key_Home);
+        compare(panorama.scroller.contentY, 500);
+        keyClick(Qt.Key_PageUp);
+        compare(panorama.scroller.contentY, 0);
+        verify(sectionAt(panorama, 0).headingFocused);
+    }
+
+    function test_stacked_page_keys_with_alt_ctrl_or_meta_are_not_the_panoramas() {
+        const panorama = makeStacked();
+        panorama.forceActiveFocus();
+        for (const modifier of [Qt.AltModifier, Qt.ControlModifier, Qt.MetaModifier]) {
+            keyClick(Qt.Key_PageDown, modifier);
+            compare(panorama.scroller.contentY, 0);
+        }
+    }
+
     // Keys (navigation.md:454–456).
 
     function test_arrow_and_page_keys_jump_to_the_previous_and_next_section_flush_left() {

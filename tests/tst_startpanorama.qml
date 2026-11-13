@@ -946,6 +946,51 @@ TestCase {
         compare(named("sectionStrip").currentIndex, 0);
     }
 
+    // Two windows and fifteen pinned apps at 720 × 900: "läuft" is two rows high, more than a third of the height.
+    function openCompactWithTwoWindows() {
+        testCase.width = 720;
+        testCase.height = 900;
+        openAt(720, 900, {
+            windows: windowsCount(2),
+            pinned: appsPinned(15)
+        });
+        verify(!named("panorama").sideways);
+    }
+
+    function test_compact_right_after_opening_the_strip_marks_läuft_at_the_top_not_a_section_measured_while_they_filled_in() {
+        openCompactWithTwoWindows();
+        compare(named("panorama").scroller.contentY, 0);
+        verify(named("pinned").y > 300, "angeheftet starts below a third of 900 px");
+        compare(named("sectionStrip").currentIndex, 0);
+    }
+
+    function test_compact_page_down_and_up_scroll_the_start_by_the_height_in_view_from_the_start_and_from_a_tile() {
+        openCompactWithTwoWindows();
+        const panorama = named("panorama");
+        const strip = named("sectionStrip");
+        const page = panorama.height;
+        const most = panorama.mostScroll();
+        verify(most > page && most < 2 * page);
+        keyClick(Qt.Key_PageDown);
+        compare(panorama.scroller.contentY, page, "with no tile focused");
+        compare(strip.currentIndex, 1, "angeheftet at the top");
+        keyClick(Qt.Key_PageDown);
+        compare(panorama.scroller.contentY, most);
+        keyClick(Qt.Key_PageUp);
+        compare(panorama.scroller.contentY, most - page);
+        keyClick(Qt.Key_PageUp);
+        compare(panorama.scroller.contentY, 0);
+        compare(strip.currentIndex, 0);
+        keyClick(Qt.Key_Down);
+        const first = tilesIn("running")[0];
+        verify(first.activeFocus);
+        keyClick(Qt.Key_PageDown);
+        compare(panorama.scroller.contentY, page, "from a tile");
+        verify(first.activeFocus, "the focus stays on it");
+        keyClick(Qt.Key_PageUp);
+        compare(panorama.scroller.contentY, 0);
+    }
+
     // The search, Escape and back
 
     function test_typing_replaces_the_strip_and_the_panorama_with_the_search_and_clearing_brings_them_back() {

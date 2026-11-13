@@ -1250,8 +1250,13 @@ FocusScope {
         else if (event.key === Qt.Key_Delete)
             unpinFocused();
         else
-            return toTheFirstOrLastApp(event);
+            return toTheFirstOrLastApp(event) || pagesThePlace(event);
         return true;
+    }
+
+    // PageUp and PageDown scroll a stacked place from anywhere, as they scroll a page wherever the focus is.
+    function pagesThePlace(event: KeyEvent): bool {
+        return placePanorama.visible && placePanorama.pageKey(event, false);
     }
 
     // A key for the tiles finds the chosen place in view: the parts waiting for the windows turn in now, and a place

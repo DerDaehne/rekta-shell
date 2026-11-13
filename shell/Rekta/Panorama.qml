@@ -272,6 +272,14 @@ Item {
         reading.stackHeight = top;
         markInSight(sections);
         keepReading();
+        followLayout();
+    }
+
+    // A stacked section that grows or shrinks moves the ones below it under a still view, so the mark goes where the
+    // view now is; a layout made while the sections were still filling in leaves no stale mark behind.
+    function followLayout() {
+        if (!sideways)
+            follow();
     }
 
     // A gap new since the panorama last showed keeps the section being read, not an offset, at once (rekta.js fit(),
@@ -319,10 +327,10 @@ Item {
             mark(chosen);
     }
 
-    // The last section whose leading edge lies within a third of the view; sideways at the start the first and at the
-    // end the last, however narrow the sections (rekta.js follow(), :973–990).
+    // The last section whose leading edge lies within a third of the view, stacked of the window's height; sideways at the
+    // start the first and at the end the last, however narrow the sections (rekta.js follow(), :973–990).
     function sectionAtEdge(sections: var): int {
-        const reach = (sideways ? flick.width : flick.height) / 3;
+        const reach = (sideways ? flick.width : viewportHeight) / 3;
         const here = sideways ? flick.contentX : flick.contentY;
         if (sideways && here <= 1)
             return 0;
@@ -369,9 +377,35 @@ Item {
         mark(reading.current);
     }
 
+    // Stacked the panorama is the page, and the keys scroll it as they scroll a page, which Rekta leaves to the platform
+    // (layout.md:33–37; rekta.js key(), :1028): PageUp PageDown by the height in view, as Qt's own scroll areas step,
+    // wherever the focus is in it; Home End to the top and the bottom on the panorama itself, as a grid takes them.
+    function pageKey(event: KeyEvent, onItself: bool): bool {
+        if (sideways || facetRow || (event.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.MetaModifier)))
+            return false;
+        const moves = {
+            [Qt.Key_PageDown]: flick.contentY + flick.height,
+            [Qt.Key_PageUp]: flick.contentY - flick.height
+        };
+        if (onItself) {
+            moves[Qt.Key_Home] = 0;
+            moves[Qt.Key_End] = mostScroll();
+        }
+        if (!(event.key in moves))
+            return false;
+        takeOver();
+        flick.cancelFlick();
+        flick.contentY = Math.max(0, Math.min(mostScroll(), moves[event.key]));
+        return true;
+    }
+
     // ← → PageUp PageDown jump a section, Home End to the ends; only on the panorama itself (rekta.js key(), :1027).
     Keys.onPressed: event => {
         userScroll();
+        if (pageKey(event, Window.activeFocusItem === panorama)) {
+            event.accepted = true;
+            return;
+        }
         if (Window.activeFocusItem !== panorama || !sideways || facetRow || (event.modifiers & (Qt.AltModifier | Qt.ControlModifier | Qt.MetaModifier)))
             return;
         const last = sectionItems().length - 1;
