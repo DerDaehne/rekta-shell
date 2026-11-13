@@ -463,20 +463,25 @@ TestCase {
         compare(elisa.calls, everyCall.filter(call => call !== data.withheld), "the other keys still reach it");
     }
 
+    // Each step of the progress from now on, with the time it was taken: under load frames come late, never the clock.
+    function stepsOf(region: var): var {
+        const steps = [];
+        region.playedChanged.connect(() => steps.push({ played: region.played, at: Date.now() }));
+        return steps;
+    }
+
     function test_the_progress_glides_on_between_the_players_reports_without_jumps() {
         givePlayer({ position: 10 });
         showSettled();
         const region = part("nowPlaying");
-        const from = region.played;
-        const start = Date.now();
-        verify(from >= 10 && from < 11);
-        let last = from;
-        for (let look = 0; look < 10; look++) {
-            wait(30);
-            const due = from + (Date.now() - start) / 1000;
-            verify(region.played > last, `it moves on between looks: ${region.played} after ${last}`);
-            verify(Math.abs(region.played - due) < 0.1, `with the clock at the player's rate, never a jump: ${region.played}, due ${due}`);
-            last = region.played;
+        verify(region.played >= 10 && region.played < 11);
+        const steps = stepsOf(region);
+        tryVerify(() => steps.length > 10, 5000, "it moves on frame by frame");
+        const first = steps[0];
+        for (const [index, step] of steps.entries()) {
+            const due = first.played + (step.at - first.at) / 1000;
+            verify(index === 0 || step.played > steps[index - 1].played, `it moves on: ${step.played} after ${steps[index - 1]?.played}`);
+            verify(Math.abs(step.played - due) < 0.1, `with the clock at the player's rate, never a jump: ${step.played}, due ${due}`);
         }
         compare(part("progress").value, region.played / 243);
     }
@@ -522,9 +527,11 @@ TestCase {
         compare(region.played, held);
         one.rate = 2;
         one.playbackState = PlayerChoice.Playing;
-        const from = region.played;
-        wait(200);
-        verify(region.played - from > 0.3, `twice the rate: ${region.played - from}`);
+        const steps = stepsOf(region);
+        tryVerify(() => steps.length > 1 && steps[steps.length - 1].at - steps[0].at >= 200, 5000);
+        const [first, last] = [steps[0], steps[steps.length - 1]];
+        const rate = (last.played - first.played) * 1000 / (last.at - first.at);
+        verify(Math.abs(rate - 2) < 0.25, `twice the rate: ${rate}`);
     }
 
     function test_a_length_that_comes_after_the_position_lets_the_progress_glide_to_it() {
