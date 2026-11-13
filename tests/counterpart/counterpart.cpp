@@ -6,7 +6,10 @@
 #include <QDBusMetaType>
 #include <QDBusObjectPath>
 #include <QDBusPendingCallWatcher>
+#include <QDBusReply>
 #include <QUuid>
+
+#include <optional>
 
 using namespace Qt::StringLiterals;
 
@@ -39,6 +42,32 @@ public:
 
 private:
     Counterpart *m_counterpart;
+};
+
+// Answers every call with the same values, or leaves every call without an answer.
+class Answer : public QDBusVirtualObject
+{
+public:
+    Answer(QObject *parent, std::optional<QVariantList> values)
+        : QDBusVirtualObject(parent)
+        , m_values(std::move(values))
+    {
+    }
+
+    QString introspect(const QString &) const override
+    {
+        return {};
+    }
+
+    bool handleMessage(const QDBusMessage &message, const QDBusConnection &connection) override
+    {
+        if (m_values)
+            connection.send(message.createReply(*m_values));
+        return true;
+    }
+
+private:
+    std::optional<QVariantList> m_values;
 };
 
 QVariantList plainValues(const QVariantList &arguments)
@@ -107,6 +136,44 @@ bool Counterpart::listen(const QString &interfaceName, const QString &member)
 void Counterpart::hear(const QDBusMessage &message)
 {
     Q_EMIT heard(message.service(), message.path(), message.member(), message.signature(), plainValues(message.arguments()));
+}
+
+bool Counterpart::takeName(const QString &name)
+{
+    const QDBusReply<QDBusConnectionInterface::RegisterServiceReply> reply = m_connection.interface()->registerService(
+        name, QDBusConnectionInterface::ReplaceExistingService, QDBusConnectionInterface::DontAllowReplacement);
+    return reply.isValid() && reply.value() == QDBusConnectionInterface::ServiceRegistered;
+}
+
+void Counterpart::releaseName(const QString &name)
+{
+    m_connection.interface()->unregisterService(name);
+    for (const QString &path : std::as_const(m_paths))
+        m_connection.unregisterObject(path);
+    m_paths.clear();
+}
+
+void Counterpart::answerAt(const QString &path, const QVariantList &values)
+{
+    m_connection.registerVirtualObject(path, new Answer(this, values));
+    m_paths.append(path);
+}
+
+void Counterpart::ignoreAt(const QString &path)
+{
+    m_connection.registerVirtualObject(path, new Answer(this, std::nullopt));
+    m_paths.append(path);
+}
+
+void Counterpart::flood(const QString &path, const QString &interfaceName, const QString &member, int count)
+{
+    for (int i = 1; i <= count; ++i)
+        emitSignal(path, interfaceName, member, {QVariant(uint(i))});
+}
+
+QString Counterpart::uniqueName() const
+{
+    return m_connection.baseService();
 }
 
 void Counterpart::record(const QDBusMessage &message)

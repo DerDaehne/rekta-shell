@@ -176,6 +176,8 @@ TestCase {
     // The stand-ins go when the test ends; the real authenticator lives as long as the greeter.
     function cleanup() {
         players.clear();
+        counterpart.releaseName("rekta.Shell");
+        counterpart.releaseName("org.example.Other");
         Unlock.shown = false;
         Unlock.authenticator = null;
         Prefs.motion = "system";
@@ -734,9 +736,15 @@ TestCase {
         return unseen;
     }
 
-    function shell(count: int): var {
-        // A shell of an earlier test may still hold the name until its deferred destruction has run.
+    // The counterpart gives the name up, and a shell of an earlier test may hold it until its deferred destruction has
+    // run.
+    function freeShellName() {
+        counterpart.releaseName("rekta.Shell");
         tryVerify(() => counterpart.nameOwner("rekta.Shell") === "");
+    }
+
+    function shell(count: int): var {
+        freeShellName();
         const created = createTemporaryObject(shellComponent, testCase, {
             sessionDesktop: "rekta",
             count
@@ -767,7 +775,7 @@ TestCase {
     function test_a_shell_that_starts_after_the_lock_screen_is_asked_and_one_that_ends_takes_the_count_along() {
         if (!hasDBus)
             skip("this run goes without RektaShell.DBus");
-        tryVerify(() => counterpart.nameOwner("rekta.Shell") === "");
+        freeShellName();
         const unseen = lockFaceCountingFromTheShell();
         compare(unseen.count, 0, "no shell, no count");
         const exporter = shell(2);
@@ -787,6 +795,107 @@ TestCase {
         counterpart.nameOwner("org.freedesktop.DBus");
         wait(100);
         compare(unseen.count, 2);
+    }
+
+    // The counterpart, as another program on the bus, says the count or sends a signal from the shell's place.
+    function sayCount(values: var) {
+        counterpart.emitSignal("/rekta/Shell", "rekta.Shell.Notices", "UnseenCountChanged", values);
+    }
+
+    // What arrives on the lock screen's own connection cannot be awaited from the counterpart's; a moment must do.
+    function settle() {
+        counterpart.nameOwner("org.freedesktop.DBus");
+        wait(200);
+    }
+
+    readonly property var notCounts: [["9"], [-3], [2.5], [], [[1, 2]], [true], [{ a: 1 }], [4294967295]]
+
+    function test_whoever_takes_the_shells_name_is_heard_and_the_shell_again_once_it_has_the_name_back() {
+        if (!hasDBus)
+            skip("this run goes without RektaShell.DBus");
+        const exporter = shell(2);
+        const unseen = lockFaceCountingFromTheShell();
+        tryVerify(() => unseen.count === 2);
+        counterpart.answerAt("/rekta/Shell", [7]);
+        verify(counterpart.takeName("rekta.Shell"));
+        compare(counterpart.nameOwner("rekta.Shell"), counterpart.uniqueName());
+        tryVerify(() => unseen.count === 7, 5000, "the new owner is asked");
+        sayCount([8]);
+        tryVerify(() => unseen.count === 8, 5000, "and heard");
+        exporter.count = 4;
+        settle();
+        compare(unseen.count, 8, "the shell, waiting for its name, is not heard");
+        counterpart.releaseName("rekta.Shell");
+        tryVerify(() => unseen.count === 4, 5000, "the shell is asked once it has the name back");
+        sayCount([9]);
+        settle();
+        compare(unseen.count, 4, "the former owner is not heard any more");
+        exporter.count = 6;
+        tryVerify(() => unseen.count === 6);
+    }
+
+    function test_a_signal_of_the_owner_with_anything_but_a_count_counts_as_none() {
+        if (!hasDBus)
+            skip("this run goes without RektaShell.DBus");
+        freeShellName();
+        const unseen = lockFaceCountingFromTheShell();
+        counterpart.answerAt("/rekta/Shell", [5]);
+        verify(counterpart.takeName("rekta.Shell"));
+        // The answer to the question the new owner is asked lands first, so it cannot overwrite a later signal.
+        tryVerify(() => unseen.count === 5);
+        for (const values of notCounts) {
+            sayCount([5]);
+            tryVerify(() => unseen.count === 5);
+            sayCount(values);
+            tryVerify(() => unseen.count === 0, 5000, JSON.stringify(values));
+            verify(!part("status").visible);
+        }
+    }
+
+    function test_an_answer_of_the_owner_with_anything_but_a_count_counts_as_none() {
+        if (!hasDBus)
+            skip("this run goes without RektaShell.DBus");
+        shell(5);
+        const unseen = lockFaceCountingFromTheShell();
+        tryVerify(() => unseen.count === 5);
+        for (const values of notCounts) {
+            counterpart.answerAt("/rekta/Shell", values);
+            verify(counterpart.takeName("rekta.Shell"));
+            tryVerify(() => unseen.count === 0, 5000, JSON.stringify(values));
+            counterpart.releaseName("rekta.Shell");
+            tryVerify(() => unseen.count === 5, 5000, "the shell has the name back");
+        }
+    }
+
+    function test_another_program_coming_to_and_leaving_the_bus_leaves_the_count_alone() {
+        if (!hasDBus)
+            skip("this run goes without RektaShell.DBus");
+        shell(3);
+        const unseen = lockFaceCountingFromTheShell();
+        tryVerify(() => unseen.count === 3);
+        verify(counterpart.takeName("org.example.Other"));
+        settle();
+        counterpart.releaseName("org.example.Other");
+        settle();
+        compare(unseen.count, 3);
+    }
+
+    function test_an_owner_that_never_answers_and_floods_the_bus_leaves_the_way_to_pam_free() {
+        if (!hasDBus)
+            skip("this run goes without RektaShell.DBus");
+        freeShellName();
+        counterpart.ignoreAt("/rekta/Shell");
+        verify(counterpart.takeName("rekta.Shell"));
+        const unseen = lockFaceCountingFromTheShell();
+        counterpart.flood("/rekta/Shell", "rekta.Shell.Notices", "UnseenCountChanged", 20000);
+        ask();
+        type("rekta");
+        keyClick(Qt.Key_Return);
+        tryVerify(() => responses().length === 1, 10000);
+        compare(responses()[0], ["respond", "rekta"]);
+        tryVerify(() => unseen.count === 20000, 20000);
+        freeShellName();
+        tryVerify(() => unseen.count === 0);
     }
 
     // The test path holds RektaShell.DBus in the first run of these tests only.

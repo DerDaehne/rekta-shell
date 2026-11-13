@@ -421,6 +421,22 @@ TestCase {
         compare(heard.map(signal => signal.values[0]), [7]);
     }
 
+    function test_a_signal_with_a_name_d_bus_does_not_take_or_arguments_that_are_no_list_is_not_sent() {
+        const heard = heardByCounterpart;
+        const bus = connection();
+        for (const [path, iface, member] of [["no path", "org.rekta.Events", "Counted"], ["", "org.rekta.Events", "Counted"],
+                ["/events", "not an interface", "Counted"], ["/events", "org.rekta.Events", "1bad"]])
+            verify(!bus.emitSignal(path, iface, member, [1], "u"), `${path} ${iface} ${member}`);
+        ignoreWarning(/cannot send Counted the signature u needs 1 values, not 0/);
+        verify(!bus.emitSignal("/events", "org.rekta.Events", "Counted", 5, "u"));
+        ignoreWarning(/cannot send Counted the signature u needs 1 values, not 0/);
+        verify(!bus.emitSignal("/events", "org.rekta.Events", "Counted", null, "u"));
+        verify(bus.emitSignal("/events", "org.rekta.Events", "Counted", [], ""), "a signal without arguments");
+        verify(bus.emitSignal("/events", "org.rekta.Events", "Counted", [8], "u"));
+        tryVerify(() => heard.length === 2);
+        compare(heard.map(signal => signal.signature), ["", "u"]);
+    }
+
     function test_a_name_is_free_once_its_owner_is_gone() {
         const name = "org.rekta.Test.Gone";
         const only = ownWho(name, "only");

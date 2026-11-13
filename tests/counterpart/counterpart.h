@@ -8,7 +8,7 @@
 
 // The other end of the bus for the tests of RektaShell.DBus, written against QtDBus alone. It owns
 // org.rekta.Counterpart, echoes every call to /echo back (or fails when asked "Fail") and records what arrived; it
-// sends and hears signals, calls methods and asks the bus who owns a name.
+// sends and hears signals, calls methods, takes and answers names of others and asks the bus who owns a name.
 class Counterpart : public QObject
 {
     Q_OBJECT
@@ -34,6 +34,17 @@ public:
     Q_INVOKABLE QString nameOwner(const QString &name);
     // Reports each signal of that interface and member, from any sender, with heard().
     Q_INVOKABLE bool listen(const QString &interfaceName, const QString &member);
+    // Takes name from its owner for good, as a program that pushes the shell aside would; false when it cannot.
+    Q_INVOKABLE bool takeName(const QString &name);
+    // Gives name up and drops what answerAt() or ignoreAt() put up.
+    Q_INVOKABLE void releaseName(const QString &name);
+    // Every call to path is answered with these values, typed as QtDBus types them.
+    Q_INVOKABLE void answerAt(const QString &path, const QVariantList &values);
+    // Every call to path stays without an answer.
+    Q_INVOKABLE void ignoreAt(const QString &path);
+    // Sends count signals in a row, numbered from 1.
+    Q_INVOKABLE void flood(const QString &path, const QString &interfaceName, const QString &member, int count);
+    Q_INVOKABLE QString uniqueName() const;
 
     QString lastSignature() const
     {
@@ -55,6 +66,7 @@ private Q_SLOTS:
     void hear(const QDBusMessage &message);
 
 private:
+    QStringList m_paths;
     QDBusConnection m_connection;
     QString m_lastSignature;
     QVariantMap m_variantTypes;
