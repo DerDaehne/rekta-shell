@@ -11,8 +11,9 @@ import QtQuick
 // an undo toast shows no seconds figure, only the running-out line (see Toast.qml).
 //
 // A notification's toast comes from its count: the count gives way (`countAway`), the toast comes in once the count is
-// turn-overlap through its way out, and the count comes back once the toast is turn-overlap through its way down, unless
-// another notification's toast comes next (motion.md:14, the place change's hand-over; rekta.js:594). It came from
+// turn-overlap through its way out (motion.md:14, the place change's hand-over; rekta.js:594), and the count comes back
+// as soon as the toast has come in, so that it stays in reach while the toast stands. The toast leaves over the count,
+// and a notification's toast that follows one still in sight comes in without the count giving way again. It came from
 // another program, so it glides whole from the bottom edge and back without a fade (states.md:84–88; motion.md:36;
 // rekta.css:1197–1203, :1407); a toast of the product's own rises 12px with a fade.
 // A window without an app bar hangs its toasts from the top centre, as Rekta does sideways (`hangsFromTop`;
@@ -43,7 +44,7 @@ Item {
     property bool countInSight: false
     // Hung from the top centre, space-m below the top edge, as in a window without an app bar.
     property bool hangsFromTop: false
-    // While a notification's toast is on its way in, stands or is on its way down: the count gives way. Set here only.
+    // While a notification's toast waits or comes in: the count gives way. Set here only.
     property bool countAway: false
     // The count leaves as the old count of a peek does; a notification's toast comes in turn-overlap into that way.
     readonly property int countGoes: Math.round(Tokens.turnOverlap * Geometry.peekOutShare * Tokens.durationModerate)
@@ -86,7 +87,7 @@ Item {
             waiting: true
         }) as Toast;
         open = toast;
-        if (o.notification)
+        if (o.notification && !notificationInSight())
             giveWay();
         replaced?.leave(false, "replaced");
         beginNext();
@@ -105,9 +106,10 @@ Item {
     }
 
     // A toast that began to leave over `way` ms has ended, and its end may have shown the next toast. A notification's
-    // hands its count back turn-overlap into that way; one that never rose leaves it to the toast still on its way down.
+    // that had not come in yet hands its count back turn-overlap into that way; one that never rose leaves it to the toast
+    // still on its way down.
     function handCountBack(toast: Toast, way: int) {
-        if (!toast.notification || (way === 0 && countBack.running))
+        if (!toast.notification || !countAway || (way === 0 && countBack.running))
             return;
         countBack.interval = Math.round(Tokens.turnOverlap * way);
         if (countBack.interval > 0)
@@ -131,11 +133,16 @@ Item {
             handOver.restart();
     }
 
-    // The count comes back, unless the toast that comes next is a notification's too.
+    // The count comes back, unless a notification's toast has still to come in from it.
     function takeCountBack() {
-        countAway = open?.notification ?? false;
+        countAway = open !== null && open.notification && open.phase < 1;
         if (!countAway)
             handOver.stop();
+    }
+
+    // A notification's toast stands above the count or goes down over it.
+    function notificationInSight(): bool {
+        return Array.from(cell.children).some(toast => toast.notification && !toast.waiting);
     }
 
     // The toast waiting comes in once the one before has gone and the count has made way.

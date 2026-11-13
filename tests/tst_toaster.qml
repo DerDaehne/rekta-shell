@@ -83,6 +83,7 @@ TestCase {
             id: counted
 
             property bool countInSight: true
+            property int presses: 0
 
             width: 800
             height: 600
@@ -91,6 +92,7 @@ TestCase {
                 id: region
 
                 objectName: "toaster"
+                y: count.y - height
                 width: parent.width
                 clock: () => testCase.time
                 countInSight: counted.countInSight
@@ -107,6 +109,7 @@ TestCase {
                 text: "messages"
                 count: 3
                 away: region.countAway
+                onClicked: counted.presses++
             }
         }
     }
@@ -814,7 +817,12 @@ TestCase {
     // The toaster over a count that gives way while it says so, as the shell wires them.
     function makeCountScene(properties) {
         const counted = createTemporaryObject(countSceneComponent, testCase, properties);
-        return { toaster: findChild(counted, "toaster"), count: findChild(counted, "count") };
+        return { scene: counted, toaster: findChild(counted, "toaster"), count: findChild(counted, "count") };
+    }
+
+    // A toast has come in once its way up has run to its end.
+    function arrived(toast: Toast): bool {
+        return !toast.waiting && !findChild(toast, "rising").running && toast.entry === 1;
     }
 
     function test_a_notification_s_toast_comes_in_once_its_count_is_turn_overlap_through_its_way_out() {
@@ -830,34 +838,57 @@ TestCase {
         fuzzyCompare(handOver.interval, Tokens.turnOverlap * out.duration, 1);
         tryVerify(() => !toast.waiting, 1000);
         verify(findChild(toast, "rising").running, "then it rises");
-        verify(count.away, "and the count stays away while it stands");
+        verify(count.away, "and the count stays away while it comes in");
     }
 
-    function test_a_notification_s_count_comes_back_turn_overlap_into_its_toast_s_way_down() {
+    function test_the_count_comes_back_with_the_second_half_of_a_flip_once_its_notification_s_toast_has_come_in() {
         Prefs.motion = "on";
         const { toaster: region, count } = makeCountScene({});
-        const toast = region.show("lunch at noon?", { notification: true });
-        tryVerify(() => !toast.waiting, 1000);
-        region.dismiss();
-        verify(count.away, "still away as the toast starts down");
-        const countBack = findChild(region, "countBack");
-        verify(countBack.running);
-        compare(countBack.interval, 113, "turn-overlap into its way down, 0.75 × 150ms");
-        tryVerify(() => !count.away, 1000);
-        verify(findChild(count, "giveWayRun").running, "it comes back");
+        const toast = region.show("lunch at noon?", { title: "anna", notification: true });
+        tryVerify(() => findChild(toast, "rising").running, 1000);
+        verify(count.away, "away while the toast comes in");
+        tryVerify(() => arrived(toast), 1000);
+        verify(!count.away, "back as soon as the toast stands");
+        const back = findChild(count, "giveWayRun");
+        verify(back.running, "it flips back");
+        compare(back.duration, Tokens.durationModerate / 2);
+        compare(region.open, toast, "the toast still stands");
+        compare(toast.y, restingY(toast), "above the count");
+        compare(findChild(count, "count").text, " 3", "with the current number");
     }
 
-    function test_a_notification_s_toast_that_runs_out_falls_into_the_count_which_comes_back_with_it() {
+    function test_the_count_stays_while_its_notification_s_toast_goes_down_behind_the_bar_whether_it_runs_out_is_pressed_or_dismissed() {
+        Prefs.motion = "on";
+        for (const end of ["runs out", "pressed", "dismissed"]) {
+            const { toaster: region, count } = makeCountScene({});
+            const toast = region.show("lunch at noon?", { notification: true, open: { run: () => {} } });
+            tryVerify(() => arrived(toast), 1000, end);
+            const moves = createTemporaryObject(spyComponent, testCase, { target: count, signalName: "awayChanged" });
+            if (end === "pressed")
+                toast.pressText();
+            else if (end === "dismissed")
+                region.dismiss();
+            else
+                at(Tokens.durationToast, toast);
+            verify(findChild(toast, "gliding").running, `${end}: it glides behind the bar`);
+            verify(!findChild(region, "countBack").running, `${end}: there is nothing to hand back`);
+            tryCompare(region, "leaving", 0, 1000, end);
+            compare(moves.count, 0, `${end}: the count never gave way again`);
+            verify(!count.away, end);
+        }
+    }
+
+    function test_a_notification_s_toast_that_runs_out_brings_in_its_new_count_with_a_peek_as_it_goes_down() {
         Prefs.motion = "on";
         const { toaster: region, count } = makeCountScene({});
         const toast = region.show("lunch at noon?", { notification: true, onEnd: reason => { if (reason === "expired") count.count++; } });
-        tryVerify(() => !toast.waiting, 1000);
+        tryVerify(() => arrived(toast), 1000);
         at(Tokens.durationToast, toast);
         compare(count.count, 4, "it counts as unseen");
-        verify(count.away);
-        verify(!findChild(count, "peekRun").running, "the new count does not peek");
-        tryVerify(() => !count.away, 1000);
-        compare(findChild(count, "count").text, " 4", "the count comes back with the new number");
+        verify(!count.away);
+        verify(findChild(count, "peekRun").running, "the new number peeks in, as a live tile's news");
+        tryCompare(region, "leaving", 0, 1000);
+        compare(findChild(count, "count").text, " 4");
     }
 
     function test_a_notification_s_toast_that_is_pressed_or_dismissed_leaves_the_count_as_it_was() {
@@ -875,16 +906,41 @@ TestCase {
         }
     }
 
-    function test_the_count_stays_away_while_one_notification_s_toast_follows_another() {
+    function test_a_critical_toast_that_stays_gives_the_count_back_once_it_has_come_in() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        const toast = region.show("disk full", { title: "backup", tag: "dringend", stays: true, notification: true });
+        tryVerify(() => findChild(toast, "rising").running, 1000);
+        verify(count.away, "away while it comes in");
+        tryVerify(() => arrived(toast), 1000);
+        verify(!count.away, "back while it stands");
+        verify(!toast.running, "it has no window");
+        compare(region.open, toast, "it keeps standing");
+    }
+
+    function test_a_press_on_the_count_while_a_notification_s_toast_stands_reaches_it() {
+        Prefs.motion = "on";
+        const { scene, toaster: region, count } = makeCountScene({});
+        const toast = region.show("lunch at noon?", { title: "anna", notification: true });
+        tryVerify(() => arrived(toast), 1000);
+        tryVerify(() => !findChild(count, "giveWayRun").running, 1000);
+        mouseClick(count);
+        compare(scene.presses, 1, "the bar opens the centre from this press");
+        compare(region.open, toast, "the toast keeps standing");
+    }
+
+    function test_a_notification_s_toast_that_replaces_one_standing_comes_in_without_the_count_giving_way() {
         Prefs.motion = "on";
         const { toaster: region, count } = makeCountScene({});
         const first = region.show("lunch at noon?", { notification: true });
-        tryVerify(() => !first.waiting, 1000);
-        const back = createTemporaryObject(spyComponent, testCase, { target: count, signalName: "awayChanged" });
+        tryVerify(() => arrived(first), 1000);
+        const moves = createTemporaryObject(spyComponent, testCase, { target: count, signalName: "awayChanged" });
         const second = region.show("on my way", { notification: true });
-        tryVerify(() => !second.waiting, 1000);
-        tryCompare(region, "leaving", 0, 1000);
-        compare(back.count, 0, "it never came back between them");
+        verify(!count.away, "the count stays");
+        verify(!findChild(region, "handOver").running, "the second waits only for the first's way down");
+        tryVerify(() => arrived(second), 1000);
+        compare(moves.count, 0, "it never moved");
+        compare(region.leaving, 0);
     }
 
     function test_the_count_keeps_on_its_way_out_when_a_notification_s_toast_replaces_one_still_waiting_for_it() {
@@ -902,7 +958,9 @@ TestCase {
         compare(back.count, 0, "the count never came back between them");
         verify(face.opacity <= before, "the face does not jump back");
         tryVerify(() => !second.waiting, 1000);
-        verify(count.away);
+        verify(count.away, "away while the second comes in");
+        tryVerify(() => arrived(second), 1000);
+        verify(!count.away, "back once it stands");
     }
 
     function test_a_notification_s_toast_that_ends_while_it_waits_for_its_count_hands_the_count_back_at_once() {
@@ -923,35 +981,49 @@ TestCase {
         }
     }
 
+    function test_a_notification_s_toast_dismissed_while_it_comes_in_hands_the_count_back_turn_overlap_into_its_way_down() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = makeCountScene({});
+        const toast = region.show("lunch at noon?", { notification: true });
+        tryVerify(() => !toast.waiting, 1000);
+        findChild(toast, "rising").pause();
+        region.dismiss();
+        verify(count.away, "still away as the toast starts down");
+        const countBack = findChild(region, "countBack");
+        verify(countBack.running);
+        compare(countBack.interval, 113, "turn-overlap into its way down, 0.75 × 150ms");
+        tryVerify(() => !count.away, 1000);
+        verify(findChild(count, "giveWayRun").running, "it comes back");
+    }
+
     // A notification's toast stands, the next replaces it, and that one ends while it waits for the first to go down.
     function endWhileTheOneBeforeGoesDown() {
         const scene = makeCountScene({});
         const first = scene.toaster.show("lunch at noon?", { notification: true });
-        tryCompare(first, "entry", 1, 1000);
+        tryVerify(() => arrived(first), 1000);
         const second = scene.toaster.show("on my way", { notification: true });
         verify(second.waiting, "the second waits for the first to go down");
         second.leave(false, "dismissed");
         return Object.assign(scene, { first });
     }
 
-    function test_a_notification_s_toast_that_ends_while_it_waits_leaves_the_count_to_the_way_down_of_the_one_before() {
-        Prefs.motion = "on";
-        const { toaster: region, count, first } = endWhileTheOneBeforeGoesDown();
-        verify(count.away, "the first is still on its way down");
-        const countBack = findChild(region, "countBack");
-        verify(countBack.running);
-        fuzzyCompare(countBack.interval, Tokens.turnOverlap * findChild(first, "gliding").duration, 1);
-        tryVerify(() => !count.away, 1000, "it comes back turn-overlap into that way");
-    }
-
-    function test_the_count_stays_away_for_a_notification_that_comes_after_one_ended_while_it_waited() {
+    function test_a_notification_s_toast_that_ends_while_it_waits_behind_a_standing_one_leaves_the_count_in_sight() {
         Prefs.motion = "on";
         const { toaster: region, count } = endWhileTheOneBeforeGoesDown();
-        const back = createTemporaryObject(spyComponent, testCase, { target: count, signalName: "awayChanged" });
+        verify(!count.away);
+        verify(!findChild(region, "countBack").running, "there is nothing to hand back");
+        tryCompare(region, "leaving", 0, 1000);
+        verify(!count.away);
+    }
+
+    function test_a_notification_that_comes_while_the_one_before_still_goes_down_comes_in_without_the_count_giving_way() {
+        Prefs.motion = "on";
+        const { toaster: region, count } = endWhileTheOneBeforeGoesDown();
+        const moves = createTemporaryObject(spyComponent, testCase, { target: count, signalName: "awayChanged" });
         const third = region.show("see you", { notification: true });
-        tryVerify(() => !third.waiting, 1000);
-        compare(back.count, 0, "it never came back between them");
-        verify(count.away);
+        tryVerify(() => arrived(third), 1000);
+        compare(moves.count, 0, "it never moved");
+        verify(!count.away);
     }
 
     function test_other_toasts_stand_in_the_same_place_and_the_count_stays() {
@@ -1044,17 +1116,19 @@ TestCase {
         verify(findChild(toast, "rising").running);
     }
 
-    function test_under_reduced_motion_the_count_gives_way_and_comes_back_at_once_and_the_window_still_runs() {
+    function test_under_reduced_motion_a_notification_s_toast_stands_at_once_over_its_count_in_sight_and_the_window_still_runs() {
         const { toaster: region, count } = makeCountScene({});
+        const moves = createTemporaryObject(spyComponent, testCase, { target: count, signalName: "awayChanged" });
         const toast = region.show("lunch at noon?", { notification: true });
-        verify(count.away);
-        compare(findChild(count, "face").opacity, 0, "gone at once");
+        compare(moves.count, 2, "the count gave way and came back at once");
+        verify(!count.away);
+        compare(findChild(count, "face").opacity, 1, "in sight at once");
         verify(!toast.waiting, "the toast is in at once");
         compare(toast.entry, 1);
         compare(toast.y, restingY(toast), "in its place at once");
         compare(toast.total, Tokens.durationToast, "it still stands duration-toast");
         region.dismiss();
-        verify(!count.away, "back at once");
+        compare(moves.count, 2, "it stays as the toast goes");
         compare(findChild(count, "face").opacity, 1);
         compare(region.leaving, 0);
     }
@@ -1216,7 +1290,8 @@ TestCase {
     }
 
     // The way of a notification's toast, held at six moments: at rest, the count halfway out, the toast halfway in from
-    // behind the bar, at rest above the bar, halfway out behind it, and the count halfway back with the toast counted.
+    // behind the bar, the count halfway back under the toast at rest, both at rest, and the toast halfway out behind the
+    // bar with the count staying, its new number peeking in.
     function test_contact_sheet_of_a_notification_rising_from_its_count_and_falling_into_it_in_both_themes() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
@@ -1252,20 +1327,19 @@ TestCase {
             return;
         }
         rising.complete();
-        if (moment === 3)
-            return;
-        toast.leave(false, "expired");
-        findChild(region, "countBack").stop();
-        const gliding = findChild(toast, "gliding");
-        if (moment === 4) {
-            gliding.pause();
-            toast.down = gliding.easing.valueForProgress(0.5);
+        if (moment === 3) {
+            giveWay.pause();
+            findChild(count, "giveWay").phase = 0.5;
             return;
         }
-        gliding.complete();
-        region.takeCountBack();
-        giveWay.pause();
-        findChild(count, "giveWay").phase = 0.5;
+        giveWay.complete();
+        if (moment === 4)
+            return;
+        toast.leave(false, "expired");
+        const gliding = findChild(toast, "gliding");
+        gliding.pause();
+        toast.down = gliding.easing.valueForProgress(0.5);
+        findChild(count, "peekRun").pause();
     }
 
     Component {
@@ -1280,7 +1354,7 @@ TestCase {
                 columns: 2
 
                 Repeater {
-                    model: ["at rest", "the count goes", "the toast rises", "it stands", "it goes down", "the count comes back"]
+                    model: ["at rest", "the count goes", "the toast rises", "the count comes back", "it stands", "it goes down"]
 
                     delegate: Item {
                         id: moment

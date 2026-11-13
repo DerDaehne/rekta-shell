@@ -264,6 +264,10 @@ FocusScope {
         property: "phase"
         to: 1
         duration: Tokens.durationShort
+        onFinished: {
+            if (toast.notification)
+                toast.toaster.takeCountBack();
+        }
     }
 
     NumberAnimation {
