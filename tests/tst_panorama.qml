@@ -568,6 +568,21 @@ TestCase {
         compare(panorama.currentIndex, 2);
     }
 
+    // Hidden, every section counts, a wide one hidden for itself too; only the layout that shows decides where to read.
+    function test_a_width_changed_while_hidden_jumps_by_the_layout_that_shows_not_by_the_hidden_one() {
+        const panorama = makePanorama(5, 100);
+        sectionAt(panorama, 0).sectionWidth = 900;
+        sectionAt(panorama, 0).visible = false;
+        panorama.width = 1600;
+        panorama.goTo(2, false, true);
+        panorama.visible = false;
+        panorama.width = 1400;
+        panorama.visible = true;
+        compare(panorama.gap, 30);
+        compare(sectionAt(panorama, 3).x, 1352);
+        compare(panorama.scroller.contentX, 1304, "the third section that shows stands at the inset");
+    }
+
     function test_a_stacked_panorama_and_the_row_of_wide_facets_keep_a_gap_of_space_xl() {
         const stacked = makePanorama(5, 100);
         stacked.placeWidth = 700;
