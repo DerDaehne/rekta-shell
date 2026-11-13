@@ -649,6 +649,37 @@ TestCase {
         compare(findChild(dolphin, "size").currentText, "sehr groß");
     }
 
+    function test_a_press_on_the_size_opens_its_list_over_the_rows_and_a_press_on_a_size_chooses_it() {
+        const dolphin = row("Dolphin");
+        const size = findChild(dolphin, "size");
+        const below = row("Konsole").mapToItem(null, 0, 0).y;
+        mouseClick(findChild(size, "box"));
+        verify(size.expanded);
+        compare(findChild(size, "list").parent, findChild(view, "floats"), "it floats in the view, under its tip");
+        compare(row("Konsole").mapToItem(null, 0, 0).y, below, "the rows below stay where they were");
+        compare(size.optionRows().map(option => option.checked), [false, true, false, false]);
+        // Its rows laid out now, as a frame would.
+        findChild(size, "list").measured();
+        mouseClick(size.optionRows()[2]);
+        verify(!size.expanded);
+        compare(toast().text, "Dolphin: groß");
+        compare(size.currentText, "groß");
+    }
+
+    function test_the_size_is_chosen_from_the_keys_in_its_list_and_in_place() {
+        const size = findChild(row("Dolphin"), "size");
+        size.forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        keyClick(Qt.Key_End);
+        keyClick(Qt.Key_Return);
+        compare(size.currentText, "sehr groß");
+        verify(size.activeFocus, "the focus stays on the size");
+        keyClick(Qt.Key_Home);
+        compare(size.currentText, "klein", "closed, Home chooses the first in place");
+        verify(!size.expanded);
+        compare(toast().text, "Dolphin: klein");
+    }
+
     function test_choosing_the_current_size_writes_nothing() {
         findChild(row("Dolphin"), "size").activated(1);
         compare(file.text, usersFile);

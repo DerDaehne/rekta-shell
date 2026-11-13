@@ -25,6 +25,8 @@ FocusScope {
     property bool ringsHidden: false
     // A text cut short in it shows whole in its tip (states.md:179–180), which its own tooltip draws.
     readonly property bool overflowTips: true
+    // Where the lists of its selects float (FloatAnchor).
+    readonly property Item floatLayer: floats
     // The item of the facet that stays at the top of the view, until a hand moves it.
     property Item revealed: null
     property real settledHeight: 0
@@ -406,12 +408,21 @@ FocusScope {
                 anchors.fill: parent
             }
 
-            // The tip of any control in the panel's window, its sheets' included, over them all; it slides with the
-            // panel. The view scrolling hides it, as a press does (rekta.js tips()).
+            // The lists of the panel's selects, over its sheets and under its tip.
+            Item {
+                id: floats
+
+                objectName: "floats"
+                anchors.fill: parent
+                z: Tokens.layerFloat
+            }
+
+            // The tip of any control in the panel's window, its sheets' and lists' included, over them all; it slides
+            // with the panel. The view scrolling hides it, as a press does (rekta.js tips()).
             Tooltip {
                 id: tip
 
-                // Placed again when the facet's content changes its height (a select unfolds, a second player comes),
+                // Placed again when the facet's content changes its height (a branch unfolds, a second player comes),
                 // which moves the controls in it.
                 readonly property var place: target && facetHolder.height >= 0 ? Placement.tip(parent.mapFromItem(target, 0, 0, target.width, target.height), Qt.size(width, height), area) : null
 

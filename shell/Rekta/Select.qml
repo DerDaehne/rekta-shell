@@ -73,11 +73,11 @@ Item {
     }
 
     // A letter chooses the next option that starts with it, after the chosen one and around; a letter that starts none
-    // is still used up, as rekta-core does.
+    // is still used up, as rekta-core does. Any other key, Escape's control character too, goes on.
     function jump(event: var): bool {
         const letter = event.text.toLowerCase();
         const modified = event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier);
-        if (letter.length !== 1 || !/\S/.test(letter) || modified)
+        if (letter.length !== 1 || letter === letter.toUpperCase() || modified)
             return false;
         for (let step = 1; step <= options.length; ++step) {
             const index = (Math.max(currentIndex, -1) + step) % options.length;
@@ -214,6 +214,8 @@ Item {
     }
 
     FloatAnchor {
+        id: anchor
+
         field: box
         surface: list
 
@@ -235,8 +237,10 @@ Item {
         id: list
 
         objectName: "list"
-        parent: select.Window.window?.contentItem ?? select
+        parent: anchor.stage ?? select
+        area: Qt.size(parent.width, parent.height)
         control: select
+        opener: select
         width: Math.max(implicitWidth, select.width)
         height: implicitHeight
         Accessible.role: Accessible.List

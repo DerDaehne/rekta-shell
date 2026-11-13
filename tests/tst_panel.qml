@@ -654,9 +654,9 @@ TestCase {
         return Tips.target === text ? Tips.text : "";
     }
 
-    // The option rows of a select, in order.
+    // The option rows of a select's list, in order.
     function optionRows(select: var): var {
-        return Array.from(findChild(select, "options").children).filter(row => row.objectName === "option");
+        return select.optionRows();
     }
 
     // A notification arrives as the server hands it over.
@@ -1826,8 +1826,8 @@ TestCase {
         compare(streams.music.audio.volume, 0.69, "the slider steps its stream");
         keyClick(Qt.Key_Tab);
         verify(control("inputDevice").activeFocus, "then on to the input");
-        keyClick(Qt.Key_Up);
-        verify(findChild(streamRows()[2], "streamVolume").activeFocus, "↑ back");
+        keyClick(Qt.Key_Tab, Qt.ShiftModifier);
+        verify(findChild(streamRows()[2], "streamVolume").activeFocus, "Shift+Tab back");
     }
 
     function test_a_stream_that_comes_is_appended_and_arrives_from_above_with_a_fade_while_the_rows_below_make_room() {
@@ -1919,7 +1919,7 @@ TestCase {
         compare(shownRows(findChild(controls, "sound")).length, 4);
     }
 
-    function test_the_output_select_expands_in_place_pushes_the_rows_below_down_and_a_click_asks_for_another_default() {
+    function test_the_output_select_opens_a_list_floating_over_the_rows_below_and_a_click_asks_for_another_default() {
         const sound = giveSound(controls);
         showSettled(0);
         const select = control("outputDevice");
@@ -1928,18 +1928,16 @@ TestCase {
         mouseClick(findChild(select, "box"));
         verify(select.expanded);
         const options = optionRows(select);
-        compare(options.map(row => findChild(row, "label").text), ["Speakers", "Headphones"]);
-        compare(options.map(row => findChild(row, "fill").visible), [true, false], "the default in the accent");
-        const growth = findChild(select, "box").height - Tokens.controlHeight;
-        tryVerify(() => volumeRow.mapToItem(controls, 0, 0).y === before + growth, 1000, "the volume's row moves down by what the select grows");
-        waitForFrame(side);
+        compare(options.map(row => row.text), ["Speakers", "Headphones"]);
+        compare(options.map(row => row.checked), [true, false], "the default carries the tick");
+        compare(volumeRow.mapToItem(controls, 0, 0).y, before, "the volume's row stays where it was");
+        waitForRendering(side);
         mouseClick(options[1]);
         compare(chosenDevices, [sound.headphones], "a click chooses");
         verify(!select.expanded);
         compare(select.currentText, "Speakers", "the default PipeWire has, until it changes");
         controls.output = sound.headphones;
         compare(select.currentText, "Headphones");
-        tryVerify(() => volumeRow.mapToItem(controls, 0, 0).y === before, 1000, "and back up");
         verify(findChild(findChild(controls, "sound"), "rows").visible, "the rows stay in place");
     }
 
@@ -1949,24 +1947,26 @@ TestCase {
         const select = control("inputDevice");
         mouseClick(findChild(select, "box"));
         const options = optionRows(select);
-        compare(options.map(row => findChild(row, "label").text), ["Microphone", "Headset Microphone"]);
+        compare(options.map(row => row.text), ["Microphone", "Headset Microphone"]);
         waitForRendering(side);
         mouseClick(options[1]);
         compare(chosenDevices, [sound.headset]);
     }
 
-    function test_from_the_keyboard_it_expands_a_device_is_chosen_and_the_focus_stays() {
+    function test_from_the_keyboard_its_list_opens_a_device_is_chosen_and_the_focus_stays() {
         const sound = giveSound(controls);
         side.show(0);
         const select = control("outputDevice");
         verify(select.activeFocus, "the first control in steuerung");
+        keyClick(Qt.Key_Return);
+        verify(select.expanded);
+        const options = optionRows(select);
+        verify(options[0].activeFocus, "the keys start on the default");
         keyClick(Qt.Key_Down);
-        verify(select.expanded, "↓ expands it rather than moving on");
-        compare(select.highlighted, 0, "the keys start on the default");
+        verify(options[1].activeFocus);
         keyClick(Qt.Key_Down);
-        compare(select.highlighted, 1);
-        keyClick(Qt.Key_Down);
-        verify(select.activeFocus, "the last option keeps ↓ in the select");
+        verify(options[0].activeFocus, "↓ goes around the list rather than on in the panel");
+        keyClick(Qt.Key_Up);
         keyClick(Qt.Key_Return);
         compare(chosenDevices, [sound.headphones], "Enter chooses");
         verify(!select.expanded);
@@ -1974,7 +1974,21 @@ TestCase {
         verify(side.open);
     }
 
-    function test_escape_collapses_the_select_and_leaves_the_panel_open() {
+    function test_closed_the_arrows_on_the_select_ask_for_another_device_without_opening_it() {
+        const sound = giveSound(controls);
+        side.show(0);
+        const select = control("outputDevice");
+        verify(select.activeFocus);
+        keyClick(Qt.Key_Down);
+        compare(chosenDevices, [sound.headphones]);
+        verify(!select.expanded);
+        verify(select.activeFocus, "the focus stays on the select");
+        controls.output = sound.headphones;
+        keyClick(Qt.Key_Up);
+        compare(chosenDevices, [sound.headphones, sound.speakers]);
+    }
+
+    function test_escape_closes_the_list_and_leaves_the_panel_open() {
         giveSound(controls);
         side.show(0);
         const select = control("outputDevice");
@@ -1989,17 +2003,13 @@ TestCase {
         verify(!side.open, "the next Escape closes the panel");
     }
 
-    function test_escape_folds_a_select_a_pointer_expanded_without_focus_and_only_a_second_escape_closes_the_panel() {
+    function test_escape_closes_a_list_a_pointer_opened_and_only_a_second_escape_closes_the_panel() {
         giveSound(controls);
         showSettled(0);
         const select = control("inputDevice");
         mouseClick(findChild(select, "box"));
         verify(select.expanded);
         verify(!select.activeFocus, "a press gives no focus");
-        Tips.show(control("inputMute"), "stumm schalten");
-        keyClick(Qt.Key_Escape);
-        verify(!Tips.target, "a tip takes Escape before the list");
-        verify(select.expanded);
         keyClick(Qt.Key_Escape);
         verify(!select.expanded, "Escape folds the list first");
         verify(side.open, "the panel stays");
@@ -2027,42 +2037,32 @@ TestCase {
         verify(!side.open, "a second Escape closes the panel");
     }
 
-    function test_escape_in_another_window_leaves_an_open_select_and_branch_open() {
+    function test_escape_in_another_window_leaves_an_open_branch_open() {
         giveSound(controls);
         giveBluetooth(controls);
         showSettled(0);
-        const select = control("inputDevice");
         const branch = control("bluetoothBranch");
-        mouseClick(findChild(select, "box"));
         mouseClick(control("chooseBluetoothDevice"));
         const elsewhere = createTemporaryObject(windowedComponent, testCase).first;
-        const escape = { key: Qt.Key_Escape };
-        verify(!select.foldOnEscape(escape, elsewhere));
-        verify(!branch.foldOnEscape(escape, elsewhere));
-        verify(select.expanded);
+        verify(!branch.foldOnEscape({ key: Qt.Key_Escape }, elsewhere));
         verify(branch.expanded);
     }
 
-    function test_another_key_or_a_sheet_over_them_leaves_an_open_select_and_branch_open() {
+    function test_another_key_or_a_sheet_over_it_leaves_an_open_branch_open() {
         giveSound(controls);
         giveBluetooth(controls);
         showSettled(0);
-        const select = control("inputDevice");
         const branch = control("bluetoothBranch");
-        mouseClick(findChild(select, "box"));
         mouseClick(control("chooseBluetoothDevice"));
         const focused = side.Window.activeFocusItem;
-        verify(!select.foldOnEscape({ key: Qt.Key_Down }, focused), "only Escape");
         verify(!branch.foldOnEscape({ key: Qt.Key_Down }, focused), "only Escape");
         KeyLayers.opened(side.sheets);
-        verify(!select.foldOnEscape({ key: Qt.Key_Escape }, focused), "a sheet over it is nearer");
         verify(!branch.foldOnEscape({ key: Qt.Key_Escape }, focused), "a sheet over it is nearer");
         KeyLayers.closed(side.sheets);
-        verify(select.expanded);
         verify(branch.expanded);
     }
 
-    function test_the_select_collapses_with_the_panel() {
+    function test_the_selects_list_closes_with_the_panel() {
         giveSound(controls);
         side.show(0);
         keyClick(Qt.Key_Return);
@@ -2074,21 +2074,38 @@ TestCase {
         verify(!control("outputDevice").expanded, "and stays collapsed when it comes back");
     }
 
-    function test_an_expanded_select_brings_its_options_into_view_in_the_panels_scroller() {
+    function test_the_selects_list_floats_in_the_panels_window_over_the_panel_and_follows_its_scroller() {
         giveSound(controls);
         scene.height = 360;
         side.show(0);
         waitForRendering(side);
         const scroller = findChild(side, "scroller");
         const select = control("inputDevice");
-        const top = () => select.mapToItem(scroller, 0, 0).y;
-        compare(scroller.contentY, 0);
-        verify(top() + select.expandedHeight > scroller.height, "below the view once expanded");
         select.forceActiveFocus();
-        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        const list = findChild(select, "list");
+        const floats = findChild(side, "floats");
+        compare(list.parent, floats, "in the panel");
+        const holder = floats.parent.children;
+        verify(Array.from(holder).indexOf(named("tip")) > Array.from(holder).indexOf(floats) && named("tip").z >= floats.z, "under its tip");
+        verify(Array.from(holder).indexOf(floats) > Array.from(holder).indexOf(findChild(side, "sheets")), "over its sheets");
+        const panel = side.mapToItem(null, 0, 0, side.width, side.height);
+        const at = list.mapToItem(null, 0, 0, list.width, list.height);
+        verify(at.x >= panel.x && at.x + at.width <= panel.x + panel.width, "within the panel's width");
+        verify(at.y >= 0 && at.y + at.height <= side.Window.window.height, "within the window's height");
+        const box = findChild(select, "box");
+        // space-xs between the field and the list, on whichever side it floats; Placement rounds.
+        const gap = () => {
+            const field = box.mapToItem(null, 0, 0, box.width, box.height);
+            const top = list.mapToItem(null, 0, 0).y;
+            return list.side === "below" ? top - field.y - field.height : field.y - top - list.height;
+        };
+        fuzzyCompare(gap(), Tokens.spaceXs, 1, "space-xs from its field");
+        const before = list.y;
+        scroller.contentY = 0;
+        verify(list.y !== before, "the list moves with the view");
+        fuzzyCompare(gap(), Tokens.spaceXs, 1, "and keeps to its field");
         verify(select.expanded);
-        tryVerify(() => Math.abs(top() + select.height - scroller.height) < 0.5, 1000, "its last option at the foot of the view");
-        verify(top() >= 0);
     }
 
     function atTopOfView(item: var, scroller: var): bool {
@@ -2238,9 +2255,7 @@ TestCase {
         verify(findChild(select, "chosen").truncated, "in the select");
         mouseClick(findChild(select, "box"));
         waitForRendering(side);
-        const label = findChild(optionRows(select)[0], "label");
-        verify(label.truncated, "in its row");
-        verify(label.mapToItem(select, label.width, 0).x <= select.width - Geometry.inputPadding);
+        verify(findChild(optionRows(select)[0], "label").truncated, "in its row");
     }
 
     function test_a_level_opens_in_place_of_its_groups_rows_headed_by_zurück() {
@@ -2453,7 +2468,7 @@ TestCase {
         const options = optionRows(select);
         compare(tipOver(findChild(options[0], "label")), long, "over its option");
         compare(tipOver(findChild(options[1], "label")), "", "Headphones fits");
-        compare(tipOver(chosen), "", "the box's own words lie under the options");
+        compare(tipOver(chosen), "", "none over the box while its list is open");
     }
 
     function test_keyboard_focus_on_a_select_shows_its_cut_choice_at_once_and_its_options_and_pointer_focus_show_none() {
@@ -2468,12 +2483,12 @@ TestCase {
         compare(Tips.target, null, "the focus leaving takes it away");
         select.forceActiveFocus();
         compare(Tips.target, findChild(select, "chosen"), "and coming back by keyboard brings it again");
-        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
         verify(select.expanded);
-        compare(Tips.target, null, "expanded, the options stand over it");
+        const cut = findChild(optionRows(select)[0], "label");
+        compare(Tips.target, cut, "open, the focused option shows its cut words");
         keyClick(Qt.Key_Down);
-        keyClick(Qt.Key_Up);
-        compare(Tips.target, null, "the keys move only the highlight");
+        compare(Tips.target, null, "Headphones fits");
         keyClick(Qt.Key_Escape);
         side.close();
         tryVerify(() => !side.open);

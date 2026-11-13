@@ -182,6 +182,13 @@ TestCase {
         return { key: code, text: "", modifiers: Qt.NoModifier, isAutoRepeat: repeated };
     }
 
+    // A frame drawn after this point. waitForRendering alone waits for the next frame, which never comes once a scene
+    // has nothing left to draw, and then runs out its whole timeout.
+    function waitForFrame(item: Item) {
+        item.Window.window.update();
+        waitForRendering(item);
+    }
+
     function window(): Item {
         return testCase.Window.window.contentItem;
     }
@@ -211,7 +218,7 @@ TestCase {
         compare(chosen.font.pixelSize, Tokens.fontSizeS);
         compare(chosen.width, select.width - Geometry.inputPadding - 36, "the text stops where the chevron's padding starts");
         compare(findChild(select, "chevron").color, Tokens.color.textPrimary);
-        waitForRendering(scene);
+        waitForFrame(scene);
         const image = grabImage(window());
         const at = inScene(field);
         const centreX = at.x + field.width - 1 - 18;
@@ -227,7 +234,7 @@ TestCase {
 
     function test_the_chevron_points_up_while_the_list_is_open() {
         openFromKeys(select);
-        waitForRendering(scene);
+        waitForFrame(scene);
         const field = box(select);
         const image = grabImage(window());
         const at = inScene(field);
@@ -368,7 +375,7 @@ TestCase {
 
     function test_a_press_on_an_option_chooses_it_closes_and_opened_again_it_carries_the_tick() {
         mouseClick(box(select));
-        waitForRendering(scene);
+        waitForFrame(scene);
         mouseClick(rows(select)[1]);
         verify(!select.expanded);
         compare(select.currentIndex, 1);
@@ -381,7 +388,7 @@ TestCase {
         const before = named("before");
         before.forceActiveFocus();
         mouseClick(box(select));
-        waitForRendering(scene);
+        waitForFrame(scene);
         mouseClick(rows(select)[2]);
         verify(before.activeFocus);
         mouseClick(box(select));
@@ -457,6 +464,13 @@ TestCase {
         verify(!select.handleKey({ key: Qt.Key_H, text: "h", modifiers: Qt.ControlModifier, isAutoRepeat: false }), "Ctrl+H is no letter");
     }
 
+    function test_closed_escape_and_keys_that_are_no_letters_go_on_to_what_holds_it() {
+        select.forceActiveFocus();
+        for (const [code, text] of [[Qt.Key_Escape, "\u001b"], [Qt.Key_1, "1"], [Qt.Key_Left, ""], [Qt.Key_Tab, "\t"]])
+            verify(!select.handleKey({ key: code, text: text, modifiers: Qt.NoModifier, isAutoRepeat: false }), `${code}`);
+        compare(select.currentIndex, 0);
+    }
+
     function test_a_held_key_opens_only_once() {
         select.forceActiveFocus();
         verify(select.handleKey(keyEvent(Qt.Key_Return, true)));
@@ -497,7 +511,7 @@ TestCase {
         select.options = [{ text: "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) with a longer name still", value: 0 }, ...outputs];
         verify(findChild(select, "chosen").truncated, "in the box");
         mouseClick(box(select));
-        waitForRendering(scene);
+        waitForFrame(scene);
         verify(findChild(rows(select)[0], "label").truncated, "in its row");
     }
 

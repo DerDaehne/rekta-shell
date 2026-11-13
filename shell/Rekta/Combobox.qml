@@ -326,6 +326,8 @@ FocusScope {
     }
 
     FloatAnchor {
+        id: anchor
+
         field: box
         surface: list
 
@@ -337,7 +339,9 @@ FocusScope {
         id: list
 
         objectName: "list"
-        parent: combo.Window.window?.contentItem ?? combo
+        parent: anchor.stage ?? combo
+        area: Qt.size(parent.width, parent.height)
+        opener: combo
         width: Math.max(implicitWidth, combo.width)
         height: implicitHeight
         Accessible.role: Accessible.List

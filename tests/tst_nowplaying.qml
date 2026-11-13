@@ -267,7 +267,7 @@ TestCase {
         compare(part("title").text, "A talk");
         compare(part("byline").visible, false, "a track without artist or album has no line for them");
         picker.forceActiveFocus();
-        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Return);
         compare(picker.currentText, "Elisa", "a pick shows that player");
@@ -315,7 +315,7 @@ TestCase {
 
     function pickSecondPlayer() {
         part("player").forceActiveFocus();
-        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Return);
     }
@@ -585,14 +585,35 @@ TestCase {
         controls.choice.players = [player({ identity: "Firefox", playbackState: PlayerChoice.Paused }), player()];
         side.show(0, false);
         verify(part("player").activeFocus);
-        keyClick(Qt.Key_Down);
-        verify(part("player").expanded, "↓ opens it");
+        keyClick(Qt.Key_Return);
+        verify(part("player").expanded, "Enter opens it");
         keyClick(Qt.Key_Up);
         keyClick(Qt.Key_Return);
+        verify(!part("player").expanded);
         compare(part("player").currentText, "Firefox");
         compare(part("title").text, "Teardrop");
+        keyClick(Qt.Key_Down);
+        verify(!part("player").expanded, "closed, ↓ picks the next player in place");
+        compare(part("player").currentText, "Elisa");
         keyClick(Qt.Key_Tab);
         verify(part("previous").activeFocus);
+    }
+
+    function test_with_two_players_a_press_opens_the_select_in_the_panel_and_a_press_on_a_player_picks_it() {
+        const browser = player({ identity: "Firefox", playbackState: PlayerChoice.Paused, trackTitle: "A talk" });
+        controls.choice.players = [player(), browser];
+        showSettled();
+        const picker = part("player");
+        mouseClick(findChild(picker, "box"));
+        verify(picker.expanded);
+        const list = findChild(picker, "list");
+        compare(list.parent, findChild(side, "floats"), "it floats in the panel");
+        compare(picker.optionRows().map(row => row.checked), [true, false]);
+        waitForRendering(side);
+        mouseClick(picker.optionRows()[1]);
+        verify(!picker.expanded);
+        compare(picker.currentText, "Firefox");
+        compare(part("title").text, "A talk");
     }
 
     function test_the_tip_of_the_first_button_shows_when_the_keyboard_opened_the_panel_and_waits_for_it_after_a_pointer() {

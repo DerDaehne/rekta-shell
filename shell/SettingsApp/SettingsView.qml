@@ -19,6 +19,8 @@ FocusScope {
     readonly property alias toaster: toaster
     // A name a row cuts off shows whole as its tip (OverflowTip).
     readonly property bool overflowTips: true
+    // Where the lists of its selects and comboboxes float (FloatAnchor).
+    readonly property Item floatLayer: floats
 
     readonly property var places: [
         {
@@ -323,6 +325,15 @@ FocusScope {
         width: view.width
         hangsFromTop: true
         undoWord: "rückgängig"
+    }
+
+    // The lists of its selects and comboboxes, over everything but the tip.
+    Item {
+        id: floats
+
+        objectName: "floats"
+        anchors.fill: parent
+        z: Tokens.layerFloat
     }
 
     // The tip of any control in the window, over everything.

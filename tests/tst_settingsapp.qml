@@ -172,7 +172,10 @@ TestCase {
         pivot().select(1);
         tryVerify(() => page(1).visible);
         const select = control("searchEscape");
-        select.expand();
+        waitForRendering(select);
+        mouseClick(findChild(select, "box"));
+        verify(select.expanded);
+        verify(!select.activeFocus, "a press gives no focus");
         keyClick(Qt.Key_Escape);
         verify(!select.expanded);
         compare(pivot().currentIndex, 1);
@@ -278,9 +281,10 @@ TestCase {
         pivot().select(1);
         const select = control("searchEscape");
         select.forceActiveFocus();
-        select.expand();
-        select.highlighted = 1;
         keyClick(Qt.Key_Return);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
+        verify(!select.expanded);
         compare(written().searchEscape, "back");
         compare(host.shell.value("searchEscape"), "back");
         compare(select.currentText, "leert die suche, zurück zum ort davor");
@@ -392,11 +396,12 @@ TestCase {
         compare(pivot().currentIndex, 0);
     }
 
-    function test_escape_in_an_expanded_select_folds_it_and_does_not_go_back() {
+    function test_escape_in_an_open_select_closes_its_list_and_does_not_go_back() {
         pivot().select(1);
         const select = control("searchEscape");
         select.forceActiveFocus();
-        verify(select.expand());
+        keyClick(Qt.Key_Space);
+        verify(select.expanded);
         keyClick(Qt.Key_Escape);
         verify(!select.expanded);
         compare(pivot().currentIndex, 1);
