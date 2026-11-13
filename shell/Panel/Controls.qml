@@ -814,19 +814,33 @@ Column {
 
         present: node !== null
 
-        Select {
-            id: picker
+        // A field's label above its control, space-xs apart (forms.md:5; rekta.css:386–387).
+        Column {
+            spacing: Tokens.spaceXs
 
-            objectName: `${deviceRow.kind}Device`
-            // As wide as the row (rekta.css:388, an input is 100% wide).
-            implicitWidth: deviceRow.width
-            label: deviceRow.name
-            options: deviceRow.devices.map(node => ({ text: controls.deviceName(node), value: node }))
-            currentIndex: deviceRow.devices.indexOf(deviceRow.node)
-            // The choice it made ends that binding: it comes back, and the new default shows once PipeWire has it.
-            onActivated: index => {
-                controls.deviceChosen(deviceRow.devices[index]);
-                currentIndex = Qt.binding(() => deviceRow.devices.indexOf(deviceRow.node));
+            Text {
+                objectName: `${deviceRow.kind}DeviceLabel`
+                text: deviceRow.name
+                font.family: Tokens.fontSans
+                font.pixelSize: Tokens.fontSizeXs
+                font.weight: Tokens.fontWeightSemibold
+                color: Tokens.color.textContrastHigh
+            }
+
+            Select {
+                id: picker
+
+                objectName: `${deviceRow.kind}Device`
+                // As wide as the row (rekta.css:388, an input is 100% wide).
+                implicitWidth: deviceRow.width
+                label: deviceRow.name
+                options: deviceRow.devices.map(node => ({ text: controls.deviceName(node), value: node }))
+                currentIndex: deviceRow.devices.indexOf(deviceRow.node)
+                // The choice it made ends that binding: it comes back, and the new default shows once PipeWire has it.
+                onActivated: index => {
+                    controls.deviceChosen(deviceRow.devices[index]);
+                    currentIndex = Qt.binding(() => deviceRow.devices.indexOf(deviceRow.node));
+                }
             }
         }
     }

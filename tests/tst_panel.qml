@@ -1451,6 +1451,25 @@ TestCase {
         compare(control("inputVolume").Accessible.name, "lautstärke eingang");
     }
 
+    function test_each_device_select_has_its_visible_field_label_above_it_space_xs_apart() {
+        giveSound(controls);
+        side.show(0);
+        waitForRendering(side);
+        for (const [kind, word] of [["output", "ausgang"], ["input", "eingang"]]) {
+            const label = control(`${kind}DeviceLabel`);
+            const select = control(`${kind}Device`);
+            compare(label.text, word);
+            compare(label.font.pixelSize, Tokens.fontSizeXs, `${kind}: xs`);
+            compare(label.font.weight, Tokens.fontWeightSemibold, `${kind}: semibold`);
+            compare(label.color, Tokens.color.textContrastHigh);
+            compare(select.mapToItem(label, 0, 0).y, label.height + Tokens.spaceXs, `${kind}: select space-xs below its label`);
+            compare(select.mapToItem(label, 0, 0).x, 0, `${kind}: at one start edge`);
+            compare(rowOf(label).height, label.height + Tokens.spaceXs + select.height, `${kind}: the row holds both`);
+        }
+        compare(control("outputDevice").Accessible.name, "ausgang Speakers");
+        compare(control("inputDevice").Accessible.name, "eingang Microphone");
+    }
+
     function test_the_slider_sets_the_device_and_follows_changes_from_elsewhere() {
         const sound = giveSound(controls);
         showSettled(0);
@@ -2024,12 +2043,19 @@ TestCase {
         verify(!side.open, "a second Escape closes the panel");
     }
 
+    // The opener lies below the sound group's labelled selects: scrolled to the view's start it is whole in the view.
+    function pressBluetoothOpener() {
+        const opener = control("chooseBluetoothDevice");
+        named("scroller").contentY += opener.mapToItem(named("scroller"), 0, 0).y;
+        mouseClick(opener);
+    }
+
     function test_escape_folds_a_branch_a_pointer_unfolded_without_focus_and_only_a_second_escape_closes_the_panel() {
         giveSound(controls);
         giveBluetooth(controls);
         showSettled(0);
         const branch = control("bluetoothBranch");
-        mouseClick(control("chooseBluetoothDevice"));
+        pressBluetoothOpener();
         verify(branch.expanded);
         verify(!side.within(rowOf(control("chooseBluetoothDevice")), side.Window.activeFocusItem), "nor in the row of its opener");
         verify(!side.within(branch, side.Window.activeFocusItem), "the focus is not in the branch");
@@ -2049,7 +2075,7 @@ TestCase {
         giveBluetooth(controls);
         showSettled(0);
         const branch = control("bluetoothBranch");
-        mouseClick(control("chooseBluetoothDevice"));
+        pressBluetoothOpener();
         const elsewhere = createTemporaryObject(windowedComponent, testCase).first;
         verify(!branch.foldOnEscape({ key: Qt.Key_Escape }, elsewhere));
         verify(branch.expanded);
@@ -2060,7 +2086,7 @@ TestCase {
         giveBluetooth(controls);
         showSettled(0);
         const branch = control("bluetoothBranch");
-        mouseClick(control("chooseBluetoothDevice"));
+        pressBluetoothOpener();
         const focused = side.Window.activeFocusItem;
         verify(!branch.foldOnEscape({ key: Qt.Key_Down }, focused), "only Escape");
         KeyLayers.opened(side.sheets);
