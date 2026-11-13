@@ -245,6 +245,7 @@ TestCase {
     function openFully(of: var) {
         of.show();
         tryCompare(of, "entry", 1, Tokens.durationShort * 4);
+        tryVerify(() => !findChild(of, "comingIn").running, Tokens.durationShort * 4);
     }
 
     function closedWith(answer: string) {
@@ -316,7 +317,7 @@ TestCase {
         compare(panel(sheet).opacity, 0, "and fades in");
         verify(panel(sheet).layer.enabled, "as one, as CSS opacity does");
         compare(sheet.shade, 1, "the shading is there at once");
-        tryCompare(sheet, "entry", 1, Tokens.durationShort * 4);
+        tryVerify(() => !comingIn.running, Tokens.durationShort * 4, "it has come in");
         compare(sheet.shift, 0);
         compare(panel(sheet).opacity, 1);
         verify(!panel(sheet).layer.enabled, "a layer only while it fades");
