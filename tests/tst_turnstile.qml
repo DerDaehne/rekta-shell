@@ -195,10 +195,10 @@ TestCase {
     readonly property var sentence: part(1212, 284, 348, 23)
     readonly property var startLayout: [sentence, smallTile, todayHead, wideTile, startStrip, pinnedHead, startTitle, runningHead]
 
-    function test_folded_up_the_parts_start_in_reading_order_a_row_one_stagger_after_the_row_above_and_half_a_stagger_from_front_to_back() {
+    function test_folded_up_the_parts_start_in_reading_order_a_row_one_stagger_after_the_row_above_its_parts_spread_over_that_stagger_front_to_back() {
         const turns = Turnstile.plan(startLayout, 400, 0, "bottom");
         compare(turns.map(turn => turn.part), [startTitle, startStrip, runningHead, pinnedHead, todayHead, wideTile, smallTile, sentence]);
-        compare(turns.map(turn => turn.at), [0, 30, 60, 75, 90, 90, 105, 120]);
+        compare(turns.map(turn => turn.at), [0, 30, 60, 70, 80, 90, 105, 120]);
     }
 
     function test_folded_up_parts_whose_tops_round_to_one_multiple_of_8_share_a_row_and_the_next_multiple_starts_the_next_row() {
@@ -208,6 +208,14 @@ TestCase {
         const turns = Turnstile.plan([atTop204, atTop203, atTop196], 400, 1000, "bottom");
         compare(turns.map(turn => turn.part), [atTop196, atTop203, atTop204]);
         compare(turns.map(turn => turn.at), [1000, 1015, 1030]);
+    }
+
+    function test_folded_up_a_row_of_seven_tiles_starts_its_last_one_before_the_first_of_the_row_below() {
+        const row = [0, 1, 2, 3, 4, 5, 6].map(column => part(48 + 178 * column, 267, 170, 170));
+        const below = part(48, 445, 170, 170);
+        const turns = Turnstile.plan([below, ...row.slice().reverse()], 400, 0, "bottom");
+        compare(turns.map(turn => turn.part), [...row, below]);
+        compare(turns.map(turn => Math.round(turn.at * 1000) / 1000), [0, 4.286, 8.571, 12.857, 17.143, 21.429, 25.714, 30]);
     }
 
     function test_folded_up_heft_sets_only_how_long_a_part_takes() {
@@ -223,7 +231,7 @@ TestCase {
     function test_folded_away_backwards_the_last_part_in_goes_first_and_the_title_last() {
         const turns = Turnstile.plan(startLayout, 250, 0, "bottom", true);
         const startOf = wanted => turnOf(turns, wanted).at;
-        compare([startTitle, startStrip, runningHead, pinnedHead, todayHead, wideTile, smallTile, sentence].map(startOf), [120, 90, 60, 45, 30, 30, 15, 0]);
+        compare([startTitle, startStrip, runningHead, pinnedHead, todayHead, wideTile, smallTile, sentence].map(startOf), [120, 90, 60, 50, 40, 30, 15, 0]);
     }
 
     function test_folded_away_the_pressed_tile_turns_last_about_its_own_bottom_edge_in_a_row_of_its_own() {

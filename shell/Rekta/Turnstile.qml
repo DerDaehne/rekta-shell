@@ -86,16 +86,19 @@ QtObject {
         });
     }
 
-    // How many staggers after the first part each part starts, in reading order: a row one after the row above, a part
-    // half of one after the part before it in its row.
+    // How many staggers after the first part each part starts, in reading order: a row one after the row above, its
+    // parts spread front to back over that one stagger, so none starts before a part in a row above it.
     function readingSteps(ordered: var): var {
         const rows = [...new Set(ordered.map(rowOf))];
+        const sizes = new Map();
+        for (const part of ordered)
+            sizes.set(rowOf(part), (sizes.get(rowOf(part)) || 0) + 1);
         const seen = new Map();
         return ordered.map(part => {
-            const row = rows.indexOf(rowOf(part));
+            const row = rowOf(part);
             const inRow = seen.get(row) || 0;
             seen.set(row, inRow + 1);
-            return row + inRow * Geometry.sameHeftStagger;
+            return rows.indexOf(row) + inRow / sizes.get(row);
         });
     }
 

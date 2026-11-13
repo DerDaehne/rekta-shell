@@ -96,15 +96,24 @@ TestCase {
         turner.paused = true;
     }
 
-    function test_opening_the_title_starts_then_the_strip_then_the_section_heads_then_the_tiles_a_row_15_ms_after_the_one_above_and_7_5_ms_from_front_to_back() {
+    function test_opening_the_title_starts_then_the_strip_then_the_section_heads_then_the_tiles_a_row_15_ms_after_the_one_above_its_parts_spread_over_those_15_ms_front_to_back() {
         holdTheOpening();
         const turns = turner.arrivingTurns;
         verifyAboutTheBottomEdge(turns);
         const startOf = item => turnOf(turns, item).at - turner.handOverAt;
         compare(startOf(named("pivot")), 0);
         compare(startOf(named("sectionStrip")), 15);
-        compare(headings(turns).map(startOf), [30, 37.5, 45]);
-        compare(pinnedTiles().map(startOf), [45, 52.5, 60]);
+        compare(headings(turns).map(startOf), [30, 35, 40]);
+        compare(pinnedTiles().map(startOf), [45, 48, 51]);
+    }
+
+    function test_opening_no_part_starts_before_or_with_a_part_in_a_row_above_it() {
+        holdTheOpening();
+        const turns = turner.arrivingTurns;
+        for (const lower of turns) {
+            const overtaken = turns.find(upper => Turnstile.rowOf(upper.part) < Turnstile.rowOf(lower.part) && upper.at >= lower.at);
+            verify(!overtaken, overtaken ? `${lower.part.item} starts at or before ${overtaken.part.item}` : "");
+        }
     }
 
     function test_opening_each_part_turns_about_its_own_bottom_edge_from_its_middle_in_800_plus_1_2_times_its_own_height() {
@@ -176,7 +185,7 @@ TestCase {
         for (const [item, at] of opening)
             compare(turnOf(turner.leavingTurns, item).at, lastIn - at, item.objectName);
         compare(turnOf(turner.leavingTurns, named("pivot")).at, 90);
-        compare(pinnedTiles().map(tile => turnOf(turner.leavingTurns, tile).at), [45, 37.5, 30]);
+        compare(pinnedTiles().map(tile => turnOf(turner.leavingTurns, tile).at), [45, 42, 39]);
     }
 
     function test_a_finger_takes_every_part_s_turn_on_monotonically_and_back_the_same_way() {
