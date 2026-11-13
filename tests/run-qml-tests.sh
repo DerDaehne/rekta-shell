@@ -16,6 +16,13 @@ cores=${NIX_BUILD_CORES:-0}
 [ "$cores" -gt 0 ] || cores=$(nproc)
 [ "$cores" -le 6 ] || cores=6
 
+# The import path without the directory that holds RektaShell.DBus.
+without_rekta_dbus() {
+	printf '%s\n' "${QML_IMPORT_PATH:-}" | tr : '\n' | while read -r dir; do
+		[ -e "$dir/RektaShell/DBus" ] || printf '%s\n' "$dir"
+	done | paste -sd : -
+}
+
 # One job per line: a test file, then the name and environment of a second run of it. The second run follows the
 # first, so the contact sheets it saves over the first one's are always its own.
 list_jobs() {
@@ -29,6 +36,8 @@ list_jobs() {
 		tst_clock.qml) echo "tst_clock.qml berlin TZ=Europe/Berlin" ;;
 		# A picture icon's own size counts in logical px on a scaled display too.
 		tst_pictureicon.qml) echo "tst_pictureicon.qml scaled QT_SCALE_FACTOR=2" ;;
+		# Without the shell's D-Bus module the lock screen shows no count of notifications and still unlocks.
+		tst_lockscreen.qml) echo "tst_lockscreen.qml without-dbus QML_IMPORT_PATH=$(without_rekta_dbus)" ;;
 		*) echo "${file##*/}" ;;
 		esac
 	done

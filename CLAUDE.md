@@ -151,7 +151,7 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   (Qt, Quickshell, the DBus module and plasma-workspace on the import path, warnings fail).
 - `plugins/dbus/` is the shell's DBus module `RektaShell.DBus` (C++, QtDBus and QtQml only):
   one type, `DBusConnection`, with a bus connection of its own per instance, listens to
-  signals, calls methods typed by a full D-Bus signature and owns names. The root
+  signals, calls methods typed by a full D-Bus signature, owns names and sends signals. The root
   CMake project builds it; `nix/package.nix` builds that project from the same pkgs
   as Quickshell, and the package refuses a Quickshell with another Qt; the wrapper,
   the nested session and `rekta-qmllint` put it on the import path.
@@ -164,7 +164,7 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   KWin command through `libexec/rekta-kwin`, which only in the rekta session puts the
   `rekta-kwin` directories (`kwin/`: effects, kwinrc defaults, `rekta-fadeback`,
   `rekta-metahold`), the
-  Rekta module, the `org.kde.desktop` controls style and
+  Rekta module, `RektaShell.DBus`, the `org.kde.desktop` controls style and
   `PLASMA_DEFAULT_SHELL=rekta-lockscreen` into KWin's environment; the
   `kwin-drop-in-follows-plasma` check fails once Plasma's command changes. In the same way
   a drop-in on `plasma-kded6.service` runs kded6 through `libexec/rekta-kded`, which only
@@ -179,7 +179,10 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   the package (and `import Rekta`) only in the rekta session; Plasma keeps Breeze's.
   `LockScreen.qml` only adapts the greeter's context; `LockFace` and the singleton `Unlock`
   (one PAM conversation for all monitors) beside it are tested in `tests/tst_lockscreen.qml`
-  with a stand-in that behaves like kscreenlocker 6.8.0's authenticator. Try it only in
+  with a stand-in that behaves like kscreenlocker 6.8.0's authenticator. A module it may miss
+  (Plasma's player; `RektaShell.DBus`, which asks the shell's `rekta.Shell` for the count of new
+  notifications) is imported only in a file a `Loader` loads, so a missing one never locks anyone
+  out; `tst_lockscreen` runs a second time without `RektaShell.DBus`. Try it only in
   the VM: lock with `loginctl lock-session <id>` of the graphical session, inside the guest.
 - `nixosModules.default` (`nix/nixos-module.nix`) registers that package as session
   and systemd package once `programs.rekta-shell.enable` is set;

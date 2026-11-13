@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtTest
+import DBusCounterpart
 import Rekta
 import "../lockscreen/contents/lockscreen"
 import "ContactSheets.js" as ContactSheets
@@ -101,6 +102,28 @@ TestCase {
         id: playingComponent
 
         Playing {}
+    }
+
+    // The rekta shell's end of the count of new notifications. Made at run time: a second run of these tests goes without
+    // RektaShell.DBus, and then the component stands in error.
+    readonly property Component shellComponent: Qt.createComponent(Qt.resolvedUrl("../shell/services/NoticeCount.qml"))
+    readonly property bool hasDBus: shellComponent.status === Component.Ready
+
+    // What LockScreen.qml takes the count from.
+    Component {
+        id: unseenComponent
+
+        Unseen {}
+    }
+
+    Component {
+        id: countComponent
+
+        UnseenCount {}
+    }
+
+    Counterpart {
+        id: counterpart
     }
 
     function play(track: string, artist: string, status: int) {
@@ -629,8 +652,165 @@ TestCase {
         verify(!part("rest").enabled);
     }
 
-    // Each theme on a fresh lock screen: resting with two layouts and a player, a long title, a refused password, and
-    // another monitor.
+    function test_new_notifications_stand_as_a_figure_with_the_bell_before_what_is_playing() {
+        face.unseen = 3;
+        play("Nachtfahrt", "Kolibri", playback.playing);
+        waitForRendering(face);
+        const status = part("status"), notices = part("notices"), playing = part("playing");
+        verify(status.visible);
+        verify(notices.visible);
+        compare(findChild(notices, "number").text, "3");
+        compare(findChild(notices, "words").text, "neue meldungen");
+        compare(findChild(notices, "wordsIcon").name, "bell");
+        compare(findChild(notices, "wordsIcon").color, findChild(notices, "words").color, "the bell in the colour of its words");
+        compare(notices.Accessible.name, "3 neue meldungen");
+        compare(playing.x, notices.width + Tokens.spaceM, "before what is playing, a figure's gap apart");
+        compare(playing.y, notices.y, "in one row");
+        compare(status.mapToItem(face, status.width, 0).x, face.width - Tokens.spaceXl, "right-aligned");
+    }
+
+    function test_one_new_notification_is_said_in_the_singular() {
+        face.unseen = 1;
+        compare(findChild(part("notices"), "number").text, "1");
+        compare(findChild(part("notices"), "words").text, "neue meldung");
+        face.unseen = 2;
+        compare(findChild(part("notices"), "words").text, "neue meldungen");
+    }
+
+    function test_without_new_notifications_nothing_of_them_shows_and_takes_no_room() {
+        const corner = part("corner");
+        const height = corner.height;
+        face.unseen = 0;
+        verify(!part("status").visible, "alone it shows nothing");
+        face.unseen = 1;
+        verify(part("status").visible, "a single one shows");
+        face.unseen = 0;
+        verify(!part("status").visible);
+        compare(corner.height, height, "no room taken");
+        play("Nachtfahrt", "Kolibri", playback.playing);
+        waitForRendering(face);
+        verify(!part("notices").visible);
+        compare(part("playing").x, 0, "what is playing stands first");
+    }
+
+    function test_new_notifications_and_a_long_title_still_keep_space_l_from_the_sign_in() {
+        face.unseen = 12;
+        play("Eine sehr lange Nachtfahrt durch die Stadt, bis der Morgen graut und alle Lichter ausgehen".repeat(2), "Kolibri", playback.playing);
+        const status = part("status"), signIn = part("signIn");
+        waitForItemPolished(status);
+        verify(findChild(part("playing"), "number").truncated);
+        compare(part("playing").y, part("notices").y, "in one row");
+        compare(status.mapToItem(face, 0, 0).x, signIn.x + signIn.width + Tokens.spaceL, "space-l from the sign-in");
+        compare(status.mapToItem(face, status.width, 0).x, face.width - Tokens.spaceXl);
+    }
+
+    function test_another_monitor_shows_nothing_of_new_notifications() {
+        face.unseen = 3;
+        face.active = false;
+        tryCompare(part("rest"), "opacity", 0);
+        verify(!part("rest").enabled);
+    }
+
+    function test_only_a_whole_number_from_zero_up_counts() {
+        const count = createTemporaryObject(countComponent, testCase);
+        for (const value of [-1, 1.5, "3", null, undefined, NaN, Infinity, 2 ** 31, [3]]) {
+            count.take(4);
+            count.take(value);
+            compare(count.count, 0, `${value}`);
+        }
+        count.take(0);
+        compare(count.count, 0);
+        count.take(2 ** 31 - 1);
+        compare(count.count, 2 ** 31 - 1);
+    }
+
+    // The lock screen's count from the shell over the test's private bus, wired as LockScreen.qml wires it.
+    function lockFaceCountingFromTheShell(): var {
+        const unseen = createTemporaryObject(unseenComponent, testCase);
+        tryCompare(unseen, "status", Loader.Ready);
+        face = createTemporaryObject(faceComponent, testCase, {
+            unseen: Qt.binding(() => unseen.count)
+        });
+        return unseen;
+    }
+
+    function shell(count: int): var {
+        // A shell of an earlier test may still hold the name until its deferred destruction has run.
+        tryVerify(() => counterpart.nameOwner("rekta.Shell") === "");
+        const created = createTemporaryObject(shellComponent, testCase, {
+            sessionDesktop: "rekta",
+            count
+        });
+        tryVerify(() => counterpart.nameOwner("rekta.Shell") !== "");
+        return created;
+    }
+
+    function shownCount(): string {
+        return part("notices").visible ? findChild(part("notices"), "number").text : "";
+    }
+
+    function test_the_count_shows_what_the_shell_holds_and_follows_it_while_locked() {
+        if (!hasDBus)
+            skip("this run goes without RektaShell.DBus");
+        const exporter = shell(3);
+        lockFaceCountingFromTheShell();
+        tryVerify(() => shownCount() === "3");
+        exporter.count = 1;
+        tryVerify(() => shownCount() === "1");
+        compare(findChild(part("notices"), "words").text, "neue meldung");
+        exporter.count = 0;
+        tryVerify(() => !part("status").visible);
+        exporter.count = 5;
+        tryVerify(() => shownCount() === "5");
+    }
+
+    function test_a_shell_that_starts_after_the_lock_screen_is_asked_and_one_that_ends_takes_the_count_along() {
+        if (!hasDBus)
+            skip("this run goes without RektaShell.DBus");
+        tryVerify(() => counterpart.nameOwner("rekta.Shell") === "");
+        const unseen = lockFaceCountingFromTheShell();
+        compare(unseen.count, 0, "no shell, no count");
+        const exporter = shell(2);
+        tryVerify(() => shownCount() === "2");
+        exporter.destroy();
+        tryVerify(() => !part("status").visible);
+        compare(unseen.count, 0);
+    }
+
+    function test_no_other_program_on_the_bus_can_speak_for_the_shell() {
+        if (!hasDBus)
+            skip("this run goes without RektaShell.DBus");
+        shell(2);
+        const unseen = lockFaceCountingFromTheShell();
+        tryVerify(() => unseen.count === 2);
+        counterpart.emitSignal("/rekta/Shell", "rekta.Shell.Notices", "UnseenCountChanged", [9]);
+        counterpart.nameOwner("org.freedesktop.DBus");
+        wait(100);
+        compare(unseen.count, 2);
+    }
+
+    // The test path holds RektaShell.DBus in the first run of these tests only.
+    function test_without_the_shells_dbus_module_nothing_shows_and_the_password_still_reaches_pam() {
+        if (hasDBus)
+            skip("only the run without RektaShell.DBus misses it");
+        ignoreWarning(/RektaShell\.DBus/);
+        const unseen = createTemporaryObject(unseenComponent, testCase);
+        tryCompare(unseen, "status", Loader.Error);
+        compare(unseen.count, 0);
+        face = createTemporaryObject(faceComponent, testCase, {
+            unseen: Qt.binding(() => unseen.count)
+        });
+        waitForRendering(face);
+        verify(!part("status").visible);
+        ask();
+        type("rekta");
+        keyClick(Qt.Key_Return);
+        tryVerify(() => responses().length === 1);
+        compare(responses()[0], ["respond", "rekta"]);
+    }
+
+    // Each theme on a fresh lock screen: resting with two layouts, new notifications and a player, the notifications
+    // alone, a long title, a refused password, and another monitor.
     function test_contact_sheet_in_both_themes() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
@@ -643,6 +823,14 @@ TestCase {
             play("Nachtfahrt", "Kolibri", playback.playing);
             waitForRendering(face);
             grabImage(face).save(`lockscreen-sheet-${theme}.png`);
+            face.unseen = 3;
+            waitForRendering(face);
+            grabImage(face).save(`lockscreen-sheet-${theme}-notices.png`);
+            players.clear();
+            waitForRendering(face);
+            grabImage(face).save(`lockscreen-sheet-${theme}-notices-alone.png`);
+            face.unseen = 0;
+            play("Nachtfahrt", "Kolibri", playback.playing);
             players.setProperty(0, "track", "Eine sehr lange Nachtfahrt durch die Stadt, bis der Morgen graut und alle Lichter ausgehen");
             waitForRendering(face);
             grabImage(face).save(`lockscreen-sheet-${theme}-long-title.png`);

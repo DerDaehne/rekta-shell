@@ -7,9 +7,9 @@ import org.kde.plasma.workspace.keyboardlayout as Keyboards
 import Rekta
 
 // The lock screen kscreenlocker_greet loads, once per monitor. It only hands the greeter's context and Plasma's
-// modules to the parts beside it, LockFace (what is shown), Playing (what plays) and Unlock (how PAM is asked, one
-// for all monitors), and quits the greeter once the session is unlocked. Its opaque face covers the wallpaper the
-// greeter puts below it.
+// modules to the parts beside it, LockFace (what is shown), Playing (what plays), Unseen (the shell's count of new
+// notifications) and Unlock (how PAM is asked, one for all monitors), and quits the greeter once the session is
+// unlocked. Its opaque face covers the wallpaper the greeter puts below it.
 Item {
     id: root
 
@@ -66,6 +66,10 @@ Item {
         shown: root.showMedia
     }
 
+    Unseen {
+        id: newNotices
+    }
+
     Sessions.SessionManagement {
         id: sessionManagement
     }
@@ -92,6 +96,7 @@ Item {
         canSwitchUser: sessionManagement.canSwitchUser
         playingTitle: playing.title
         playingArtist: playing.artist
+        unseen: newNotices.count
         onSubmitted: secret => Unlock.submit(secret, capsLockState.locked)
         onLayoutChosen: index => keyboardLayout.layout = index
         onSwitchUser: sessionManagement.switchUser()

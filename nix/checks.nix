@@ -106,6 +106,8 @@ in
     grep -qF 'XDG_DATA_DIRS="${rekta-shell}/share/rekta-kwin:' libexec/rekta-kwin
     grep -qF 'XDG_CONFIG_DIRS="${rekta-shell}/share/rekta-kwin/kwin:' libexec/rekta-kwin
     grep -qF 'XDG_CONFIG_DIRS="${rekta-shell}/share/rekta-kded:' libexec/rekta-kded
+    # rekta-kwin puts this directory on the import path of the greeter, whose lock screen asks the shell through it.
+    test -f lib/qt-6/qml/RektaShell/DBus/qmldir
     grep -qx '\[Module-mprisservice\]\[$i\]' share/rekta-kded/kded5rc
     # The greeter KWin starts finds the lock screen's package by this name, under KWin's data dirs alone.
     grep -qx '  export PLASMA_DEFAULT_SHELL=rekta-lockscreen' libexec/rekta-kwin
@@ -209,7 +211,7 @@ in
       expect rekta-kded "$rekta" "$rekta XDG_CONFIG_DIRS=$kded:/etc/xdg"
       kwin=${rekta-shell}/share/rekta-kwin
       plugins=${rekta-shell}/lib/rekta-kwin/plugins
-      module=${rekta-shell}/share/rekta-shell
+      module=${rekta-shell}/share/rekta-shell:${rekta-shell}/lib/qt-6/qml
       style="QT_QUICK_CONTROLS_STYLE=org.kde.desktop PLASMA_DEFAULT_SHELL=rekta-lockscreen"
       expect rekta-kwin "$rekta $session" "$rekta $session XDG_CONFIG_DIRS=$kwin/kwin:/session/xdg \
         XDG_DATA_DIRS=$kwin:/session/share QT_PLUGIN_PATH=$plugins:/session/plugins QML_IMPORT_PATH=$module:/session/qml $style"

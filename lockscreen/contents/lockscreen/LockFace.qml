@@ -26,6 +26,8 @@ Rectangle {
     // What is playing; no title, nothing is.
     property string playingTitle
     property string playingArtist
+    // How many notifications wait unseen in the shell.
+    property int unseen: 0
 
     signal submitted(string secret)
     signal layoutChosen(int index)
@@ -163,7 +165,17 @@ Rectangle {
             Figures {
                 objectName: "status"
                 x: parent.width - width
-                visible: face.playingTitle !== ""
+                visible: face.unseen > 0 || face.playingTitle !== ""
+
+                Stat {
+                    id: notices
+
+                    objectName: "notices"
+                    visible: face.unseen > 0
+                    value: `${face.unseen}`
+                    label: face.unseen === 1 ? "neue meldung" : "neue meldungen"
+                    icon: "bell"
+                }
 
                 Stat {
                     id: playing
@@ -177,6 +189,7 @@ Rectangle {
                     // line in an ellipsis, at the room beside the sign-in, as far from it as the showcase's status
                     // from its account (space-l, site/site.css:177). Follow Rekta's answer once it has one.
                     maximumWidth: face.width - 2 * Tokens.spaceXl - signIn.width - Tokens.spaceL
+                        - (face.unseen > 0 ? notices.width + Tokens.spaceM : 0)
                 }
             }
 
