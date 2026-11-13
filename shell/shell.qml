@@ -205,6 +205,11 @@ ShellRoot {
         }
     }
 
+    NoticeCount {
+        sessionDesktop: Quickshell.env("XDG_SESSION_DESKTOP") ?? ""
+        count: notifications.board.unseen
+    }
+
     FreeSpace {
         watching: notifications.board.storageFull
 
