@@ -264,10 +264,8 @@ FocusScope {
         property: "phase"
         to: 1
         duration: Tokens.durationShort
-        onFinished: {
-            if (toast.notification)
-                toast.toaster.takeCountBack();
-        }
+        // Once in, a notification's toast gives its count back; for any other the count is back already.
+        onFinished: toast.toaster.takeCountBack()
     }
 
     NumberAnimation {
