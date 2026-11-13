@@ -175,6 +175,16 @@ in
     touch $out
   '';
 
+  # The session bar's namespace "DOCK" is a dock only while KWin ignores the case as it types a layer surface; else KWin
+  # takes the bar for a normal window, which tiling scripts move.
+  kwin-types-docks-ignoring-case = pkgs.runCommand "rekta-shell-kwin-types-docks-ignoring-case" { } ''
+    if ! tar -xOf ${qt.kwin.src} --wildcards '*/src/layershellv1window.cpp' | grep -qF 'scopeToType.value(scope.toLower(),'; then
+      echo "KWin no longer types a layer surface by its lowercased namespace; the session bar's \"DOCK\" needs another tag" >&2
+      exit 1
+    fi
+    touch $out
+  '';
+
   # Both drop-ins run Plasma's commands through their scripts in Plasma too, so only in the rekta session may a script
   # change what the command gets. A child stands in for the command: it sees the same, run through a script with one
   # environment, as run directly with the environment the script must hand on.

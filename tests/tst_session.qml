@@ -247,7 +247,8 @@ TestCase {
         compare(blur(), 0, "and nothing blurred");
         sessionBanner.entry = 0.5;
         compare(part("banner").mapToItem(sessionBanner, 0, 0).y, -Geometry.bannerShift / 2, "from 8px above");
-        tryCompare(sessionBanner, "entry", 1, Tokens.durationShort * 4, "the animation ended");
+        tryVerify(() => !comingIn.running, Tokens.durationShort * 4, "the animation ended");
+        compare(sessionBanner.entry, 1);
         compare(part("banner").mapToItem(sessionBanner, 0, 0).y, 0);
         compare(shown("shading"), 1);
         compare(blur(), 1);

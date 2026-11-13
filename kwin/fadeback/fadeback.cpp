@@ -228,10 +228,9 @@ void FadeBackEffect::watch(LayerSurfaceV1Interface *layer)
             follow(*retreat, layer);
         }
     }
-    // Set again on every commit: KWin makes the surface's window anew, at full opacity, as an output changes.
+    // KWin has made the surface's window by now, before its first frame; Qt makes a new surface for each showing.
     if (layer->scope() == QLatin1StringView(sessionScope)) {
         m_session = layer;
-        connect(layer->surface(), &SurfaceInterface::committed, this, &FadeBackEffect::fadeSession);
         fadeSession();
     }
 }
