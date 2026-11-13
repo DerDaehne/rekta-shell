@@ -991,6 +991,37 @@ TestCase {
         compare(panorama.scroller.contentY, 0);
     }
 
+    function test_compact_page_up_from_the_strip_after_it_chose_angeheftet_marks_läuft_where_the_view_now_is() {
+        openCompactWithTwoWindows();
+        const panorama = named("panorama");
+        const strip = named("sectionStrip");
+        strip.forceActiveFocus();
+        keyClick(Qt.Key_Right);
+        compare(strip.currentIndex, 1);
+        tryVerify(() => !panorama.gliding);
+        verify(panorama.scroller.contentY > 300);
+        keyClick(Qt.Key_PageUp);
+        compare(panorama.scroller.contentY, 0);
+        compare(strip.currentIndex, 0, "the key's scroll ends the jump's hold on the mark");
+    }
+
+    function test_compact_page_down_in_the_search_leaves_the_hidden_place_at_its_top() {
+        openCompactWithTwoWindows();
+        keyClick(Qt.Key_K);
+        verify(start.searching);
+        keyClick(Qt.Key_PageDown);
+        compare(named("panorama").scroller.contentY, 0);
+    }
+
+    function test_compact_shift_page_down_and_up_still_scroll_the_start_by_the_height_in_view() {
+        openCompactWithTwoWindows();
+        const panorama = named("panorama");
+        keyClick(Qt.Key_PageDown, Qt.ShiftModifier);
+        compare(panorama.scroller.contentY, panorama.height);
+        keyClick(Qt.Key_PageUp, Qt.ShiftModifier);
+        compare(panorama.scroller.contentY, 0);
+    }
+
     // The search, Escape and back
 
     function test_typing_replaces_the_strip_and_the_panorama_with_the_search_and_clearing_brings_them_back() {

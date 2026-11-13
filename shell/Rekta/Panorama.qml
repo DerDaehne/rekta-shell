@@ -393,13 +393,16 @@ Item {
         }
         if (!(event.key in moves))
             return false;
+        // A key that scrolls is the user's own scroll, wherever the focus is: it ends a jump's hold on the mark.
+        userScroll();
         takeOver();
         flick.cancelFlick();
         flick.contentY = Math.max(0, Math.min(mostScroll(), moves[event.key]));
         return true;
     }
 
-    // ← → PageUp PageDown jump a section, Home End to the ends; only on the panorama itself (rekta.js key(), :1027).
+    // Sideways: ← → PageUp PageDown jump a section, Home End to the ends; only on the panorama itself (rekta.js key(),
+    // :1027). Stacked: pageKey().
     Keys.onPressed: event => {
         userScroll();
         if (pageKey(event, Window.activeFocusItem === panorama)) {
