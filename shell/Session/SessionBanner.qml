@@ -7,10 +7,11 @@ import Rekta
 // look, on surface with a hairline below (rekta.css:1238–1266), the word "sitzung" large and light in the first tile
 // column, the actions as buttons from the second, sharing its baseline.
 // It comes in once with a fade and 8px over duration-short, as a banner state does (motion.md, "Status banner"), the
-// shading fading in alongside; it leaves the same way in 0.8 × that with ease-out, as a sheet leaves (motion.md,
-// "Sheets"). An action that clears the shading takes the shading away at once as it is chosen, and the banner leaves
-// alone. Escape, Back, a press on the shading and the close button at its top corner send it away; ← → go from action to
-// action, Tab also to the close button, Enter or Space acts. Once it has gone the focus goes back.
+// shaded and blurred screen fading in with it as one; it leaves the same way in 0.8 × that with ease-out, as a sheet
+// leaves (motion.md, "Sheets"; rekta.css:1073–1075, rekta.js:1828). An action that clears the shading takes shading
+// and blur away at once as it is chosen, and the banner leaves alone. Escape, Back, a press on the shading and the close
+// button at its top corner send it away; ← → go from action to action, Tab also to the close button, Enter or Space
+// acts. Once it has gone the focus goes back.
 // An action that ends the session (endsSession) first counts down duration-toast in whole seconds in the buttons' place,
 // "ausschalten in 5 · abbrechen", under Rekta's undo line (behaviour.md, "Undo"; rekta.css:1218–1226). Enter acts at once;
 // Escape, Back, "abbrechen" and a press on the shading take it back to the actions with nothing done. Rekta asks a
@@ -24,9 +25,11 @@ FocusScope {
     property var actions: []
     // From show() until it has gone; a host shows its surface while this holds.
     property bool open: false
-    // Runs from 0 to 1 as it comes in, and back to 0 as it leaves; the shading's opacity runs alongside.
+    // Runs from 0 to 1 as it comes in, and back to 0 as it leaves.
     property real entry: 1
-    property real shade: 1
+    // The host's surface shows by this, and everything on it by the same once more: so banner and shading show by entry,
+    // and so does KWin's blur behind, which goes with the square of the surface's opacity.
+    readonly property real surfaceOpacity: Math.sqrt(entry)
     // The screen behind lies shaded, and blurred by the host, until an action that clears the shading is chosen.
     property bool shaded: true
     // The action counting down, null while none. Wall-clock time in ms: a late timer never stretches the window.
@@ -54,7 +57,6 @@ FocusScope {
             memo.focused = Window.activeFocusItem;
             open = true;
             entry = 0;
-            shade = 0;
         }
         stopCounting();
         shaded = true;
@@ -161,6 +163,7 @@ FocusScope {
     }
 
     visible: open
+    opacity: surfaceOpacity
 
     // The buttons take Enter and Space first; the rest come here.
     Keys.onPressed: event => keyPressed(event)
@@ -197,59 +200,35 @@ FocusScope {
         property Item focused
     }
 
-    ParallelAnimation {
+    NumberAnimation {
         id: comingIn
 
-        NumberAnimation {
-            objectName: "comingIn"
-            target: sessionBanner
-            property: "entry"
-            to: 1
-            duration: Tokens.durationShort
-            easing.type: Easing.Bezier
-            easing.bezierCurve: Tokens.easeIn
-        }
-
-        NumberAnimation {
-            objectName: "shadingIn"
-            target: sessionBanner
-            property: "shade"
-            to: 1
-            duration: Tokens.durationShort
-        }
+        objectName: "comingIn"
+        target: sessionBanner
+        property: "entry"
+        to: 1
+        duration: Tokens.durationShort
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Tokens.easeIn
     }
 
-    ParallelAnimation {
+    NumberAnimation {
         id: going
 
+        objectName: "goingUp"
+        target: sessionBanner
+        property: "entry"
+        to: 0
+        duration: 0.8 * Tokens.durationShort
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Tokens.easeOut
         onFinished: sessionBanner.gone()
-
-        NumberAnimation {
-            objectName: "goingUp"
-            target: sessionBanner
-            property: "entry"
-            to: 0
-            duration: 0.8 * Tokens.durationShort
-            easing.type: Easing.Bezier
-            easing.bezierCurve: Tokens.easeOut
-        }
-
-        // ponytail: the shading fades linearly as it leaves, as a sheet's did in Rekta 0.5.0; 0.6.0 eases it out
-        // (rekta.js:1828).
-        NumberAnimation {
-            objectName: "shadingOut"
-            target: sessionBanner
-            property: "shade"
-            to: 0
-            duration: 0.8 * Tokens.durationShort
-        }
     }
 
     Rectangle {
         objectName: "shading"
         anchors.fill: parent
         color: Tokens.color.shading
-        opacity: sessionBanner.shade
         visible: sessionBanner.shaded
 
         // Nothing behind reacts while it is open; a press on the shading, not on the banner, or the Back button sends
@@ -276,7 +255,6 @@ FocusScope {
         width: sessionBanner.width
         height: sessionBanner.contentHeight
         color: Tokens.color.surface
-        opacity: sessionBanner.entry
         layer.enabled: sessionBanner.entry < 1
         Accessible.role: Accessible.Dialog
         Accessible.name: word.text

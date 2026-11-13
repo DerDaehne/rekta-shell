@@ -128,6 +128,8 @@ public Q_SLOTS:
     Q_SCRIPTABLE void setStartAt(double elapsed, int pace);
     // The same on their way forward as the Start closes back, from all the way back.
     Q_SCRIPTABLE void setStartOutAt(double elapsed, int pace);
+    // The session bar's surface shows by `opacity` from now on, and KWin's blur behind it by its square.
+    Q_SCRIPTABLE void setSessionOpacity(double opacity);
 
 Q_SIGNALS:
     // A finger on the bottom edge of the primary screen is `distance` px above where it set down.
@@ -152,6 +154,7 @@ private:
     Look look(qreal progress) const;
     void step();
     void fadeStart(qreal opacity) const;
+    void fadeSession() const;
     bool stepsBack(const EffectWindow *w) const;
     bool moving() const;
     void holdSplash(EffectWindow *w);
@@ -177,6 +180,10 @@ private:
     Look m_onPrimary;
     Look m_elsewhere;
     Splash m_splash;
+    // KWin types it a dock all the same, ignoring the case; the shell writes the bar's and the key map's "dock".
+    static constexpr const char *sessionScope = "DOCK";
+    QPointer<LayerSurfaceV1Interface> m_session;
+    qreal m_sessionOpacity = 1;
     // KWin triggers it as the finger on the edge lets go.
     QAction m_finger;
     bool m_fingerDown = false;
@@ -210,6 +217,8 @@ FadeBackEffect::FadeBackEffect()
 FadeBackEffect::~FadeBackEffect()
 {
     fadeStart(1);
+    m_sessionOpacity = 1;
+    fadeSession();
 }
 
 void FadeBackEffect::watch(LayerSurfaceV1Interface *layer)
@@ -218,6 +227,12 @@ void FadeBackEffect::watch(LayerSurfaceV1Interface *layer)
         if (layer->scope() == QLatin1StringView(retreat->scope)) {
             follow(*retreat, layer);
         }
+    }
+    // Set again on every commit: KWin makes the surface's window anew, at full opacity, as an output changes.
+    if (layer->scope() == QLatin1StringView(sessionScope)) {
+        m_session = layer;
+        connect(layer->surface(), &SurfaceInterface::committed, this, &FadeBackEffect::fadeSession);
+        fadeSession();
     }
 }
 
@@ -355,6 +370,23 @@ void FadeBackEffect::fadeStart(qreal opacity) const
 {
     if (Window *start = m_start.surface ? waylandServer()->findWindow(m_start.surface->surface()) : nullptr) {
         start->setOpacity(opacity);
+    }
+}
+
+void FadeBackEffect::setSessionOpacity(double opacity)
+{
+    if (!(opacity >= 0 && opacity <= 1)) {
+        return;
+    }
+    m_sessionOpacity = opacity;
+    fadeSession();
+}
+
+// The window's own opacity, as for the Start: KWin's blur follows it, by its square.
+void FadeBackEffect::fadeSession() const
+{
+    if (Window *session = m_session ? waylandServer()->findWindow(m_session->surface()) : nullptr) {
+        session->setOpacity(m_sessionOpacity);
     }
 }
 

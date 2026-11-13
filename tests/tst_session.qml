@@ -225,24 +225,43 @@ TestCase {
         compare(part("banner").height, actions.y + actions.height + Tokens.spaceM + Geometry.hairline, "the banner grows with them");
     }
 
-    function test_it_comes_in_once_8px_with_a_fade_over_duration_short_and_the_shading_fades_in_alongside() {
+    // How much of a part shows once KWin has faded the surface: by its own opacity, the banner's and the surface's.
+    function shown(name: string): real {
+        return part(name).opacity * sessionBanner.opacity * sessionBanner.surfaceOpacity;
+    }
+
+    // KWin's blur behind the surface, which squares the surface's opacity; none once the shading has gone.
+    function blur(): real {
+        return sessionBanner.shaded ? sessionBanner.surfaceOpacity * sessionBanner.surfaceOpacity : 0;
+    }
+
+    function test_it_comes_in_once_8px_with_a_fade_over_duration_short_with_ease_in_and_the_shading_and_blur_alongside() {
         Prefs.motion = "on";
         const comingIn = part("comingIn");
         compare(comingIn.duration, Tokens.durationShort);
         compare(comingIn.easing.type, Easing.Bezier);
         compare(comingIn.easing.bezierCurve, Tokens.easeIn);
-        compare(part("shadingIn").duration, Tokens.durationShort);
         sessionBanner.show("");
         compare(sessionBanner.entry, 0, "the banner starts away");
-        compare(sessionBanner.shade, 0, "and the shading clear");
+        compare(shown("shading"), 0, "and the shading clear");
+        compare(blur(), 0, "and nothing blurred");
         sessionBanner.entry = 0.5;
-        sessionBanner.shade = 0.5;
-        const banner = part("banner");
-        compare(banner.opacity, 0.5);
-        compare(banner.mapToItem(sessionBanner, 0, 0).y, -Geometry.bannerShift / 2, "from 8px above");
-        compare(part("shading").opacity, 0.5);
-        tryVerify(() => sessionBanner.entry === 1 && sessionBanner.shade === 1, Tokens.durationShort * 4, "both animations ended");
-        compare(banner.mapToItem(sessionBanner, 0, 0).y, 0);
+        compare(part("banner").mapToItem(sessionBanner, 0, 0).y, -Geometry.bannerShift / 2, "from 8px above");
+        tryCompare(sessionBanner, "entry", 1, Tokens.durationShort * 4, "the animation ended");
+        compare(part("banner").mapToItem(sessionBanner, 0, 0).y, 0);
+        compare(shown("shading"), 1);
+        compare(blur(), 1);
+    }
+
+    function test_shading_blur_and_banner_show_as_one_by_the_banner_s_entry_at_every_point_of_its_way() {
+        sessionBanner.show("");
+        for (const entry of [0, 0.04, 0.25, 0.5, 0.81, 1]) {
+            sessionBanner.entry = entry;
+            fuzzyCompare(shown("shading"), entry, 1e-9, `shading at ${entry}`);
+            fuzzyCompare(blur(), entry, 1e-9, `blur at ${entry}`);
+            fuzzyCompare(shown("banner"), entry, 1e-9, `banner at ${entry}, faded once`);
+        }
+        verify(!part("shadingIn") && !part("shadingOut"), "the shading has no curve of its own");
     }
 
     function test_it_leaves_the_way_it_came_in_0_8_duration_short_with_ease_out_and_is_closed_once_gone() {
@@ -251,7 +270,6 @@ TestCase {
         compare(goingUp.duration, 0.8 * Tokens.durationShort);
         compare(goingUp.easing.type, Easing.Bezier);
         compare(goingUp.easing.bezierCurve, Tokens.easeOut);
-        compare(part("shadingOut").duration, 0.8 * Tokens.durationShort);
         const closed = createTemporaryObject(spyComponent, testCase, {
             target: sessionBanner,
             signalName: "closed"
@@ -265,7 +283,8 @@ TestCase {
         verify(!sessionBanner.open);
         verify(!sessionBanner.visible);
         compare(sessionBanner.entry, 0);
-        compare(sessionBanner.shade, 0);
+        compare(shown("shading"), 0, "the shading gone with it");
+        compare(blur(), 0, "and the blur");
     }
 
     function test_shown_again_while_it_leaves_it_comes_back() {
@@ -286,10 +305,12 @@ TestCase {
         compare(sessionBanner.entry, 1, "in at once");
         compare(part("banner").opacity, 1);
         compare(part("banner").mapToItem(sessionBanner, 0, 0).y, 0);
-        compare(part("shading").opacity, 1);
+        compare(shown("shading"), 1);
+        compare(blur(), 1);
         sessionBanner.close();
         verify(!sessionBanner.open, "gone at once, never skipped");
         verify(!sessionBanner.visible);
+        compare(sessionBanner.surfaceOpacity, 0, "the surface with it");
     }
 
     function test_shown_for_an_action_the_focus_starts_on_it_and_for_any_other_name_on_sperren() {
@@ -444,7 +465,10 @@ TestCase {
         button("switchUser").click();
         verify(!sessionBanner.shaded, "the host's blur goes with it");
         verify(!part("shading").visible, "in the same frame, without a fade");
+        compare(blur(), 0, "the blur in the same frame");
         verify(sessionBanner.open, "the banner is still on its way up");
+        tryVerify(() => sessionBanner.entry < 1, Tokens.durationShort * 4, "on its way");
+        fuzzyCompare(shown("banner"), sessionBanner.entry, 1e-9, "the banner faded once, as before");
         tryVerify(() => part("banner").mapToItem(sessionBanner, 0, 0).y < 0, Tokens.durationShort * 4, "back up, as a sheet leaves");
         tryVerify(() => !sessionBanner.open, Tokens.durationShort * 4);
         sessionBanner.show("");

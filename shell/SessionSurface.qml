@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import RektaShell.DBus
 import Rekta
 import Session
 import Settings
@@ -15,7 +16,9 @@ import "services"
 // types a layer surface by its namespace only and takes any other for a normal window, which window-managing scripts
 // move (a tiling script pushes it into the area beside the app bar); of the special types, dock is the one KWin's own
 // effects leave alone (fading popups fade splash and on-screen-display surfaces, sliding notifications slide
-// notification ones).
+// notification ones). Written "DOCK": KWin ignores the case as it types a surface, and its fade-back knows this one, apart
+// from the app bar's and the key map's, by the case alone. That effect fades the surface as the banner tells it, and
+// KWin's blur with it; outside the rekta session nothing answers.
 // ponytail: a new layer surface takes some 60ms to its first frame, so the first frames of the way in may not show;
 // keep the surface mapped, as the Start does, should that show.
 PanelWindow {
@@ -48,13 +51,11 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     visible: primaryScreen !== null && banner.open
-    WlrLayershell.namespace: "dock"
+    WlrLayershell.namespace: "DOCK"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     // A deliberate deviation, as for the app bar: KWin blurs at the strength of its blur effect, not the shading's
     // blur(4px) (rekta.css:1073).
-    // ponytail: the blur stands at once while the shading fades in; fade the surface in KWin, as the fade-back does
-    // the Start, should that show.
     BackgroundEffect.blurRegion: Region {
         item: banner.shaded ? banner : null
     }
@@ -66,6 +67,11 @@ PanelWindow {
         focus: true
         actions: session.actions
         onClosed: surface.gone()
+        onSurfaceOpacityChanged: kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setSessionOpacity", [banner.surfaceOpacity], "d")
+    }
+
+    DBusConnection {
+        id: kwin
     }
 
     SessionActions {
