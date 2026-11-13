@@ -269,7 +269,6 @@ TestCase {
         compare(Rules.letterSections(["K3b", ...kde.slice(1), "KÖnig"], 4).map(part => part.title), ["kb–km", "ko–ko"], "letters only, lower case, accents dropped");
     }
 
-
     function test_neighbouring_letters_that_fill_no_more_than_the_rows_together_share_one_section_at_three_rows() {
         compare(ManyApps.names.length, 120);
         compare(Rules.letterSections(ManyApps.names, 3).map(part => [part.title, part.count, part.units]), [["a", 4, 2], ["b", 3, 1], ["c", 2, 1], ["d", 7, 3], ["e", 8, 3], ["f", 4, 2], ["g", 9, 3], ["h", 2, 1], ["i–j", 3, 1], ["k", 16, 6], ["l", 3, 1], ["m", 8, 3], ["n", 3, 1], ["o", 3, 1], ["p", 8, 3], ["r", 3, 1], ["s", 14, 5], ["t", 9, 3], ["u", 2, 1], ["v", 3, 1], ["w", 4, 2], ["x–z", 2, 1]]);
@@ -293,6 +292,11 @@ TestCase {
     function test_the_parts_of_a_split_letter_join_no_neighbour_and_the_small_letters_around_them_still_join_each_other() {
         const sections = Rules.letterSections([...names("a", 1), ...names("b", 1), ...names("k", 13), ...names("l", 1), ...names("m", 1)], 2);
         compare(sections.map(part => [part.title, part.count, part.units]), [["a–b", 2, 1], ["ka–kg", 7, 4], ["kh–km", 6, 3], ["l–m", 2, 1]]);
+    }
+
+    function test_digits_and_signs_under_hash_join_their_neighbour_like_any_initial() {
+        compare(Rules.letterSections(["0 A.D.", "Ark", "Audacity"], 3).map(part => [part.title, part.first, part.count, part.units]), [["#–a", 0, 3, 1]]);
+        compare(Rules.letterSections(["0 A.D.", "7-Zip", "Ark", "Audacity"], 3).map(part => [part.title, part.count]), [["#", 2], ["a", 2]], "together one over the rows");
     }
 
     function test_stacked_every_initial_is_one_section_one_unit_wide_and_none_splits() {
