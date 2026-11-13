@@ -329,6 +329,44 @@ TestCase {
         compare(named("pinned").mapToItem(panorama, 0, 0).x, Tokens.spaceXl);
     }
 
+    // Never flush at the edge (layout.md:41–50): the window's edge lies at least space-xl inside a section.
+    function edgeInsideASection(panorama: var): bool {
+        const edge = panorama.width;
+        return panorama.sectionItems().some(section => section.x + Tokens.spaceXl <= edge && edge <= section.x + section.width - Tokens.spaceXl);
+    }
+
+    function test_upright_at_1080_px_pinned_runs_past_the_right_edge_by_more_than_space_xl_with_the_gap_unchanged() {
+        openAt(1080, 1920);
+        const panorama = named("panorama");
+        compare(panorama.gap, Tokens.spaceXl);
+        const pinned = named("pinned");
+        compare(pinned.x, 452);
+        compare(pinned.x + pinned.width - panorama.width, 84, "84 px of angeheftet lie past the edge");
+        verify(edgeInsideASection(panorama));
+    }
+
+    function test_at_1200_px_where_the_edge_would_fall_in_the_gap_before_heute_the_gap_narrows_to_18_and_heute_shows_space_xl() {
+        openAt(1200, 1920);
+        const panorama = named("panorama");
+        compare(panorama.gap, 18);
+        compare(named("pinned").x, Tokens.spaceXl + unit(2) + 18);
+        compare(named("today").x, 1152);
+        compare(panorama.width - named("today").x, Tokens.spaceXl, "heute shows space-xl");
+        compare(named("pinned").width, unit(4), "angeheftet keeps its width");
+    }
+
+    function test_angeheftet_keeps_its_width_while_the_start_turns_in_where_the_gap_changes() {
+        Prefs.motion = "on";
+        makeStart(1200, 1920, {});
+        const pinned = named("pinned");
+        const widths = [pinned.width];
+        pinned.widthChanged.connect(() => widths.push(pinned.width));
+        start.open();
+        tryVerify(() => start.phase === "open", 3000);
+        compare(widths, [unit(4)]);
+        compare(named("panorama").gap, 18);
+    }
+
     function test_the_strip_follows_the_panorama_as_it_scrolls() {
         openAt(1000, 900);
         const panorama = named("panorama");

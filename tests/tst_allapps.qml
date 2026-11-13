@@ -219,6 +219,46 @@ TestCase {
         verify(sections().every(section => section.width <= unit(6)));
     }
 
+    // Never flush at the edge (layout.md:41–50): sections as wide as their letters need, the gap spread over all of them.
+    function test_the_windows_edge_lies_space_xl_inside_a_letter_with_even_gaps_spread_from_space_xl_data() {
+        return [
+            {
+                tag: "1920 x 1080: already inside, space-xl",
+                width: 1920,
+                height: 1080,
+                gap: 48
+            },
+            {
+                tag: "1600 x 900: 43",
+                width: 1600,
+                height: 900,
+                gap: 43
+            },
+            {
+                tag: "1400 x 900: 47",
+                width: 1400,
+                height: 900,
+                gap: 47
+            },
+            {
+                tag: "upright 1080 x 1920: already inside, space-xl",
+                width: 1080,
+                height: 1920,
+                gap: 48
+            }
+        ];
+    }
+
+    function test_the_windows_edge_lies_space_xl_inside_a_letter_with_even_gaps_spread_from_space_xl(data) {
+        openOnAllApps(desktopApps, data.width, data.height);
+        const panorama = named("appsPanorama");
+        compare(panorama.gap, data.gap);
+        const all = sections();
+        verify(all.slice(1).every((section, k) => section.x - all[k].x - all[k].width === data.gap), "the gaps stay even");
+        const edge = panorama.width;
+        verify(all.some(section => section.x + Tokens.spaceXl <= edge && edge <= section.x + section.width - Tokens.spaceXl));
+    }
+
     function test_the_tiles_flow_row_by_row_and_the_last_row_is_whole_in_the_section() {
         openOnAllApps(desktopApps, 1920, 1080);
         const section = titled("ka–km");

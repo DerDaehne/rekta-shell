@@ -268,4 +268,9 @@ QtObject {
 
     // A wheel line counts 16 px (`deltaMode === 1 ? 16`, rekta.js:1025, :1127)
     readonly property real wheelLinePixels: 16
+
+    // A panorama fits with 1px to spare, `before(n) + (n - 1) * g <= edge + 1`; the window's edge is inside a section
+    // within half a pixel, `… + xl <= edge + 0.5 && edge - 0.5 <= … - xl` (rekta.js spread(), :1053–1054)
+    readonly property real panoramaFitSlack: 1
+    readonly property real panoramaEdgeSlack: 0.5
 }

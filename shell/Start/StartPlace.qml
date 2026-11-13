@@ -151,8 +151,9 @@ FocusScope {
 
     function fittedPinnedUnits(): int {
         // Not runningSection.visible: that is false while the Start is hidden, and the width would change as it shows.
-        const before = running.length > 0 ? runningSection.sectionWidth + panorama.gap : 0;
-        const after = todaySection.sectionWidth + panorama.gap + (showRecent ? recentSection.sectionWidth + panorama.gap : 0);
+        // Rekta's own gap, not panorama.gap: that one follows from the sections' widths, this one's among them.
+        const before = running.length > 0 ? runningSection.sectionWidth + Tokens.spaceXl : 0;
+        const after = todaySection.sectionWidth + Tokens.spaceXl + (showRecent ? recentSection.sectionWidth + Tokens.spaceXl : 0);
         const room = Math.floor((panorama.width - 2 * panorama.inset - before - after) / unitStep);
         const rows = rowsHeld(panorama);
         let units = 4;

@@ -26,9 +26,8 @@ Item {
     property Pivot sectionStrip
     readonly property bool sideways: facetRow || Prefs.sizeClass(placeWidth, viewportHeight) === "sideways"
     readonly property real inset: facetRow ? 0 : sideways ? Tokens.spaceXl : Tokens.spaceM
-    // ponytail: a gap of space-xl always is Rekta 0.5.0's; 0.6.0 changes it a little, never below space-m, so that the
-    // window's edge never falls flush on a section's (layout.md:41–50; rekta.js spread(), :1043–1067).
-    readonly property real gap: Tokens.spaceXl
+    // The gap between the sections: space-xl, or as spread() makes it so that the window's edge never falls flush.
+    readonly property real gap: reading.gap
     readonly property int currentIndex: reading.current
     // Everything fits: nothing scrolls, and no spacer lets the last section reach the left edge (rekta.css:1498).
     readonly property bool fit: fits()
@@ -111,7 +110,31 @@ Item {
     }
 
     function fits(): bool {
-        return sideways && reading.reach <= width + 1;
+        return sideways && reading.reach <= width + Geometry.panoramaFitSlack;
+    }
+
+    // A panorama that reaches past its window never ends flush on a section's edge (layout.md "Never flush at the edge";
+    // rekta.js spread(), :1043–1067): with the first section at the start, the window's edge falls inside a section, at
+    // least space-xl from either of its ends. The gap changes from space-xl by as little as that takes, never below
+    // space-m; a last section cut by less than space-xl fits instead, when a smaller gap lets it.
+    function spread(sizes: var, edge: real): real {
+        const xl = Tokens.spaceXl;
+        const n = sizes.length;
+        const before = j => sizes.slice(0, j).reduce((sum, w) => sum + w, 0);
+        const fitsWith = g => before(n) + (n - 1) * g <= edge + Geometry.panoramaFitSlack;
+        const inside = g => sizes.some((w, i) => before(i) + i * g + xl <= edge + Geometry.panoramaEdgeSlack && edge - Geometry.panoramaEdgeSlack <= before(i) + i * g + w - xl);
+        if (facetRow || !sideways || fitsWith(xl) || inside(xl))
+            return xl;
+        const ways = n > 1 ? [Math.floor((edge - before(n)) / (n - 1))] : [];
+        for (let j = 1; j <= n; j++) {
+            if (j < n)
+                ways.push(Math.floor((edge - xl - before(j)) / j));
+            if (j > 1)
+                ways.push(Math.ceil((edge + xl - before(j)) / (j - 1)));
+        }
+        // Of two as near to space-xl, the one found first, as Rekta's stable sort keeps it.
+        const nearest = (best, g) => best === undefined || Math.abs(g - xl) < Math.abs(best - xl) ? g : best;
+        return ways.filter(g => g >= Tokens.spaceM && (inside(g) || fitsWith(g))).reduce(nearest, undefined) ?? xl;
     }
 
     // The scrolled extent, from the layout and not from the Flickable's bindings, which a change of class may not have
@@ -228,16 +251,18 @@ Item {
         const sections = sectionItems();
         row.children.forEach(wire);
         const stacked = !sideways;
+        const sizes = sections.map(section => section instanceof Section && section.sectionWidth > 0 ? section.sectionWidth : sectionWidth);
+        const wasGap = reading.gap;
+        reading.gap = spread(sizes, width - inset);
         let along = inset;
         let top = 0;
         for (let k = 0; k < sections.length; k++) {
             const section = sections[k];
-            const own = section instanceof Section && section.sectionWidth > 0 ? section.sectionWidth : sectionWidth;
             if (section instanceof Section) {
                 section.stacked = stacked;
                 section.separated = k > 0;
             }
-            section.width = stacked ? width - 2 * inset : own;
+            section.width = stacked ? width - 2 * inset : sizes[k];
             section.height = stacked ? section.implicitHeight : flick.height;
             section.x = stacked ? inset : along;
             section.y = stacked ? top : 0;
@@ -247,6 +272,15 @@ Item {
         reading.reach = sections.length ? along - gap : inset;
         reading.stackHeight = top;
         markInSight(sections);
+        keepReading(wasGap);
+    }
+
+    // A new gap keeps the section being read, not an offset, at once (rekta.js fit(), :1077–1080).
+    function keepReading(wasGap: real) {
+        if (reading.gap === wasGap || !sideways || !row.visible || flick.contentX <= 0)
+            return;
+        goTo(reading.current, false, true);
+        reading.jumped = false;
     }
 
     // A section that comes or goes moves the others under a still view, so the mark goes to the section the view now
@@ -363,6 +397,7 @@ Item {
         // Jumped to a section by the strip: the scroll that follows is no reason to mark another (rekta.js `clicked`).
         property bool jumped: false
         property real reach: 0
+        property real gap: Tokens.spaceXl
         property real stackHeight: 0
         property point pointer
         property var gesture: null
