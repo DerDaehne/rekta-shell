@@ -9,18 +9,18 @@ import Rekta
 // It comes in once with a fade and 8px over duration-short, as a banner state does (motion.md, "Status banner"), the
 // shading fading in alongside; it leaves the same way in 0.8 × that with ease-out, as a sheet leaves (motion.md,
 // "Sheets"). An action that clears the shading takes the shading away at once as it is chosen, and the banner leaves
-// alone. Escape, Back and a press on the shading send it away; ← → and Tab go from button to button, Enter or Space
-// acts. Once it has gone the focus goes back.
+// alone. Escape, Back, a press on the shading and the close button at its top corner send it away; ← → go from action to
+// action, Tab also to the close button, Enter or Space acts. Once it has gone the focus goes back.
 // An action that ends the session (endsSession) first counts down duration-toast in whole seconds in the buttons' place,
 // "ausschalten in 5 · abbrechen", under Rekta's undo line (behaviour.md, "Undo"; rekta.css:1218–1226). Enter acts at once;
 // Escape, Back, "abbrechen" and a press on the shading take it back to the actions with nothing done. Rekta asks a
 // confirm sheet for what cannot be undone (live.md:109–111); this window replaces it.
-// ponytail: this bar is the shell's own from before Rekta had one; 0.6.0 has a session bar, a sheet in the banner's
-// geometry whose restart and power off ask nothing more (shell.md:132–167).
+// ponytail: Rekta 0.6.0's session bar (shell.md:132–167) asks nothing more before restart and power off; this one keeps
+// the countdown. Sign out and power off stand without an icon, as in Rekta's example, until its set has one for them.
 FocusScope {
     id: sessionBanner
 
-    // { name, text, group, primary, endsSession, disabledReason, run }, in their order.
+    // { name, text, icon, group, primary, endsSession, disabledReason, run }, in their order.
     property var actions: []
     // From show() until it has gone; a host shows its surface while this holds.
     property bool open: false
@@ -306,7 +306,8 @@ FocusScope {
             objectName: "actions"
             x: sessionBanner.padX + sessionBanner.headWidth + Tokens.spaceS
             y: sessionBanner.padY + sessionBanner.firstBaseline - sessionBanner.buttonBaseline
-            width: sessionBanner.width - x - sessionBanner.padX
+            // The close button's corner stays free (rekta.css:1086).
+            width: sessionBanner.width - x - sessionBanner.padX - Tokens.touchTarget
             opacity: sessionBanner.counting ? 0 : 1
             enabled: !sessionBanner.counting
 
@@ -321,8 +322,8 @@ FocusScope {
 
                     objectName: modelData.name
                     text: modelData.text
-                    // The ones that end the session are framed in the error colour, never filled (forms.md:218–226).
-                    variant: modelData.primary ? "primary" : modelData.endsSession ? "destructive" : "quiet"
+                    icon: modelData.icon ?? ""
+                    variant: modelData.primary ? "primary" : "quiet"
                     // A group stands space-l from the one before it; the flow adds space-s.
                     leftPadding: index > 0 && sessionBanner.actions[index - 1].group !== modelData.group ? Tokens.spaceL - Tokens.spaceS : 0
                     disabledReason: modelData.disabledReason ?? ""
@@ -359,6 +360,18 @@ FocusScope {
                 variant: "quiet"
                 onClicked: sessionBanner.cancelCountdown()
             }
+        }
+
+        // `.rk-sheet-close { position: absolute; top: space-xs; right: space-xs }` (rekta.css:1091), last in the focus
+        // chain as in Rekta's example (shell.md:164).
+        IconButton {
+            objectName: "close"
+            x: parent.width - Tokens.spaceXs - width
+            y: Tokens.spaceXs
+            icon: "close"
+            label: "schließen"
+            variant: "quiet"
+            onClicked: sessionBanner.dismiss()
         }
 
         // What is left of the window, shrinking toward the cancel side; under reduced motion it stands and the figure counts.

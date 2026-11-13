@@ -170,15 +170,11 @@ TestCase {
     readonly property var activeCall: callOf("org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", "GetActive")
     readonly property var greeterCall: callOf("org.freedesktop.DisplayManager", seat, "org.freedesktop.DisplayManager.Seat", "SwitchToGreeter", "system")
 
-    function test_it_shows_the_word_sitzung_and_the_six_actions_with_sperren_primary_and_holding_the_focus() {
+    function test_it_shows_the_word_sitzung_and_the_six_actions_with_sperren_primary_the_others_quiet_and_holding_the_focus() {
         sessionBanner.show("");
         compare(part("word").text, "sitzung");
         compare(actionNames.map(name => button(name).text), ["sperren", "benutzer wechseln", "abmelden", "neu starten", "ausschalten", "systemmonitor"]);
-        compare(button("lock").variant, "primary");
-        for (const name of ["switchUser", "systemMonitor"])
-            compare(button(name).variant, "quiet", name);
-        for (const name of endingNames)
-            compare(button(name).variant, "destructive", name);
+        compare(actionNames.map(name => button(name).variant), ["primary", "quiet", "quiet", "quiet", "quiet", "quiet"]);
         verify(button("lock").activeFocus);
         compare(part("banner").Accessible.role, Accessible.Dialog);
         compare(part("banner").Accessible.name, "sitzung");
@@ -198,7 +194,7 @@ TestCase {
         compare(word.font.pixelSize, Math.floor(Tokens.fluid(Tokens.fontSizeL, 900)));
         compare(word.font.weight, Tokens.fontWeightLight);
         compare(actions.x, Tokens.spaceXl + Math.max(Tokens.tileUnit, word.implicitWidth) + Tokens.spaceS, "the actions from tile column 2");
-        compare(actions.width, 900 - actions.x - Tokens.spaceXl);
+        compare(actions.width, 900 - actions.x - Tokens.spaceXl - Tokens.touchTarget, "the close button's corner stays free (rekta.css:1086)");
         const lock = button("lock");
         compare(word.y + word.baselineOffset, actions.y + lock.mapToItem(actions, 0, 0).y + lock.baselineOffset, "word and buttons share a baseline");
         const top = Math.min(word.y, actions.y);
@@ -360,8 +356,14 @@ TestCase {
             keyClick(Qt.Key_Tab);
             verify(button(actionNames[k]).activeFocus, `Tab to ${actionNames[k]}`);
         }
+        keyClick(Qt.Key_Tab);
+        verify(part("close").activeFocus, "Tab from the last action to the close button");
+        keyClick(Qt.Key_Right);
+        verify(part("close").activeFocus, "the arrows go round the actions only");
         keyClick(Qt.Key_Tab, Qt.ShiftModifier);
-        verify(button("shutdown").activeFocus, "Shift+Tab back");
+        verify(button("systemMonitor").activeFocus, "Shift+Tab back");
+        keyClick(Qt.Key_Tab, Qt.ShiftModifier);
+        verify(button("shutdown").activeFocus, "Shift+Tab back again");
         verify(sessionBanner.open, "and it stays open");
     }
 
@@ -640,7 +642,7 @@ TestCase {
 
     readonly property var shutdownCall: callOf("org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", "logoutAndShutdown")
 
-    function test_the_actions_stand_in_three_groups_space_l_apart_and_the_ending_ones_are_framed_in_the_error_colour() {
+    function test_the_actions_stand_in_three_groups_space_l_apart_and_none_is_framed_in_the_error_colour() {
         scene.width = 1600;
         sessionBanner.show("");
         waitForRendering(sessionBanner);
@@ -650,10 +652,71 @@ TestCase {
         compare(gap("logout", "reboot"), Tokens.spaceS);
         compare(gap("reboot", "shutdown"), Tokens.spaceS);
         compare(gap("shutdown", "systemMonitor"), Tokens.spaceL);
-        for (const name of endingNames) {
-            compare(findChild(button(name), "frame").border.color, Tokens.color.statusErrorFull, name);
+        for (const name of actionNames.slice(1)) {
+            compare(findChild(button(name), "frame").border.color.a, 0, `${name} is quiet, without a frame`);
             compare(findChild(button(name), "fill").color.a, 0, `${name} is never filled`);
         }
+    }
+
+    function test_sperren_benutzer_wechseln_and_neu_starten_carry_their_icon_before_the_word_and_the_others_none() {
+        sessionBanner.show("");
+        waitForRendering(sessionBanner);
+        compare(actionNames.map(name => button(name).icon), ["lock", "user", "", "refresh", "", ""]);
+        for (const name of actionNames) {
+            const glyph = findChild(button(name), "glyph");
+            const label = findChild(button(name), "label");
+            compare(glyph.visible, button(name).icon !== "", name);
+            if (glyph.visible)
+                compare(glyph.x + glyph.width + Tokens.spaceS, label.x, `${name}: the icon space-s before the word`);
+        }
+    }
+
+    function test_a_quiet_close_button_named_schliessen_stands_space_xs_from_the_top_and_trailing_edge() {
+        sessionBanner.show("");
+        waitForRendering(sessionBanner);
+        const close = part("close");
+        const banner = part("banner");
+        const corner = close.mapToItem(banner, 0, 0);
+        compare(corner.x, banner.width - Tokens.spaceXs - close.width);
+        compare(corner.y, Tokens.spaceXs);
+        compare(close.variant, "quiet");
+        compare(close.icon, "close");
+        compare(close.text, "");
+        compare(close.Accessible.name, "schließen");
+        verify(close.visible);
+    }
+
+    function test_a_press_on_the_close_button_closes_it_and_the_focus_goes_back() {
+        sessionBanner.show("");
+        waitForRendering(sessionBanner);
+        mouseClick(part("close"));
+        verify(!sessionBanner.open);
+        verify(named("opener").activeFocus);
+        compare(asked, []);
+    }
+
+    function test_the_close_button_closes_it_from_the_keyboard_and_the_focus_goes_back() {
+        for (const key of [Qt.Key_Space, Qt.Key_Return]) {
+            sessionBanner.show("systemMonitor");
+            keyClick(Qt.Key_Tab);
+            verify(part("close").activeFocus, key);
+            keyClick(key);
+            verify(!sessionBanner.open, key);
+            verify(named("opener").activeFocus, key);
+        }
+        compare(asked, []);
+    }
+
+    function test_during_the_countdown_the_close_button_first_takes_it_back_and_then_closes() {
+        startCountdown("shutdown");
+        mouseClick(part("close"));
+        verify(sessionBanner.open, "back at the actions");
+        verify(!part("countdown").visible);
+        verify(button("shutdown").activeFocus, "on the action chosen");
+        mouseClick(part("close"));
+        verify(!sessionBanner.open);
+        runOut();
+        compare(asked, [], "nothing acted");
     }
 
     function test_choosing_ausschalten_counts_down_in_whole_seconds_and_acts_only_when_the_five_seconds_are_up() {

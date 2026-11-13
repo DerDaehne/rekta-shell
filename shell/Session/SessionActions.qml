@@ -40,13 +40,14 @@ QtObject {
     // An app has started, whose window is to come to the front.
     signal launched
 
-    // { name, text, group, primary, endsSession, disabledReason, clearsShading, run }; the primary one takes the focus as
-    // the banner opens; one that clears the shading leaves the screen behind unshaded and unblurred at once as it is
+    // { name, text, icon, group, primary, endsSession, disabledReason, clearsShading, run }; the primary one takes the focus
+    // as the banner opens; one that clears the shading leaves the screen behind unshaded and unblurred at once as it is
     // chosen; one that ends the session waits out the banner's undo window first. Groups stand apart in the banner.
     readonly property var actions: [
         {
             name: "lock",
             text: "sperren",
+            icon: "lock",
             group: 0,
             primary: true,
             run: () => session.launcher.lock()
@@ -54,6 +55,7 @@ QtObject {
         {
             name: "switchUser",
             text: "benutzer wechseln",
+            icon: "user",
             group: 0,
             disabledReason: seatPath === "" ? "Der Anmeldemanager bietet keinen Wechsel an." : "",
             clearsShading: true,
@@ -69,6 +71,7 @@ QtObject {
         {
             name: "reboot",
             text: "neu starten",
+            icon: "refresh",
             group: 1,
             endsSession: true,
             run: () => session.leave("logoutAndReboot")
