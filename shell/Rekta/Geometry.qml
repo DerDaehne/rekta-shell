@@ -46,13 +46,10 @@ QtObject {
     readonly property real inputPadding: 12
     readonly property real inputBorder: 1
     readonly property real inputErrorBorder: 2
-    // `select.rk-input { padding-right: 36px }` (rekta.css:436)
-    // ponytail: the caret is Rekta 0.5.0's, two 5px halves, the second ending 13px before the end of the padding box,
-    // 55% down the room they leave; 0.6.0 draws a chevron of two 4 × 6px arms (rekta.css:425–437).
+    // `select.rk-input { padding-right: 36px; background-position: right 18px center, right 14px center }`: the chevron's
+    // two 4px arms meet 18px before the end of the padding box (rekta.css:434–436)
     readonly property real selectPaddingEnd: 36
-    readonly property real selectCaretEnd: 13
-    readonly property real selectCaretHalf: 5
-    readonly property real selectCaretDown: 0.55
+    readonly property real selectChevronEnd: 18
     // A combobox (rekta.css:455–460): `.rk-combo > .rk-input { padding-right: 40px }`; its button `inset: 1px 1px 1px
     // auto; width: 36px`, the chevron's two 4px arms from 14px into it, 8 × 4px in all (forms.md:77)
     readonly property real comboPaddingEnd: 40
@@ -123,9 +120,6 @@ QtObject {
     // `.rk-menu-item:focus-visible { outline-offset: -2px }` (rekta.css:1017), the active row of a long list's
     // (rekta.css:631) and the grip's (rekta.css:616)
     readonly property real focusRingInsetInRow: 2
-    // `[data-rk-select] > [aria-selected='true']:focus-visible { outline-color: currentColor; outline-offset: -4px }`
-    // (rekta.css:967): on a chosen row the ring sits further in
-    readonly property real focusRingInsetOnChosenRow: 4
     // A tree branch closes in 0.7 of the time it opens in: `duration: d * 0.7` (rekta.js:3339)
     readonly property real branchCloseShare: 0.7
     // A long list's row: `padding: 0 var(--rk-space-s) 0 calc(14px + var(--rk-space-s))` (rekta.css:627); chosen, a

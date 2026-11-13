@@ -24,9 +24,6 @@ TestCase {
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var select
     property SignalSpy activated
-    // The default accent is ink, the same colour as the text; tests about the accent give it a colour of its own.
-    property color inkLight
-    property color inkDark
 
     Component {
         id: sceneComponent
@@ -59,6 +56,16 @@ TestCase {
                     text: "after"
                 }
             }
+
+            // At the foot of the window, with no room for its list below.
+            Select {
+                objectName: "low"
+                x: 600
+                y: parent.height - Tokens.controlHeight - Tokens.spaceS
+                width: 240
+                options: testCase.outputs
+                currentIndex: 0
+            }
         }
     }
 
@@ -70,7 +77,6 @@ TestCase {
         }
     }
 
-    // A select at the foot of a scroller's view, with more to scroll to below it.
     Component {
         id: scrollerComponent
 
@@ -78,30 +84,15 @@ TestCase {
             x: 400
             width: 300
             height: 200
-            contentHeight: content.height
+            contentHeight: 600
             boundsBehavior: Flickable.StopAtBounds
 
-            Column {
-                id: content
-
+            Select {
+                objectName: "scrolled"
+                y: 60
                 width: 300
-
-                Item {
-                    width: 300
-                    height: 200 - Tokens.controlHeight
-                }
-
-                Select {
-                    objectName: "low"
-                    width: 300
-                    options: testCase.outputs
-                    currentIndex: 0
-                }
-
-                Item {
-                    width: 300
-                    height: 400
-                }
+                options: testCase.outputs
+                currentIndex: 0
             }
         }
     }
@@ -110,10 +101,10 @@ TestCase {
         id: sheetComponent
 
         // Selects on the current theme's ground, one above the other: chosen, cut, disabled with its reason. The first
-        // expands from the keys and pushes the others down.
+        // opens from the keys; its list floats over the others.
         Rectangle {
             width: 320
-            height: 400
+            height: 300
             color: Tokens.color.bg
 
             Column {
@@ -145,11 +136,6 @@ TestCase {
         }
     }
 
-    function initTestCase() {
-        inkLight = Tokens.light.accent;
-        inkDark = Tokens.dark.accent;
-    }
-
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         Prefs.motion = "off";
@@ -162,13 +148,6 @@ TestCase {
         Prefs.motion = "system";
         Prefs.theme = "system";
         Prefs.density = "auto";
-        Tokens.light.accent = inkLight;
-        Tokens.dark.accent = inkDark;
-    }
-
-    function useColourfulAccent() {
-        Tokens.light.accent = "#1f5fd1";
-        Tokens.dark.accent = "#7fb0ff";
     }
 
     function named(name: string): var {
@@ -179,23 +158,46 @@ TestCase {
         return findChild(of, "box");
     }
 
-    // Its option rows, in order.
-    function rows(of: var): var {
-        return Array.from(findChild(of, "options").children).filter(row => row.objectName === "option");
+    function list(of: var): var {
+        return findChild(of, "list");
     }
 
-    function expandFromKeys(of: var) {
+    function rows(of: var): var {
+        return Array.from(list(of).rows).filter(row => row.objectName === "option");
+    }
+
+    // The option the keys are on in the open list, -1 for none.
+    function focused(of: var): int {
+        return rows(of).findIndex(row => row.activeFocus);
+    }
+
+    function openFromKeys(of: var) {
         of.forceActiveFocus();
-        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Return);
         verify(of.expanded);
     }
 
     // A key as Keys hands it over, held down when repeated.
     function keyEvent(code: int, repeated: bool): var {
-        return { key: code, modifiers: Qt.NoModifier, isAutoRepeat: repeated };
+        return { key: code, text: "", modifiers: Qt.NoModifier, isAutoRepeat: repeated };
     }
 
-    function test_collapsed_the_box_is_a_fields_input_with_the_chosen_option_and_a_caret_at_its_end() {
+    function window(): Item {
+        return testCase.Window.window.contentItem;
+    }
+
+    function inScene(item: var): point {
+        return item.mapToItem(null, 0, 0);
+    }
+
+    // True where the pixel lies nearer the text colour than the ground.
+    function inkAt(image: var, x: real, y: real): bool {
+        const pixel = image.pixel(Math.round(x), Math.round(y));
+        const distance = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b);
+        return distance(pixel, Tokens.color.textPrimary) < distance(pixel, Tokens.color.bg);
+    }
+
+    function test_closed_the_box_is_a_fields_input_with_the_chosen_option_and_the_combobox_chevron_pointing_down_18px_before_its_end() {
         const field = box(select);
         compare(field.height, Tokens.controlHeight);
         compare(select.height, Tokens.controlHeight);
@@ -207,266 +209,304 @@ TestCase {
         compare(chosen.text, "speakers");
         compare(chosen.x, Geometry.inputPadding);
         compare(chosen.font.pixelSize, Tokens.fontSizeS);
-        const caret = findChild(select, "caret");
-        compare(caret.width, 10);
-        compare(caret.height, 5);
-        compare(caret.x + caret.width, select.width - 1 - 13, "13px before the end of the padding box");
-        compare(caret.y, Math.round(1 + 0.55 * (Tokens.controlHeight - 2 - 5)), "55% down");
-        compare(caret.data[0].fillColor, Tokens.color.textPrimary);
-        compare(chosen.width, select.width - Geometry.inputPadding - 36, "the text stops where the caret's padding starts");
-        verify(!findChild(select, "options").parent.visible, "no options in sight");
+        compare(chosen.width, select.width - Geometry.inputPadding - 36, "the text stops where the chevron's padding starts");
+        compare(findChild(select, "chevron").color, Tokens.color.textPrimary);
+        waitForRendering(scene);
+        const image = grabImage(window());
+        const at = inScene(field);
+        const centreX = at.x + field.width - 1 - 18;
+        const centreY = at.y + field.height / 2;
+        verify(inkAt(image, centreX, centreY), "its point in the middle");
+        verify(!inkAt(image, centreX, centreY - 3), "open above it");
+        verify(inkAt(image, centreX - 3, centreY - 2), "an arm up to the left");
+        verify(inkAt(image, centreX + 2, centreY - 2), "an arm up to the right");
+        verify(!inkAt(image, centreX - 6, centreY - 2), "8px wide in all");
+        verify(!inkAt(image, centreX + 5, centreY - 2));
+        verify(!list(select).visible, "no list in sight");
     }
 
-    function test_its_edge_darkens_under_the_pointer_and_with_the_focus_which_shows_the_ring() {
+    function test_the_chevron_points_up_while_the_list_is_open() {
+        openFromKeys(select);
+        waitForRendering(scene);
+        const field = box(select);
+        const image = grabImage(window());
+        const at = inScene(field);
+        const centreX = at.x + field.width - 1 - 18;
+        const centreY = at.y + field.height / 2;
+        verify(inkAt(image, centreX, centreY - 1), "its point in the middle");
+        verify(!inkAt(image, centreX, centreY + 2), "open below it");
+        verify(inkAt(image, centreX - 3, centreY + 1), "an arm down to the left");
+        verify(inkAt(image, centreX + 2, centreY + 1), "an arm down to the right");
+    }
+
+    function test_its_edge_darkens_under_the_pointer_with_the_focus_which_shows_the_ring_and_while_its_list_is_open() {
         const field = box(select);
         mouseMove(field, 20, 10);
         tryCompare(field.border, "color", Tokens.color.textPrimary);
-        mouseMove(testCase, 900, 500);
+        mouseMove(testCase, 900, 300);
         tryCompare(field.border, "color", Tokens.color.textContrastMedium);
         select.forceActiveFocus();
         compare(field.border.color, Tokens.color.textPrimary);
         verify(findChild(field, "ring").visible);
+        keyClick(Qt.Key_Return);
+        verify(!select.activeFocus, "the focus is in the list");
+        compare(field.border.color, Tokens.color.textPrimary, "still dark while the list is open");
     }
 
-    function test_a_press_expands_it_in_place_its_box_growing_to_hold_every_option_as_a_row() {
-        mouseClick(box(select));
-        verify(select.expanded);
-        verify(!select.activeFocus, "a press gives no focus");
-        const field = box(select);
-        compare(field.height, 2 * Geometry.inputBorder + 2 * Tokens.spaceXs + 3 * Tokens.rowHeight, "space-xs above and below the rows");
-        compare(select.height, field.height);
-        const options = rows(select);
-        compare(options.map(row => findChild(row, "label").text), ["speakers", "headphones", "hdmi"]);
-        options.forEach((row, k) => {
-            const at = row.mapToItem(field, 0, 0);
-            compare(at.y, Geometry.inputBorder + Tokens.spaceXs + k * Tokens.rowHeight, `row ${k}`);
-            compare(at.x, Geometry.inputBorder);
-            compare(row.width, field.width - 2 * Geometry.inputBorder);
-            compare(row.height, Tokens.rowHeight);
-            compare(findChild(row, "label").mapToItem(field, 0, 0).x, Geometry.inputPadding, "where the collapsed box has its text");
-        });
-        compare(findChild(select, "folded").opacity, 0, "no chosen line and no caret");
-    }
-
-    function test_what_stands_below_moves_down_by_exactly_what_the_box_grows() {
+    function test_a_press_opens_a_list_that_floats_below_the_field_at_least_as_wide_as_it_and_moves_nothing() {
         const after = named("after");
         const before = after.y;
         mouseClick(box(select));
-        const growth = box(select).height - Tokens.controlHeight;
-        verify(growth > 0);
-        tryCompare(after, "y", before + growth);
-        mouseClick(rows(select)[0]);
-        tryCompare(after, "y", before);
+        verify(select.expanded);
+        verify(!select.activeFocus, "a press gives no focus");
+        const surface = list(select);
+        verify(surface.visible);
+        compare(surface.parent, window(), "it floats above the window's content");
+        compare(surface.side, "below");
+        compare(inScene(surface).y, inScene(box(select)).y + Tokens.controlHeight + Tokens.spaceXs);
+        compare(inScene(surface).x, inScene(box(select)).x);
+        verify(surface.width >= select.width);
+        compare(surface.border.color, Tokens.color.textContrastMedium, "a floating surface's edge");
+        compare(rows(select).map(row => row.text), ["speakers", "headphones", "hdmi"]);
+        compare(select.height, Tokens.controlHeight, "the select keeps its height");
+        compare(after.y, before, "nothing below moves");
+        compare(focused(select), -1, "no option takes the ring from a press");
     }
 
-    function test_the_chosen_option_takes_the_accent_with_on_accent_text() {
-        useColourfulAccent();
+    function test_with_no_room_below_the_list_floats_above_the_field() {
+        const low = named("low");
+        mouseClick(box(low));
+        const surface = list(low);
+        compare(surface.side, "above");
+        compare(inScene(surface).y + surface.height, inScene(box(low)).y - Tokens.spaceXs);
+    }
+
+    function test_enter_space_and_alt_down_open_the_list_with_the_focus_on_the_chosen_option() {
         select.currentIndex = 1;
-        mouseClick(box(select));
-        const options = rows(select);
-        compare(options.map(row => findChild(row, "fill").visible), [false, true, false]);
-        compare(findChild(options[1], "fill").color, Tokens.color.accent);
-        compare(findChild(options[1], "label").color, Tokens.color.textOnAccent);
-        compare(findChild(options[0], "label").color, Tokens.color.textPrimary);
-    }
-
-    function test_the_row_the_keys_are_on_looks_focused_on_the_ground_and_on_the_accent() {
-        useColourfulAccent();
-        expandFromKeys(select);
-        const options = rows(select);
-        const onAccent = findChild(options[0], "ring");
-        verify(onAccent.visible, "it starts on the chosen option");
-        compare(onAccent.border.color, Tokens.color.textOnAccent, "in the text's colour on the accent");
-        compare(onAccent.offset, -4);
-        verify(findChild(options[0], "tint").visible);
-        keyClick(Qt.Key_Down);
-        verify(!onAccent.visible);
-        const onGround = findChild(options[1], "ring");
-        verify(onGround.visible);
-        compare(onGround.border.color, Tokens.color.focus);
-        compare(onGround.offset, -2);
-        verify(findChild(options[1], "tint").visible, "with the hover colour");
-        verify(!findChild(options[2], "tint").visible);
-    }
-
-    function test_an_option_under_the_pointer_takes_the_hover_colour() {
-        mouseClick(box(select));
-        const row = rows(select)[2];
-        mouseMove(row, 20, row.height / 2);
-        tryVerify(() => findChild(row, "tint").visible);
-        verify(!findChild(rows(select)[1], "tint").visible);
-        verify(!findChild(row, "ring").visible, "no ring without the keys");
-    }
-
-    function test_down_alt_down_enter_and_space_expand_it_on_the_chosen_option() {
-        select.currentIndex = 1;
-        for (const [code, modifiers] of [[Qt.Key_Down, Qt.NoModifier], [Qt.Key_Down, Qt.AltModifier], [Qt.Key_Return, Qt.NoModifier], [Qt.Key_Space, Qt.NoModifier]]) {
+        for (const [code, modifiers] of [[Qt.Key_Return, Qt.NoModifier], [Qt.Key_Space, Qt.NoModifier], [Qt.Key_Down, Qt.AltModifier]]) {
             select.forceActiveFocus();
             keyClick(code, modifiers);
             verify(select.expanded, `${code} ${modifiers}`);
-            compare(select.highlighted, 1, "the keys start on the chosen option");
+            compare(focused(select), 1, "the keys start on the chosen option");
+            verify(findChild(rows(select)[1], "ring").visible);
             keyClick(Qt.Key_Escape);
             verify(!select.expanded);
         }
     }
 
-    function test_up_leaves_a_collapsed_select_to_what_holds_it() {
-        select.forceActiveFocus();
+    function test_in_the_list_up_and_down_wrap_around_and_home_and_end_jump() {
+        openFromKeys(select);
         keyClick(Qt.Key_Up);
-        verify(!select.expanded);
+        compare(focused(select), 2, "↑ from the first goes to the last");
+        keyClick(Qt.Key_Down);
+        compare(focused(select), 0, "↓ from the last goes to the first");
+        keyClick(Qt.Key_Down);
+        compare(focused(select), 1);
+        keyClick(Qt.Key_End);
+        compare(focused(select), 2);
+        keyClick(Qt.Key_Home);
+        compare(focused(select), 0);
+        verify(select.expanded);
+        compare(activated.count, 0, "moving chooses nothing");
     }
 
-    function test_the_arrows_move_and_stop_at_the_ends_home_and_end_jump_and_enter_chooses_and_collapses() {
-        expandFromKeys(select);
-        keyClick(Qt.Key_Up);
-        compare(select.highlighted, 0, "no further than the first");
-        keyClick(Qt.Key_Down);
-        compare(select.highlighted, 1);
-        keyClick(Qt.Key_End);
-        compare(select.highlighted, 2);
-        keyClick(Qt.Key_Down);
-        compare(select.highlighted, 2, "no further than the last");
-        keyClick(Qt.Key_Home);
-        compare(select.highlighted, 0);
-        keyClick(Qt.Key_End);
-        keyClick(Qt.Key_Return);
-        verify(!select.expanded);
-        verify(select.activeFocus, "the focus stays on the select");
+    function test_in_the_list_a_letter_moves_to_the_next_option_starting_with_it_and_one_that_starts_none_stays() {
+        openFromKeys(select);
+        keyClick("h");
+        compare(focused(select), 1);
+        keyClick("h");
+        compare(focused(select), 2);
+        keyClick("h");
+        compare(focused(select), 1, "around the list");
+        keyClick("x");
+        compare(focused(select), 1);
+        verify(select.expanded);
+    }
+
+    function test_enter_or_space_chooses_closes_and_keeps_the_focus_on_the_field() {
+        for (const code of [Qt.Key_Return, Qt.Key_Space]) {
+            openFromKeys(select);
+            keyClick(Qt.Key_Down);
+            keyClick(code);
+            verify(!select.expanded);
+            verify(select.activeFocus, "the focus is back on the select");
+        }
         compare(select.currentIndex, 2);
         compare(select.currentValue, "c");
         compare(findChild(select, "chosen").text, "hdmi");
-        compare(activated.count, 1);
-        compare(activated.signalArguments[0][0], 2);
+        compare(activated.count, 2);
+        compare(activated.signalArguments[1][0], 2);
     }
 
-    function test_choosing_the_chosen_option_again_collapses_and_changes_nothing() {
-        expandFromKeys(select);
+    function test_choosing_the_chosen_option_again_closes_and_changes_nothing() {
+        openFromKeys(select);
         keyClick(Qt.Key_Space);
         verify(!select.expanded);
         compare(activated.count, 0);
     }
 
-    function test_escape_collapses_without_a_change() {
-        expandFromKeys(select);
+    function test_escape_closes_without_a_change_and_the_focus_stays_on_the_field_and_opening_again_starts_on_the_choice() {
+        select.currentIndex = 1;
+        openFromKeys(select);
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Escape);
         verify(!select.expanded);
         verify(select.activeFocus);
-        compare(select.currentIndex, 0);
+        compare(select.currentIndex, 1);
         compare(activated.count, 0);
-        compare(box(select).height, Tokens.controlHeight);
+        keyClick(Qt.Key_Return);
+        verify(select.expanded);
+        compare(focused(select), 1, "on the choice, not where the keys were");
     }
 
-    function test_tab_collapses_it_and_moves_on() {
-        expandFromKeys(select);
+    function test_tab_closes_and_moves_on() {
+        openFromKeys(select);
         keyClick(Qt.Key_Tab);
         verify(!select.expanded);
         verify(named("after").activeFocus);
     }
 
-    function test_a_held_key_expands_or_chooses_only_once() {
-        select.forceActiveFocus();
-        verify(!select.handleKey(keyEvent(Qt.Key_Return, true)), "a repeat does not expand it");
-        verify(!select.expanded);
-        verify(select.handleKey(keyEvent(Qt.Key_Return, false)));
-        verify(select.expanded);
-        verify(select.handleKey(keyEvent(Qt.Key_Down, true)), "the arrows repeat");
-        compare(select.highlighted, 1);
-        verify(select.handleKey(keyEvent(Qt.Key_Return, true)));
-        verify(select.expanded, "a repeat does not choose");
-        compare(activated.count, 0);
-    }
-
-    function test_a_press_on_an_option_chooses_it_and_collapses() {
+    function test_a_press_on_an_option_chooses_it_closes_and_opened_again_it_carries_the_tick() {
         mouseClick(box(select));
         waitForRendering(scene);
         mouseClick(rows(select)[1]);
         verify(!select.expanded);
         compare(select.currentIndex, 1);
         compare(activated.count, 1);
-    }
-
-    function test_out_of_sight_it_collapses_at_once_even_with_motion() {
-        Prefs.motion = "on";
         mouseClick(box(select));
-        tryCompare(select, "unfolded", 1, 4 * Tokens.durationShort);
-        select.visible = false;
-        verify(!select.expanded);
-        compare(select.unfolded, 0);
-        select.visible = true;
-        compare(box(select).height, Tokens.controlHeight, "and comes back collapsed");
+        compare(rows(select).map(row => row.checked), [false, true, false]);
     }
 
-    function test_a_choice_from_outside_shows_at_once() {
+    function test_a_list_closed_by_a_pointer_leaves_the_focus_where_it_was() {
+        const before = named("before");
+        before.forceActiveFocus();
+        mouseClick(box(select));
+        waitForRendering(scene);
+        mouseClick(rows(select)[2]);
+        verify(before.activeFocus);
+        mouseClick(box(select));
+        mouseClick(scene, 900, 300);
+        verify(!select.expanded);
+        verify(before.activeFocus);
+    }
+
+    function test_a_press_outside_closes_the_list_without_a_change() {
+        mouseClick(box(select));
+        verify(select.expanded);
+        mouseClick(scene, 900, 300);
+        verify(!select.expanded);
+        compare(select.currentIndex, 0);
+        compare(activated.count, 0);
+    }
+
+    function test_a_press_on_the_field_while_the_list_is_open_closes_it() {
+        mouseClick(box(select));
+        verify(select.expanded);
+        mouseClick(box(select));
+        verify(!select.expanded);
+    }
+
+    function test_the_focus_leaving_for_something_else_closes_the_list() {
+        openFromKeys(select);
+        named("before").forceActiveFocus();
+        verify(!select.expanded);
+    }
+
+    function test_the_chosen_option_carries_a_tick_without_a_box_and_a_choice_from_outside_shows_at_once() {
         select.currentIndex = 2;
         compare(findChild(select, "chosen").text, "hdmi");
         mouseClick(box(select));
-        compare(rows(select).map(row => findChild(row, "fill").visible), [false, false, true]);
+        const options = rows(select);
+        compare(options.map(row => row.kind), ["option", "option", "option"]);
+        compare(options.map(row => findChild(row, "tick").visible), [false, false, true]);
+        compare(options.map(row => findChild(row, "check").visible), [false, false, false], "no box");
     }
 
-    function test_it_unfolds_over_duration_short_with_ease_in_and_folds_in_0_7_of_that_with_ease_out() {
-        Prefs.motion = "on";
-        const unfolding = findChild(select, "unfolding");
-        compare(unfolding.duration, Tokens.durationShort);
-        compare(unfolding.easing.type, Easing.Bezier);
-        compare(unfolding.easing.bezierCurve, Tokens.easeIn);
-        const folding = findChild(select, "folding");
-        compare(folding.duration, 0.7 * Tokens.durationShort);
-        compare(folding.easing.bezierCurve, Tokens.easeOut);
-        const field = box(select);
-        const options = findChild(select, "options").parent;
-        mouseClick(field);
-        verify(field.height < select.expandedHeight, "it grows, it does not jump");
-        tryVerify(() => select.unfolded > 0.2 && select.unfolded < 0.8, Tokens.durationShort);
-        compare(options.opacity, select.unfolded, "the options fade in as it grows");
-        compare(findChild(select, "folded").opacity, 1 - select.unfolded);
-        compare(field.height, Tokens.controlHeight + select.unfolded * (select.expandedHeight - Tokens.controlHeight));
-        tryCompare(field, "height", select.expandedHeight, 4 * Tokens.durationShort);
-        mouseClick(rows(select)[1]);
-        verify(field.height > Tokens.controlHeight);
-        tryCompare(field, "height", Tokens.controlHeight, 4 * Tokens.durationShort);
+    function test_closed_up_down_home_and_end_change_the_choice_without_opening_and_stop_at_the_ends() {
+        select.forceActiveFocus();
+        keyClick(Qt.Key_Up);
+        compare(select.currentIndex, 0, "no further than the first");
+        compare(activated.count, 0);
+        keyClick(Qt.Key_Down);
+        compare(select.currentIndex, 1);
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        compare(select.currentIndex, 2, "no further than the last");
+        keyClick(Qt.Key_Home);
+        compare(select.currentIndex, 0);
+        keyClick(Qt.Key_End);
+        compare(select.currentIndex, 2);
+        verify(!select.expanded);
+        verify(select.activeFocus);
+        compare(activated.count, 4);
+        compare(activated.signalArguments.map(args => args[0]), [1, 2, 0, 2]);
     }
 
-    function test_under_reduced_motion_it_expands_and_collapses_at_once() {
+    function test_closed_a_letter_chooses_the_next_option_starting_with_it_around_the_list_and_one_that_starts_none_changes_nothing() {
+        select.forceActiveFocus();
+        keyClick("h");
+        compare(select.currentIndex, 1);
+        keyClick("H");
+        compare(select.currentIndex, 2);
+        keyClick("s");
+        compare(select.currentIndex, 0, "around the list");
+        keyClick("x");
+        compare(select.currentIndex, 0);
+        verify(!select.expanded);
+        compare(activated.count, 3);
+        verify(!select.handleKey({ key: Qt.Key_H, text: "h", modifiers: Qt.ControlModifier, isAutoRepeat: false }), "Ctrl+H is no letter");
+    }
+
+    function test_a_held_key_opens_only_once() {
+        select.forceActiveFocus();
+        verify(select.handleKey(keyEvent(Qt.Key_Return, true)));
+        verify(!select.expanded, "a repeat does not open it");
+        verify(select.handleKey(keyEvent(Qt.Key_Return, false)));
+        verify(select.expanded);
+    }
+
+    function test_out_of_sight_it_closes() {
         mouseClick(box(select));
-        compare(box(select).height, select.expandedHeight);
-        compare(findChild(select, "options").parent.opacity, 1);
-        mouseClick(rows(select)[0]);
-        compare(box(select).height, Tokens.controlHeight);
+        select.visible = false;
+        verify(!select.expanded);
+        select.visible = true;
+        verify(!list(select).visible, "and comes back closed");
     }
 
-    function test_in_a_scroller_it_brings_its_options_into_view() {
+    function test_the_list_comes_in_as_every_floating_surface_does_and_at_once_under_reduced_motion() {
+        openFromKeys(select);
+        compare(list(select).entry, 1, "at once");
+        keyClick(Qt.Key_Escape);
+        Prefs.motion = "on";
+        keyClick(Qt.Key_Return);
+        verify(list(select).entry < 1, "it fades in");
+        compare(findChild(list(select), "comingIn").duration, Tokens.durationFloat);
+        tryCompare(list(select), "entry", 1, 4 * Tokens.durationFloat);
+    }
+
+    function test_the_list_follows_the_field_when_its_scroller_moves() {
         const view = createTemporaryObject(scrollerComponent, scene);
-        const low = findChild(view, "low");
-        waitForRendering(view);
-        compare(view.contentY, 0);
-        mouseClick(box(low));
-        tryCompare(view, "contentY", low.y + low.height - view.height);
-        verify(low.y >= view.contentY, "its top in view too");
-        low.collapse();
-        low.options = Array.from({ length: 12 }, (_, k) => ({ text: `device ${k}`, value: k }));
-        low.expand();
-        tryCompare(view, "contentY", low.y, 1000, "taller than the view, its top first");
+        const scrolled = findChild(view, "scrolled");
+        openFromKeys(scrolled);
+        const before = list(scrolled).y;
+        view.contentY = 40;
+        compare(list(scrolled).y, before - 40);
     }
 
     function test_a_long_option_is_cut_in_the_box_and_in_its_row() {
         select.options = [{ text: "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) with a longer name still", value: 0 }, ...outputs];
-        const chosen = findChild(select, "chosen");
-        verify(chosen.truncated, "in the box");
+        verify(findChild(select, "chosen").truncated, "in the box");
         mouseClick(box(select));
         waitForRendering(scene);
-        const row = rows(select)[0];
-        const label = findChild(row, "label");
-        verify(label.truncated, "in its row");
-        compare(label.mapToItem(box(select), label.width, 0).x, select.width - Geometry.inputPadding, "the box's padding at its end");
+        verify(findChild(rows(select)[0], "label").truncated, "in its row");
     }
 
-    function test_disabled_it_greys_stays_focusable_says_why_below_and_does_not_expand() {
+    function test_disabled_it_greys_stays_focusable_says_why_below_and_neither_opens_nor_changes() {
         select.disabledReason = "no other device";
         const field = box(select);
         compare(field.border.color, Tokens.color.disabled);
         compare(findChild(select, "chosen").color, Tokens.color.disabled);
-        compare(findChild(select, "caret").data[0].fillColor, Tokens.color.disabled);
+        compare(findChild(select, "chevron").color, Tokens.color.disabled);
         const why = findChild(select, "why");
         verify(why.visible);
         compare(why.text, "no other device");
@@ -477,8 +517,11 @@ TestCase {
         named("before").forceActiveFocus();
         keyClick(Qt.Key_Tab);
         verify(select.activeFocus, "still in the focus order");
-        keyClick(Qt.Key_Down);
+        for (const code of [Qt.Key_Return, Qt.Key_Down, Qt.Key_End])
+            keyClick(code);
+        keyClick("h");
         verify(!select.expanded);
+        compare(select.currentIndex, 0);
         compare(select.Accessible.description, "no other device");
     }
 
@@ -492,16 +535,20 @@ TestCase {
         mouseClick(box(select));
         if ("expanded" in select.Accessible)
             verify(select.Accessible.expanded);
+        compare(list(select).Accessible.role, Accessible.List);
+        compare(list(select).Accessible.name, "ausgang");
         const options = rows(select);
         compare(options[0].Accessible.role, Accessible.ListItem);
         compare(options.map(row => row.Accessible.name), ["speakers", "headphones", "hdmi"]);
-        compare(options.map(row => row.Accessible.selected), [true, false, false]);
+        compare(options.map(row => row.Accessible.checked), [true, false, false]);
     }
 
-    // Each pair of theme and density, collapsed and then with the first select expanded from the keys.
-    function test_contact_sheet_of_selects_collapsed_and_expanded_in_both_themes_and_densities() {
+    // Each pair of theme and density, closed and then with the first select's list open from the keys, the focus on its
+    // second option.
+    function test_contact_sheet_of_selects_closed_and_open_in_both_themes_and_densities() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
+        scene.visible = false;
         for (const theme of ["light", "dark"]) {
             for (const density of ["compact", "comfortable"]) {
                 Prefs.theme = theme;
@@ -510,10 +557,10 @@ TestCase {
                 const opens = findChild(sheet, "opens");
                 waitForRendering(sheet);
                 grabImage(sheet).save(`select-sheet-${theme}-${density}-closed.png`);
-                expandFromKeys(opens);
-                keyClick(Qt.Key_Down);
+                openFromKeys(opens);
+                keyClick(Qt.Key_Up);
                 waitForRendering(sheet);
-                grabImage(sheet).save(`select-sheet-${theme}-${density}-open.png`);
+                grabImage(window()).save(`select-sheet-${theme}-${density}-open.png`);
                 verify(opens.expanded, `${theme} ${density}`);
                 sheet.destroy();
             }

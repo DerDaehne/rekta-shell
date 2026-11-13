@@ -49,7 +49,6 @@ FocusScope {
             return;
         list.open = true;
         markStart();
-        place();
     }
 
     function close() {
@@ -175,21 +174,6 @@ FocusScope {
         return true;
     }
 
-    // In the window's coordinates, as a floating surface is placed.
-    function place() {
-        if (!list.open || list.parent === combo)
-            return;
-        const at = box.mapToItem(list.parent, 0, 0);
-        const spot = Placement.float(Qt.rect(at.x, at.y, box.width, box.height), Qt.size(list.width, list.height), list.area);
-        list.x = spot.x;
-        list.y = spot.y;
-        list.side = spot.side;
-    }
-
-    function holds(scenePosition: point): bool {
-        return box.contains(box.mapFromItem(null, scenePosition)) || list.contains(list.mapFromItem(null, scenePosition));
-    }
-
     implicitHeight: disabled ? why.y + why.height : box.height
     onVisibleChanged: {
         if (!visible)
@@ -297,20 +281,12 @@ FocusScope {
             bottomRightRadius: Tokens.radiusS
             color: buttonPointer.hovered && !combo.disabled ? Tokens.color.hover : "transparent"
 
-            Chevron {
+            FieldChevron {
                 objectName: "chevron"
-                // A turned box whose diagonal spans the chevron's width.
-                width: Geometry.comboChevronWidth / Math.SQRT2
-                height: width
                 x: Geometry.comboChevronStart + (Geometry.comboChevronWidth - width) / 2
                 anchors.verticalCenter: parent.verticalCenter
-                rotation: list.open ? Geometry.chevronOnTurn - 90 : Geometry.chevronOnTurn + 90
-                color: combo.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
-                // Turned about its centre, the arms lie on the side the point is on; half the chevron's height back
-                // centres it, as Rekta draws it.
-                transform: Translate {
-                    y: (list.open ? 1 : -1) * Geometry.comboChevronWidth / 4
-                }
+                open: list.open
+                disabled: combo.disabled
             }
 
             HoverHandler {
@@ -349,29 +325,11 @@ FocusScope {
         text: combo.disabledReason
     }
 
-    // Just under the list, over everything else: sees a press anywhere without taking it.
-    Item {
-        parent: list.parent
-        anchors.fill: parent
-        z: list.z - 1
-        visible: list.open
+    FloatAnchor {
+        field: box
+        surface: list
 
-        PointHandler {
-            onActiveChanged: {
-                if (active && !combo.holds(point.scenePosition))
-                    combo.close();
-            }
-        }
-    }
-
-    // A scroller moving the field moves the list with it.
-    Connections {
-        target: list.open ? Reveal.scrollerOf(combo) : null
-        ignoreUnknownSignals: true
-
-        function onContentYChanged() {
-            combo.place();
-        }
+        onPressedOutside: combo.close()
     }
 
     // Above everything in its window, as wide as the field at least (rekta.js:4324).
@@ -384,10 +342,6 @@ FocusScope {
         height: implicitHeight
         Accessible.role: Accessible.List
         Accessible.name: combo.label
-
-        onWidthChanged: combo.place()
-        onHeightChanged: combo.place()
-        onAreaChanged: combo.place()
 
         Empty {
             objectName: "empty"

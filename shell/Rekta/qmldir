@@ -16,6 +16,7 @@ GroupHeading 1.0 GroupHeading.qml
 Empty 1.0 Empty.qml
 Hairline 1.0 Hairline.qml
 Chevron 1.0 Chevron.qml
+FieldChevron 1.0 FieldChevron.qml
 Picture 1.0 Picture.qml
 PictureIcon 1.0 PictureIcon.qml
 FocusRing 1.0 FocusRing.qml
@@ -52,6 +53,7 @@ Calendar 1.0 Calendar.js
 Match 1.0 Match.js
 Middle 1.0 Middle.js
 FloatSurface 1.0 FloatSurface.qml
+FloatAnchor 1.0 FloatAnchor.qml
 Menu 1.0 Menu.qml
 MenuItem 1.0 MenuItem.qml
 MenuSeparator 1.0 MenuSeparator.qml
