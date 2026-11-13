@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -142,6 +143,8 @@ TestCase {
     function test_a_resized_tile_scales_from_its_old_size_and_its_content_shows_over_the_last_45_percent() {
         const tile = named("tile");
         const facts = findChild(tile, "content");
+        const shows = Glide.record(tile, "contentOpacity");
+        const since = Date.now();
         presence.change([], [tile], () => tile.columns = 2, () => [], 0);
         const glide = motionOf(tile);
         verify(glide !== undefined);
@@ -153,11 +156,11 @@ TestCase {
         fuzzyCompare(tile.mapToItem(null, tile.width, 0).x - tile.mapToItem(null, 0, 0).x, Tokens.tileUnit, 2, "shows its old width at first");
         compare(tile.contentOpacity, 0);
         compare(facts.parent.opacity, 0, "its content hidden");
-        wait(Tokens.durationModerate * 0.4);
-        compare(tile.contentOpacity, 0, "still hidden before 55%");
-        tryVerify(() => tile.contentOpacity > 0 && tile.contentOpacity < 1, Tokens.durationModerate);
         tryVerify(() => !presence.running, 1000);
         compare(tile.contentOpacity, 1);
+        const lastShare = { valueForProgress: share => Math.max(0, share - Geometry.resizeContentFrom) / (1 - Geometry.resizeContentFrom) };
+        const stray = Glide.strayOf([{ steps: shows, from: 0, to: 1 }], Tokens.durationModerate, lastShare, since);
+        verify(stray < 0.06, `hidden before 55%, then shown evenly to the end: off by ${stray}`);
         compare(tile.width, 2 * Tokens.tileUnit + Tokens.spaceS);
     }
 

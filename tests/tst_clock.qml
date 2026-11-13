@@ -385,10 +385,9 @@ TestCase {
             tip.x = place.x;
             tip.y = place.y + scene.bar.y;
             tip.side = place.side;
+            tryVerify(() => tip.open && !findChild(tip, "comingIn").running, Tokens.durationFloat * 4, "drawn");
             waitForRendering(scene);
-            wait(Tokens.durationFloat + 50);
             const arrow = previous.mapToItem(scene, 0, 0);
-            verify(tip.open, "drawn");
             verify(tip.y + tip.height < arrow.y, "above the arrow");
             const image = grabImage(scene);
             const ink = image.pixel(Math.round(tip.x) + 2, Math.round(tip.y + tip.height / 2));

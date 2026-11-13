@@ -269,7 +269,8 @@ TestCase {
         surface.open = true;
         compare(surface.opacity, 0, "it fades in");
         compare(surface.shift, -4, "below, it comes down from its control");
-        tryCompare(surface, "entry", 1, Tokens.durationFloat * 4);
+        tryVerify(() => !comingIn.running, Tokens.durationFloat * 4, "it has come in");
+        compare(surface.entry, 1);
         compare(surface.opacity, 1);
         compare(surface.shift, 0);
         surface.open = false;

@@ -194,10 +194,11 @@ TestCase {
         const box = findChild(button, "box");
         compare(line.y, box.height + 2, "it runs 2px under the frame");
         compare(line.width, box.width - 4);
+        const began = Date.now();
         button.pending = true;
-        wait(Tokens.durationBusyDelay / 2);
-        verify(!line.visible, "not before busy-delay");
+        verify(!line.visible, "not at once");
         tryCompare(line, "visible", true, Tokens.durationBusyDelay * 2);
+        verify(Date.now() - began >= Tokens.durationBusyDelay / 2, "not before busy-delay");
         button.pending = false;
         compare(findChild(button, "label").text, "save schedule");
         verify(!line.visible, "the line goes with the label");

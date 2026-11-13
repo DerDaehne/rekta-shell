@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -14,6 +15,8 @@ TestCase {
     when: windowShown
     width: 800
     height: 600
+
+    readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
 
     Component {
         id: fixtureComponent
@@ -266,13 +269,15 @@ TestCase {
         Prefs.motion = "on";
         press(0);
         pull(0, Geometry.gripDragStart);
+        const kalender = row("kalender");
+        const room = { steps: Glide.record(kalender, "offset"), from: 0, to: -rowHeight() };
+        const since = Date.now();
         pull(0, rowHeight() + 1);
         compare(row("mail").offset, rowHeight() + 1, "the pointer, at once");
-        const kalender = row("kalender");
         verify(kalender.offset > -rowHeight(), "making room takes its time");
-        wait(Tokens.durationShort / 2);
-        verify(kalender.offset < 0 && kalender.offset > -rowHeight(), `under way: ${kalender.offset}`);
-        tryCompare(kalender, "offset", -rowHeight(), Tokens.durationShort);
+        tryCompare(kalender, "offset", -rowHeight(), Tokens.durationShort * 4);
+        const stray = Glide.strayOf([room], Tokens.durationShort, easeBase, since);
+        verify(stray < 0.06, `it makes room over duration-short, off by ${stray}`);
         compare(row("dateien").offset, 0, "rows beyond the place stay");
         release(0, rowHeight() + 1);
     }
@@ -283,14 +288,17 @@ TestCase {
         pull(0, Geometry.gripDragStart);
         pull(0, rowHeight() + 1);
         tryCompare(row("kalender"), "offset", -rowHeight());
-        release(0, rowHeight() + 1);
         const mail = row("mail");
+        const since = Date.now();
+        release(0, rowHeight() + 1);
+        const settling = { steps: Glide.record(mail, "offset"), from: mail.offset, to: 0 };
         compare(mail.index, 1);
         compare(mail.y, rowHeight() + 1, "from where it showed");
         compare(row("kalender").y, 0, "the one that made room is already there");
-        wait(Tokens.durationShort + 50);
-        verify(mail.offset > 0, `still settling after duration-short: ${mail.offset}`);
-        tryCompare(mail, "y", rowHeight(), Tokens.durationModerate);
+        tryVerify(() => settling.steps.length > 0 && settling.steps[settling.steps.length - 1].value === 0, Tokens.durationModerate * 4, "it settles");
+        const stray = Glide.strayOf([settling], Tokens.durationModerate, easeBase, since);
+        verify(stray < 0.06, `it settles over duration-moderate, off by ${stray}`);
+        compare(mail.y, rowHeight());
     }
 
     function test_under_reduced_motion_making_room_and_settling_happen_at_once_while_the_row_still_follows_the_pointer() {
@@ -432,12 +440,14 @@ TestCase {
     function test_a_keyboard_move_glides_with_flip_in_duration_moderate() {
         Prefs.motion = "on";
         const mail = row("mail");
+        const gliding = { steps: Glide.record(mail, "offset"), from: -rowHeight(), to: 0 };
         mail.grip.forceActiveFocus();
         keyClick(Qt.Key_Down, Qt.AltModifier);
         compare(mail.y, 0, "from where it showed");
-        wait(Tokens.durationShort + 50);
-        verify(mail.y < rowHeight(), `still gliding after duration-short: ${mail.y}`);
-        tryCompare(mail, "y", rowHeight(), Tokens.durationModerate);
+        tryVerify(() => gliding.steps.length > 0 && gliding.steps[gliding.steps.length - 1].value === 0, Tokens.durationModerate * 4, "it glides");
+        const stray = Glide.strayOf([gliding], Tokens.durationModerate, easeBase, gliding.steps[0].at);
+        verify(stray < 0.06, `it glides over duration-moderate, off by ${stray}`);
+        compare(mail.y, rowHeight());
         compare(row("kalender").y, 0);
     }
 

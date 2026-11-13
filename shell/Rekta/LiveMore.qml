@@ -45,6 +45,7 @@ Item {
     NumberAnimation {
         id: arrive
 
+        objectName: "arrive"
         target: more
         property: "entry"
         from: 0

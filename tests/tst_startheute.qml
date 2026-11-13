@@ -7,11 +7,14 @@ import Panel
 import Rekta
 import Start
 import State
+import "Glide.js" as Glide
 
 // "heute" in the start place: what plays and the newest three notifications, as rows that only show them; live changes,
 // holding still, the empty state, the keys and the turn.
 TestCase {
     id: testCase
+
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
 
     name: "StartHeute"
     // Objects created inside an invisible test case are never rendered, so contact sheets would stay empty.
@@ -428,10 +431,14 @@ TestCase {
     function test_a_new_row_slides_in_from_above_over_duration_short() {
         three();
         openNow();
+        const since = Date.now();
         notify({ summary: "dora" });
         const dora = rows()[0];
-        tryVerify(() => dora.opacity > 0 && dora.opacity < 1, Tokens.durationShort, "it fades up");
-        tryCompare(dora, "opacity", 1, Tokens.durationShort * 4);
+        const fades = Glide.record(dora, "opacity");
+        const falls = Glide.record(dora, "y");
+        tryVerify(() => fades.length > 0 && dora.opacity === 1, Tokens.durationShort * 4, "it has arrived");
+        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: dora.y - Geometry.rowEnterShift, to: dora.y }], Tokens.durationShort, easeIn, since);
+        verify(stray < 0.06, `it slides in from above and fades up together over duration-short, off by ${stray}`);
     }
 
     function test_under_the_pointer_heute_holds_still_until_let_go() {
@@ -560,12 +567,17 @@ TestCase {
         three();
         openNow();
         mouseMove(rows()[1]);
-        notify({ summary: "dora" });
         const more = waitingButton();
-        tryVerify(() => more.opacity > 0 && more.opacity < 1, Tokens.durationShort, "it fades up");
+        const fades = Glide.record(more, "opacity");
+        const falls = Glide.record(more.transform[0], "y");
+        const since = Date.now();
+        notify({ summary: "dora" });
         verify(more.transform[0].y < 0, "it comes from above");
-        tryCompare(more, "opacity", 1, Tokens.durationShort * 4);
+        tryVerify(() => !findChild(more, "arrive").running, Tokens.durationShort * 4, "it has arrived");
+        compare(more.opacity, 1);
         compare(more.transform[0].y, 0);
+        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: -Geometry.arriveDrop, to: 0 }], Tokens.durationShort, easeIn, since);
+        verify(stray < 0.06, `it fades up from above over duration-short, off by ${stray}`);
     }
 
     function test_a_closed_and_a_changed_notification_wait_as_one_update_each() {
@@ -683,7 +695,7 @@ TestCase {
     function closeAndNotifyThree() {
         openNow();
         notify({ summary: "anna" });
-        wait(Tokens.durationShort * 2);
+        tryVerify(() => !findChild(today, "todayRows").add.running && rows()[0]?.opacity === 1, Tokens.durationShort * 4, "anna has arrived");
         start.close(null);
         tryVerify(() => start.phase === "closed", 3000);
         notify({ summary: "ben" });

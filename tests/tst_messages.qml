@@ -6,6 +6,7 @@ import Notices
 import Panel
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -108,6 +109,8 @@ TestCase {
         SignalSpy {}
     }
 
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
     readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
 
     // Two rows in a column whose gap closes when the first hides; the second moves up by `travel`, half faded.
@@ -184,7 +187,7 @@ TestCase {
 
     function openOnMessages() {
         side.show(1);
-        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        tryVerify(() => !findChild(side, "comingIn").running, Tokens.durationModerate * 4, "it has come in");
         waitForRendering(scene);
     }
 
@@ -648,44 +651,34 @@ TestCase {
         const cleo = rows()[0];
         const ben = rows()[1];
         const benWas = ben.y;
-        keyClick(Qt.Key_Delete);
         const going = findChild(cleo, "content");
-        tryVerify(() => going.x > 0 && going.x < Geometry.rowLeaveDrift && going.opacity > 0 && going.opacity < 1, 1000, "it drifts and fades together");
-        compare(ben.y, benWas, "the rest wait for it");
+        const drifts = Glide.record(going, "x");
+        const fades = Glide.record(going, "opacity");
+        const closes = Glide.record(ben, "y");
+        const since = Date.now();
+        keyClick(Qt.Key_Delete);
         tryVerify(() => summaries().length === 2, 1000);
         compare(summaries(), ["ben", "anna"]);
-        tryVerify(() => ben.y < benWas && ben.y > 0, 1000, "the rest close the gap, not jump");
-        tryCompare(ben, "y", 0, 1000);
-    }
-
-    // How far the glide of the row (100 to 0, opacity 0.2 to 1) strays from ease-base over duration-moderate, at the
-    // most, for the best guess at the frame the glide began in: it starts a frame or two after the move.
-    function glideError(samples: var): real {
-        let best = Infinity;
-        for (let lag = 0; lag <= 60; lag += 4) {
-            let worst = 0;
-            for (const sample of samples) {
-                const share = Math.max(0, Math.min(1, (sample.at - lag) / Tokens.durationModerate));
-                const expected = easeBase.valueForProgress(share);
-                worst = Math.max(worst, Math.abs(sample.moved - expected), Math.abs(sample.faded - expected));
-            }
-            best = Math.min(best, worst);
-        }
-        return best;
+        tryVerify(() => closes.length > 0 && ben.y === 0, 1000, "the rest have closed the gap");
+        const leaving = Glide.strayOf([{ steps: drifts, from: 0, to: Geometry.rowLeaveDrift }, { steps: fades, from: 1, to: 0 }], Geometry.rowLeaveShare * Tokens.durationShort, easeOut, since);
+        verify(leaving < 0.06, `it drifts and fades together, off by ${leaving}`);
+        const left = drifts[drifts.length - 1].at;
+        verify(closes[0].at >= left, "the rest wait for it");
+        const closing = Glide.strayOf([{ steps: closes, from: benWas, to: 0 }], Tokens.durationModerate, easeBase, left);
+        verify(closing < 0.06, `the rest close the gap, not jump: off by ${closing}`);
     }
 
     function test_the_others_make_room_along_ease_base_over_duration_moderate() {
         Prefs.motion = "on";
         const column = createTemporaryObject(roomComponent, testCase);
         const row = column.second;
-        const samples = [];
-        const started = Date.now();
+        const moved = Glide.record(row, "y");
+        const faded = Glide.record(row, "opacity");
+        const since = Date.now();
         column.gone = false;
-        while (Date.now() - started < Tokens.durationModerate + 100) {
-            wait(8);
-            samples.push({ at: Date.now() - started, moved: (100 - row.y) / 100, faded: (row.opacity - 0.2) / 0.8 });
-        }
-        verify(glideError(samples) < 0.06, `it follows ease-base over duration-moderate, off by ${glideError(samples)}`);
+        tryVerify(() => moved.length > 0 && !column.move.running, Tokens.durationModerate * 4, "it has made room");
+        const stray = Glide.strayOf([{ steps: moved, from: 100, to: 0 }, { steps: faded, from: 0.2, to: 1 }], Tokens.durationModerate, easeBase, since);
+        verify(stray < 0.06, `it follows ease-base over duration-moderate, moving and fading together, off by ${stray}`);
         compare(row.y, 0);
         compare(row.opacity, 1);
     }
@@ -695,11 +688,15 @@ TestCase {
         openOnMessages();
         keyClick(Qt.Key_Delete);
         Prefs.motion = "on";
+        const since = Date.now();
         toaster.open.press();
         const cleo = rows()[0];
-        tryVerify(() => cleo.opacity > 0 && cleo.opacity < 1 && cleo.y < 0 && cleo.y > -Geometry.rowEnterShift, 1000, "it fades up from above together");
-        tryCompare(cleo, "opacity", 1, 1000);
-        tryCompare(cleo, "y", 0, 1000);
+        const fades = Glide.record(cleo, "opacity");
+        const falls = Glide.record(cleo, "y");
+        tryVerify(() => fades.length > 0 && cleo.opacity === 1, Tokens.durationShort * 4, "it has arrived");
+        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: cleo.y - Geometry.rowEnterShift, to: cleo.y }], Tokens.durationShort, easeIn, since);
+        verify(stray < 0.06, `it slides in from above and fades up together over duration-short, off by ${stray}`);
+        compare(cleo.y, 0);
     }
 
     function test_under_reduced_motion_rows_go_at_once_and_the_undo_window_stays() {

@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -14,6 +15,8 @@ TestCase {
     when: windowShown
     width: 1200
     height: 640
+
+    readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
 
     // A coloured 20 × 20 square as PNG (the check has no SVG image plugin), as an app's own icon is coloured.
     readonly property string pinkIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGN4aTWLbMQwqnlU86jmUc0DqxkAreu3b+7dCC4AAAAASUVORK5CYII="
@@ -166,12 +169,18 @@ TestCase {
 
     function test_a_press_eases_in_over_press_and_back_over_short() {
         const pressed = row(1);
+        const steps = Glide.record(pressed, "sink");
+        const down = Date.now();
         mousePress(pressed);
-        tryVerify(() => pressed.sink > 0 && pressed.sink < 1, 200, "it eases in, not jumps");
-        tryCompare(pressed, "sink", 1, 200);
+        tryCompare(pressed, "sink", 1, Tokens.durationPress * 3);
+        const sinking = steps.splice(0);
+        const released = Date.now();
         mouseRelease(pressed);
-        wait(Tokens.durationPress + Tokens.durationShort / 2);
-        verify(pressed.sink > 0 && pressed.sink < 1, `on its way back: ${pressed.sink}`);
+        tryCompare(pressed, "sink", 0, Tokens.durationShort * 3);
+        const inStray = Glide.strayOf([{ steps: sinking, from: 0, to: 1 }], Tokens.durationPress, easeBase, down);
+        verify(inStray < 0.06, `it eases in over duration-press, not jumps: off by ${inStray}`);
+        const backStray = Glide.strayOf([{ steps, from: 1, to: 0 }], Tokens.durationShort, easeBase, released);
+        verify(backStray < 0.06, `and back over duration-short: off by ${backStray}`);
     }
 
     function test_under_reduced_motion_a_press_only_shrinks() {

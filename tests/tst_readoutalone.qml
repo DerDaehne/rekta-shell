@@ -211,9 +211,10 @@ TestCase {
         alone.away = true;
         alone.press();
         wait(500);
+        const further = Date.now();
         alone.press();
-        wait(500);
-        verify(alone.shown);
+        tryCompare(alone, "shown", false, 3000);
+        verify(Date.now() - further >= 500, "the further key starts the hold again");
         tryCompare(alone, "mapped", false, 3000);
     }
 

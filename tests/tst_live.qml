@@ -357,10 +357,11 @@ TestCase {
     function test_a_peek_ends_after_duration_moderate() {
         const tile = createTemporaryObject(liveTile, testCase);
         const stat = part(tile, "stat");
+        const began = Date.now();
         tile.news("peek", () => stat.value = "413");
-        wait(Tokens.durationModerate / 2);
         verify(part(tile, "ghost").visible);
-        tryCompare(part(tile, "ghost"), "visible", false, Tokens.durationModerate * 2);
+        tryCompare(part(tile, "ghost"), "visible", false, Tokens.durationModerate * 3);
+        verify(Date.now() - began >= Tokens.durationModerate / 2, "still there halfway through duration-moderate");
         verify(!tile.clip);
     }
 

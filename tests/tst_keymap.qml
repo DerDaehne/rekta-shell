@@ -225,10 +225,10 @@ TestCase {
     function test_meta_ended_before_long_press_shows_nothing_and_leaves_the_start_its_key() {
         const hold = createTemporaryObject(holdComponent, testCase);
         hold.alone();
-        wait(Tokens.durationLongPress / 2);
+        verify(hold.waiting.running, "long-press runs");
         hold.ended();
-        wait(Tokens.durationLongPress);
-        verify(!hold.showing);
+        wait(Tokens.durationLongPress * 2);
+        verify(!hold.showing, "nor after long-press");
         verify(!hold.takesStartKey(), "a short Meta opens the Start");
     }
 

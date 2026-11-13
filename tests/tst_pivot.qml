@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -15,6 +16,9 @@ TestCase {
     width: 1000
     height: 700
 
+    readonly property easingCurve easeInOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeInOut })
+    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
+    readonly property easingCurve easePivotGlide: ({ type: Easing.Bezier, bezierCurve: Tokens.easePivotGlide })
     readonly property list<string> manyTitles: ["overview", "activity", "settings", "members", "history", "billing", "integrations"]
 
     Component {
@@ -345,11 +349,19 @@ TestCase {
         const glide = findChild(pivot, "glide");
         compare(glide.duration, Tokens.durationPivotGlide);
         verify(sameCurve(glide.easing.bezierCurve, Tokens.easePivotGlide), "the glide eases with pivot-glide");
+        const word = findChild(titleOf(pivot, 6), "word");
+        const sizes = { steps: Glide.record(word, "shrink"), from: word.shrink, to: 1 };
+        const glides = { steps: Glide.record(strip, "contentX"), from: strip.contentX };
+        const since = Date.now();
         pivot.select(6);
-        wait(Tokens.durationPivotSize + 60);
-        compare(findChild(titleOf(pivot, 6), "word").shrink, 1, "the size change is over after pivot-size");
-        verify(strip.contentX < strip.contentWidth - strip.width - 1, "the glide is still running");
-        tryCompare(strip, "contentX", strip.contentWidth - strip.width, Tokens.durationPivotGlide * 2);
+        tryVerify(() => sizes.steps.length > 0 && glides.steps.length > 0 && !glide.running, Tokens.durationPivotGlide * 4, "the glide is over");
+        compare(strip.contentX, strip.contentWidth - strip.width, "at the end of the strip");
+        compare(word.shrink, 1, "the size change is over");
+        glides.to = strip.contentX;
+        const sizeStray = Glide.strayOf([sizes], Tokens.durationPivotSize, easeInOut, since);
+        verify(sizeStray < 0.06, `the size changes over pivot-size, off by ${sizeStray}`);
+        const glideStray = Glide.strayOf([glides], Tokens.durationPivotGlide, easePivotGlide, since);
+        verify(glideStray < 0.06, `the glide runs over pivot-glide, off by ${glideStray}`);
     }
 
     function test_down_the_side_the_title_in_sight_steps_in_and_nothing_reflows() {
@@ -453,15 +465,19 @@ TestCase {
         }
         verify(findChild(facets, "first").visible);
         verify(!findChild(facets, "second").visible);
+        const moves = Glide.record(shift, "x");
+        const fades = Glide.record(holder, "opacity");
+        const since = Date.now();
         facets.currentIndex = 2;
         verify(!findChild(facets, "first").visible, "the one left goes at once");
         verify(findChild(facets, "third").visible);
         compare(shift.x, Tokens.slideDistance, "forward: from slide-distance at the trailing edge");
         verify(holder.opacity < 1);
-        wait(0.75 * Tokens.durationModerate / 2);
-        verify(shift.x > 0, "still moving halfway");
-        tryCompare(shift, "x", 0, Tokens.durationModerate * 2);
+        tryVerify(() => !enter.running, Tokens.durationModerate * 2, "it has come in");
+        compare(shift.x, 0);
         compare(holder.opacity, 1);
+        const stray = Glide.strayOf([{ steps: moves, from: Tokens.slideDistance, to: 0 }, { steps: fades, from: 0, to: 1 }], 0.75 * Tokens.durationModerate, easeOut, since);
+        verify(stray < 0.06, `it moves and fades in together over 0.75 × duration-moderate, off by ${stray}`);
         facets.currentIndex = 1;
         compare(shift.x, -Tokens.slideDistance, "back: from slide-distance at the leading edge");
         tryCompare(shift, "x", 0, Tokens.durationModerate * 2);

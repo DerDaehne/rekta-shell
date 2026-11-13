@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -155,8 +156,7 @@ TestCase {
         verify(!progress.known);
         const segment = findChild(progress, "segment");
         const before = segment.x;
-        wait(Tokens.durationBusy / 4);
-        verify(segment.x !== before, "the segment moves");
+        tryVerify(() => segment.x !== before, Tokens.durationBusy, "the segment moves");
         compare(segment.width, 300 * Tokens.busySegment);
         Prefs.motion = "off";
         compare(segment.width, 300);
@@ -165,21 +165,22 @@ TestCase {
 
     function test_the_busy_line_waits_for_busy_delay_and_stays_for_busy_min() {
         const line = createTemporaryObject(busyComponent, testCase);
+        const steps = Glide.record(line, "shown");
+        const began = Date.now();
         line.busy = true;
-        wait(Tokens.durationBusyDelay / 2);
-        verify(!line.shown, "not before busy-delay");
+        verify(!line.shown, "not at once");
         tryCompare(line, "shown", true, Tokens.durationBusyDelay * 2);
         line.busy = false;
         verify(line.shown, "still there right after the work ended");
-        wait(Tokens.durationBusyMin / 2);
-        verify(line.shown, "stays for busy-min");
         tryCompare(line, "shown", false, Tokens.durationBusyMin * 2);
+        compare(steps.map(step => step.value), [true, false]);
+        verify(steps[0].at - began >= Tokens.durationBusyDelay / 2, "not before busy-delay");
+        verify(steps[1].at - steps[0].at >= Tokens.durationBusyMin / 2, "stays for busy-min");
     }
 
     function test_quick_work_never_shows_the_busy_line() {
         const line = createTemporaryObject(busyComponent, testCase);
         line.busy = true;
-        wait(Tokens.durationBusyDelay / 3);
         line.busy = false;
         wait(Tokens.durationBusyDelay);
         verify(!line.shown);
@@ -199,9 +200,7 @@ TestCase {
         const dots = createTemporaryObject(dotsComponent, testCase);
         const all = Array.from(dots.children).filter(child => child.position !== undefined);
         compare(all.length, Geometry.dotCount);
-        wait(Tokens.durationDots * Tokens.dotsStagger * 2);
-        verify(all[0].position > all[4].position, "the first dot leads");
-        verify(all[0].opacity > 0, "the first dot is visible");
+        tryVerify(() => all[0].position > all[4].position && all[0].opacity > 0, Tokens.durationDots, "the first dot leads, visible");
     }
 
     function test_under_reduced_motion_the_dots_stand_still_in_the_middle_with_words() {

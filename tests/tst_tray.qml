@@ -304,8 +304,8 @@ TestCase {
         verify(onward(rowAt(menu, "Nextcloud")).visible);
         verify(onward(rowAt(menu, "KDE Connect")).visible);
         verify(!onward(rowAt(menu, "Steam")).visible);
+        tryVerify(() => !findChild(menu, "comingIn").running, Tokens.durationFloat * 4, "it has come in");
         waitForRendering(scene);
-        wait(Tokens.durationFloat);
         const image = grabImage(testCase);
         for (const word of ["KDE Connect", "Steam"]) {
             const row = rowAt(menu, word);

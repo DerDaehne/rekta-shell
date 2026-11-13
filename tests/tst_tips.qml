@@ -339,7 +339,8 @@ TestCase {
         compare(tooltip.shift, 4, "it rises from its control");
         compare(findChild(tooltip, "comingIn").duration, Tokens.durationFloat);
         compare(findChild(tooltip, "comingIn").easing.bezierCurve, Tokens.easeIn);
-        tryCompare(tooltip, "entry", 1, Tokens.durationFloat * 4);
+        tryVerify(() => !findChild(tooltip, "comingIn").running, Tokens.durationFloat * 4, "it has come in");
+        compare(tooltip.entry, 1);
         compare(tooltip.shift, 0);
         Tips.show(box("more"), "more");
         compare(tooltip.opacity, 0, "and again for the next control");

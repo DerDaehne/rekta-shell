@@ -754,8 +754,11 @@ TestCase {
     // The chevron on as drawn: the bounds of its ink at the row's end, where nothing else stands in these rows, in the
     // row's own coordinates. The window is grabbed whole, as a grab of an item inside the menu misses where it stands.
     function onwardInk(row: Item): var {
+        let surface = row;
+        while (!(surface instanceof FloatSurface))
+            surface = surface.parent;
+        tryVerify(() => !findChild(surface, "comingIn").running, Tokens.durationFloat * 4, "the menu has come in");
         waitForRendering(row);
-        wait(Tokens.durationFloat);
         const reach = Tokens.spaceM + 3 * Geometry.chevronSize;
         const at = row.mapToItem(testCase, row.width - reach, 0);
         const area = { x: Math.round(at.x), y: Math.round(at.y), width: Math.round(reach), height: Math.round(row.height) };

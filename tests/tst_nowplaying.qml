@@ -149,7 +149,7 @@ TestCase {
 
     function showSettled() {
         side.show(0);
-        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        tryVerify(() => !findChild(side, "comingIn").running, Tokens.durationModerate * 4, "it has come in");
         waitForRendering(side);
     }
 

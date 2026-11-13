@@ -7,6 +7,7 @@ import Settings
 import SettingsApp
 import Start
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 // The group "angeheftet" of the settings app's place "start": the pinned apps as rows, pinned, unpinned, sized and
 // ordered there, with undo in a toast that hangs from the top, and live with the Start through start.json.
@@ -18,6 +19,8 @@ TestCase {
     when: windowShown
     width: 1000
     height: 800
+
+    readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
 
     readonly property string pinkIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGN4aTWLbMQwqnlU86jmUc0DqxkAreu3b+7dCC4AAAAASUVORK5CYII="
 
@@ -441,12 +444,14 @@ TestCase {
     function test_after_a_row_has_left_the_others_close_the_gap_over_duration_moderate() {
         Prefs.motion = "on";
         const gone = row("org.gone.app");
+        const closing = { steps: Glide.record(gone, "offset"), to: 0 };
         findChild(row("Dolphin"), "remove").clicked();
         tryCompare(testCase, "listedIdsNow", ["systemsettings", "org.gone.app", "org.kde.konsole"]);
         verify(gone.offset > 0, "it starts where it showed");
-        wait(Tokens.durationShort + 50);
-        verify(gone.offset > 0, "still closing after duration-short");
-        tryCompare(gone, "offset", 0, Tokens.durationModerate);
+        closing.from = closing.steps[0].value;
+        tryVerify(() => closing.steps.length > 0 && closing.steps[closing.steps.length - 1].value === 0, Tokens.durationModerate * 4, "the gap closes");
+        const stray = Glide.strayOf([closing], Tokens.durationModerate, easeBase, closing.steps[0].at);
+        verify(stray < 0.06, `the gap closes over duration-moderate, off by ${stray}`);
     }
 
     function test_delete_unpins_the_row_with_the_focus_on_any_of_its_controls() {
@@ -737,11 +742,13 @@ TestCase {
         Prefs.motion = "on";
         const settings = row("Systemeinstellungen");
         settings.grip.forceActiveFocus();
+        const settling = { steps: Glide.record(settings, "offset"), to: 0 };
         keyClick(Qt.Key_Down, Qt.AltModifier);
         verify(settings.offset < 0, "it glides from where it showed");
-        wait(Tokens.durationShort + 50);
-        verify(settings.offset < 0, "still settling after duration-short");
-        tryCompare(settings, "offset", 0, Tokens.durationModerate);
+        settling.from = settling.steps[0].value;
+        tryVerify(() => settling.steps.length > 0 && settling.steps[settling.steps.length - 1].value === 0, Tokens.durationModerate * 4, "it settles");
+        const stray = Glide.strayOf([settling], Tokens.durationModerate, easeBase, settling.steps[0].at);
+        verify(stray < 0.06, `it settles over duration-moderate, off by ${stray}`);
     }
 
     function test_undoing_an_unpin_puts_the_entry_back_byte_identically_and_it_arrives() {

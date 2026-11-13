@@ -7,12 +7,15 @@ import Rekta
 import RektaShell.DBus
 import Start
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 // "zuletzt" in the start place: the files used last, as rows that open them; live changes, holding still, the empty and
 // the failed state, the switch, the keys and the turn. The activity manager is a name owned on the test's private bus,
 // and Kickoff's model a stand-in that holds what a test puts in.
 TestCase {
     id: testCase
+
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
 
     name: "StartZuletzt"
     // Objects created inside an invisible test case are never rendered, so contact sheets would stay empty.
@@ -357,10 +360,14 @@ TestCase {
     function test_a_new_row_slides_in_over_duration_short() {
         three();
         openNow();
+        const since = Date.now();
         use("d.pdf", 0);
         const d = rows()[0];
-        tryVerify(() => d.opacity > 0 && d.opacity < 1, Tokens.durationShort, "it fades up");
-        tryCompare(d, "opacity", 1, Tokens.durationShort * 4);
+        const fades = Glide.record(d, "opacity");
+        const falls = Glide.record(d, "y");
+        tryVerify(() => fades.length > 0 && d.opacity === 1, Tokens.durationShort * 4, "it has arrived");
+        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: d.y - Geometry.rowEnterShift, to: d.y }], Tokens.durationShort, easeIn, since);
+        verify(stray < 0.06, `it slides in from above and fades up together over duration-short, off by ${stray}`);
     }
 
     function test_under_reduced_motion_a_new_file_stands_at_once() {

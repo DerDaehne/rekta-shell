@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -14,6 +15,8 @@ TestCase {
     when: windowShown
     width: 1000
     height: 800
+
+    readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
 
     Component {
         id: tileComponent
@@ -194,14 +197,18 @@ TestCase {
 
     function test_it_sinks_in_over_duration_press_and_comes_back_over_duration_short() {
         const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
+        const steps = Glide.record(tile, "sink");
+        const pressed = Date.now();
         mousePress(tile, tile.width / 2, tile.height / 2);
-        wait(Tokens.durationPress * 1.5);
-        verify(tile.sink > 0.98, "in within duration-press");
+        tryCompare(tile, "sink", 1, Tokens.durationPress * 3);
+        const sinking = steps.splice(0);
+        const released = Date.now();
         mouseRelease(tile, tile.width / 2, tile.height / 2);
-        wait(Tokens.durationPress);
-        verify(tile.sink > 0.3, "still well sunk after duration-press");
-        wait(Tokens.durationShort * 1.3 - Tokens.durationPress);
-        verify(tile.sink < 0.01, "back after duration-short");
+        tryCompare(tile, "sink", 0, Tokens.durationShort * 3);
+        const inStray = Glide.strayOf([{ steps: sinking, from: 0, to: 1 }], Tokens.durationPress, easeBase, pressed);
+        verify(inStray < 0.06, `in over duration-press, off by ${inStray}`);
+        const backStray = Glide.strayOf([{ steps, from: 1, to: 0 }], Tokens.durationShort, easeBase, released);
+        verify(backStray < 0.06, `back over duration-short, off by ${backStray}`);
     }
 
     function test_pressed_on_the_right_edge_the_right_side_goes_back() {
@@ -384,10 +391,11 @@ TestCase {
         const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
         const activations = createTemporaryObject(spy, testCase, { target: tile });
         const touch = touchEvent(tile);
+        const pressed = Date.now();
         touch.press(0, tile, 40, 60).commit();
-        wait(Tokens.durationLongPress * 0.8);
-        compare(asked.count, 0, "not before long-press");
-        tryCompare(asked, "count", 1, Tokens.durationLongPress);
+        compare(asked.count, 0, "not at once");
+        tryCompare(asked, "count", 1, Tokens.durationLongPress * 2);
+        verify(Date.now() - pressed >= Tokens.durationLongPress * 0.8, "not before long-press");
         compare(asked.signalArguments[0][0], Qt.point(40, 60));
         touch.release(0, tile, 40, 60).commit();
         compare(activations.count, 0);

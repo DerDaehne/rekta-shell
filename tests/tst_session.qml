@@ -491,12 +491,13 @@ TestCase {
 
     function test_the_windows_step_back_at_rektas_pace_while_the_session_is_still_open_and_only_then_it_locks() {
         Prefs.motion = "on";
+        const began = Date.now();
         button("switchUser").click();
         verify(sessionActions().leaving, "the host shows its clear surface");
         verify(sessionActions().windowsBack, "holding the keyboard, so the windows step back");
-        wait(0.8 * Tokens.durationModerate);
-        compare(asked, [], "nothing is locked while they step back, in a whole duration-moderate");
-        tryCompare(testCase, "asked", [lockCall], Tokens.durationModerate);
+        compare(asked, [], "nothing is locked at once");
+        tryCompare(testCase, "asked", [lockCall], Tokens.durationModerate * 3);
+        verify(Date.now() - began >= 0.8 * Tokens.durationModerate, "nothing is locked while they step back");
         verify(sessionActions().windowsBack, "they stand back while it locks");
     }
 

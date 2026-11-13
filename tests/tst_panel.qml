@@ -629,7 +629,7 @@ TestCase {
     // The side panel open on a facet once its slide has ended, so that clicks land where the controls stand.
     function showSettled(index: int) {
         side.show(index);
-        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        tryVerify(() => !findChild(side, "comingIn").running, Tokens.durationModerate * 4, "it has come in");
         waitForFrame(side);
     }
 
@@ -1000,7 +1000,8 @@ TestCase {
         compare(edge.opacity, 0, "the quick settings fade in with it");
         const edgeShift = findChild(side, "edgeShift");
         compare(edgeShift.x, -Tokens.slideDistance, "and travel with it");
-        tryCompare(edge, "opacity", 1, Tokens.durationModerate * 4);
+        tryVerify(() => !findChild(findChild(side, "facets"), "enter").running, Tokens.durationModerate * 4, "the facet has come in");
+        compare(edge.opacity, 1);
         compare(edgeShift.x, 0);
     }
 
@@ -2742,8 +2743,7 @@ TestCase {
     function test_an_open_branch_leaves_the_view_alone_when_something_moves() {
         const scroller = createTemporaryObject(scrolledBranchComponent, testCase);
         scroller.branch.expand();
-        tryVerify(() => scroller.contentY > 0);
-        wait(300);
+        tryVerify(() => scroller.contentY > 0 && !scroller.branch.revealing, 1000, "it has unfolded into view");
         scroller.contentY = 0;
         scroller.lateRow.visible = true;
         scroller.spacer.height = 500;
@@ -3233,9 +3233,9 @@ TestCase {
         showSettled(0);
         const scroller = findChild(side, "scroller");
         mouseClick(control("chooseNetwork"));
-        wait(300);
+        tryVerify(() => !control("wifiBranch").revealing, 1000, "the networks have unfolded");
         mouseClick(control("chooseBluetoothDevice"));
-        wait(300);
+        tryVerify(() => !control("bluetoothBranch").revealing, 1000, "the devices have unfolded");
         verify(scroller.contentHeight > scroller.height + 100, "there is room to scroll");
         scroller.contentY = 0;
         controls.wifiDevice.networks.values = controls.wifiDevice.networks.values.slice(0, 5);
