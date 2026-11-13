@@ -679,6 +679,57 @@ TestCase {
             verify(parts.includes(row), row.summary);
     }
 
+    // One notification the open Start shows, then two more that come while it is closed and move the first one down.
+    function closeAndNotifyThree() {
+        openNow();
+        notify({ summary: "anna" });
+        wait(Tokens.durationShort * 2);
+        start.close(null);
+        tryVerify(() => start.phase === "closed", 3000);
+        notify({ summary: "ben" });
+        notify({ summary: "cleo" });
+        Prefs.motion = "on";
+    }
+
+    function rowTurns(turner: var): var {
+        return rows().map(row => turner.arrivingTurns.find(turn => turn.part.item === row));
+    }
+
+    // Rows that came while the Start was closed arrive with its turn, as its parts: none shows before its own turn,
+    // they start from the top, and they are measured where they rest, not on the way of a row's own arrival.
+    function test_rows_that_came_while_the_start_was_closed_stay_unseen_until_their_own_turns_which_start_from_the_top() {
+        closeAndNotifyThree();
+        const turner = findChild(start, "turn");
+        start.open();
+        tryVerify(() => turner.running, 2000);
+        turner.paused = true;
+        compare(rows().map(row => row.summary), ["cleo", "ben", "anna"]);
+        const turns = rowTurns(turner);
+        verify(turns[0].at < turns[1].at && turns[1].at < turns[2].at, turns.map(turn => turn.at - turner.handOverAt).join(", "));
+        for (let time = turner.handOverAt; time < turns[2].at; time += 5) {
+            turner.elapsed = time;
+            wait(5);
+            const early = rows().find((row, index) => time < turns[index].at && row.opacity > 0);
+            verify(!early, early ? `${early.summary} shows at ${time - turner.handOverAt} ms` : "");
+        }
+        const measured = turns.map(turn => turn.part.y);
+        turner.paused = false;
+        turner.finish();
+        compare(rows().map(row => row.mapToItem(null, 0, 0).y), measured);
+    }
+
+    // A finger plans the opening at once, with no frame between the notifications and the hand-over.
+    function test_rows_that_came_while_the_start_was_closed_stay_unseen_as_a_finger_starts_to_open_it() {
+        closeAndNotifyThree();
+        start.followFinger(1);
+        const turns = rowTurns(findChild(start, "turn"));
+        wait(Tokens.durationShort);
+        compare(rows().map(row => row.opacity), [0, 0, 0]);
+        start.letFingerGo();
+        tryVerify(() => start.phase === "closed", 3000);
+        compare(rows().map(row => row.mapToItem(null, 0, 0).y), turns.map(turn => turn.part.y));
+    }
+
     function test_contact_sheets_of_heute_in_both_themes() {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;

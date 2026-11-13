@@ -316,11 +316,25 @@ QtObject {
     }
 
     // A place just shown is laid out by its positioners only in the next frame's polish: its parts are measured where
-    // they will rest, the innermost boxes first, as each one's size places it in the box around it.
+    // they will rest, the innermost boxes first, as each one's size places it in the box around it. ensurePolished lays
+    // a box out again even with no polish pending, so hidden boxes are left alone.
     function layOut(item: Item) {
+        if (!item.visible)
+            return;
         for (const child of item.children)
             layOut(child);
+        polishAtOnce(item);
+    }
+
+    // Rows a positioner got before its place showed take their places at once: turning in is their arrival, and the
+    // positioner's own `add` and `move` would show them before their turn and have them measured on their way.
+    function polishAtOnce(item: var) {
+        const transitions = [item.add, item.move].filter(transition => transition?.enabled === true);
+        for (const transition of transitions)
+            transition.enabled = false;
         item.ensurePolished();
+        for (const transition of transitions)
+            transition.enabled = true;
     }
 
     function collectParts(box: Item, place: Item, root: Item, parts: var) {
