@@ -110,9 +110,8 @@ Item {
         return !!turnedOn[name];
     }
 
-    // A state that is on gets a new sentence (a figure that changes) and the reason its remedy cannot act, if it has one:
-    // written in place, not announced again; its start
-    // stays.
+    // A state that is on gets a new sentence (a figure that changes) and the reason its remedy cannot act, if it has
+    // one: written in place, not announced again; its start stays.
     function update(name: string, text: string) {
         known(name);
         sentences[name] = text;

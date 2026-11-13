@@ -134,8 +134,8 @@ TestCase {
         turn({ storageRemedy: false });
         compare([banner.word, banner.sentence, remedy.visible, remedy.text], ["speicher", "Root is running out of space (180 MiB free).", true, "belegung ansehen"]);
         verify(remedy.disabled);
-        compare(findChild(remedy, "why").text, "meldung geschlossen");
-        compare(remedy.Accessible.description, "meldung geschlossen");
+        compare(findChild(remedy, "why").text, "Die Meldung dazu ist geschlossen.");
+        compare(remedy.Accessible.description, "Die Meldung dazu ist geschlossen.");
     }
 
     function test_a_press_on_the_refusing_storage_remedy_does_nothing_and_takes_the_keys() {
@@ -147,6 +147,15 @@ TestCase {
         keyClick(Qt.Key_Space);
         compare(remedied, []);
         compare(leakedKeys, 0, "the keys do not fall through to the banner");
+    }
+
+    function test_the_reason_beside_the_remedy_takes_the_primary_ink_on_the_status_fill_in_each_theme() {
+        const inks = { light: "#010205", dark: "#fbfcff" };
+        turn({ storageFull: true });
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            compare(findChild(findChild(banner, "remedy"), "why").color, Qt.color(inks[theme]), theme);
+        }
     }
 
     function test_the_storage_banner_keeps_its_height_when_the_notice_closes_and_comes_back() {
