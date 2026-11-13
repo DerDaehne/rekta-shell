@@ -232,6 +232,18 @@ in
     touch $out
   '';
 
+  # Window-level behaviour no unit test can instantiate: the open Start lies over the bar without moving it, and
+  # a toast keeps its own surface on the overlay layer above the Start.
+  start-covers-the-bar = pkgs.runCommand "rekta-shell-start-covers-the-bar" { } ''
+    if grep 'readonly property bool away:' ${../shell/Bar.qml} | grep -q startOpen; then
+      echo "Bar.away must not depend on the open Start" >&2
+      exit 1
+    fi
+    grep -q 'WlrLayershell.layer: stepsBack ? WlrLayer.Top : WlrLayer.Overlay' ${../shell/Toasts.qml}
+    grep -q 'value: panel.floatOpen && !panel.startOpen' ${../shell/Bar.qml}
+    touch $out
+  '';
+
   qmllint = pkgs.runCommand "rekta-shell-qmllint" { LANG = "C.UTF-8"; } ''
     find ${qml} -name '*.qml' -print0 | xargs -0 ${pkgs.lib.getExe rekta-qmllint} -I ${qml}/shell
     touch $out

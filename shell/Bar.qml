@@ -40,6 +40,7 @@ PanelWindow {
     readonly property bool showsToasts: modelData === primaryScreen
     // The active window, when it is on this screen.
     readonly property var front: windows?.active?.isOn(modelData) ? windows.active : null
+    // The open Start does not move the bar: its surface lies over it, and the bar is reached by closing the Start.
     readonly property bool away: !arrived || (windows?.fullScreenOn(modelData) ?? false)
     readonly property var middleLine: Middle.barLine(
         controlPanel.quiet.middleParts,
