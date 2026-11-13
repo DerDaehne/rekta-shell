@@ -62,7 +62,8 @@ writeShellApplication {
   runtimeInputs = [ coreutils ];
   text = ''
     usage() {
-      echo "usage: rekta-nested [--window] [--outputs N] [--size WIDTHxHEIGHT] [--background rekta|solid]" >&2
+      echo "usage: rekta-nested [--window] [--outputs N] [--size WIDTHxHEIGHT] [--background rekta|solid] [--touch-edges]" >&2
+      echo "  --touch-edges  let KWin take touch screen edges (it then also runs global shortcuts, on the session's own bus)" >&2
       exit 2
     }
 
@@ -70,12 +71,15 @@ writeShellApplication {
     outputs=1
     size=1600x900
     background=rekta
+    # Without global shortcuts KWin also installs no screen edge filter, so a finger at an edge never reaches an effect.
+    global_shortcuts=(--no-global-shortcuts)
     while [ $# -gt 0 ]; do
       case "$1" in
         --window) window=true; shift ;;
         --outputs) outputs="''${2:?}"; shift 2 ;;
         --size) size="''${2:?}"; shift 2 ;;
         --background) background="''${2:?}"; shift 2 ;;
+        --touch-edges) global_shortcuts=(); shift ;;
         *) usage ;;
       esac
     done
@@ -188,7 +192,7 @@ writeShellApplication {
     env -i "''${session[@]}" "''${host_display[@]}" QML_IMPORT_PATH="$shell_dir" QT_QUICK_CONTROLS_STYLE=org.kde.desktop \
       QT_PLUGIN_PATH=${rekta-shell}/lib/rekta-kwin/plugins kwin_wayland "''${backend[@]}" --socket "$socket" \
       --width "''${size%x*}" --height "''${size#*x}" --output-count "$outputs" \
-      --no-lockscreen --no-global-shortcuts --no-kactivities \
+      --no-lockscreen "''${global_shortcuts[@]}" --no-kactivities \
       -- "$launcher" &
     kwin=$!
     wait "$kwin"
