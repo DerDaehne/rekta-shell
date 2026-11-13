@@ -375,6 +375,8 @@ FocusScope {
 
         // Declared here they land in the rows' column, so they find their row; neither takes the focus from the field.
         TapHandler {
+            // Holds the press, so nothing the list covers takes it too.
+            gesturePolicy: TapHandler.WithinBounds
             longPressThreshold: 0
 
             onTapped: eventPoint => combo.choose(combo.rowIndexAt(eventPoint.position))

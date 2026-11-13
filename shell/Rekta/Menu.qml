@@ -183,6 +183,8 @@ FloatSurface {
 
     // Declared here it lands in the rows' column (the default property), so a tap finds its row.
     TapHandler {
+        // Holds the press, so nothing the menu covers takes it too.
+        gesturePolicy: TapHandler.WithinBounds
         // A slow click is still a click.
         longPressThreshold: 0
 

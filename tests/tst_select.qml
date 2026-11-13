@@ -412,6 +412,19 @@ TestCase {
         compare(rows(select).map(row => row.checked), [false, true, false]);
     }
 
+    function test_a_press_on_the_list_reaches_nothing_under_it() {
+        const after = named("after");
+        const pressed = createTemporaryObject(spyComponent, testCase, { target: after, signalName: "clicked" });
+        mouseClick(box(select));
+        waitForFrame(scene);
+        const surface = list(select);
+        const over = after.mapToItem(surface, after.width / 2, after.height / 2);
+        verify(surface.contains(over), "the list lies over the button below");
+        mouseClick(surface, over.x, over.y);
+        verify(!select.expanded, "the option under the pointer is chosen");
+        compare(pressed.count, 0, "and the button under it is not pressed");
+    }
+
     function test_a_list_closed_by_a_pointer_leaves_the_focus_where_it_was() {
         const before = named("before");
         before.forceActiveFocus();

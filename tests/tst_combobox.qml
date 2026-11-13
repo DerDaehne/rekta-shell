@@ -480,6 +480,18 @@ TestCase {
         verify(input(combo).activeFocus, "the focus stays in the field");
     }
 
+    function test_a_press_on_an_option_reaches_nothing_under_the_list() {
+        const after = findChild(scene, "after");
+        const pressed = createTemporaryObject(spyComponent, testCase, { target: after, signalName: "clicked" });
+        mouseClick(input(combo));
+        waitForRendering(scene);
+        const over = after.mapToItem(list(combo), after.width / 2, after.height / 2);
+        verify(list(combo).contains(over), "the list lies over the button below");
+        mouseClick(list(combo), over.x, over.y);
+        verify(!combo.expanded, "the option under the pointer is chosen");
+        compare(pressed.count, 0, "and the button under it is not pressed");
+    }
+
     function test_a_press_on_the_chevron_opens_and_closes_and_puts_the_focus_in_the_field() {
         const button = findChild(combo, "button");
         mouseClick(button);
