@@ -256,4 +256,32 @@ TestCase {
         compare(keyboardSpy.count, 0);
         compare(calls, []);
     }
+
+    function test_three_fingers_down_amid_the_turn_to_all_apps_end_that_turn_at_once_and_take_the_closing_along() {
+        openAtOnce();
+        named("pivot").select(1);
+        verify(start.turning);
+        start.followSwipeOut(0.6);
+        compare(start.phase, "followingOut");
+        verify(!named("startPlace").visible, "the turn to alle apps stands landed");
+        start.letFingerGoOut();
+        compare(start.phase, "closing");
+        tryCompare(start, "phase", "closed", 3000);
+        compare(calls, ["activate konsole"]);
+    }
+
+    function test_let_go_short_of_half_amid_the_turn_to_all_apps_the_start_stays_open_at_all_apps() {
+        openAtOnce();
+        named("pivot").select(1);
+        verify(start.turning);
+        start.followSwipeOut(0.3);
+        start.letFingerGoOut();
+        tryCompare(start, "phase", "open", 3000);
+        verify(!start.turning);
+        compare(named("pivot").currentIndex, 1);
+        verify(!named("startPlace").visible);
+        compare(named("body").opacity, 1);
+        verify(start.holdsKeyboard);
+        compare(calls, []);
+    }
 }
