@@ -252,7 +252,6 @@ Item {
         row.children.forEach(wire);
         const stacked = !sideways;
         const sizes = sections.map(section => section instanceof Section && section.sectionWidth > 0 ? section.sectionWidth : sectionWidth);
-        const wasGap = reading.gap;
         reading.gap = spread(sizes, width - inset);
         let along = inset;
         let top = 0;
@@ -272,12 +271,17 @@ Item {
         reading.reach = sections.length ? along - gap : inset;
         reading.stackHeight = top;
         markInSight(sections);
-        keepReading(wasGap);
+        keepReading();
     }
 
-    // A new gap keeps the section being read, not an offset, at once (rekta.js fit(), :1077–1080).
-    function keepReading(wasGap: real) {
-        if (reading.gap === wasGap || !sideways || !row.visible || flick.contentX <= 0)
+    // A gap new since the panorama last showed keeps the section being read, not an offset, at once (rekta.js fit(),
+    // :1069–1080): a panorama laid out while hidden jumps as it shows.
+    function keepReading() {
+        if (!row.visible)
+            return;
+        const was = reading.shownGap;
+        reading.shownGap = reading.gap;
+        if (reading.gap === was || !sideways || flick.contentX <= 0)
             return;
         goTo(reading.current, false, true);
         reading.jumped = false;
@@ -398,6 +402,8 @@ Item {
         property bool jumped: false
         property real reach: 0
         property real gap: Tokens.spaceXl
+        // The gap of the last layout while the panorama showed.
+        property real shownGap: Tokens.spaceXl
         property real stackHeight: 0
         property point pointer
         property var gesture: null

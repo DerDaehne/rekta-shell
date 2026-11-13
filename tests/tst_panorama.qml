@@ -446,18 +446,54 @@ TestCase {
                 tag: "1360 px: 10 px would be nearer, but never below space-m, so 116",
                 width: 1360,
                 gap: 116
+            },
+            {
+                tag: "2019 px: of 19 and 77, as far from space-xl, the first found",
+                width: 2019,
+                gap: 19
+            },
+            {
+                tag: "two sections at 1316 px: of 24 and 72, as far from space-xl, the first found, and both fit",
+                width: 1316,
+                count: 2,
+                gap: 24,
+                fit: true
+            },
+            {
+                tag: "three sections at 1963 px: 48.5 rounded up, so the second section reaches space-xl past the edge",
+                width: 1963,
+                count: 3,
+                gap: 49
+            },
+            {
+                tag: "three sections at 1985 px: 60, nearer than the 35 that fits all of them, rounded down from 35.5",
+                width: 1985,
+                count: 3,
+                gap: 60
+            },
+            {
+                tag: "two sections at 1293 px: the last section's own way, 49",
+                width: 1293,
+                count: 2,
+                gap: 49
+            },
+            {
+                tag: "three sections at 1372 px: exactly space-m is allowed",
+                width: 1372,
+                count: 3,
+                gap: 16
             }
         ];
     }
 
     function test_where_the_windows_edge_would_fall_in_a_gap_or_near_a_sections_end_the_gap_changes_by_as_little_as_it_takes(data) {
-        const panorama = makePanorama(5, 100);
+        const panorama = makePanorama(data.count ?? 5, 100);
         panorama.width = data.width;
         compare(panorama.gap, data.gap);
-        compare(gapsBetween(panorama), [data.gap, data.gap, data.gap, data.gap], "the gaps stay even");
+        compare(gapsBetween(panorama), Array(panorama.sectionItems().length - 1).fill(data.gap), "the gaps stay even");
         verify(panorama.gap >= Tokens.spaceM);
-        verify(!panorama.fit);
-        verify(edgeInsideASection(panorama), `the edge at ${data.width} px lies inside a section`);
+        compare(panorama.fit, data.fit ?? false);
+        verify(panorama.fit || edgeInsideASection(panorama), `the edge at ${data.width} px lies inside a section`);
     }
 
     function test_where_the_edge_already_lies_space_xl_inside_a_section_or_everything_fits_the_gap_stays_space_xl_data() {
@@ -516,6 +552,20 @@ TestCase {
         compare(panorama.scroller.contentWidth, 1990);
         verify(!panorama.scroller.interactive);
         compare(sectionAt(panorama, 2).x + sectionWidth, 1990, "whole, up to the window's edge");
+    }
+
+    function test_a_width_changed_while_the_panorama_is_hidden_keeps_the_section_being_read_flush_left_as_it_shows() {
+        const panorama = makePanorama(5, 100);
+        panorama.width = 1600;
+        panorama.goTo(2, false, true);
+        compare(panorama.scroller.contentX, 1340);
+        panorama.visible = false;
+        panorama.width = 1400;
+        panorama.visible = true;
+        compare(panorama.gap, 30);
+        compare(sectionAt(panorama, 2).x, 1352);
+        compare(panorama.scroller.contentX, 1304, "the third section stands at the inset");
+        compare(panorama.currentIndex, 2);
     }
 
     function test_a_stacked_panorama_and_the_row_of_wide_facets_keep_a_gap_of_space_xl() {
