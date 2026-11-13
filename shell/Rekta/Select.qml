@@ -240,7 +240,7 @@ Item {
         parent: anchor.stage ?? select
         area: Qt.size(parent.width, parent.height)
         control: select
-        opener: select
+        floatsFor: select
         width: Math.max(implicitWidth, select.width)
         height: implicitHeight
         Accessible.role: Accessible.List

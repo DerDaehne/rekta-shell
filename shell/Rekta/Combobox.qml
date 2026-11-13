@@ -341,7 +341,7 @@ FocusScope {
         objectName: "list"
         parent: anchor.stage ?? combo
         area: Qt.size(parent.width, parent.height)
-        opener: combo
+        floatsFor: combo
         width: Math.max(implicitWidth, combo.width)
         height: implicitHeight
         Accessible.role: Accessible.List

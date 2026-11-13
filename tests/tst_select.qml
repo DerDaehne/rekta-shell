@@ -457,7 +457,7 @@ TestCase {
         compare(select.currentIndex, 2);
         keyClick("s");
         compare(select.currentIndex, 0, "around the list");
-        keyClick("x");
+        verify(select.handleKey({ key: Qt.Key_X, text: "x", modifiers: Qt.NoModifier, isAutoRepeat: false }), "used up, as rekta-core does");
         compare(select.currentIndex, 0);
         verify(!select.expanded);
         compare(activated.count, 3);

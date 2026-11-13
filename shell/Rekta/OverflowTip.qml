@@ -5,14 +5,14 @@ import QtQuick
 // text is cut: under a resting mouse or pen as every tip comes, and at once on show(), which a control whose one text
 // this is calls when the keyboard brings it focus. Cut or not counts while the tip shows or waits: it follows new
 // words and goes once they fit. It offers only inside a host that sets `overflowTips` (the side panel, states.md
-// :179–180), a floating surface's within its opener's host; elsewhere no tooltip draws it, and a tip held there would
-// take the Escape meant for what holds the text.
+// :179–180), on a floating surface inside the host of what it floats for; elsewhere no tooltip draws it, and a tip
+// held there would take the Escape meant for what holds the text.
 Item {
     id: overflow
 
     readonly property Text words: parent as Text
     readonly property bool hosted: {
-        for (let host = parent; host; host = host.opener ?? host.parent) {
+        for (let host = parent; host; host = host.floatsFor ?? host.parent) {
             if (offersOverflow(host))
                 return true;
         }
