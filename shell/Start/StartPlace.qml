@@ -117,7 +117,8 @@ FocusScope {
     property alias query: line.text
     // The search shows, or is on its way, in place of the pivot and the places.
     property bool searching: false
-    // What the search finds besides apps: [{name, rows: [{text, lead, icon, key, run, best}]}] (Rules.rowGroups).
+    // What the search shows as rows below the tiles: [{name, rows: [{text, lead, icon, glyph, key, run, best}]}]
+    // (Rules.rowGroups).
     property var rowGroups: []
     // Without any hit, the ways on as rows (Rules.waysOut).
     property var waysOut: []
@@ -615,8 +616,9 @@ FocusScope {
 
     function showSearch() {
         searching = true;
-        const shown = matching();
-        const rows = matchingRows(shown);
+        const matched = matching();
+        const shown = matched.tiles;
+        const rows = matchingRows(matched);
         swap(() => {
             showSearchView(true);
             showHits(shown, rows);
@@ -635,22 +637,24 @@ FocusScope {
         }, 0);
     }
 
-    // The apps that match what was typed, read here and not bound: a binding on `query` may lag behind its handler.
+    // The apps that match what was typed, as tiles and rows (Rules.appHits), read here and not bound: a binding on
+    // `query` may lag behind its handler.
     function matching(): var {
-        return query === "" ? [] : Rules.hits(apps ?? [], query, starts);
+        return Rules.appHits(query === "" ? [] : apps ?? [], query, starts, searchUnits);
     }
 
-    // The rows below the tiles, read fresh like the apps; the first is the best hit when no app matches.
+    // The rows below the tiles, read fresh like the apps; the first is the best hit when no app has a tile.
     function matchingRows(appHits: var): var {
         if (query === "")
             return [];
         return Rules.rowGroups({
+            apps: appHits.rows,
             windows: windows,
             settings: settings,
             commands: commands,
             decimalPoint: decimalPoint,
             copy: copy
-        }, query, starts, appHits.length === 0);
+        }, query, starts, appHits.tiles.length === 0);
     }
 
     function countRows(groups: var): int {
@@ -660,8 +664,9 @@ FocusScope {
     // Going on typing or erasing: the hits that no longer match go, the new ones come, and the rest close up.
     function filter() {
         presence.finish();
-        const shown = matching();
-        const rows = matchingRows(shown);
+        const matched = matching();
+        const shown = matched.tiles;
+        const rows = matchingRows(matched);
         const kept = new Set(shown.map(app => app.id));
         const tiles = hitTiles();
         const before = new Set(tiles.map(tile => tile.appId));
@@ -686,7 +691,8 @@ FocusScope {
                 found.insert(step.insert, {
                     appId: step.id,
                     label: byId.get(step.id).name,
-                    image: byId.get(step.id).icon
+                    image: byId.get(step.id).icon,
+                    glyphName: byId.get(step.id).glyph ?? ""
                 });
         }
     }
@@ -1293,6 +1299,7 @@ FocusScope {
     }
     Component.onCompleted: showPins(pinned)
     onQueryChanged: refresh()
+    onSearchUnitsChanged: refresh()
     onAppsChanged: {
         refresh();
         regroup();
@@ -1595,6 +1602,7 @@ FocusScope {
 
                                 name: app?.name ?? ""
                                 icon: app?.icon ?? ""
+                                glyph: app?.glyph ?? ""
                                 unseen: start.unseen[appId] ?? 0
                                 line: start.lines[appId] ?? ""
                                 columns: app?.columns ?? 1
@@ -1813,6 +1821,7 @@ FocusScope {
 
                                 name: modelData.name
                                 icon: modelData.icon
+                                glyph: modelData.glyph ?? ""
                                 unseen: start.unseen[modelData.id] ?? 0
                                 line: start.lines[modelData.id] ?? ""
                                 hasMenu: start.pinFile !== null
@@ -1891,7 +1900,8 @@ FocusScope {
             }
         }
 
-        // The apps that match, as tiles in the search's grid, space-l above and below as a section (rekta.css:1125).
+        // The apps whose name matches, as one row of tiles in the search's grid, space-l above and below as a section
+        // (rekta.css:1125).
         Flickable {
             id: results
 
@@ -1932,10 +1942,12 @@ FocusScope {
                         required property string appId
                         required property string label
                         required property string image
+                        required property string glyphName
                         required property int index
 
                         name: label
                         icon: image
+                        glyph: glyphName
                         unseen: start.unseen[appId] ?? 0
                         line: start.lines[appId] ?? ""
                         best: index === 0
@@ -2016,7 +2028,8 @@ FocusScope {
 
                     text: searchRow.modelData.text
                     lead: searchRow.modelData.lead
-                    icon: searchRow.modelData.icon
+                    icon: searchRow.modelData.glyph ? "" : searchRow.modelData.icon
+                    glyph: searchRow.modelData.glyph ?? ""
                     best: searchRow.modelData.best === true
                     keyHint: searchRow.modelData.key ?? ""
                     onActivated: start.chooseRow(searchRow.modelData)

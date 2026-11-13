@@ -18,6 +18,10 @@ TestCase {
 
     // What the fake windows and apps were asked to do, oldest first.
     property var calls: []
+    // The keys the Start left unused, which come on to its parent.
+    property var passed: []
+
+    Keys.onPressed: event => testCase.passed = [...testCase.passed, event.key]
 
     // Coloured 20 × 20 squares as PNG (the check has no SVG image plugin), as an app's own icon is coloured.
     readonly property string blueIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGOQnfmZbMQwqnlU86jmUc0DqxkAaSeYL8S+KvQAAAAASUVORK5CYII="
@@ -112,6 +116,7 @@ TestCase {
         // Without motion unless a test is about it: the keys and their targets are the same either way.
         Prefs.motion = "off";
         calls = [];
+        passed = [];
         start = createTemporaryObject(startComponent, testCase);
         turner = findChild(start, "turn");
         closedSpy.target = start;
@@ -1286,7 +1291,8 @@ TestCase {
     function test_the_apps_that_match_stand_in_the_column_s_grid_the_best_first_as_a_wide_tile_and_the_rest_as_one_unit_tiles() {
         openWithApps();
         typeNow("fi");
-        compare(hitNames(), ["Filelight", "Firefox", "Dateien"]);
+        compare(hitNames(), ["Filelight", "Firefox"]);
+        compare(rowTexts("apps"), ["Dateien"], "by its keyword");
         const tiles = start.hitTiles();
         compare(Qt.size(tiles[0].width, tiles[0].height), Qt.size(2 * Tokens.tileUnit + Tokens.spaceS, Tokens.tileUnit));
         compare(Qt.size(tiles[1].width, tiles[1].height), Qt.size(Tokens.tileUnit, Tokens.tileUnit));
@@ -1352,12 +1358,12 @@ TestCase {
         compare(cell, 224);
         compare([named("searchTitle").width, named("hits").width, named("rows").width, named("noHits").width], [edges, edges, edges, edges]);
         const tiles = start.hitTiles();
-        compare(tiles.length, 7);
+        compare(tiles.length, 2, "one row");
         compare(named("hits").across, 3);
         compare(Qt.rect(tiles[0].x, tiles[0].y, tiles[0].width, tiles[0].height), Qt.rect(0, 0, 2 * cell + Tokens.spaceS, Tokens.tileUnit), "the best hit over two columns");
         compare(Qt.rect(tiles[1].x, tiles[1].y, tiles[1].width, tiles[1].height), Qt.rect(2 * (cell + Tokens.spaceS), 0, cell, Tokens.tileUnit), "stretched to the edge");
-        compare(tiles[2].x, 0, "three to a row");
-        verify(start.searchRows().length > 0, "a window's row");
+        compare(rowTexts("apps"), ["KDE Connect", "Kdenlive", "Konsole", "Krita", "KWrite"], "the names past the row");
+        compare(rowTexts("fenster"), ["konsole: build", "Rekta Design — docs"], "the windows' rows");
         compare(outsideTheEdges(), []);
         start.query = "";
         typeNow("q");
@@ -1378,8 +1384,11 @@ TestCase {
         verify(named("panorama").sideways);
         compare(units(5), 882);
         compare([named("searchTitle").width, named("hits").width, named("rows").width, named("noHits").width], [units(5), units(5), units(5), units(5)]);
-        compare(tiles[4].mapToItem(named("hits"), 0, 0), Qt.point(0, Tokens.tileUnit + Tokens.spaceS), "five units in a row");
-        verify(tiles.slice(1).every(tile => tile.width === Tokens.tileUnit), "never wider tiles");
+        const narrower = start.hitTiles();
+        compare(narrower.length, 4, "still one row");
+        compare(narrower[3].mapToItem(named("hits"), 0, 0), Qt.point(units(5) - Tokens.tileUnit, 0), "five units in a row");
+        compare(rowTexts("apps"), ["Konsole", "Krita", "KWrite"], "the tile past the row became the first row");
+        verify(narrower.slice(1).every(tile => tile.width === Tokens.tileUnit), "never wider tiles");
         compare(outsideTheEdges(), []);
         start.width = 2 * Tokens.spaceXl + units(6);
         compare(named("hits").width, units(6), "six units from 1156 on");
@@ -1389,7 +1398,7 @@ TestCase {
 
     function test_from_720_to_1600_wide_no_part_of_the_search_runs_past_the_sections_edges() {
         searchAt(720, 1000, "k");
-        compare(start.hitTiles().length, 7);
+        compare(start.hitTiles().length, 2);
         const results = named("results");
         for (let width = 720; width <= 1600; width++) {
             start.width = width;
@@ -1579,14 +1588,15 @@ TestCase {
         verify(only[0].best);
     }
 
-    function test_a_hit_that_takes_the_focus_scrolls_into_view() {
+    function test_an_app_row_far_below_the_tiles_that_takes_the_focus_scrolls_into_view() {
         start.apps = Array.from({ length: 40 }, (_, i) => installedApp(`app ${i}`));
         openNow();
         typeNow("app");
         const results = named("results");
-        for (let i = 0; i < 7; i++)
+        compare(start.hitTiles().length, 5);
+        for (let i = 0; i < 36; i++)
             keyClick(Qt.Key_Down);
-        const last = start.hitTiles()[35];
+        const last = start.searchRows()[34];
         verify(last.activeFocus);
         const top = last.mapToItem(results, 0, 0).y;
         verify(top >= 0 && top + last.height <= results.height, `whole in view at ${top}`);
@@ -1966,7 +1976,8 @@ TestCase {
         keyClick("a");
         verify(!named("presence").running);
         verify(named("results").visible);
-        compare(start.hitTiles().length, 61);
+        compare(start.hitTiles().length, 5);
+        compare(rowTexts("apps").length, 56);
     }
 
     function test_under_reduced_motion_the_search_comes_and_goes_at_once() {
@@ -2456,6 +2467,128 @@ TestCase {
             verify(!row.best && !findChild(row, "enterKey").visible, row.text);
         keyClick(Qt.Key_Return);
         compare(calls, ["launch Dateien"]);
+    }
+
+    // A–Z, a desktop's apps with rekta's own settings, and two windows, one titled as its app.
+    function openOnADesktop() {
+        start.apps = [
+            searchableApp("Dateien", "Dateiverwaltung", ["files"]),
+            searchableApp("Kalender", "Kalender", ["termine"]),
+            searchableApp("Kate", "Texteditor", ["editor"]),
+            searchableApp("Konsole", "Terminal", ["shell"]),
+            searchableApp("Okular", "Dokumentbetrachter", ["pdf", "text"]),
+            Object.assign(searchableApp("rekta einstellungen", "Settings", []), { id: "rekta-settings", glyph: "tune" }),
+            searchableApp("Spectacle", "Bildschirmfoto", ["screenshot"]),
+            searchableApp("Teams", "Videokonferenz", ["chat"]),
+            searchableApp("Telegram", "Messenger", ["chat"]),
+            searchableApp("Texte", "Notizen", ["notes"])
+        ];
+        start.windows = [Object.assign(fakeWindow("Karten", 20), { app: "Karten" }), Object.assign(fakeWindow("notiz.md", 10), { app: "Texte" })];
+        openNow();
+    }
+
+    function test_only_apps_whose_name_matches_are_tiles_and_the_others_are_rows_in_apps_before_fenster() {
+        openOnADesktop();
+        typeNow("te");
+        compare(hitNames(), ["Teams", "Telegram", "Texte", "Kate", "Dateien"]);
+        compare(groupNames(), ["apps", "fenster"]);
+        compare(rowTexts("apps"), ["Kalender", "Konsole", "Okular", "rekta einstellungen"]);
+        compare(rowTexts("fenster"), ["notiz.md", "Karten"]);
+        const rows = start.searchRows().filter(row => row.parent.objectName === "apps");
+        for (const row of rows.slice(0, 3)) {
+            compare(findChild(row, "icon").source.toString(), testCase.pinkIcon, row.text);
+            verify(findChild(row, "icon").visible, row.text);
+        }
+        const heading = findChild(findChild(named("rows"), "apps"), "heading");
+        compare(heading.text, "apps");
+        const tiles = start.hitTiles();
+        const content = named("results").contentItem;
+        compare(heading.mapToItem(content, 0, 0).y, tiles[0].mapToItem(content, 0, tiles[0].height).y + Tokens.spaceL, "space-l below the tiles");
+        verify(findChild(findChild(named("rows"), "fenster"), "heading").mapToItem(rows[3], 0, 0).y >= rows[3].height, "fenster below the apps");
+    }
+
+    function test_the_tiles_stand_in_one_row_and_the_names_past_it_go_on_as_rows() {
+        testCase.width = 900;
+        openOnADesktop();
+        compare(start.searchUnits, 4);
+        typeNow("te");
+        compare(hitNames(), ["Teams", "Telegram", "Texte"]);
+        compare(start.hitTiles().map(tile => tile.y), [0, 0, 0]);
+        compare(start.hitTiles().map(tile => tile.columns), [2, 1, 1]);
+        compare(rowTexts("apps"), ["Kalender", "Kate", "Konsole", "Okular", "Dateien", "rekta einstellungen"]);
+    }
+
+    function test_a_window_titled_as_its_app_shows_the_name_once_and_another_shows_its_app_before_the_title() {
+        openOnADesktop();
+        typeNow("te");
+        const windowRows = start.searchRows().filter(row => row.parent.objectName === "fenster");
+        compare(windowRows.map(row => [row.lead, row.text]), [["Texte", "notiz.md"], ["", "Karten"]]);
+    }
+
+    function test_rekta_s_own_settings_show_rekta_s_tune_icon_on_their_tile_and_in_their_row() {
+        openOnADesktop();
+        typeNow("rek");
+        const tile = start.hitTiles()[0];
+        compare(findChild(tile, "name").text, "rekta einstellungen");
+        const glyph = findChild(tile, "glyph");
+        verify(glyph.visible);
+        compare(glyph.name, "tune");
+        compare(glyph.size, Tokens.tileIcon);
+        verify(!findChild(tile, "icon").visible, "not the theme's icon");
+        start.query = "";
+        typeNow("te");
+        const row = start.searchRows().find(candidate => candidate.text === "rekta einstellungen");
+        verify(findChild(row, "glyph").visible);
+        compare(findChild(row, "glyph").name, "tune");
+        verify(!findChild(row, "icon").visible);
+    }
+
+    function test_down_goes_from_the_tiles_through_the_app_rows_on_to_fenster_and_up_comes_back_using_every_arrow() {
+        openOnADesktop();
+        typeNow("te");
+        const tiles = start.hitTiles();
+        const rows = start.searchRows();
+        compare(rows.map(row => row.text), ["Kalender", "Konsole", "Okular", "rekta einstellungen", "notiz.md", "Karten"]);
+        keyClick(Qt.Key_Down);
+        verify(tiles[0].activeFocus);
+        for (const row of rows) {
+            keyClick(Qt.Key_Down);
+            verify(row.activeFocus, row.text);
+        }
+        keyClick(Qt.Key_Down);
+        verify(rows[5].activeFocus, "the last row stays");
+        for (let at = 4; at >= 0; at--) {
+            keyClick(Qt.Key_Up);
+            verify(rows[at].activeFocus, rows[at].text);
+        }
+        keyClick(Qt.Key_Up);
+        verify(tiles[0].activeFocus, "from the first app row back to the best hit");
+        compare(passed, [], "the Start used every arrow");
+        keyClick(Qt.Key_F5);
+        compare(passed, [Qt.Key_F5], "a key it does not use goes on");
+    }
+
+    function test_an_app_row_starts_its_app_and_the_start_turns_out_forward() {
+        Prefs.motion = "on";
+        openOnADesktop();
+        typeNow("te");
+        keyClick(Qt.Key_Down);
+        keyClick(Qt.Key_Down);
+        verify(start.searchRows()[0].activeFocus);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Kalender"]);
+        verify(!turner.back, "forward");
+        tryVerify(() => closedSpy.count === 1, 3000);
+    }
+
+    function test_with_only_app_rows_the_first_is_the_best_hit_and_enter_starts_it() {
+        openOnADesktop();
+        typeNow("termin");
+        compare(hitNames(), []);
+        compare(rowTexts("apps"), ["Kalender", "Konsole"]);
+        verify(start.searchRows()[0].best);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Kalender"]);
     }
 
     function test_the_best_row_is_the_first_of_the_first_group_that_has_one() {

@@ -150,6 +150,24 @@ function hits(apps, text, starts) {
     return ranked.map((app, at) => ({ app: app, at: at })).sort((a, b) => (startsOf(b.app) - startsOf(a.app)) || (a.at - b.at)).map(entry => entry.app);
 }
 
+// The hits as the search shows them: tiles for the apps whose name matches, as many as one row of `units` holds beside
+// the wide best hit, and rows for the rest, the apps that match only by their generic name, keywords or program and the
+// names past that row, in the hits' order.
+function appHits(apps, text, starts, units) {
+    const found = hits(apps, text, starts);
+    const typed = text.trim();
+    const tiles = found.filter(app => Rekta.Match.score(app.name, "", typed) > 0).slice(0, Math.max(1, units - 1));
+    return {
+        tiles: tiles,
+        rows: found.filter(app => !tiles.includes(app))
+    };
+}
+
+// The shell's own apps carry Rekta's icon inside it; their desktop entries keep a theme icon for other desktops.
+function ownGlyph(id) {
+    return id === "rekta-settings" ? "tune" : "";
+}
+
 // The start counts a usage file holds, by app id; a file that is not an object gives none, an entry that is not a whole
 // number from 1 is dropped.
 function parseStarts(text) {
@@ -358,9 +376,16 @@ function calculationRows(text, decimalPoint, copy) {
     return [{ text: `= ${result}`, lead: "", icon: "", run: () => copy(result) }];
 }
 
-// What the search finds besides apps, in the palette's groups, empty ones left out: a calculation's result, windows,
-// settings pages and commands as rows {text, lead, icon, run, best}. The first row is the best hit when no app matches
-// (`noApp`). `sources` also gives the locale's decimal separator and how a result is copied.
+// A window's app before its title, unless the title only says the app's name again.
+function windowLead(entry) {
+    const app = entry.app ?? "";
+    return app.toLowerCase() === String(entry.title).toLowerCase() ? "" : app;
+}
+
+// What the search shows as rows, in the palette's groups, empty ones left out: a calculation's result, the apps without
+// a tile (`sources.apps`, see appHits), windows, settings pages and commands as rows {text, lead, icon, glyph, run,
+// best}. The first row is the best hit when no app has a tile (`noApp`). `sources` also gives the locale's decimal
+// separator and how a result is copied.
 function rowGroups(sources, text, starts, noApp) {
     const groups = [
         {
@@ -368,8 +393,12 @@ function rowGroups(sources, text, starts, noApp) {
             rows: calculationRows(text, sources.decimalPoint, sources.copy)
         },
         {
+            name: "apps",
+            rows: (sources.apps ?? []).map(app => ({ text: app.name, lead: "", icon: app.icon, glyph: app.glyph ?? "", run: () => app.launch() }))
+        },
+        {
             name: "fenster",
-            rows: windowHits(sources.windows, text).map(entry => ({ text: entry.title, lead: entry.app ?? "", icon: entry.icon, run: () => entry.activate() }))
+            rows: windowHits(sources.windows, text).map(entry => ({ text: entry.title, lead: windowLead(entry), icon: entry.icon, run: () => entry.activate() }))
         },
         {
             name: "einstellungen",

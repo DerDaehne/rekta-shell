@@ -12,6 +12,8 @@ Tile {
     property string name
     // An image URL for the app's icon, empty for none.
     property string icon
+    // The name of a Rekta icon, drawn in place of `icon`: the shell's own apps carry one.
+    property string glyph
     // The best hit of a search, which Enter starts.
     property bool best: false
     // How many unseen notifications the app has.
@@ -54,6 +56,18 @@ Tile {
         height: width
         opacity: tile.contentOpacity
         source: tile.icon
+        visible: tile.glyph === ""
+    }
+
+    Icon {
+        objectName: "glyph"
+        parent: tile
+        x: Geometry.tilePadding
+        y: Geometry.tilePadding
+        size: tile.rows > 1 ? Tokens.tileIconLarge : Tokens.tileIcon
+        opacity: tile.contentOpacity
+        name: tile.glyph
+        visible: tile.glyph !== ""
     }
 
     // None at zero (tiles.md:143–144; rekta.css:181).

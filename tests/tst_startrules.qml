@@ -180,6 +180,62 @@ TestCase {
         compare(startedHitNames("te", undefined), hitNames("te"));
     }
 
+    // A–Z, a desktop's apps as their entries describe them.
+    readonly property var desktop: [
+        app("Dateien", "Dateiverwaltung", ["files", "explorer"], "dolphin"),
+        app("Firefox", "Webbrowser", ["internet", "web"], "firefox"),
+        app("Kalender", "Kalender", ["termine", "calendar"], "merkuro-calendar"),
+        app("Kate", "Texteditor", ["editor"], "kate"),
+        app("Konsole", "Terminal", ["shell", "prompt"], "konsole"),
+        app("Okular", "Dokumentbetrachter", ["pdf", "text"], "okular"),
+        app("Spectacle", "Bildschirmfoto", ["screenshot"], "spectacle"),
+        app("Teams", "Videokonferenz", ["chat"], "teams-for-linux"),
+        app("Telegram", "Messenger", ["chat"], "telegram-desktop"),
+        app("Texte", "Notizen", ["notes"], "texte")
+    ]
+
+    function shownAs(text: string, units: int, starts: var): var {
+        const found = Rules.appHits(desktop, text, starts ?? {}, units);
+        return {
+            tiles: found.tiles.map(hit => hit.name),
+            rows: found.rows.map(hit => hit.name)
+        };
+    }
+
+    function test_only_apps_whose_name_matches_are_tiles_and_those_matching_by_generic_name_keyword_or_program_are_rows() {
+        compare(shownAs("te", 6), {
+            tiles: ["Teams", "Telegram", "Texte", "Kate", "Dateien"],
+            rows: ["Kalender", "Konsole", "Okular"]
+        });
+        compare(shownAs("dol", 6), { tiles: [], rows: ["Dateien"] }, "the program alone");
+        compare(shownAs("web", 6), { tiles: [], rows: ["Firefox"] }, "a keyword alone");
+        compare(shownAs("xyz", 6), { tiles: [], rows: [] });
+    }
+
+    function test_the_tiles_fill_one_row_beside_the_wide_best_hit_and_the_names_past_it_follow_as_rows() {
+        compare(shownAs("te", 4), {
+            tiles: ["Teams", "Telegram", "Texte"],
+            rows: ["Kalender", "Kate", "Konsole", "Okular", "Dateien"]
+        });
+        compare(shownAs("te", 2), {
+            tiles: ["Teams"],
+            rows: ["Telegram", "Texte", "Kalender", "Kate", "Konsole", "Okular", "Dateien"]
+        });
+    }
+
+    function test_an_app_started_more_often_comes_first_among_the_tiles_and_among_the_rows() {
+        compare(shownAs("te", 6, { konsole: 2, texte: 1 }), {
+            tiles: ["Texte", "Teams", "Telegram", "Kate", "Dateien"],
+            rows: ["Konsole", "Kalender", "Okular"]
+        });
+    }
+
+    function test_only_rekta_s_own_settings_carry_rekta_s_tune_icon() {
+        compare(Rules.ownGlyph("rekta-settings"), "tune");
+        compare(Rules.ownGlyph("systemsettings"), "");
+        compare(Rules.ownGlyph("org.kde.dolphin"), "");
+    }
+
     function test_a_start_counts_one_more_without_changing_the_counts_before() {
         const before = { kate: 1 };
         compare(Rules.counted(before, "kate"), { kate: 2 });
@@ -381,6 +437,60 @@ TestCase {
         compare(Rules.rowGroups(sources, "dat", {}, true).map(group => group.name), ["fenster", "einstellungen", "befehle"]);
         compare(Rules.rowGroups(sources, "datu", {}, true).map(group => group.name), ["einstellungen"]);
         compare(Rules.rowGroups(sources, "zzz", {}, true), []);
+    }
+
+    function test_the_apps_without_a_tile_come_as_rows_with_their_icon_after_a_calculation_and_before_the_windows() {
+        const noop = () => {};
+        const sources = {
+            apps: Rules.appHits(desktop, "te", {}, 6).rows.map(hit => Object.assign({ icon: `icon of ${hit.name}`, launch: noop }, hit)),
+            windows: [{ title: "Termine", app: "Kalender", lastActivated: 1, stackingOrder: 0, icon: "", activate: noop }],
+            settings: [],
+            commands: [],
+            decimalPoint: "."
+        };
+        const groups = Rules.rowGroups(sources, "te", {}, false);
+        compare(groups.map(group => group.name), ["apps", "fenster"]);
+        compare(groups[0].rows.map(row => [row.text, row.icon, row.lead, row.best === true]), [
+            ["Kalender", "icon of Kalender", "", false],
+            ["Konsole", "icon of Konsole", "", false],
+            ["Okular", "icon of Okular", "", false]
+        ]);
+        sources.apps = [Object.assign(app("KCalc", "Rechner", ["math"], "kcalc"), { icon: "", launch: noop })];
+        compare(Rules.rowGroups(sources, "1+1", {}, true).map(group => group.name), ["rechnen", "apps"], "a calculation comes first");
+    }
+
+    function test_without_an_app_tile_the_first_app_row_is_the_best_hit_and_it_starts_the_app() {
+        let started = "";
+        const sources = {
+            apps: [Object.assign(app("Firefox", "Webbrowser", ["web"], "firefox"), { icon: "", launch: () => started = "Firefox" })],
+            windows: [{ title: "web", app: "Konsole", lastActivated: 1, stackingOrder: 0, icon: "", activate: () => {} }],
+            settings: [],
+            commands: [],
+            decimalPoint: "."
+        };
+        const rows = Rules.rowGroups(sources, "web", {}, true).reduce((all, group) => all.concat(group.rows), []);
+        compare(rows.map(row => [row.text, row.best === true]), [["Firefox", true], ["web", false]]);
+        rows[0].run();
+        compare(started, "Firefox");
+    }
+
+    function test_a_window_titled_as_its_app_names_it_once_and_another_keeps_its_app_before_the_title() {
+        const noop = () => {};
+        const sources = {
+            windows: [
+                { title: "Karten", app: "Karten", lastActivated: 3, stackingOrder: 0, icon: "", activate: noop },
+                { title: "KARTEN", app: "Karten", lastActivated: 2, stackingOrder: 0, icon: "", activate: noop },
+                { title: "notiz.md", app: "Karten", lastActivated: 1, stackingOrder: 0, icon: "", activate: noop }
+            ],
+            settings: [],
+            commands: [],
+            decimalPoint: "."
+        };
+        compare(Rules.rowGroups(sources, "kar", {}, false)[0].rows.map(row => [row.lead, row.text]), [
+            ["", "Karten"],
+            ["", "KARTEN"],
+            ["Karten", "notiz.md"]
+        ]);
     }
 
     function test_only_the_very_first_row_is_the_best_hit_and_only_when_no_app_matches() {
