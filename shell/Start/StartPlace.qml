@@ -770,10 +770,6 @@ FocusScope {
             if (at instanceof Flickable)
                 scrollers.push(at);
         }
-        for (const scroller of scrollers) {
-            scroller.contentXChanged.connect(menuTileMoved);
-            scroller.contentYChanged.connect(menuTileMoved);
-        }
         menuScrollers = scrollers;
     }
 
@@ -784,10 +780,6 @@ FocusScope {
     }
 
     function forgetMenuTile() {
-        for (const scroller of menuScrollers) {
-            scroller.contentXChanged.disconnect(menuTileMoved);
-            scroller.contentYChanged.disconnect(menuTileMoved);
-        }
         menuScrollers = [];
     }
 
@@ -2033,6 +2025,26 @@ FocusScope {
             mouse.accepted = false;
         }
         onWheel: wheel => wheel.accepted = false
+    }
+
+    // Follows the menu's tile through its scrollers. A Connections lets go of a target that is destroyed, where a
+    // connect() would have to be undone on an object that may be gone by the time the menu closes.
+    Instantiator {
+        model: start.menuScrollers
+
+        delegate: Connections {
+            required property Flickable modelData
+
+            target: modelData
+
+            function onContentXChanged() {
+                start.menuTileMoved();
+            }
+
+            function onContentYChanged() {
+                start.menuTileMoved();
+            }
+        }
     }
 
     // An app tile's context menu (collections.md, "Context menus"): pin or unpin the app, and in "angeheftet" a group

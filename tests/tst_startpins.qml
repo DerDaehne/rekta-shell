@@ -390,6 +390,21 @@ TestCase {
         verify(!menu.open, "resized: its sizes are no longer true");
     }
 
+    function test_the_menu_on_an_alle_apps_tile_closes_cleanly_when_new_apps_refile_its_section() {
+        openNow();
+        goToAllApps();
+        rightClick(letterTile("Kate"), 30, 40);
+        verify(menu.open);
+        start.apps = [...installed, installedApp("org.kde.okular", "Okular")];
+        tryVerify(() => !menu.open, 1000, "its tile has gone");
+        rightClick(letterTile("Kate"), 30, 40);
+        let section = letterTile("Kate").parent;
+        while (!(section instanceof Flickable))
+            section = section.parent;
+        section.contentY += Geometry.contextMenuScrollSlop + 1;
+        verify(!menu.open, "the new menu follows its own tile and closes once it moves");
+    }
+
     // Items
 
     function test_an_app_not_pinned_offers_anheften_without_sizes() {
@@ -451,6 +466,29 @@ TestCase {
         compare(toaster.open.text, "Kate angeheftet");
         compare(toaster.open.action, "rückgängig");
         verify(start.wanted, "the Start stays open");
+    }
+
+    function test_a_tap_on_anheften_over_its_own_tile_pins_the_app_and_starts_nothing_data() {
+        return [
+            { tag: "mouse", finger: false },
+            { tag: "finger", finger: true }
+        ];
+    }
+
+    function test_a_tap_on_anheften_over_its_own_tile_pins_the_app_and_starts_nothing(data) {
+        openNow();
+        goToAllApps();
+        const kate = letterTile("Kate");
+        rightClick(kate, 30, 40);
+        const item = menu.items().find(row => row.text === "anheften");
+        const centre = Qt.point(item.width / 2, item.height / 2);
+        verify(kate.contains(item.mapToItem(kate, centre)), "anheften lies over the tile");
+        if (data.finger)
+            touchEvent(item).press(0, item, centre.x, centre.y).commit().release(0, item, centre.x, centre.y).commit();
+        else
+            mouseClick(item);
+        compare(calls, []);
+        compare(listed()[3], { id: "org.kde.kate", columns: 1, rows: 1 });
     }
 
     // Unpin
