@@ -476,7 +476,7 @@ TestCase {
         const region = part("nowPlaying");
         verify(region.played >= 10 && region.played < 11);
         const steps = stepsOf(region);
-        tryVerify(() => steps.length > 10, 5000, "it moves on frame by frame");
+        tryVerify(() => steps.length > 10 && steps[steps.length - 1].at - steps[0].at >= 300, 5000, "it moves on frame by frame");
         const first = steps[0];
         for (const [index, step] of steps.entries()) {
             const due = first.played + (step.at - first.at) / 1000;
