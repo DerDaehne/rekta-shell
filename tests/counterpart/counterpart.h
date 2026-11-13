@@ -1,13 +1,14 @@
 #pragma once
 
 #include <QDBusConnection>
+#include <QDBusMessage>
 #include <QDBusVirtualObject>
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
 // The other end of the bus for the tests of RektaShell.DBus, written against QtDBus alone. It owns
 // org.rekta.Counterpart, echoes every call to /echo back (or fails when asked "Fail") and records what arrived; it
-// sends signals, calls methods and asks the bus who owns a name.
+// sends and hears signals, calls methods and asks the bus who owns a name.
 class Counterpart : public QObject
 {
     Q_OBJECT
@@ -31,6 +32,8 @@ public:
                           const QVariantList &args);
     // The unique name owning name, or "" when nobody does.
     Q_INVOKABLE QString nameOwner(const QString &name);
+    // Reports each signal of that interface and member, from any sender, with heard().
+    Q_INVOKABLE bool listen(const QString &interfaceName, const QString &member);
 
     QString lastSignature() const
     {
@@ -46,6 +49,10 @@ public:
 Q_SIGNALS:
     void echoed();
     void replied(const QString &signature, const QVariantList &values, const QString &error);
+    void heard(const QString &sender, const QString &path, const QString &member, const QString &signature, const QVariantList &values);
+
+private Q_SLOTS:
+    void hear(const QDBusMessage &message);
 
 private:
     QDBusConnection m_connection;

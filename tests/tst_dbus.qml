@@ -30,8 +30,28 @@ TestCase {
           </signal>
         </interface>`
 
+    // The signals the counterpart heard since the test began, as { path, member, signature, values }.
+    property var heardByCounterpart: []
+
     Counterpart {
         id: counterpart
+
+        onHeard: (sender, path, member, signature, values) => testCase.heardByCounterpart.push({
+                path,
+                member,
+                signature,
+                values
+            })
+    }
+
+    function initTestCase() {
+        verify(counterpart.listen("org.rekta.Events", "Counted"));
+        // A round trip on the counterpart's own connection: its subscription has reached the bus.
+        counterpart.nameOwner("org.freedesktop.DBus");
+    }
+
+    function init() {
+        heardByCounterpart = [];
     }
 
     Component {
@@ -370,6 +390,35 @@ TestCase {
         compare(owners[0][0], "");
         verify(owners[1][0] !== "" && owners[1][1] !== "", owners[1]);
         compare(who(name), "second");
+    }
+
+    function test_a_signal_goes_out_from_its_path_with_each_argument_typed_by_the_signature() {
+        const heard = heardByCounterpart;
+        const bus = connection();
+        verify(bus.emitSignal("/events", "org.rekta.Events", "Counted", [3], "u"));
+        verify(bus.emitSignal("/events/2", "org.rekta.Events", "Counted", ["copy", 40, true], "sxb"));
+        tryVerify(() => heard.length === 2);
+        compare(heard[0], {
+            path: "/events",
+            member: "Counted",
+            signature: "u",
+            values: [3]
+        });
+        compare(heard[1].path, "/events/2");
+        compare(heard[1].signature, "sxb");
+        compare(heard[1].values, ["copy", 40, true]);
+    }
+
+    function test_a_signal_whose_values_do_not_fit_its_signature_is_not_sent() {
+        const heard = heardByCounterpart;
+        const bus = connection();
+        ignoreWarning(/cannot send Counted the signature u needs 1 values, not 2/);
+        verify(!bus.emitSignal("/events", "org.rekta.Events", "Counted", [1, 2], "u"));
+        ignoreWarning(/cannot send Counted .*not a valid D-Bus signature/);
+        verify(!bus.emitSignal("/events", "org.rekta.Events", "Counted", [1], "a{vs}"));
+        verify(bus.emitSignal("/events", "org.rekta.Events", "Counted", [7], "u"));
+        tryVerify(() => heard.length > 0);
+        compare(heard.map(signal => signal.values[0]), [7]);
     }
 
     function test_a_name_is_free_once_its_owner_is_gone() {

@@ -99,6 +99,16 @@ QString Counterpart::nameOwner(const QString &name)
     return m_connection.interface()->serviceOwner(name).value();
 }
 
+bool Counterpart::listen(const QString &interfaceName, const QString &member)
+{
+    return m_connection.connect({}, {}, interfaceName, member, this, SLOT(hear(QDBusMessage)));
+}
+
+void Counterpart::hear(const QDBusMessage &message)
+{
+    Q_EMIT heard(message.service(), message.path(), message.member(), message.signature(), plainValues(message.arguments()));
+}
+
 void Counterpart::record(const QDBusMessage &message)
 {
     m_lastSignature = message.signature();

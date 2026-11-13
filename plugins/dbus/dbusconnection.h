@@ -8,9 +8,9 @@
 
 #include <optional>
 
-// A connection of its own to the session or system bus: listen to signals, call methods, own names. Each instance has
-// its own connection, so an instance that goes away (a reload of the shell) takes its names and subscriptions with it
-// and leaves the next owner in line the name.
+// A connection of its own to the session or system bus: listen to signals, call methods, own names, send signals. Each
+// instance has its own connection, so an instance that goes away (a reload of the shell) takes its names and
+// subscriptions with it and leaves the next owner in line the name.
 class DBusConnection : public QObject
 {
     Q_OBJECT
@@ -54,6 +54,13 @@ public:
     // Exports the interfaces of introspectionXml (its <interface> elements) at path and every path below it, and queues
     // for the name.
     Q_INVOKABLE bool own(const QString &name, const QString &path, const QString &introspectionXml);
+    // Sends a signal from path, its arguments typed by signature as a call's are; false when they do not fit the
+    // signature or there is no bus.
+    Q_INVOKABLE bool emitSignal(const QString &path,
+                                const QString &interfaceName,
+                                const QString &member,
+                                const QJSValue &args,
+                                const QString &signature);
 
     // The reply to a call to an owned object: the handler's values, typed by the method's out arguments.
     QDBusMessage answer(const QDBusMessage &call, const QString &outSignature);

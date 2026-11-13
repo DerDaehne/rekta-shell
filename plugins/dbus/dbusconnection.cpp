@@ -273,3 +273,19 @@ QDBusMessage DBusConnection::answer(const QDBusMessage &call, const QString &out
         return call.createErrorReply(QDBusError::Failed, encoded.error);
     return call.createReply(encoded.arguments);
 }
+
+bool DBusConnection::emitSignal(const QString &path,
+                                const QString &interfaceName,
+                                const QString &member,
+                                const QJSValue &args,
+                                const QString &signature)
+{
+    const Marshalling::Encoded encoded = Marshalling::encode(args.toVariant(QJSValue::ConvertJSObjects).toList(), signature);
+    if (!encoded.error.isEmpty()) {
+        qWarning().noquote() << "DBusConnection: cannot send" << member << encoded.error;
+        return false;
+    }
+    QDBusMessage message = QDBusMessage::createSignal(path, interfaceName, member);
+    message.setArguments(encoded.arguments);
+    return connection().send(message);
+}
