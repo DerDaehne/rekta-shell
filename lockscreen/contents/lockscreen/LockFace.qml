@@ -3,8 +3,9 @@ import Rekta
 
 // What one monitor shows while the session is locked, on the plain ground, everything a space-xl from the edges: the
 // time as a large light title top left with the date as its fact line, bottom left the name over the password field
-// and "entsperren", bottom right a status area over "benutzer wechseln". Only the active monitor shows it all; the
-// others show the clock alone, as an inactive title, and the rest comes and goes as a state change (motion.md).
+// and the row of "entsperren" and "benutzer wechseln", bottom right the status area. Only the active monitor
+// shows it all; the others show the clock alone, as an inactive title, and the rest comes and goes as a state change
+// (motion.md).
 Rectangle {
     id: face
 
@@ -145,11 +146,23 @@ Rectangle {
                 text: "wird geprüft …"
             }
 
-            Button {
-                objectName: "unlock"
-                variant: "primary"
-                text: "entsperren"
-                onClicked: face.submitted(field.text)
+            Row {
+                spacing: Tokens.spaceS
+
+                Button {
+                    objectName: "unlock"
+                    variant: "primary"
+                    text: "entsperren"
+                    onClicked: face.submitted(field.text)
+                }
+
+                Button {
+                    objectName: "switchUser"
+                    visible: face.canSwitchUser
+                    variant: "quiet"
+                    text: "benutzer wechseln"
+                    onClicked: face.switchUser()
+                }
             }
         }
 
@@ -158,7 +171,6 @@ Rectangle {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.margins: Tokens.spaceXl
-            spacing: Tokens.spaceXs
 
             // What is going on as figures and words, right-aligned, new messages before what is playing
             // (site/index.html:720); it takes no room while it holds nothing. Unsized, the figures stand in one row.
@@ -191,15 +203,6 @@ Rectangle {
                     maximumWidth: face.width - 2 * Tokens.spaceXl - signIn.width - Tokens.spaceL
                         - (face.unseen > 0 ? notices.width + Tokens.spaceM : 0)
                 }
-            }
-
-            Button {
-                objectName: "switchUser"
-                x: parent.width - width
-                visible: face.canSwitchUser
-                variant: "quiet"
-                text: "benutzer wechseln"
-                onClicked: face.switchUser()
             }
         }
     }

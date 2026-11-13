@@ -499,7 +499,7 @@ TestCase {
         verify(input().activeFocus, "the field takes the keyboard");
     }
 
-    function test_the_name_and_field_stand_bottom_left_and_switch_user_bottom_right() {
+    function test_the_name_and_field_stand_bottom_left_and_the_status_bottom_right() {
         const name = part("name"), signIn = part("signIn"), corner = part("corner");
         compare(name.text, "rekta");
         compare(name.font.weight, Tokens.fontWeightLight);
@@ -510,14 +510,47 @@ TestCase {
         compare(part("unlock").variant, "primary");
         compare(corner.x + corner.width, face.width - Tokens.spaceXl);
         compare(corner.y + corner.height, face.height - Tokens.spaceXl);
-        const switchUser = part("switchUser");
+        verify(!part("status").visible, "the empty status area takes no room");
+        compare(corner.height, 0);
+        compare(findChild(corner, "switchUser"), null, "no control in the corner");
+    }
+
+    function test_switch_user_is_a_quiet_button_in_the_row_of_unlock_space_s_behind_it() {
+        const unlock = part("unlock"), switchUser = part("switchUser"), field = part("password"), dots = part("dots");
         compare(switchUser.variant, "quiet");
         compare(switchUser.text, "benutzer wechseln");
-        const bottomRight = Qt.point(face.width - Tokens.spaceXl, face.height - Tokens.spaceXl);
-        compare(switchUser.mapToItem(face, switchUser.width, switchUser.height), bottomRight);
-        verify(!part("status").visible, "the empty status area takes no room");
+        compare(switchUser.mapToItem(face, 0, 0).y, unlock.mapToItem(face, 0, 0).y, "one row");
+        compare(switchUser.mapToItem(face, 0, switchUser.height).y, face.height - Tokens.spaceXl, "at the bottom of the sign-in");
+        compare(switchUser.mapToItem(face, 0, 0).x, unlock.mapToItem(face, unlock.width, 0).x + Tokens.spaceS);
+        compare(unlock.mapToItem(face, 0, 0).x, field.mapToItem(face, 0, 0).x, "flush with the field's leading edge");
+        compare(unlock.mapToItem(face, 0, 0).y - dots.mapToItem(face, 0, dots.height).y, Tokens.spaceS, "below the dots");
+        let switched = 0;
+        face.switchUser.connect(() => switched++);
+        mouseClick(switchUser);
+        compare(switched, 1);
+    }
+
+    function test_without_switching_users_unlock_stands_alone_where_it_stood() {
+        const unlock = part("unlock"), at = unlock.mapToItem(face, 0, 0);
         face.canSwitchUser = false;
-        verify(!switchUser.visible);
+        verify(!part("switchUser").visible);
+        compare(unlock.mapToItem(face, 0, 0), at);
+        compare(part("signIn").y + part("signIn").height, face.height - Tokens.spaceXl);
+    }
+
+    function test_tab_goes_from_the_field_through_the_layouts_to_unlock_and_then_switch_user() {
+        face.layouts = ["de", "us"];
+        let switched = 0;
+        face.switchUser.connect(() => switched++);
+        tryVerify(() => input().activeFocus);
+        keyClick(Qt.Key_Tab);
+        verify(part("layouts").activeFocus, "the layouts");
+        keyClick(Qt.Key_Tab);
+        verify(part("unlock").activeFocus, "unlock");
+        keyClick(Qt.Key_Tab);
+        verify(part("switchUser").activeFocus, "switch user");
+        keyClick(Qt.Key_Return);
+        compare(switched, 1, "Enter presses it");
     }
 
     function test_the_layouts_stand_beside_the_field_level_with_its_input_only_when_there_are_several() {
@@ -550,7 +583,6 @@ TestCase {
         compare(icon.color, words.color, "the icon in the colour of its words");
         compare(words.leftPadding, Geometry.iconSize + Tokens.spaceS, "space-s between icon and words");
         compare(status.mapToItem(face, status.width, 0).x, face.width - Tokens.spaceXl, "right-aligned");
-        compare(status.mapToItem(face, 0, status.height).y + Tokens.spaceXs, part("switchUser").mapToItem(face, 0, 0).y, "over switch user");
         compare(corner.y + corner.height, face.height - Tokens.spaceXl);
         compare(playing.Accessible.name, "Nachtfahrt läuft · Kolibri");
         players.setProperty(0, "track", "Morgengrau");
@@ -566,11 +598,10 @@ TestCase {
         compare(icon.mapToItem(words, 0, icon.height / 2).y, words.lineHeight / 2, "on the centre of the first line box");
     }
 
-    function test_a_title_shorter_than_switch_user_still_stands_at_the_right_edge() {
+    function test_a_short_title_still_stands_at_the_right_edge() {
         play("Ja", "Kolibri", playback.playing);
-        const status = part("status"), switchUser = part("switchUser");
+        const status = part("status");
         waitForRendering(face);
-        verify(status.width < switchUser.width);
         compare(status.mapToItem(face, status.width, 0).x, face.width - Tokens.spaceXl);
     }
 
@@ -614,7 +645,7 @@ TestCase {
     }
 
     function test_a_paused_or_stopped_player_or_one_without_a_title_shows_nothing_and_takes_no_room() {
-        const corner = part("corner"), switchUser = part("switchUser");
+        const corner = part("corner");
         const height = corner.height;
         for (const [track, status] of [["Nachtfahrt", playback.paused], ["Nachtfahrt", playback.stopped], ["", playback.playing]]) {
             play(track, "Kolibri", status);
@@ -625,7 +656,7 @@ TestCase {
         verify(part("status").visible);
         players.setProperty(0, "playbackStatus", playback.paused);
         verify(!part("status").visible, "pausing takes it away");
-        compare(switchUser.mapToItem(face, 0, switchUser.height).y, face.height - Tokens.spaceXl);
+        compare(corner.y + corner.height, face.height - Tokens.spaceXl);
     }
 
     function test_without_a_player_nothing_shows() {
