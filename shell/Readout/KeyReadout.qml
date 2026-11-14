@@ -13,6 +13,8 @@ QtObject {
     property bool muted: false
     property real micVolume: 0
     property bool micMuted: false
+    // The most a volume key raises a volume to: 100%, or 150% where plasma-pa's settings allow more than 100%.
+    property real volumeMax: 1
     property real brightness: 0
     property real brightnessMax: 0
     property string layoutName
@@ -32,19 +34,43 @@ QtObject {
     signal pressed
     signal news(string words)
 
-    readonly property var kmixKinds: ({
-            increase_volume: "volume",
-            decrease_volume: "volume",
-            increase_volume_small: "volume",
-            decrease_volume_small: "volume",
-            mute: "volume",
-            mic_mute: "mic",
-            increase_microphone_volume: "mic",
-            decrease_microphone_volume: "mic"
+    // The kind each key shows, and which way it moves the volume.
+    readonly property var kmixKeys: ({
+            increase_volume: { kind: "volume", way: 1 },
+            decrease_volume: { kind: "volume", way: -1 },
+            increase_volume_small: { kind: "volume", way: 1 },
+            decrease_volume_small: { kind: "volume", way: -1 },
+            mute: { kind: "volume", way: 0 },
+            mic_mute: { kind: "mic", way: 0 },
+            increase_microphone_volume: { kind: "mic", way: 1 },
+            decrease_microphone_volume: { kind: "mic", way: -1 }
         })
 
     function percent(fraction: real): string {
         return `${Math.round(fraction * 100)}%`;
+    }
+
+    // plasma-pa moves a volume to its target bounded by 0 and `volumeMax`, in whole percent, and mutes it exactly at 0:
+    // a key that finds it already at the bound in its way changes nothing, and no new value comes back.
+    function stays(fraction: real, isMuted: bool, way: int): bool {
+        if (way > 0)
+            return !isMuted && percent(fraction) === percent(volumeMax);
+        if (way < 0)
+            return isMuted && percent(fraction) === "0%";
+        return false;
+    }
+
+    // Whether plasma-pa's settings (plasmaparc) let the volume keys raise a volume above 100%.
+    function raisesAboveFull(plasmaparc: string): bool {
+        let inGeneral = false;
+        for (const rawLine of plasmaparc.split("\n")) {
+            const line = rawLine.trim();
+            if (line.startsWith("["))
+                inGeneral = line === "[General]";
+            else if (inGeneral && /^RaiseMaximumVolume(\[[^\]]*\])*=/.test(line))
+                return /^(true|on|yes|1)$/i.test(line.slice(line.indexOf("=") + 1).trim());
+        }
+        return false;
     }
 
     function describe(kind: string): var {
@@ -61,14 +87,14 @@ QtObject {
     }
 
     // The volume and microphone keys reach the shell before kded6's new value comes back through PipeWire, so what
-    // stands at the key is no news; a key at a limit changes nothing and brings none.
+    // stands at the key is no news.
     function show(shownKind: string) {
         kind = shownKind;
         told = spoken;
         pressed();
     }
 
-    // For a key whose new value came with it.
+    // For a key whose value is already here: it came with the key, or the key cannot change it.
     function showWithNews(shownKind: string) {
         show(shownKind);
         tell();
@@ -89,9 +115,14 @@ QtObject {
 
     // A shortcut of kglobalaccel went off; the volume and microphone keys belong to its component "kmix".
     function shortcutPressed(component: string, action: string) {
-        const shownKind = kmixKinds[action];
-        if (component === "kmix" && shownKind)
-            show(shownKind);
+        const key = kmixKeys[action];
+        if (component !== "kmix" || !key)
+            return;
+        const atBound = key.kind === "mic" ? stays(micVolume, micMuted, key.way) : stays(volume, muted, key.way);
+        if (atBound)
+            showWithNews(key.kind);
+        else
+            show(key.kind);
     }
 
     // powerdevil tells every change of brightness; only a key's carries the context "brightness_key". The range is that of
@@ -104,7 +135,9 @@ QtObject {
         showWithNews("brightness");
     }
 
-    function layoutSwitched() {
+    // With the new name: the handler that sees the switch runs before a binding to the name would have caught up.
+    function layoutSwitched(name: string) {
+        layoutName = name;
         showWithNews("layout");
     }
 }
