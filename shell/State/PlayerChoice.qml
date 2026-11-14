@@ -26,6 +26,8 @@ QtObject {
     readonly property var present: players.filter(player => player.isPlaying || (player.playbackState === PlayerChoice.Paused && player.trackTitle !== ""))
     // What "läuft gerade" shows.
     readonly property var player: present.includes(latest) ? latest : present.find(player => player.isPlaying) ?? present[0] ?? null
+    // Whether the last skip went to the track before, so the next track comes from that side.
+    property bool wentBack: false
     // What the bar's middle shows.
     readonly property var playingPlayer: player?.isPlaying ? player : players.find(player => player.isPlaying) ?? null
 
@@ -66,13 +68,17 @@ QtObject {
     }
 
     function next() {
-        if (player?.canGoNext)
-            player.next();
+        if (!player?.canGoNext)
+            return;
+        wentBack = false;
+        player.next();
     }
 
     function previous() {
-        if (player?.canGoPrevious)
-            player.previous();
+        if (!player?.canGoPrevious)
+            return;
+        wentBack = true;
+        player.previous();
     }
 
     // Quickshell lists a player only once it has read its state, so one that comes playing never changes isPlaying:

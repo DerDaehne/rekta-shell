@@ -6,6 +6,7 @@ import Panel
 import Rekta
 import State
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -19,6 +20,7 @@ TestCase {
 
     // A 40 × 40 picture, as a player hands its cover over.
     readonly property string cover: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAHlBMVEX///86dvBEffF4ofW5zvrs8v7///9Be/GcuvdVifLlkWmGAAAAAXRSTlMAQObYZgAAAI1JREFUOMu11UkOgCAQRFGaocH7X9iFMaKW5DvV+sWANEUIS+wyoY8NA9lGzaCk0AxKCg3mOYwpFy85xTGszde0OoCT95ku4d7tZQ+rH1M1bCfYJIx+TlQwCZgUzAJmBYuARUFXefVFvEa8a/wf8cnws8bTw+eRTzi/M39c17dVcaekvu9HXs287NHzMQN/Vg0WT30WoAAAAABJRU5ErkJggg=="
+    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
     property Item scene
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var side
@@ -675,6 +677,200 @@ TestCase {
     }
 
     // Both themes: one player with a cover, then two with the select.
+    // Starts recording how the shown item comes in.
+    function entry(): var {
+        const region = part("nowPlaying");
+        return {
+            region,
+            shifts: Glide.record(region, "entryShift"),
+            fades: Glide.record(region, "entryOpacity")
+        };
+    }
+
+    // Waits for the item to have come in, and tells how far it strayed from sliding `from` → 0 with a fade 0 → 1 together
+    // along ease-out over 0.75 × duration-moderate since `since`.
+    function cameIn(recorded: var, from: real, since: real, ticks: var): real {
+        tryVerify(() => recorded.shifts.length > 0 && !findChild(recorded.region, "entering").running, 1000, "it has come in");
+        compare(recorded.shifts[0].value, from, "it starts from that edge");
+        compare(recorded.fades[0].value, 0, "unseen");
+        compare(recorded.region.entryShift, 0);
+        compare(recorded.region.entryOpacity, 1);
+        return Glide.strayOf([{ steps: recorded.shifts, from, to: 0 }, { steps: recorded.fades, from: 0, to: 1 }], 0.75 * Tokens.durationModerate, easeOut, since, ticks);
+    }
+
+    // A further track comes in; that it is the first slide recorded shows nothing slid before it.
+    function onlyTheNextSlides(recorded: var, one: var) {
+        one.trackTitle = "Black Milk";
+        tryVerify(() => recorded.region.shownTrack.startsWith("Black Milk"), 1000, "it has taken the next track");
+        tryVerify(() => !findChild(recorded.region, "entering").running, 1000, "the next track has come in");
+        verify(recorded.shifts.length > 0, "it came in");
+        compare(recorded.shifts.filter(step => step.value === Tokens.slideDistance).length, 1, "nothing slid before it");
+        compare(recorded.fades.filter(step => step.value === 0).length, 1, "nothing faded before it");
+    }
+
+    // How opaque `item` shows inside `within`: its own opacity times that of every item around it.
+    function seenOpacity(item: Item, within: Item): real {
+        let seen = 1;
+        for (let at = item; at && at !== within; at = at.parent)
+            seen *= at.opacity;
+        return seen;
+    }
+
+    function nextTrack(one: var) {
+        one.trackTitle = "Angel";
+        one.trackArtist = "Massive Attack";
+        one.trackAlbum = "Mezzanine";
+        one.position = 0;
+    }
+
+    function test_after_next_the_new_track_slides_in_from_the_trailing_edge_with_a_fade_over_three_quarters_of_duration_moderate() {
+        const ticks = Glide.ticks(testCase);
+        const one = givePlayer();
+        showSettled();
+        Prefs.motion = "on";
+        const before = {};
+        for (const name of ["kicker", "previous", "playPause", "next"])
+            before[name] = findChild(part("nowPlaying"), name).mapToItem(part("nowPlaying"), 0, 0).x;
+        const recorded = entry();
+        mouseClick(part("next"));
+        compare(one.calls, ["next"]);
+        const since = Date.now();
+        nextTrack(one);
+        tryVerify(() => findChild(recorded.region, "entering").running, 1000, "the new track comes in");
+        compare(part("title").text, "Angel", "the new track's words are in place at once");
+        for (const name of ["track", "progress"]) {
+            compare(part(name).opacity, recorded.region.entryOpacity, `${name} fades in`);
+            compare(part(name).transform[0].x, recorded.region.entryShift, `${name} slides in`);
+        }
+        for (const name of ["kicker", "previous", "playPause", "next"]) {
+            const still = findChild(recorded.region, name);
+            compare(seenOpacity(still, recorded.region), 1, `${name} stays`);
+            compare(still.mapToItem(recorded.region, 0, 0).x, before[name], `${name} stays in place`);
+        }
+        const stray = cameIn(recorded, Tokens.slideDistance, since, ticks);
+        verify(stray < 0.06, `it slides and fades together along ease-out, off by ${stray}`);
+    }
+
+    function test_after_previous_the_track_before_slides_in_from_the_leading_edge() {
+        const ticks = Glide.ticks(testCase);
+        const one = givePlayer();
+        showSettled();
+        Prefs.motion = "on";
+        const recorded = entry();
+        mouseClick(part("previous"));
+        compare(one.calls, ["previous"]);
+        const since = Date.now();
+        nextTrack(one);
+        const stray = cameIn(recorded, -Tokens.slideDistance, since, ticks);
+        verify(stray < 0.06, `off by ${stray}`);
+    }
+
+    function test_a_media_key_back_also_brings_the_track_from_the_leading_edge_and_the_next_one_after_it_from_the_trailing() {
+        const one = givePlayer();
+        showSettled();
+        Prefs.motion = "on";
+        let recorded = entry();
+        controls.choice.previous();
+        nextTrack(one);
+        tryVerify(() => recorded.shifts.length > 0, 1000);
+        compare(recorded.shifts[0].value, -Tokens.slideDistance);
+        tryVerify(() => !findChild(recorded.region, "entering").running, 1000);
+        recorded = entry();
+        one.trackTitle = "Inertia Creeps";
+        tryVerify(() => recorded.shifts.length > 0, 1000, "a track that follows on its own comes forward");
+        compare(recorded.shifts[0].value, Tokens.slideDistance);
+    }
+
+    function test_a_track_that_follows_on_its_own_slides_in_from_the_trailing_edge() {
+        const ticks = Glide.ticks(testCase);
+        const one = givePlayer();
+        showSettled();
+        Prefs.motion = "on";
+        const recorded = entry();
+        const since = Date.now();
+        nextTrack(one);
+        const stray = cameIn(recorded, Tokens.slideDistance, since, ticks);
+        verify(stray < 0.06, `off by ${stray}`);
+    }
+
+    function test_a_pick_in_the_select_slides_the_picked_players_track_in_from_its_side_of_the_select() {
+        const ticks = Glide.ticks(testCase);
+        const browser = player({ identity: "Firefox", playbackState: PlayerChoice.Paused, trackTitle: "A talk" });
+        controls.choice.players = [browser, player()];
+        showSettled();
+        Prefs.motion = "on";
+        const picker = part("player");
+        let recorded = entry();
+        picker.forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        keyClick(Qt.Key_Up);
+        let since = Date.now();
+        keyClick(Qt.Key_Return);
+        compare(picker.currentText, "Firefox");
+        let stray = cameIn(recorded, -Tokens.slideDistance, since, ticks);
+        verify(stray < 0.06, `one earlier in the select comes from the leading edge, off by ${stray}`);
+        recorded = entry();
+        keyClick(Qt.Key_Return);
+        keyClick(Qt.Key_Down);
+        since = Date.now();
+        keyClick(Qt.Key_Return);
+        compare(picker.currentText, "Elisa");
+        stray = cameIn(recorded, Tokens.slideDistance, since, ticks);
+        verify(stray < 0.06, `one later in the select comes from the trailing edge, off by ${stray}`);
+    }
+
+    function test_the_first_display_and_new_data_of_the_same_track_stand_still() {
+        const ticks = Glide.ticks(testCase);
+        Prefs.motion = "on";
+        side.show(0);
+        tryVerify(() => !findChild(side, "comingIn").running, Tokens.durationModerate * 4, "it has come in");
+        const region = part("nowPlaying");
+        const shifts = Glide.record(region, "entryShift");
+        const fades = Glide.record(region, "entryOpacity");
+        const one = givePlayer();
+        verify(region.visible);
+        tryVerify(() => region.shownPlayer === one, 1000, "it shows the player");
+        one.trackArtUrl = cover;
+        one.position = 20;
+        one.length = 250;
+        one.playbackState = PlayerChoice.Paused;
+        one.playbackState = PlayerChoice.Playing;
+        one.trackArtist = "Massive Attack";
+        const taken = ticks.length;
+        tryVerify(() => ticks.length > taken + 1, 1000, "two frames pass");
+        onlyTheNextSlides({ region, shifts, fades }, one);
+    }
+
+    function test_a_track_that_changes_while_the_panel_is_closed_stands_still_when_it_opens() {
+        const one = givePlayer();
+        showSettled();
+        Prefs.motion = "on";
+        side.close();
+        tryVerify(() => !part("nowPlaying").visible, 1000, "the panel is closed");
+        const recorded = entry();
+        nextTrack(one);
+        tryVerify(() => recorded.region.shownTrack.startsWith("Angel"), 1000, "it has taken the track");
+        compare(recorded.shifts.length, 0, "nothing comes in while the panel is closed");
+        side.show(0);
+        tryVerify(() => part("nowPlaying").visible, 1000);
+        compare(part("title").text, "Angel");
+        onlyTheNextSlides(recorded, one);
+    }
+
+    function test_under_reduced_motion_the_next_track_stands_at_once() {
+        const one = givePlayer();
+        showSettled();
+        const recorded = entry();
+        mouseClick(part("next"));
+        nextTrack(one);
+        compare(part("title").text, "Angel", "at once");
+        compare(part("track").opacity, 1);
+        compare(part("track").transform[0].x, 0);
+        tryVerify(() => recorded.region.shownTrack.startsWith("Angel"), 1000, "it has taken the track");
+        Prefs.motion = "on";
+        onlyTheNextSlides(recorded, one);
+    }
+
     function test_contact_sheet_of_laeuft_gerade_in_both_themes() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");

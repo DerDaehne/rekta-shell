@@ -11,6 +11,9 @@ import State
 // (states.md:89–98); then its progress with the time played and its length. Below stand previous, play or pause, and
 // next. It shows while a player plays or holds a track paused, and is gone without one.
 // The progress glides on from what the player last reported at its rate, and only while it is in sight.
+// Another track or another player comes in as the next item in the same place (motion.md, "Next item, same place"):
+// the track and its progress from the trailing edge, from the leading edge after a skip back or a pick earlier in the
+// select. The first display, and a cover, position or pause of the same track, stand still.
 Column {
     id: nowPlaying
 
@@ -22,6 +25,12 @@ Column {
     readonly property real length: player?.lengthSupported ? player.length : 0
     // Seconds into the track.
     property real played: 0
+    // The item in sight: its player and its track's title, artist and album.
+    property var shownPlayer: null
+    property string shownTrack: ""
+    // Where the item coming in is on its way.
+    property real entryShift: 0
+    property real entryOpacity: 1
 
     // Takes where the player stands; while it plays in sight, it glides on to the track's end at the player's rate.
     function follow() {
@@ -35,11 +44,37 @@ Column {
         gliding.start();
     }
 
+    // ponytail: a skip back the player answers without a new track (one restarting it) leaves wentBack set, so the
+    // next track that ends on its own comes from the leading edge; clear it on the player's seek if that shows.
+    function advance() {
+        const track = player ? [player.trackTitle, player.trackArtist, player.trackAlbum].join("\n") : "";
+        const before = shownPlayer;
+        const same = player === before && track === shownTrack;
+        shownPlayer = player;
+        shownTrack = track;
+        if (same || !before || !player || !visible)
+            return;
+        const back = player === before ? choice.wentBack : present.indexOf(player) < present.indexOf(before);
+        choice.wentBack = false;
+        comeIn(back ? -1 : 1);
+    }
+
+    function comeIn(direction: int) {
+        if (Tokens.durationModerate === 0)
+            return;
+        entryShift = direction * Tokens.slideDistance;
+        entryOpacity = 0;
+        entering.restart();
+    }
+
     width: parent ? parent.width : 0
     visible: player !== null
     topPadding: Tokens.spaceXl
     bottomPadding: Tokens.spaceL
-    onPlayerChanged: follow()
+    onPlayerChanged: {
+        follow();
+        Qt.callLater(nowPlaying.advance);
+    }
     onVisibleChanged: follow()
     onLengthChanged: follow()
 
@@ -66,6 +101,43 @@ Column {
         function onRateChanged() {
             nowPlaying.follow();
         }
+
+        // A track's words arrive one by one; they are taken together once all have come.
+        function onTrackTitleChanged() {
+            Qt.callLater(nowPlaying.advance);
+        }
+
+        function onTrackArtistChanged() {
+            Qt.callLater(nowPlaying.advance);
+        }
+
+        function onTrackAlbumChanged() {
+            Qt.callLater(nowPlaying.advance);
+        }
+    }
+
+    ParallelAnimation {
+        id: entering
+
+        objectName: "entering"
+        readonly property real duration: 0.75 * Tokens.durationModerate
+
+        NumberAnimation {
+            target: nowPlaying
+            property: "entryShift"
+            to: 0
+            duration: entering.duration
+            easing.type: Easing.Bezier
+            easing.bezierCurve: Tokens.easeOut
+        }
+        NumberAnimation {
+            target: nowPlaying
+            property: "entryOpacity"
+            to: 1
+            duration: entering.duration
+            easing.type: Easing.Bezier
+            easing.bezierCurve: Tokens.easeOut
+        }
     }
 
     StatusRegion {
@@ -91,10 +163,18 @@ Column {
             },
             Track {
                 width: nowPlaying.width
+                opacity: nowPlaying.entryOpacity
+                transform: Translate {
+                    x: nowPlaying.entryShift
+                }
             },
             Progress {
                 objectName: "progress"
                 width: nowPlaying.width
+                opacity: nowPlaying.entryOpacity
+                transform: Translate {
+                    x: nowPlaying.entryShift
+                }
                 visible: nowPlaying.length > 0
                 value: visible ? Math.min(1, nowPlaying.played / nowPlaying.length) : -1
                 valueText: `${Middle.clock(nowPlaying.played)} / ${Middle.clock(nowPlaying.length)}`
@@ -108,7 +188,7 @@ Column {
             icon: "previous"
             label: "vorheriger titel"
             disabledReason: nowPlaying.player?.canGoPrevious ? "" : "Kein Titel davor."
-            onClicked: nowPlaying.player.previous()
+            onClicked: nowPlaying.choice.previous()
         }
 
         IconButton {
@@ -124,7 +204,7 @@ Column {
             icon: "next"
             label: "nächster titel"
             disabledReason: nowPlaying.player?.canGoNext ? "" : "Kein Titel danach."
-            onClicked: nowPlaying.player.next()
+            onClicked: nowPlaying.choice.next()
         }
     }
 
