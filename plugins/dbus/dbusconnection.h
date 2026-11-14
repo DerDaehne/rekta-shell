@@ -1,5 +1,7 @@
 #pragma once
 
+#include "marshalling.h"
+
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QJSValue>
@@ -19,7 +21,8 @@ class DBusConnection : public QObject
     // Read on first use; changing it later has no effect.
     Q_PROPERTY(Bus bus MEMBER m_bus FINAL)
     // Answers calls to the owned objects: (path, interface, member, args) => the reply's values. With several out
-    // arguments it returns an array of them; a thrown Error becomes an error reply.
+    // arguments it returns an array of them; a thrown Error becomes an error reply. A property read asks it as a method
+    // of the property's name without arguments.
     Q_PROPERTY(QJSValue handler READ handler WRITE setHandler FINAL)
 
 public:
@@ -52,7 +55,7 @@ public:
                           const QString &signature,
                           const QJSValue &callback = {});
     // Exports the interfaces of introspectionXml (its <interface> elements) at path and every path below it, and queues
-    // for the name.
+    // for the name. Their properties can only be read.
     Q_INVOKABLE bool own(const QString &name, const QString &path, const QString &introspectionXml);
     // Sends a signal from path, its arguments typed by signature as a call's are; false when they do not fit the
     // signature or there is no bus.
@@ -62,8 +65,12 @@ public:
                                 const QJSValue &args,
                                 const QString &signature);
 
-    // The reply to a call to an owned object: the handler's values, typed by the method's out arguments.
-    QDBusMessage answer(const QDBusMessage &call, const QString &outSignature);
+    // The handler's answer to a call to an owned object, typed by signature, or the error text.
+    Marshalling::Encoded ask(const QString &path,
+                             const QString &interfaceName,
+                             const QString &member,
+                             const QVariantList &args,
+                             const QString &signature);
 
 Q_SIGNALS:
     void received(const QString &sender,

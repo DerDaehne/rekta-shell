@@ -228,6 +228,22 @@ TestCase {
         compare(answer.values, args);
     }
 
+    function test_a_list_of_words_in_a_variant_goes_out_as_strings_and_any_other_list_as_variants() {
+        const args = [{
+                words: ["a", "b"],
+                mixed: ["a", 1],
+                none: []
+            }];
+        const answer = echo(args, "a{sv}");
+        compare(answer.error, null);
+        compare(counterpart.variantTypes, {
+            words: "QStringList",
+            mixed: "QDBusArgument",
+            none: "QDBusArgument"
+        });
+        compare(answer.values, args);
+    }
+
     function test_a_missing_service_an_error_reply_and_a_wrong_signature_come_back_as_the_error() {
         const bus = connection();
         const missing = callThrough(bus, "org.rekta.Missing", "/", "org.rekta.Missing", "Anything", [], "");
@@ -354,6 +370,87 @@ TestCase {
             verify(xml.values[0].includes(`<interface name="org.rekta.Jobs">`), xml.values[0]);
             verify(xml.values[0].includes(`<method name="requestView">`), xml.values[0]);
         }
+    }
+
+    readonly property string gaugeXml: `
+        <interface name="org.rekta.Gauge">
+          <property name="Level" type="u" access="read"/>
+          <property name="Names" type="as" access="read"/>
+          <property name="Secret" type="s" access="write"/>
+          <property name="Broken" type="u" access="read"/>
+        </interface>`
+    readonly property string properties: "org.freedesktop.DBus.Properties"
+
+    function ownGauge(name, asked) {
+        const bus = connection({
+            handler: (path, iface, member, args) => {
+                asked?.push([path, iface, member, args]);
+                if (member === "Broken")
+                    throw new Error("no level");
+                return member === "Level" ? 7 : ["a", "b"];
+            }
+        });
+        verify(bus.own(name, "/gauge", gaugeXml));
+        return bus;
+    }
+
+    function test_a_property_is_read_through_the_handler_as_a_method_of_its_name_and_typed_as_declared() {
+        const name = "org.rekta.Test.Gauge";
+        const asked = [];
+        ownGauge(name, asked);
+        compare(callFromCounterpart(name, "/gauge", properties, "Get", ["org.rekta.Gauge", "Level"]), {
+            signature: "v",
+            values: [7],
+            error: ""
+        });
+        compare(asked, [["/gauge", "org.rekta.Gauge", "Level", []]]);
+        compare(callFromCounterpart(name, "/gauge/1", properties, "Get", ["org.rekta.Gauge", "Names"]).values, [["a", "b"]]);
+        compare(asked[1].slice(0, 3), ["/gauge/1", "org.rekta.Gauge", "Names"]);
+    }
+
+    function test_reading_all_properties_gives_each_readable_one_typed_as_declared() {
+        const name = "org.rekta.Test.GaugeAll";
+        const bus = ownGauge(name);
+        bus.handler = (path, iface, member) => member === "Names" ? ["a", "b"] : 7;
+        const all = callFromCounterpart(name, "/gauge", properties, "GetAll", ["org.rekta.Gauge"]);
+        compare(all.signature, "a{sv}");
+        compare(all.values, [{
+                Level: 7,
+                Names: ["a", "b"],
+                Broken: 7
+            }]);
+        compare(counterpart.replyVariantTypes, {
+            Level: "uint",
+            Names: "QStringList",
+            Broken: "uint"
+        });
+    }
+
+    function test_unknown_write_only_failing_and_written_properties_are_answered_with_dbus_errors() {
+        const name = "org.rekta.Test.GaugeErrors";
+        ownGauge(name);
+        const get = (iface, property) => callFromCounterpart(name, "/gauge", properties, "Get", [iface, property]);
+        compare(get("org.rekta.Gauge", "Secret").error, "org.freedesktop.DBus.Error.UnknownProperty");
+        compare(get("org.rekta.Gauge", "Missing").error, "org.freedesktop.DBus.Error.UnknownProperty");
+        compare(get("org.rekta.Missing", "Level").error, "org.freedesktop.DBus.Error.UnknownProperty");
+        compare(get("org.rekta.Gauge", "Broken"), {
+            signature: "s",
+            values: ["no level"],
+            error: "org.freedesktop.DBus.Error.Failed"
+        });
+        compare(callFromCounterpart(name, "/gauge", properties, "GetAll", ["org.rekta.Gauge"]).error, "org.freedesktop.DBus.Error.Failed");
+        compare(callFromCounterpart(name, "/gauge", properties, "GetAll", ["org.rekta.Missing"]).error, "org.freedesktop.DBus.Error.UnknownInterface");
+        compare(callFromCounterpart(name, "/gauge", properties, "Set", ["org.rekta.Gauge", "Level", 3]).error, "org.freedesktop.DBus.Error.PropertyReadOnly");
+        compare(callFromCounterpart(name, "/gauge", properties, "Get", ["org.rekta.Gauge"]).error, "org.freedesktop.DBus.Error.UnknownMethod");
+        compare(get("org.rekta.Gauge", "Level").values, [7], "the object answers on");
+    }
+
+    function test_own_refuses_a_property_whose_type_is_not_one_complete_type() {
+        const bus = connection();
+        ignoreWarning(/is not XML or has a type that is not a valid D-Bus signature/);
+        verify(!bus.own("org.rekta.Test.TwoTypes", "/gauge", `<interface name="org.rekta.Gauge"><property name="Pair" type="uu" access="read"/></interface>`));
+        ignoreWarning(/is not XML or has a type that is not a valid D-Bus signature/);
+        verify(!bus.own("org.rekta.Test.NoType", "/gauge", `<interface name="org.rekta.Gauge"><property name="None" type="" access="read"/></interface>`));
     }
 
     function test_a_handler_that_throws_answers_with_a_dbus_error() {

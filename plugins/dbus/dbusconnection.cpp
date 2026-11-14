@@ -5,6 +5,7 @@
 #include <QDBusConnectionInterface>
 #include <QDBusPendingCallWatcher>
 #include <QDBusReply>
+#include <QDBusVariant>
 #include <QDBusVirtualObject>
 #include <QJSEngine>
 #include <QTimer>
@@ -23,8 +24,15 @@ struct Method {
     QString out;
 };
 
-// Methods by interface name, then by method name.
-using Interfaces = QHash<QString, QHash<QString, Method>>;
+struct Interface {
+    QHash<QString, Method> methods;
+    // The type of each property that can be read, by name.
+    QHash<QString, QString> properties;
+};
+
+using Interfaces = QHash<QString, Interface>;
+
+const QString propertiesInterface = u"org.freedesktop.DBus.Properties"_s;
 
 // Collects each method's argument types from the elements of introspection XML, in document order.
 class InterfaceReader
@@ -43,8 +51,10 @@ public:
         m_method = element == u"method" ? attributes.value(u"name").toString() : QString();
         if (element == u"interface")
             m_interface = attributes.value(u"name").toString();
+        if (element == u"property")
+            addProperty(attributes);
         if (!m_method.isEmpty())
-            interfaces[m_interface].insert(m_method, {});
+            interfaces[m_interface].methods.insert(m_method, {});
     }
 
 private:
@@ -52,19 +62,28 @@ private:
     {
         if (m_method.isEmpty())
             return;
-        Method &method = interfaces[m_interface][m_method];
+        Method &method = interfaces[m_interface].methods[m_method];
         QString &types = attributes.value(u"direction") == u"out" ? method.out : method.in;
         types += attributes.value(u"type");
+    }
+
+    void addProperty(const QXmlStreamAttributes &attributes)
+    {
+        if (attributes.value(u"access").startsWith(u"read"))
+            interfaces[m_interface].properties.insert(attributes.value(u"name").toString(), attributes.value(u"type").toString());
     }
 
     QString m_interface;
     QString m_method;
 };
 
-bool hasValidSignatures(const QHash<QString, Method> &methods)
+bool hasValidSignatures(const Interface &interface)
 {
-    return std::all_of(methods.cbegin(), methods.cend(), [](const Method &method) {
+    const bool methodsValid = std::all_of(interface.methods.cbegin(), interface.methods.cend(), [](const Method &method) {
         return Marshalling::completeTypes(method.in) && Marshalling::completeTypes(method.out);
+    });
+    return methodsValid && std::all_of(interface.properties.cbegin(), interface.properties.cend(), [](const QString &type) {
+        return Marshalling::completeTypes(type).value_or(QStringList()).size() == 1;
     });
 }
 
@@ -83,8 +102,8 @@ std::optional<Interfaces> readInterfaces(const QString &xml)
     return interfaces;
 }
 
-// An object own() exports. It answers the methods of its interfaces through the connection's handler and leaves
-// introspection, properties and calls without an interface to QtDBus.
+// An object own() exports. It answers the methods and property reads of its interfaces through the connection's handler
+// and leaves introspection and calls without an interface to QtDBus, which cannot read the properties of such an object.
 class ExportedObject : public QDBusVirtualObject
 {
 public:
@@ -103,6 +122,10 @@ public:
 
     bool handleMessage(const QDBusMessage &message, const QDBusConnection &connection) override
     {
+        if (message.interface() == propertiesInterface) {
+            connection.send(propertyReply(message));
+            return true;
+        }
         if (message.interface().isEmpty() || message.interface().startsWith(u"org.freedesktop.DBus."))
             return false;
         connection.send(reply(message));
@@ -116,14 +139,57 @@ private:
         if (interface == m_interfaces.cend())
             return message.createErrorReply(QDBusError::UnknownInterface,
                                             u"%1 has no interface %2"_s.arg(message.path(), message.interface()));
-        const auto method = interface->constFind(message.member());
-        if (method == interface->cend())
+        const auto method = interface->methods.constFind(message.member());
+        if (method == interface->methods.cend())
             return message.createErrorReply(QDBusError::UnknownMethod,
                                             u"%1 has no method %2"_s.arg(message.interface(), message.member()));
         if (message.signature() != method->in)
             return message.createErrorReply(QDBusError::InvalidArgs,
                                             u"%1 takes (%2), not (%3)"_s.arg(message.member(), method->in, message.signature()));
-        return m_owner->answer(message, method->out);
+        const Marshalling::Encoded encoded =
+            m_owner->ask(message.path(), message.interface(), message.member(), Marshalling::decode(message.arguments()), method->out);
+        if (!encoded.error.isEmpty())
+            return message.createErrorReply(QDBusError::Failed, encoded.error);
+        return message.createReply(encoded.arguments);
+    }
+
+    QDBusMessage propertyReply(const QDBusMessage &message) const
+    {
+        const QVariantList args = message.arguments();
+        if (message.member() == u"Get" && message.signature() == u"ss")
+            return get(message, args[0].toString(), args[1].toString());
+        if (message.member() == u"GetAll" && message.signature() == u"s")
+            return getAll(message, args[0].toString());
+        if (message.member() == u"Set")
+            return message.createErrorReply(QDBusError::PropertyReadOnly, u"the properties at %1 are read only"_s.arg(message.path()));
+        return message.createErrorReply(QDBusError::UnknownMethod,
+                                        u"%1 has no method %2(%3)"_s.arg(propertiesInterface, message.member(), message.signature()));
+    }
+
+    QDBusMessage get(const QDBusMessage &message, const QString &interfaceName, const QString &name) const
+    {
+        const QString type = m_interfaces.value(interfaceName).properties.value(name);
+        if (type.isEmpty())
+            return message.createErrorReply(QDBusError::UnknownProperty, u"%1 has no property %2"_s.arg(interfaceName, name));
+        const Marshalling::Encoded value = m_owner->ask(message.path(), interfaceName, name, {}, type);
+        if (!value.error.isEmpty())
+            return message.createErrorReply(QDBusError::Failed, value.error);
+        return message.createReply(QVariant::fromValue(QDBusVariant(value.arguments.constFirst())));
+    }
+
+    QDBusMessage getAll(const QDBusMessage &message, const QString &interfaceName) const
+    {
+        const auto interface = m_interfaces.constFind(interfaceName);
+        if (interface == m_interfaces.cend())
+            return message.createErrorReply(QDBusError::UnknownInterface, u"%1 has no interface %2"_s.arg(message.path(), interfaceName));
+        QVariantMap values;
+        for (const auto &[name, type] : interface->properties.asKeyValueRange()) {
+            const Marshalling::Encoded value = m_owner->ask(message.path(), interfaceName, name, {}, type);
+            if (!value.error.isEmpty())
+                return message.createErrorReply(QDBusError::Failed, value.error);
+            values.insert(name, value.arguments.constFirst());
+        }
+        return message.createReply(QVariant::fromValue(values));
     }
 
     DBusConnection *m_owner;
@@ -270,19 +336,19 @@ bool DBusConnection::own(const QString &name, const QString &path, const QString
     return reply.isValid();
 }
 
-QDBusMessage DBusConnection::answer(const QDBusMessage &call, const QString &outSignature)
+Marshalling::Encoded DBusConnection::ask(const QString &path,
+                                         const QString &interfaceName,
+                                         const QString &member,
+                                         const QVariantList &args,
+                                         const QString &signature)
 {
     QJSEngine *engine = qjsEngine(this);
     if (!engine || !m_handler.isCallable())
-        return call.createErrorReply(QDBusError::Failed, u"no handler answers %1"_s.arg(call.member()));
-    const QJSValue result =
-        m_handler.call({call.path(), call.interface(), call.member(), engine->toScriptValue(Marshalling::decode(call.arguments()))});
+        return {{}, u"no handler answers %1"_s.arg(member)};
+    const QJSValue result = m_handler.call({path, interfaceName, member, engine->toScriptValue(args)});
     if (result.isError())
-        return call.createErrorReply(QDBusError::Failed, result.property(u"message"_s).toString());
-    const Marshalling::Encoded encoded = Marshalling::encode(replyValues(result, outSignature), outSignature);
-    if (!encoded.error.isEmpty())
-        return call.createErrorReply(QDBusError::Failed, encoded.error);
-    return call.createReply(encoded.arguments);
+        return {{}, result.property(u"message"_s).toString()};
+    return Marshalling::encode(replyValues(result, signature), signature);
 }
 
 bool DBusConnection::emitSignal(const QString &path,

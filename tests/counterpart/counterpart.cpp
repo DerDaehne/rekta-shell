@@ -70,13 +70,69 @@ private:
     std::optional<QVariantList> m_values;
 };
 
+QVariant plainValue(const QVariant &value);
+
+QVariantList plainElements(const QDBusArgument &argument)
+{
+    QVariantList elements;
+    while (!argument.atEnd())
+        elements.append(plainValue(argument.asVariant()));
+    return elements;
+}
+
+QVariantMap plainMap(const QDBusArgument &argument)
+{
+    QVariantMap map;
+    argument.beginMap();
+    while (!argument.atEnd()) {
+        argument.beginMapEntry();
+        const QString key = plainValue(argument.asVariant()).toString();
+        map.insert(key, plainValue(argument.asVariant()));
+        argument.endMapEntry();
+    }
+    argument.endMap();
+    return map;
+}
+
+QVariant plainContainer(const QDBusArgument &argument)
+{
+    switch (argument.currentType()) {
+    case QDBusArgument::MapType:
+        return plainMap(argument);
+    case QDBusArgument::ArrayType: {
+        argument.beginArray();
+        const QVariantList elements = plainElements(argument);
+        argument.endArray();
+        return elements;
+    }
+    case QDBusArgument::StructureType: {
+        argument.beginStructure();
+        const QVariantList members = plainElements(argument);
+        argument.endStructure();
+        return members;
+    }
+    default:
+        return plainValue(argument.asVariant());
+    }
+}
+
+// Lists, maps and plain values in place of D-Bus containers, variants unpacked, so QML can read what arrived.
+QVariant plainValue(const QVariant &value)
+{
+    if (value.metaType() == QMetaType::fromType<QDBusArgument>())
+        return plainContainer(value.value<QDBusArgument>());
+    if (value.metaType() == QMetaType::fromType<QDBusVariant>())
+        return plainValue(value.value<QDBusVariant>().variant());
+    if (value.metaType() == QMetaType::fromType<QDBusObjectPath>())
+        return value.value<QDBusObjectPath>().path();
+    return value;
+}
+
 QVariantList plainValues(const QVariantList &arguments)
 {
     QVariantList values;
-    for (const QVariant &argument : arguments) {
-        const bool isPath = argument.metaType() == QMetaType::fromType<QDBusObjectPath>();
-        values.append(isPath ? QVariant(argument.value<QDBusObjectPath>().path()) : argument);
-    }
+    for (const QVariant &argument : arguments)
+        values.append(plainValue(argument));
     return values;
 }
 
@@ -84,6 +140,20 @@ bool isDictionary(const QVariant &argument)
 {
     return argument.metaType() == QMetaType::fromType<QDBusArgument>()
         && argument.value<QDBusArgument>().currentSignature() == u"a{sv}";
+}
+
+// The Qt types of the values in the a{sv} arguments, by key.
+QVariantMap variantTypesOf(const QVariantList &arguments)
+{
+    QVariantMap types;
+    for (const QVariant &argument : arguments) {
+        if (!isDictionary(argument))
+            continue;
+        const QVariantMap dictionary = qdbus_cast<QVariantMap>(argument);
+        for (const auto &[key, value] : dictionary.asKeyValueRange())
+            types.insert(key, QString::fromLatin1(value.typeName()));
+    }
+    return types;
 }
 
 }
@@ -119,6 +189,7 @@ void Counterpart::call(const QString &service, const QString &path, const QStrin
     connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *finished) {
         finished->deleteLater();
         const QDBusMessage reply = finished->reply();
+        m_replyVariantTypes = variantTypesOf(reply.arguments());
         Q_EMIT replied(reply.signature(), plainValues(reply.arguments()), reply.errorName());
     });
 }
@@ -185,14 +256,7 @@ QString Counterpart::uniqueName() const
 void Counterpart::record(const QDBusMessage &message)
 {
     m_lastSignature = message.signature();
-    m_variantTypes.clear();
-    for (const QVariant &argument : message.arguments()) {
-        if (!isDictionary(argument))
-            continue;
-        const QVariantMap dictionary = qdbus_cast<QVariantMap>(argument);
-        for (const auto &[key, value] : dictionary.asKeyValueRange())
-            m_variantTypes.insert(key, QString::fromLatin1(value.typeName()));
-    }
+    m_variantTypes = variantTypesOf(message.arguments());
     Q_EMIT echoed();
 }
 

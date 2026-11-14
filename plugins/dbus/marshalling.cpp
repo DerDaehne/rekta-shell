@@ -6,6 +6,8 @@
 #include <QDBusSignature>
 #include <QDBusVariant>
 
+#include <algorithm>
+
 using namespace Qt::StringLiterals;
 
 namespace
@@ -85,6 +87,13 @@ void beginArray(QDBusArgument &out, const QString &elementType)
     out.beginArray(placeholder);
 }
 
+bool isWords(const QVariantList &list)
+{
+    return !list.isEmpty() && std::all_of(list.cbegin(), list.cend(), [](const QVariant &element) {
+        return element.metaType().id() == QMetaType::QString;
+    });
+}
+
 // A JavaScript value in a variant has no signature to follow, so it goes out as the D-Bus type closest to its own.
 // ponytail: whole numbers go out as i and others as d; a typed variant value once a callee needs u, x or t there.
 QString naturalType(const QVariant &value)
@@ -99,7 +108,7 @@ QString naturalType(const QVariant &value)
     case QMetaType::QString:
         return u"s"_s;
     case QMetaType::QVariantList:
-        return u"av"_s;
+        return isWords(value.toList()) ? u"as"_s : u"av"_s;
     case QMetaType::QVariantMap:
         return u"a{sv}"_s;
     }

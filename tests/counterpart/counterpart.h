@@ -18,13 +18,16 @@ class Counterpart : public QObject
     Q_PROPERTY(QString lastSignature READ lastSignature NOTIFY echoed FINAL)
     // The Qt types of the values in the last call's a{sv} arguments, by key.
     Q_PROPERTY(QVariantMap variantTypes READ variantTypes NOTIFY echoed FINAL)
+    // The Qt types of the values in the last reply's a{sv} arguments, by key.
+    Q_PROPERTY(QVariantMap replyVariantTypes READ replyVariantTypes NOTIFY replied FINAL)
 
 public:
     explicit Counterpart(QObject *parent = nullptr);
     ~Counterpart() override;
 
     Q_INVOKABLE void emitSignal(const QString &path, const QString &interfaceName, const QString &member, const QVariantList &args);
-    // Replies with replied(); an error reply carries its message as the only value.
+    // Replies with replied(), containers as lists and maps and variants unpacked; an error reply carries its message as
+    // the only value.
     Q_INVOKABLE void call(const QString &service,
                           const QString &path,
                           const QString &interfaceName,
@@ -32,7 +35,7 @@ public:
                           const QVariantList &args);
     // The unique name owning name, or "" when nobody does.
     Q_INVOKABLE QString nameOwner(const QString &name);
-    // Reports each signal of that interface and member, from any sender, with heard().
+    // Reports each signal of that interface and member, from any sender, with heard(), its values read as a reply's.
     Q_INVOKABLE bool listen(const QString &interfaceName, const QString &member);
     // Takes name from its owner for good, as a program that pushes the shell aside would; false when it cannot.
     Q_INVOKABLE bool takeName(const QString &name);
@@ -56,6 +59,10 @@ public:
     {
         return m_variantTypes;
     }
+    QVariantMap replyVariantTypes() const
+    {
+        return m_replyVariantTypes;
+    }
 
     void record(const QDBusMessage &message);
 
@@ -72,6 +79,7 @@ private:
     QDBusConnection m_connection;
     QString m_lastSignature;
     QVariantMap m_variantTypes;
+    QVariantMap m_replyVariantTypes;
 };
 
 // A stand-in for powerdevil's org.kde.ScreenBrightness, written against QtDBus alone: while running it owns the name,
