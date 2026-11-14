@@ -14,10 +14,11 @@ import State
 // parts folding up in reading order, and closes folding them away: back the way they came, the last part in first, or
 // forward after a press, the pressed tile last. While it turns in, its tiles take keys and presses; while it turns out,
 // none. A letter typed in the start place searches, and so does what a calculation starts with: what is typed becomes
-// the title, "suche" beside it, and the apps that match stand below as tiles, the other kinds as rows. The title is a
-// line edited as a field is; Escape there closes the Start. An app's tile has a context menu that pins or unpins the
-// app and, in "angeheftet", sizes its tile; each change offers undo in a toast, and Delete unpins the focused pinned
-// tile.
+// the title, "suche" beside it, and the apps that match stand below as tiles, the other kinds as rows. Until then the
+// start place shows Rekta's search field, "suchen", at the end of the pivot's row (stacked, under it), the way in for
+// a pointer, a finger and an on-screen keyboard. The title is a line edited as a field is; Escape there closes the
+// Start. An app's tile has a context menu that pins or unpins the app and, in "angeheftet", sizes its tile; each change
+// offers undo in a toast, and Delete unpins the focused pinned tile.
 FocusScope {
     id: start
 
@@ -607,10 +608,14 @@ FocusScope {
     }
 
     // What the Start shows changes: the parts in view go, and those in view after `apply` come. The parts are taken
-    // with nothing moving: a fading item draws through a layer whose source Qt puts beside it, and that is no part.
+    // with nothing moving: a fading item draws through a layer whose source Qt puts beside it, and that is no part. The
+    // search field keeps the focus until the search's line takes it, so an on-screen keyboard stays up.
     function swap(apply: var, arriving: int) {
         presence.complete();
+        const inField = searchField.inputFocus;
         forgetTileFocus();
+        if (inField)
+            searchField.focusInput();
         presence.change(partsIn(body), [], apply, () => partsIn(body), arriving);
     }
 
@@ -627,10 +632,14 @@ FocusScope {
 
     // ponytail: the parts the place brings back are counted only once it shows, so past sixty the hits still leave in
     // motion before the place stands at once; count them beforehand if that shows.
+    // A line that had the keys hands them back to the field.
     function hideSearch() {
         searching = false;
+        const typing = line.activeFocus;
         swap(() => {
             showSearchView(false);
+            if (typing)
+                searchField.focusInput();
             found.clear();
             rowGroups = [];
             waysOut = [];
@@ -1030,13 +1039,15 @@ FocusScope {
     }
 
     // Up and down between the pivot, the strip and the tiles, when no tile has the focus: down goes the way into the place
-    // (pivot, strip, first tile of the section being read), up the way back; with nothing in focus, down goes to the
-    // first tile.
+    // (pivot or search field, strip, first tile of the section being read), up the way back; with nothing in focus, down
+    // goes to the first tile.
     function moveBetweenRows(direction: string): bool {
         const onStrip = placeStrip.activeFocus;
         const inPanorama = placePanorama.activeFocus || headingFocused();
-        if (direction === "down" && pivot.activeFocus && !searching)
+        if (direction === "down" && (pivot.activeFocus || searchField.inputFocus) && !searching)
             placeStrip.forceActiveFocus();
+        else if (direction === "up" && searchField.inputFocus)
+            pivot.forceActiveFocus();
         else if (direction === "down" && (onStrip || inPanorama))
             readTiles()[0]?.forceActiveFocus();
         else if (direction === "up" && onStrip)
@@ -1179,6 +1190,15 @@ FocusScope {
         turner.finish();
         takeKeysToLine();
         line.insert(line.cursorPosition, text);
+    }
+
+    // Text put in the search field, by keys or an input method, starts the search as typing does; spaces alone do not.
+    function searchFrom(text: string) {
+        if (text === "")
+            return;
+        searchField.text = "";
+        if (text.trim() !== "")
+            typeOn(text);
     }
 
     // Backspace while a hit has the focus erases in the line as it would there.
@@ -1490,13 +1510,32 @@ FocusScope {
             objectName: "startPlace"
             anchors.fill: parent
 
+            // Sideways at the end of the pivot's row, its text on the titles' baseline; stacked under the pivot at the
+            // leading edge, space-m above the strip as between the blocks of a section (rekta.css:1127). What is typed in
+            // it goes on in the search's line, so it holds nothing itself.
+            SearchField {
+                id: searchField
+
+                objectName: "searchField"
+                x: panorama.sideways ? start.width - start.stripInset - width : start.stripInset
+                y: panorama.sideways ? lineBox.y + lineBox.baselineOffset - baselineOffset : start.placeTop
+                width: Math.min(Geometry.searchMaxWidth, start.width - 2 * start.stripInset)
+                placeholder: "suchen"
+                readOnly: !start.wanted
+                onTextChanged: start.searchFrom(text)
+
+                // The field holds no text to move in, and an arrow sideways is not a way to the other place from here.
+                Keys.onLeftPressed: event => event.accepted = true
+                Keys.onRightPressed: event => event.accepted = true
+            }
+
             Pivot {
                 id: strip
 
                 objectName: "sectionStrip"
                 onGlass: true
                 x: start.stripInset
-                y: start.placeTop
+                y: panorama.sideways ? start.placeTop : searchField.y + searchField.height + Tokens.spaceM
                 width: parent.width - 2 * start.stripInset
                 enabled: start.wanted
                 titles: (start.running.length > 0 ? ["läuft"] : []).concat(["angeheftet", "heute"], start.showRecent ? ["zuletzt"] : [])

@@ -46,6 +46,12 @@ QtObject {
     readonly property real inputPadding: 12
     readonly property real inputBorder: 1
     readonly property real inputErrorBorder: 2
+    // `.rk-search { max-width: 24rem }`, its icon `left: 10px; width: 16px; height: 16px`, the input's text from 32px
+    // (rekta.css:930–932); a rem is 16 logical px
+    readonly property real searchMaxWidth: 384
+    readonly property real searchIconStart: 10
+    readonly property real searchIconSize: 16
+    readonly property real searchPaddingStart: 32
     // `select.rk-input { padding-right: 36px; background-position: right 18px center, right 14px center }`: the chevron's
     // two 4px arms meet 18px before the end of the padding box (rekta.css:434–436)
     readonly property real selectPaddingEnd: 36

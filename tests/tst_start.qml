@@ -3011,4 +3011,210 @@ TestCase {
         const top = ring.mapToItem(results, 0, 0).y;
         verify(top >= 0 && top + ring.height <= results.height, `the ring from ${top} to ${top + ring.height} of ${results.height}`);
     }
+
+    function searchField(): var {
+        return named("searchField");
+    }
+
+    function fieldInput(): var {
+        return findChild(searchField(), "input");
+    }
+
+    function baselineIn(item: var): real {
+        return item.mapToItem(start, 0, item.baselineOffset).y;
+    }
+
+    function test_the_start_place_shows_rekta_s_search_field_at_the_end_of_the_pivot_s_row_on_the_titles_baseline() {
+        openNow();
+        const field = searchField();
+        verify(field.visible);
+        verify(!fieldInput().activeFocus, "it shows without the focus");
+        const at = field.mapToItem(start, 0, 0);
+        compare(at.x + field.width, start.width - Tokens.spaceXl, "at the trailing end of the pivot's row");
+        compare(field.width, Geometry.searchMaxWidth);
+        compare(field.height, Tokens.controlHeight);
+        compare(baselineIn(field), baselineIn(findChild(named("pivot"), "word")));
+        verify(at.y + field.height <= named("sectionStrip").y, "above the strip");
+        compare(findChild(field, "placeholder").text, "suchen");
+        const magnifier = findChild(field, "magnifier");
+        compare(magnifier.name, "search");
+        compare([magnifier.x, magnifier.width, magnifier.y + magnifier.height / 2], [Geometry.searchIconStart, Geometry.searchIconSize, field.height / 2]);
+        compare(fieldInput().leftPadding, Geometry.searchPaddingStart);
+        compare([field.color, field.border.color, field.border.width, field.radius], [Tokens.color.bg, Tokens.color.textContrastMedium, Geometry.inputBorder, Tokens.radiusS]);
+    }
+
+    function test_at_the_narrowest_sideways_width_the_field_keeps_clear_of_the_pivot_s_titles() {
+        testCase.width = Tokens.bpSidewaysScrollMin;
+        openNow();
+        verify(named("panorama").sideways);
+        const last = findChild(named("pivot"), "title-1");
+        const titlesEnd = last.mapToItem(start, last.width, 0).x;
+        verify(searchField().mapToItem(start, 0, 0).x - titlesEnd >= Tokens.spaceL, `titles end at ${titlesEnd}`);
+    }
+
+    function test_stacked_the_field_stands_under_the_pivot_at_the_leading_edge_space_m_above_the_strip() {
+        for (const width of [720, 375]) {
+            testCase.width = width;
+            openNow();
+            verify(!named("panorama").sideways);
+            const field = searchField();
+            const strip = named("sectionStrip");
+            compare(field.mapToItem(start, 0, 0), Qt.point(Tokens.spaceM, named("pivot").height), `${width}`);
+            compare(field.width, Math.min(Geometry.searchMaxWidth, width - 2 * Tokens.spaceM), `${width}`);
+            compare(strip.y, field.y + field.height + Tokens.spaceM, `${width}`);
+            compare(named("panorama").y, strip.y + strip.height + Geometry.hairline, `${width}`);
+            start.close(null);
+        }
+    }
+
+    function test_a_pointer_press_in_the_field_puts_the_focus_in_it_with_its_ring_and_frame() {
+        openNow();
+        mouseClick(searchField());
+        verify(fieldInput().activeFocus);
+        verify(findChild(searchField(), "ring").visible);
+        compare(searchField().border.color, Tokens.color.textPrimary);
+        compare(start.query, "");
+        verify(searchField().visible);
+    }
+
+    function test_a_finger_tap_in_the_field_puts_the_focus_in_it_for_the_on_screen_keyboard() {
+        openNow();
+        const touch = touchEvent(start);
+        const at = searchField().mapToItem(start, searchField().width / 2, searchField().height / 2);
+        touch.press(0, start, at.x, at.y).commit();
+        touch.release(0, start, at.x, at.y).commit();
+        verify(fieldInput().activeFocus);
+        verify(start.wanted, "a tap does not close the Start");
+    }
+
+    function test_typing_in_the_field_turns_it_into_the_title_with_suche_and_the_line_takes_the_keys() {
+        openWithApps();
+        mouseClick(searchField());
+        keyClick("f");
+        tryVerify(() => named("searchTitle").visible);
+        compare(named("typed").text, "f");
+        compare(searchField().text, "", "the field holds nothing itself");
+        verify(!named("startPlace").visible);
+        verify(named("typed").activeFocus);
+        keyClick("i");
+        compare(start.query, "fi");
+        compare(hitNames(), ["Filelight", "Firefox"]);
+    }
+
+    function test_text_an_input_method_puts_in_the_field_starts_the_search_and_spaces_alone_do_not() {
+        openWithApps();
+        mouseClick(searchField());
+        searchField().text = " ";
+        compare([start.query, searchField().text], ["", ""]);
+        verify(!start.searching);
+        searchField().text = "kon";
+        compare(start.query, "kon");
+        verify(start.searching);
+        compare(searchField().text, "");
+    }
+
+    function test_erasing_the_search_brings_the_field_back_with_the_focus_in_it() {
+        openWithApps();
+        mouseClick(searchField());
+        keyClick("f");
+        tryVerify(() => named("typed").activeFocus);
+        keyClick(Qt.Key_Backspace);
+        tryVerify(() => searchField().visible);
+        verify(!named("searchTitle").visible);
+        verify(fieldInput().activeFocus);
+        keyClick("k");
+        compare(start.query, "k", "typing on searches again");
+    }
+
+    function test_escape_with_back_clears_the_search_to_the_field_and_in_the_empty_field_closes_the_start() {
+        openWithApps();
+        start.searchEscape = "back";
+        mouseClick(searchField());
+        keyClick("f");
+        keyClick(Qt.Key_Escape);
+        tryVerify(() => searchField().visible);
+        compare(start.query, "");
+        verify(fieldInput().activeFocus);
+        keyClick(Qt.Key_Escape);
+        verify(!start.wanted);
+        compare(passed, [], "the Start used both");
+    }
+
+    function test_tab_goes_from_the_pivot_to_the_field_and_on_to_the_strip_and_back_the_same_way() {
+        openNow();
+        named("pivot").forceActiveFocus();
+        keyClick(Qt.Key_Tab);
+        verify(fieldInput().activeFocus);
+        keyClick(Qt.Key_Tab);
+        verify(named("sectionStrip").activeFocus);
+        keyClick(Qt.Key_Backtab);
+        verify(fieldInput().activeFocus);
+        keyClick(Qt.Key_Backtab);
+        verify(named("pivot").activeFocus);
+    }
+
+    function test_in_the_field_left_and_right_stay_down_goes_to_the_strip_up_to_the_pivot_and_other_keys_go_on() {
+        openNow();
+        mouseClick(searchField());
+        for (const key of [Qt.Key_Left, Qt.Key_Right]) {
+            keyClick(key);
+            verify(fieldInput().activeFocus);
+            compare(named("pivot").currentIndex, 0);
+        }
+        keyClick(Qt.Key_Down);
+        verify(named("sectionStrip").activeFocus);
+        mouseClick(searchField());
+        keyClick(Qt.Key_Up);
+        verify(named("pivot").activeFocus);
+        mouseClick(searchField());
+        keyClick(Qt.Key_F5);
+        compare(passed, [Qt.Key_F5], "only the key the Start has no use for");
+    }
+
+    function test_the_field_turns_in_as_one_part_of_the_start_place_and_is_not_in_alle_apps() {
+        openNow();
+        verify(start.partsIn(named("startPlace")).includes(searchField()));
+        named("pivot").select(1);
+        tryVerify(() => named("apps").visible && !named("startPlace").visible);
+        verify(!searchField().visible);
+        verify(!start.partsIn(named("apps")).includes(searchField()));
+    }
+
+    function test_the_placeholder_and_the_magnifier_take_rekta_s_colours_and_read_at_4_5_to_1_on_the_field() {
+        const luminance = colour => {
+            const channel = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+            return 0.2126 * channel(colour.r) + 0.7152 * channel(colour.g) + 0.0722 * channel(colour.b);
+        };
+        const ratio = (a, b) => (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
+        for (const [theme, moreContrast] of [["light", false], ["dark", false], ["light", true], ["dark", true]]) {
+            Prefs.theme = theme;
+            Tokens.moreContrast = moreContrast;
+            start = createTemporaryObject(startComponent, testCase);
+            openNow();
+            const field = searchField();
+            const placeholder = findChild(field, "placeholder").color;
+            const magnifier = findChild(field, "magnifier").color;
+            compare(placeholder, Tokens.color.textContrastMedium, theme);
+            compare(magnifier, Tokens.color.textContrastHigh, theme);
+            const label = `${theme}${moreContrast ? " under more contrast" : ""}`;
+            verify(ratio(placeholder, field.color) >= 4.5, `${label}: placeholder at ${ratio(placeholder, field.color).toFixed(2)}:1`);
+            verify(ratio(magnifier, field.color) >= 4.5, `${label}: magnifier at ${ratio(magnifier, field.color).toFixed(2)}:1`);
+        }
+    }
+
+    function test_in_motion_the_field_keeps_the_focus_while_the_place_leaves_and_hands_it_to_the_line() {
+        openWithApps();
+        Prefs.motion = "on";
+        mouseClick(searchField());
+        keyClick("f");
+        verify(named("startPlace").visible && !named("searchTitle").visible, "the place is still on its way out");
+        verify(searchField().inputFocus);
+        keyClick("i");
+        tryVerify(() => named("typed").activeFocus);
+        compare(start.query, "fi");
+        keyClick(Qt.Key_Backspace);
+        keyClick(Qt.Key_Backspace);
+        tryVerify(() => searchField().inputFocus);
+        verify(searchField().visible);
+    }
 }
