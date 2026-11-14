@@ -441,14 +441,14 @@ TestCase {
         return Qt.resolvedUrl(`pictures/${name}`).toString().replace("file://", "image://shared");
     }
 
-    // Waits until every row has judged its picture: a canvas gets its context only a moment after its row is made, and
-    // a picture given as data loads in a reader thread.
+    // Waits until every row has judged its picture: the canvas gets its context only a moment after it is made, and a
+    // picture given as data loads in a reader thread.
     function judged(menu: var): void {
+        tryVerify(() => !!menu.pictureReader.context, 5000, "the reader has its context");
         for (const row of menu.items()) {
-            const reader = findChild(row, "pictureReader");
             const loaded = findChild(row, "pictureLoaded");
-            if (reader !== null)
-                tryVerify(() => !!reader.context && loaded.status !== Image.Loading, 5000, `${row.text} judged its picture`);
+            if (loaded !== null)
+                tryVerify(() => loaded.status !== Image.Loading, 5000, `${row.text} judged its picture`);
         }
     }
 
@@ -535,7 +535,7 @@ TestCase {
         const shown = iconsOf(row);
         steam.icon = largeIcon;
         compare(findChild(row, "pictureLoaded").status, Image.Loading);
-        findChild(row, "pictureReader").availableChanged();
+        menu.pictureReader.availableChanged();
         judged(menu);
         compare(shown, [largeIcon]);
     }
@@ -550,9 +550,28 @@ TestCase {
             steam.icon = picture;
             judged(menu);
         }
-        const reader = findChild(row, "pictureReader");
+        const reader = menu.pictureReader;
         compare([blueIcon, ...sent].filter(picture => reader.isImageLoaded(picture)), []);
         compare(row.icon.toString(), "", "the last one sent was the checkerboard");
+    }
+
+    // Quickshell's popup is in no window while it is not shown, and in a new one each time it is shown anew.
+    function test_a_row_has_its_picture_while_the_menu_is_in_no_window_and_keeps_it_when_the_menu_is_shown_anew() {
+        const picture = provided("blue-32.png");
+        scene = createTemporaryObject(sceneComponent, testCase, { apps: [app("Steam", { icon: picture })] });
+        const menu = scene.control.menu;
+        const inWindow = menu.parent;
+        menu.parent = null;
+        // Not yet open, so its rows are not visible, which rowAt asks for.
+        const row = Array.from(menu.rows).find(item => item.text === "Steam");
+        tryVerify(() => row.icon.toString() === picture, 5000, "judged without a window of its own");
+        const shown = iconsOf(row);
+        menu.parent = inWindow;
+        menu.openAt(0);
+        menu.parent = null;
+        menu.parent = inWindow;
+        compare(row.icon.toString(), picture);
+        compare(shown, [], "the picture stays through every change of window");
     }
 
     function test_quickshells_checkerboard_is_told_by_its_corners_from_pictures_that_only_share_its_colours() {
@@ -824,6 +843,22 @@ TestCase {
         const spy = createTemporaryObject(mapSpyComponent, testCase, { target: remap });
         remap.surface.width = 180;
         tryCompare(spy, "count", 2);
+    }
+
+    function test_a_popup_whose_surface_is_back_at_its_mapped_size_by_the_next_turn_stays_mapped() {
+        const remap = createTemporaryObject(remapComponent, testCase, { wanted: true });
+        const spy = createTemporaryObject(mapSpyComponent, testCase, { target: remap });
+        remap.surface.height = 160;
+        tryCompare(spy, "count", 2, 5000, "mapped anew at the new size");
+        spy.clear();
+        let turned = false;
+        remap.surface.width = 80;
+        remap.surface.width = 100;
+        // Queued after the remap's own look at the size.
+        Qt.callLater(() => turned = true);
+        tryVerify(() => turned);
+        compare(spy.count, 0);
+        verify(remap.mapped);
     }
 
     function test_a_popup_that_is_not_wanted_stays_unmapped_when_its_surface_changes() {

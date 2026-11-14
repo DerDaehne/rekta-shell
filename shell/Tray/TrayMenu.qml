@@ -25,6 +25,16 @@ Menu {
     property var shown: []
     // Where the focus goes once a level's rows are there: DBusMenu hands them over a moment after the level opens.
     property var focusOnFill: null
+    // Reads every row's picture, in the window of the control, which stays shown. A canvas in the menu's own popup gets
+    // its context only once the popup is shown and loses it whenever the popup is shown anew, as it is for each new size:
+    // a picture arriving then widened the row, which showed the popup anew, which dropped the picture, in a loop.
+    readonly property Canvas pictureReader: Canvas {
+        objectName: "pictureReader"
+        parent: tray.control ?? tray
+        width: 1
+        height: 1
+        visible: false
+    }
 
     // Keeps the level in view in sync with what its owner reports.
     function refill() {
@@ -99,6 +109,7 @@ Menu {
     onCurrentChanged: refill()
     // On opening rather than closing: a choice is told after the menu has closed, and its row must still be its own.
     onOpenChanged: {
+        console.log("DBG open", open, visible, width, height, shown.length);
         if (open)
             reset();
     }
@@ -175,7 +186,8 @@ Menu {
             // The canvas announces itself only later (a queued availableChanged), maybe while a new picture loads.
             if (loaded.status === Image.Loading)
                 return check.real;
-            // A row that has left its window has no context.
+            const reader = tray.pictureReader;
+            // A reader that has left its window has no context.
             const context = reader.available ? reader.getContext("2d") : null;
             if (context === null || loaded.status !== Image.Ready)
                 return "";
@@ -186,6 +198,7 @@ Menu {
             const shown = reader.isImageLoaded(url) && !TrayRules.checkerboard(context.createImageData(url));
             // The canvas keeps every image it loaded until unloaded, and an app may send a new picture each second.
             reader.unloadImage(url);
+            console.log("DBG verdict", url, shown);
             return shown ? url : "";
         }
 
@@ -202,13 +215,12 @@ Menu {
             onStatusChanged: check.real = check.verdict()
         }
 
-        Canvas {
-            id: reader
+        Connections {
+            target: tray.pictureReader
 
-            objectName: "pictureReader"
-            width: 1
-            height: 1
-            onAvailableChanged: check.real = check.verdict()
+            function onAvailableChanged() {
+                check.real = check.verdict();
+            }
         }
     }
 
