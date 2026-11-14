@@ -459,6 +459,42 @@ TestCase {
         compare(Tips.target, null, "a tip shown another way still leaves");
     }
 
+    function test_a_tapped_tip_gives_way_to_the_next_control_s_tip_which_leaves_with_its_control() {
+        const tapped = findChild(createTemporaryObject(buttonComponent, testCase, { x: 40, y: 200, disabledReason: "one" }), "box");
+        const other = findChild(createTemporaryObject(buttonComponent, testCase, { x: 140, y: 200, disabledReason: "two" }), "box");
+        Tips.showTapped(tapped, "one");
+        Tips.rest(other, "two");
+        compare(Tips.target, other, "the pointer moving on shows the next tip at once");
+        Tips.leave(other);
+        compare(Tips.target, null);
+    }
+
+    function test_a_press_ends_the_standing_of_a_tapped_tip_for_the_next_resting_pointer() {
+        const tapped = findChild(createTemporaryObject(buttonComponent, testCase, { x: 40, y: 200, disabledReason: "one" }), "box");
+        const other = findChild(createTemporaryObject(buttonComponent, testCase, { x: 140, y: 200, disabledReason: "two" }), "box");
+        Tips.showTapped(tapped, "one");
+        Tips.hide();
+        Tips.hiddenAt = -Infinity;
+        Tips.rest(other, "two");
+        compare(Tips.delay.running, true, "the next one waits for tip-delay");
+        Tips.leave(other);
+        tryCompare(Tips.delay, "running", false);
+        compare(Tips.target, null, "and leaving before tip-delay shows none");
+    }
+
+    function test_a_tapped_tip_whose_control_is_destroyed_does_not_make_the_next_control_s_tip_stand() {
+        const gone = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 200, disabledReason: "one" });
+        const other = findChild(createTemporaryObject(buttonComponent, testCase, { x: 140, y: 200, disabledReason: "two" }), "box");
+        Tips.showTapped(findChild(gone, "box"), "one");
+        gone.destroy();
+        tryCompare(Tips, "target", null);
+        Tips.rest(other, "two");
+        compare(Tips.delay.running, true);
+        Tips.leave(other);
+        tryCompare(Tips.delay, "running", false);
+        compare(Tips.target, null, "leaving before tip-delay shows none");
+    }
+
     function test_a_finger_tap_on_a_control_that_can_act_shows_no_tip() {
         const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 200 });
         const box = findChild(control, "box");

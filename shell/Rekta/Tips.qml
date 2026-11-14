@@ -18,7 +18,8 @@ QtObject {
     // When a tip last hid: a pointer that moves on within tip-delay shows the next one at once.
     property double hiddenAt: -Infinity
     // Set by a tap: the tip stays when its control reports leaving, until a press or hide() (rekta.js:3076, :3084).
-    property bool tapped: false
+    // An item reference, so it clears itself when the control is destroyed.
+    property Item tappedControl: null
 
     readonly property Timer delay: Timer {
         interval: Tokens.durationTipDelay
@@ -41,21 +42,21 @@ QtObject {
     // At once: focus arrived by keyboard, or the pointer moved on from another tip.
     function show(control: Item, words: string) {
         delay.stop();
-        tapped = false;
+        tappedControl = null;
         waiting = null;
         text = words;
         target = control;
     }
 
-    // The pointer or the focus left a control.
     // A finger tapped the control: its tip stands, whatever hover a finger leaves behind.
     function showTapped(control: Item, words: string) {
         show(control, words);
-        tapped = true;
+        tappedControl = control;
     }
 
+    // The pointer or the focus left a control.
     function leave(control: Item) {
-        if (tapped)
+        if (tappedControl)
             return;
         if (control === target || control === waiting)
             hide();
@@ -63,7 +64,7 @@ QtObject {
 
     function hide() {
         delay.stop();
-        tapped = false;
+        tappedControl = null;
         waiting = null;
         if (!target)
             return;
