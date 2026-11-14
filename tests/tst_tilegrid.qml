@@ -195,10 +195,11 @@ TestCase {
         compact.order = [...compact.children];
         gone.destroy();
         tryCompare(compact.children, "length", 3);
-        compact.width = 500;
-        compact.order = compact.children.filter(child => child);
-        compare(compact.placed.length, 3);
-        for (const cell of compact.placed) {
+        compact.width = 680;
+        compare(compact.across, 3);
+        const kept = compact.placed.filter(cell => cell.tile as Tile);
+        compare(kept.length, 3);
+        for (const cell of kept) {
             compare(cell.tile.x, cell.column * (compact.cellWidth + Tokens.spaceS), cell.tile.objectName);
             compare(cell.tile.y, cell.row * (Tokens.tileUnit + Tokens.spaceS), cell.tile.objectName);
             compare(cell.tile.width, compact.span(compact.spanOf(cell.tile).columns, compact.cellWidth), cell.tile.objectName);
