@@ -4,7 +4,7 @@ import QtQuick
 // MenuItem rows, MenuSeparator and MenuLabel between groups. Keys: ↑ ↓ wrap, Home End, a letter jumps to the next item
 // starting with it, Enter or Space chooses, Escape closes and gives the focus back to the control, Tab closes and moves
 // on. A checkbox item toggles and leaves the menu open; any other choice closes it; `chosen` follows either way. A
-// click outside closes it too: the host sees that click and calls close(false).
+// click outside closes it too: the host sees that click and calls dismiss().
 FloatSurface {
     id: menu
 

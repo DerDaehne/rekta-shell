@@ -270,7 +270,6 @@ Rectangle {
         buttons().forEach(control => (control.held = !motion.known.includes(control) || (gliding && control.held)));
     }
 
-    // The others have made room: what waited for them fades in.
     // Every floating surface a control of the bar has open closes once the press has reached what it landed on.
     function dismissFloats() {
         buttons().concat([centre]).forEach(control => {
@@ -280,6 +279,7 @@ Rectangle {
         });
     }
 
+    // The others have made room: what waited for them fades in.
     function release() {
         buttons().forEach(control => (control.held = !motion.known.includes(control)));
     }
@@ -404,19 +404,9 @@ Rectangle {
     // A press on the bar lies outside the surfaces its controls opened, and the compositor leaves a popup open for a
     // press in the window it belongs to, so the bar closes them itself (states.md, "Floating surfaces": a click outside
     // closes).
-    Item {
-        anchors.fill: parent
-
-        PointHandler {
-            acceptedButtons: Qt.AllButtons
-            onActiveChanged: {
-                if (active)
-                    bar.dismissFloats();
-            }
-        }
+    PressHidesTips {
+        onPressed: bar.dismissFloats()
     }
-
-    PressHidesTips {}
 
     // A control in "more" repeats its words and its reason; choosing it presses the control.
     component MovedControl: MenuItem {

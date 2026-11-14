@@ -257,7 +257,7 @@ PanelWindow {
     }
 
     // A floating surface of the bar rises past the bar's own window, so it lives in a popup of its own, placed where the
-    // bar places it; the compositor closes it on a click outside.
+    // bar places it. The compositor closes it on a click in another program, the bar on a press in its own window.
     component FloatPopup: PopupWindow {
         id: host
 

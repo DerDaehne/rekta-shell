@@ -26,6 +26,8 @@ TestCase {
             property real barWidth: 1200
             property real viewportHeight: 600
             property bool withCentre: false
+            // A centre that opens a floating surface, as the clock opens the month.
+            property bool withCentreOpener: false
             property bool backgroundShown: true
 
             width: 1200
@@ -39,7 +41,7 @@ TestCase {
                 width: scene.barWidth
                 viewportHeight: scene.viewportHeight
                 area: Qt.size(scene.barWidth, scene.height)
-                centre: scene.withCentre ? centreSlot : null
+                centre: scene.withCentre ? centreSlot : scene.withCentreOpener ? centreOpener : null
 
                 AppBarButton { objectName: "back"; icon: "window"; text: "back"; priority: 3 }
                 AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects: build the shell and its tests"] }
@@ -49,6 +51,19 @@ TestCase {
                 AppBarButton { objectName: "messages"; icon: "bell"; text: "messages"; priority: 1; disabledReason: "comes with the panel" }
                 AppBarButton { objectName: "theme"; icon: "theme"; text: "theme and colours"; priority: 1 }
                 AppBarButton { objectName: "controls"; icon: "tune"; text: "controls"; priority: 0 }
+
+                AppBarButton {
+                    id: centreOpener
+
+                    objectName: "centre opener"
+                    icon: "search"
+                    text: "month"
+                    present: scene.withCentreOpener
+                    opens: centreSurface
+                    onClicked: centreSurface.open = !centreSurface.open
+
+                    FloatSurface { id: centreSurface }
+                }
             }
         }
     }
@@ -614,6 +629,18 @@ TestCase {
         verify(bar.menu.open);
         mouseClick(bar, spot.x, spot.y);
         tryVerify(() => !bar.menu.open, 1000, "it closes");
+    }
+
+    function test_a_press_on_an_empty_part_of_the_bar_closes_what_the_centre_opened() {
+        makeScene({ withCentreOpener: true });
+        const opener = named("centre opener");
+        compare(bar.centre, opener);
+        const spot = Qt.point(bar.width - 1, bar.height / 2);
+        verify(!controls().concat([bar.more, opener]).some(control => control.visible && control.contains(control.mapFromItem(bar, spot))), "nothing stands there");
+        mouseClick(opener, 10, 10);
+        verify(opener.opens.open);
+        mouseClick(bar, spot.x, spot.y);
+        tryVerify(() => !opener.opens.open, 1000, "it closes");
     }
 
     function test_the_middle_cuts_its_words_before_any_control_moves() {
