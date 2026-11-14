@@ -48,6 +48,13 @@ TestCase {
                 }
             }
 
+            // The shell follows its settings as shell.qml binds them.
+            Binding {
+                target: Prefs
+                property: "contrast"
+                value: shellSettings.value("contrast")
+            }
+
             Layers {
                 id: shellSettings
             }
@@ -93,6 +100,7 @@ TestCase {
 
     function cleanup() {
         Prefs.motion = "system";
+        Prefs.systemMoreContrast = false;
     }
 
     function pivot(): var {
@@ -216,8 +224,8 @@ TestCase {
         compare(pivot().currentIndex, 0);
     }
 
-    function test_each_group_says_that_its_fields_are_still_to_come() {
-        const group = groupAt("farben");
+    function test_a_group_without_fields_says_that_they_are_still_to_come() {
+        const group = groupAt("problem melden");
         verify(group);
         compare(group.children[1].item.text, "kommt");
     }
@@ -277,6 +285,53 @@ TestCase {
         compare(control("echo").label, "kachel-echo");
     }
 
+    function test_the_aussehen_place_offers_more_contrast_in_farben_off_by_default() {
+        const toggle = control("contrast");
+        compare(toggle.label, "mehr kontrast");
+        verify(!toggle.checked);
+        verify(isInside(toggle, groupAt("farben")));
+    }
+
+    function isInside(item: var, ancestor: var): bool {
+        for (let p = item; p; p = p.parent) {
+            if (p === ancestor)
+                return true;
+        }
+        return false;
+    }
+
+    function test_more_contrast_writes_more_then_normal_and_the_shell_follows_at_once() {
+        control("contrast").activate();
+        compare(written().contrast, "more");
+        verify(Prefs.moreContrast);
+        verify(Tokens.moreContrast);
+        verify(control("contrast").checked);
+        control("contrast").activate();
+        compare(written().contrast, "normal");
+        verify(!Tokens.moreContrast);
+        verify(!control("contrast").checked);
+    }
+
+    function test_more_contrast_shows_on_while_the_system_asks_for_it_and_off_writes_normal() {
+        Prefs.systemMoreContrast = true;
+        verify(control("contrast").checked, "system is the default and follows the system");
+        verify(Tokens.moreContrast);
+        control("contrast").activate();
+        compare(written().contrast, "normal");
+        verify(!Tokens.moreContrast, "normal wins over the system");
+    }
+
+    function test_with_more_contrast_set_in_nix_the_toggle_is_on_and_the_hint_names_that_default() {
+        host.app.defaultsText = '{"contrast":"more"}';
+        verify(control("contrast").checked);
+        verify(!hintOf("contrast").includes("vorgabe"));
+        host.app.userText = '{"version":1,"contrast":"normal"}';
+        verify(!control("contrast").checked);
+        verify(hintOf("contrast").endsWith("vorgabe: an."));
+        host.app.defaultsText = "";
+        verify(hintOf("contrast").endsWith("vorgabe: wie das system."));
+    }
+
     function test_choosing_what_escape_does_writes_it_and_the_shell_follows() {
         pivot().select(1);
         const select = control("searchEscape");
@@ -333,7 +388,7 @@ TestCase {
         host.app.userText = "{ not json";
         let writes = 0;
         host.app.writeRequested.connect(() => writes++);
-        for (const name of ["searchEscape", "echo"]) {
+        for (const name of ["searchEscape", "echo", "contrast"]) {
             verify(control(name).disabled, name);
             compare(control(name).disabledReason, "datei nicht lesbar", name);
             verify(hintOf(name).includes("kein gültiges json") && hintOf(name).includes("korrigiere oder lösche"), name);
@@ -357,7 +412,7 @@ TestCase {
     }
 
     function test_a_usable_file_leaves_the_fields_enabled() {
-        for (const name of ["searchEscape", "echo"])
+        for (const name of ["searchEscape", "echo", "contrast"])
             verify(!control(name).disabled, name);
     }
 

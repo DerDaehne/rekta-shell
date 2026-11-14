@@ -25,6 +25,12 @@ ShellRoot {
 
     Binding {
         target: Prefs
+        property: "contrast"
+        value: settingsFiles.value("contrast")
+    }
+
+    Binding {
+        target: Prefs
         property: "density"
         value: settingsFiles.value("density")
     }

@@ -14,20 +14,7 @@ Row {
     // :1558).
     property bool inInkToast: false
     readonly property color ink: inInkToast ? Tokens.color.bg : Tokens.color.textPrimary
-    readonly property color mark: {
-        switch (status) {
-        case "info":
-            return Tokens.color.statusInfoFull;
-        case "success":
-            return Tokens.color.statusSuccessFull;
-        case "warning":
-            return Tokens.color.statusWarningFull;
-        case "error":
-            return Tokens.color.statusErrorFull;
-        default:
-            return Tokens.color.textContrastMedium;
-        }
-    }
+    readonly property color mark: Status.mark(status, Tokens.color, Tokens.color.textContrastMedium)
 
     // An inline mark and its word: a place change turns them as one part (motion.md, "Place change").
     readonly property bool turnsWhole: true

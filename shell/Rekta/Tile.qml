@@ -187,6 +187,18 @@ Item {
             visible: tile.opens && hover.hovered
             color: Tokens.color.hover
         }
+
+        // Under more contrast the frame and the word carry the status, not the calm fill alone (colour.md, "More
+        // contrast, less transparency").
+        Rectangle {
+            objectName: "statusFrame"
+            anchors.fill: parent
+            radius: parent.radius
+            visible: Tokens.moreContrast && tile.status !== ""
+            color: "transparent"
+            border.width: Geometry.tileStatusFrame
+            border.color: Status.mark(tile.status, Tokens.color, "transparent")
+        }
     }
 
     Column {

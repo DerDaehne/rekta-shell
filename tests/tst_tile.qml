@@ -98,6 +98,7 @@ TestCase {
         Prefs.motion = "system";
         Prefs.theme = "system";
         Prefs.density = "auto";
+        Prefs.contrast = "system";
     }
 
     function corner(tile) {
@@ -138,6 +139,37 @@ TestCase {
         compare(tile.Accessible.description, "failed");
         tile.status = "";
         verify(!word.visible, "a neutral tile has no status to spell out");
+    }
+
+    function test_under_more_contrast_a_status_tile_is_framed_inside_in_its_full_colour_and_keeps_its_word() {
+        Prefs.contrast = "more";
+        const expected = [
+            ["info", "statusInfoFull"], ["success", "statusSuccessFull"], ["warning", "statusWarningFull"], ["error", "statusErrorFull"]
+        ];
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            for (const [status, full] of expected) {
+                const tile = createTemporaryObject(tileComponent, testCase, { status: status });
+                const frame = findChild(tile, "statusFrame");
+                verify(frame.visible, `${theme} ${status}`);
+                compare(frame.border.color, Tokens.color[full], `${theme} ${status}`);
+                compare(frame.border.width, 2);
+                compare(frame.color, Qt.color("transparent"), "the fill shows through");
+                compare(Qt.rect(frame.x, frame.y, frame.width, frame.height), Qt.rect(0, 0, tile.width, tile.height), "inside the tile");
+                compare(frame.radius, Tokens.radiusTile);
+                verify(findChild(tile, "word").visible, "the word stays");
+            }
+        }
+    }
+
+    function test_a_neutral_tile_or_normal_contrast_has_no_frame() {
+        Prefs.contrast = "more";
+        const tile = createTemporaryObject(tileComponent, testCase, { status: "" });
+        verify(!findChild(tile, "statusFrame").visible, "no status, no frame");
+        tile.status = "warning";
+        verify(findChild(tile, "statusFrame").visible);
+        Prefs.contrast = "normal";
+        verify(!findChild(tile, "statusFrame").visible, "normal contrast has none");
     }
 
     function test_its_size_counts_tile_units_and_gaps() {
@@ -463,14 +495,15 @@ TestCase {
         compare(activations.count, 2);
     }
 
-    // The tiles follow the one current theme and density, so the sheet is drawn once per pair.
-    function test_contact_sheet_of_tiles_in_both_themes_and_densities() {
+    // The tiles follow the one current theme, density and contrast, so the sheet is drawn once for each.
+    function test_contact_sheet_of_tiles_in_both_themes_densities_and_contrasts() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
-        for (const theme of ["light", "dark"]) {
+        for (const [theme, contrast] of [["light", "normal"], ["dark", "normal"], ["light", "more"], ["dark", "more"]]) {
             for (const density of ["compact", "comfortable"]) {
                 Prefs.theme = theme;
                 Prefs.density = density;
+                Prefs.contrast = contrast;
                 const sheet = createTemporaryObject(sheetComponent, testCase);
                 for (const status of ["neutral", "info", "success", "warning", "error"]) {
                     findChild(findChild(sheet, `middle-${status}`), "press").start(0, 0);
@@ -478,8 +511,8 @@ TestCase {
                 }
                 findChild(sheet, "opens-info").forceActiveFocus();
                 wait(Tokens.durationPress + Tokens.durationShort);
-                grabImage(sheet).save(`tile-sheet-${theme}-${density}.png`);
-                verify(sheet.height > 0, `${theme} ${density}`);
+                grabImage(sheet).save(`tile-sheet-${theme}-${density}${contrast === "more" ? "-more-contrast" : ""}.png`);
+                verify(sheet.height > 0, `${theme} ${density} ${contrast}`);
                 sheet.destroy();
             }
         }

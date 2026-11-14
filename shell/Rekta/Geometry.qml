@@ -94,6 +94,8 @@ QtObject {
     // `.rk-tile-word { top: 10px; right: 12px }` (rekta.css:108)
     readonly property real tileWordTop: 10
     readonly property real tileWordRight: 12
+    // Under more contrast `.rk-tile[data-status] { box-shadow: inset 0 0 0 2px var(--_rk-mark) }` (rekta.css:1552)
+    readonly property real tileStatusFrame: 2
     // A press gives up once the pointer moves this far: `> (start.touch ? 8 : 4)` (rekta.js:331)
     readonly property real pressSlopMouse: 4
     readonly property real pressSlopTouch: 8

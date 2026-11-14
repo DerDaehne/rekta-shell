@@ -5,12 +5,19 @@ import Rekta
 TestCase {
     name: "Prefs"
 
+    // What the platform said before any test set the system source by hand.
+    property bool systemContrastAtStart
+
+    Component.onCompleted: systemContrastAtStart = Prefs.systemMoreContrast
+
     function cleanup() {
         Prefs.theme = "system";
         Prefs.density = "auto";
         Prefs.motion = "system";
+        Prefs.contrast = "system";
         Prefs.systemColorScheme = Qt.ColorScheme.Light;
         Prefs.systemReducedMotion = false;
+        Prefs.systemMoreContrast = false;
         Prefs.systemHasTouch = false;
     }
 
@@ -35,6 +42,7 @@ TestCase {
         verify(Tokens.reducedMotion);
         compare(Tokens.durationShort, 0);
         Prefs.systemReducedMotion = false;
+        Prefs.systemMoreContrast = false;
         verify(!Tokens.reducedMotion);
     }
 
@@ -43,8 +51,40 @@ TestCase {
         Prefs.motion = "on";
         verify(!Tokens.reducedMotion);
         Prefs.systemReducedMotion = false;
+        Prefs.systemMoreContrast = false;
         Prefs.motion = "off";
         verify(Tokens.reducedMotion);
+    }
+
+    function test_the_system_contrast_comes_from_the_platform_accessibility_hints() {
+        const preference = Application.styleHints.accessibility.contrastPreference;
+        compare(typeof preference, "number");
+        compare(systemContrastAtStart, preference === Qt.ContrastPreference.HighContrast);
+    }
+
+    function test_contrast_follows_the_system_live() {
+        Prefs.systemMoreContrast = true;
+        verify(Tokens.moreContrast);
+        verify(Tokens.color === Tokens.lightContrast);
+        Prefs.systemMoreContrast = false;
+        verify(!Tokens.moreContrast);
+        verify(Tokens.color === Tokens.light);
+    }
+
+    function test_contrast_more_and_normal_win_over_the_system() {
+        Prefs.systemMoreContrast = false;
+        Prefs.contrast = "more";
+        verify(Tokens.moreContrast);
+        Prefs.systemMoreContrast = true;
+        Prefs.contrast = "normal";
+        verify(!Tokens.moreContrast);
+    }
+
+    function test_a_contrast_that_is_none_of_the_two_follows_the_system() {
+        Prefs.contrast = "high";
+        verify(!Tokens.moreContrast);
+        Prefs.systemMoreContrast = true;
+        verify(Tokens.moreContrast);
     }
 
     function test_density_is_compact_for_a_fine_pointer_and_comfortable_for_touch() {

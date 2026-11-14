@@ -14,6 +14,12 @@ function tileFill(status, colors, otherwise) {
     return fills[status] ?? otherwise;
 }
 
+// The full colour that marks a status (`--_rk-mark: var(--rk-status-*-full)`, rekta.css:63–66); `otherwise` without one.
+function mark(status, colors, otherwise) {
+    const marks = { info: colors.statusInfoFull, success: colors.statusSuccessFull, warning: colors.statusWarningFull, error: colors.statusErrorFull };
+    return marks[status] ?? otherwise;
+}
+
 // Whether the item stands on a status fill: an ancestor says so with `statusFill: true`. The walk reads every parent,
 // so it runs again when the item moves or the fill changes.
 function onStatusFill(item) {

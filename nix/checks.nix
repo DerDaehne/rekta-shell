@@ -378,10 +378,11 @@ in
           programs.rekta-shell = {
             searchEscape = "back";
             showRecent = false;
+            contrast = "more";
           };
         }
       ]
-    ) "the Start options changed a system that does not enable the module";
+    ) "the Start or contrast options changed a system that does not enable the module";
     assert lib.assertMsg (
       toplevel [ plasma ] == toplevel [
         plasma
@@ -432,18 +433,19 @@ in
         exit 1
       }
       defaults=${enabled.programs.rekta-shell.package}/share/rekta-shell/defaults.json
-      if grep -q -e searchEscape -e showRecent $defaults; then
-        echo "the module names a search escape or showRecent without being asked to" >&2
+      if grep -q -e searchEscape -e showRecent -e contrast $defaults; then
+        echo "the module names a search escape, showRecent or contrast without being asked to" >&2
         exit 1
       fi
       chosen=${
         (withSettings {
           searchEscape = "back";
           showRecent = false;
+          contrast = "more";
         }).programs.rekta-shell.package
       }/share/rekta-shell/defaults.json
-      grep -qF '"searchEscape":"back"' $chosen && grep -qF '"showRecent":false' $chosen || {
-        echo "the search escape or showRecent option is not in the package defaults" >&2
+      grep -qF '"searchEscape":"back"' $chosen && grep -qF '"showRecent":false' $chosen && grep -qF '"contrast":"more"' $chosen || {
+        echo "the search escape, showRecent or contrast option is not in the package defaults" >&2
         exit 1
       }
       # With both modules on, whichever rekta-settings comes first in PATH names the same defaults.

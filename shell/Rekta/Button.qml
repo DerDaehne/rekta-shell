@@ -35,8 +35,9 @@ Row {
         switch (variant) {
         case "primary":
             return Tokens.color.textOnAccent;
+        // Under more contrast its words take ink inside the error frame (rekta.css:1553).
         case "destructive":
-            return Tokens.color.statusErrorFull;
+            return Tokens.moreContrast ? Tokens.color.textPrimary : Tokens.color.statusErrorFull;
         case "quiet":
             return hovered ? Tokens.color.textPrimary : Tokens.color.textContrastHigh;
         default:

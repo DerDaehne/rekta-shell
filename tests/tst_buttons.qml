@@ -109,6 +109,7 @@ TestCase {
         Prefs.theme = "system";
         Prefs.density = "auto";
         Prefs.systemHasTouch = false;
+        Prefs.contrast = "system";
     }
 
     function test_each_kind_takes_its_colours_from_the_tokens() {
@@ -130,6 +131,25 @@ TestCase {
             compare(findChild(button, "label").font.weight, Tokens.fontWeightSemibold);
             compare(findChild(button, "fill").radius, Tokens.radiusS);
         }
+    }
+
+    function test_under_more_contrast_a_destructive_button_takes_ink_inside_its_error_frame() {
+        Prefs.contrast = "more";
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            const button = createTemporaryObject(buttonComponent, testCase, { variant: "destructive", icon: "close" });
+            compare(findChild(button, "label").color, Tokens.color.textPrimary, `${theme} words`);
+            compare(findChild(button, "glyph").color, Tokens.color.textPrimary, `${theme} glyph`);
+            compare(findChild(button, "frame").border.color, Tokens.color.statusErrorFull, `${theme} frame`);
+        }
+    }
+
+    function test_under_more_contrast_a_disabled_destructive_button_stays_disabled_grey() {
+        Prefs.contrast = "more";
+        const button = createTemporaryObject(buttonComponent, testCase, { variant: "destructive", icon: "close", disabledReason: "no changes" });
+        compare(findChild(button, "label").color, Tokens.color.disabled);
+        compare(findChild(button, "glyph").color, Tokens.color.disabled);
+        compare(findChild(button, "frame").border.color, Tokens.color.disabled);
     }
 
     function test_the_height_follows_the_density() {

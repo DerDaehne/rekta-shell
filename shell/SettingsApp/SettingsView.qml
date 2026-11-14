@@ -58,6 +58,7 @@ FocusScope {
     ]
     // The fields of the groups that have any, by group; a group without one says its fields are still to come.
     readonly property var contents: ({
+            "farben": contrastField,
             "fläche": echoField,
             "suche": escapeField,
             "angeheftet": pinnedField,
@@ -87,6 +88,18 @@ FocusScope {
     // The default's words while the setting differs from it, else "".
     function presetWord(key: string, choices: var): string {
         return settings.differs(key) ? (choices.find(choice => choice.value === settings.preset(key))?.text ?? "") : "";
+    }
+
+    // On where the shell takes more contrast: set so, or following a system that asks for it.
+    function contrastOn(): bool {
+        return Prefs.moreContrastFor(settings.value("contrast"));
+    }
+
+    function contrastWord(value: string): string {
+        return ({
+                more: "an",
+                normal: "aus"
+            })[value] ?? "wie das system";
     }
 
     function echoOn(): bool {
@@ -167,6 +180,30 @@ FocusScope {
                 onActivated: index => {
                     view.settings.set("searchEscape", view.escapeChoices[index].value);
                     currentIndex = Qt.binding(() => view.choiceIndex("searchEscape", view.escapeChoices));
+                }
+            }
+        }
+    }
+
+    Component {
+        id: contrastField
+
+        Setting {
+            hint: "jeder text hebt sich stärker ab, statuskacheln tragen einen rahmen in ihrer farbe, glas wird deckend."
+            problem: view.problem
+            presetWord: view.settings.differs("contrast") ? view.contrastWord(view.settings.preset("contrast")) : ""
+
+            Toggle {
+                objectName: "contrast"
+                width: parent.width
+                disabledReason: view.disabledReason
+                label: "mehr kontrast"
+                onWord: "an"
+                offWord: "aus"
+                checked: view.contrastOn()
+                onToggled: {
+                    view.settings.set("contrast", checked ? "more" : "normal");
+                    checked = Qt.binding(() => view.contrastOn());
                 }
             }
         }

@@ -17,6 +17,17 @@
       description = "What each monitor shows behind the windows: \"rekta\" is the colour bg with a faint print of tiles in the bottom right corner, \"solid\" the colour bg alone. It takes effect with the default package once the module is enabled, as the default that a \"background\" in the user's ~/.config/rekta-shell/settings.json overrides.";
     };
 
+    contrast = lib.mkOption {
+      type = lib.types.nullOr (
+        lib.types.enum [
+          "more"
+          "normal"
+        ]
+      );
+      default = null;
+      description = "Rekta's more contrast: \"more\" takes the contrast colours (every text pair at 7:1, opaque glass) and frames each status tile, \"normal\" keeps the regular colours. Null follows the system's contrast preference where the platform reports one. It takes effect with the default package once the module is enabled, as the default that a \"contrast\" in the user's ~/.config/rekta-shell/settings.json overrides.";
+    };
+
     density = lib.mkOption {
       type = lib.types.nullOr (
         lib.types.enum [
@@ -63,6 +74,7 @@
     }
     // lib.filterAttrs (_: value: value != null) {
       inherit (cfg)
+        contrast
         density
         searchEscape
         showRecent
