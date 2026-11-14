@@ -468,9 +468,9 @@ bool FadeBackEffect::fading() const
     return !m_splash.windows.isEmpty();
 }
 
-// The bottom edge is the Start's way in only while the Start is gone, so a finger at the bottom of the open Start reaches
-// the Start, and the right edge the side panel's only while the panel is away; a finger swiping keeps its edge until it
-// lets go. An edge alone sets nothing in motion.
+// The bottom edge is the Start's way in only while the Start is gone, so a finger at the bottom of the open Start
+// reaches the Start, and the right edge the side panel's only while the panel is away; a finger swiping keeps its edge
+// until it lets go. An edge alone sets nothing in motion.
 void FadeBackEffect::holdEdges()
 {
     hold(m_bottomEdge, !m_start.active(), &FadeBackEffect::fingerMoved);

@@ -1013,7 +1013,68 @@ TestCase {
         compare(side.entry, 1);
     }
 
-    function test_closed_while_a_swipe_draws_it_in_it_goes_and_the_swipe_brings_it_back_no_more() {
+    function test_shown_while_a_swipe_draws_it_in_the_same_swipe_moves_it_no_more() {
+        side.drawIn(0.2);
+        side.show(0);
+        side.drawIn(0.3);
+        compare(side.entry, 1, "the swipe moving on leaves it in");
+        side.close();
+        verify(!side.open);
+        side.drawIn(0.5);
+        verify(!side.open, "and once it has gone, the same swipe does not bring it back");
+        side.letGoIn();
+        side.drawIn(0.3);
+        verify(side.open, "the next swipe draws it in again");
+        compare(side.entry, 0.3);
+    }
+
+    function test_closed_while_a_swipe_draws_it_in_the_same_swipe_moving_on_opens_it_no_more() {
+        Prefs.motion = "on";
+        side.drawIn(0.4);
+        side.toggle(0, false);
+        tryCompare(side, "open", false, Tokens.durationModerate * 4);
+        side.drawIn(0.5);
+        verify(!side.open, "the swipe moving on after the close leaves it away");
+        side.letGoIn();
+        verify(!side.open);
+        side.drawIn(0.3);
+        verify(side.open, "the next swipe draws it in again");
+        compare(side.entry, 0.3);
+    }
+
+    function test_under_reduced_motion_a_close_mid_swipe_holds_against_the_swipe_moving_on() {
+        side.drawIn(0.4);
+        side.close();
+        verify(!side.open, "gone at once");
+        side.drawIn(0.45);
+        verify(!side.open, "the next step of the same swipe leaves it away");
+    }
+
+    function test_closed_while_a_swipe_draws_it_out_its_letting_go_brings_it_back_no_more() {
+        Prefs.motion = "on";
+        showSettled(0);
+        side.drawOut(0.3);
+        side.close();
+        side.letGoOut();
+        verify(!findChild(side, "comingIn").running, "the letting go does not bring it back");
+        tryCompare(side, "open", false, Tokens.durationModerate * 4);
+        verify(!findChild(side, "comingIn").running, "nothing draws it after it has gone");
+        compare(side.entry, 0);
+    }
+
+    function test_a_swipe_drawing_out_while_the_panel_goes_leaves_it_going() {
+        Prefs.motion = "on";
+        showSettled(0);
+        side.close();
+        side.drawOut(0.2);
+        side.letGoOut();
+        verify(!findChild(side, "comingIn").running, "the swipe does not bring it back");
+        tryCompare(side, "open", false, Tokens.durationModerate * 4);
+        verify(!findChild(side, "comingIn").running, "nothing draws it after it has gone");
+        compare(side.entry, 0);
+    }
+
+    function test_closed_while_a_swipe_draws_it_in_it_goes_and_its_letting_go_brings_it_back_no_more() {
         Prefs.motion = "on";
         side.drawIn(0.8);
         side.toggle(0, false);

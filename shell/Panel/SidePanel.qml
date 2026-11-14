@@ -9,9 +9,10 @@ import Rekta
 // (motion.md, "Sheets"); unlike Rekta's side panel (`.rk-sheet--side`, rekta.css:1095–1106) nothing beside it is shaded
 // or blocked and it arrives on ease-out. Its pivot picks a facet. Escape, its close button at the top trailing corner
 // (states.md:243–247), a touch swipe towards the trailing edge and close() send it away; a tip that shows takes Escape
-// first. A swipe from its host (drawIn(), drawOut()) moves it as a finger on it does. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move through the controls, and
-// once the panel has gone the focus goes back. A sheet a facet opens lies over the panel's ground (`sheets`); while one
-// is open the panel keeps still. A press anywhere in it hides a tip, as scrolling does.
+// first. A swipe from its host (drawIn(), drawOut()) moves it as a finger on it does. Focus starts at the first control
+// of the facet in sight, Tab and ↑ ↓ move through the controls, and once the panel has gone the focus goes back. A sheet
+// a facet opens lies over the panel's ground (`sheets`); while one is open the panel keeps still. A press anywhere in
+// it hides a tip, as scrolling does.
 // What a facet keeps at hand stands at the panel's edge nearest the app bar (`edge`), below its scroll: the app bar is
 // at the bottom, so that is the bottom edge.
 FocusScope {
@@ -36,6 +37,8 @@ FocusScope {
     // A swipe draws it in from away, or out from open, until it lets go.
     property bool drawingIn: false
     property bool drawingOut: false
+    // A swipe drawing it in that a show or a close took over moves it no more until it lets go.
+    property bool swipeInSpent: false
     readonly property real contentWidth: 2.5 * Tokens.tileUnit + Tokens.spaceS
     readonly property real panelWidth: Geometry.hairline + 2 * Tokens.spaceM + contentWidth
     readonly property real shift: (1 - entry) * panelWidth
@@ -59,7 +62,7 @@ FocusScope {
             if (!going.running && !drawingIn)
                 return;
         }
-        drawingIn = false;
+        endSwipeIn();
         going.stop();
         comingIn.restart();
         ringsHidden = byPointer;
@@ -122,7 +125,7 @@ FocusScope {
     function close() {
         if (!open || going.running)
             return;
-        drawingIn = false;
+        endSwipeIn();
         drawingOut = false;
         comingIn.stop();
         going.start();
@@ -131,7 +134,7 @@ FocusScope {
     // A swipe draws it in on "steuerung", `share` of its width, while it is away or this swipe draws it; a swipe that
     // has not come in yet opens nothing. It follows the swipe also under reduced motion, as it is moved by hand.
     function drawIn(share: real) {
-        if (!drawingIn && (open || share <= 0))
+        if (swipeInSpent || (!drawingIn && (open || share <= 0)))
             return;
         if (!open) {
             appear(0);
@@ -144,6 +147,7 @@ FocusScope {
     // Let go at half its width or more (the half as at pull()), it comes in all the way with the focus on its first
     // control; before, it goes and gives the focus back.
     function letGoIn() {
+        swipeInSpent = false;
         if (!drawingIn)
             return;
         drawingIn = false;
@@ -153,6 +157,11 @@ FocusScope {
         }
         comingIn.restart();
         focusFirst();
+    }
+
+    function endSwipeIn() {
+        swipeInSpent = drawingIn || swipeInSpent;
+        drawingIn = false;
     }
 
     // A swipe draws the open panel out, `share` of its width, as a finger on it does; not over an open sheet.
