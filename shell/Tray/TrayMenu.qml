@@ -109,7 +109,6 @@ Menu {
     onCurrentChanged: refill()
     // On opening rather than closing: a choice is told after the menu has closed, and its row must still be its own.
     onOpenChanged: {
-        console.log("DBG open", open, visible, width, height, shown.length);
         if (open)
             reset();
     }
@@ -198,7 +197,6 @@ Menu {
             const shown = reader.isImageLoaded(url) && !TrayRules.checkerboard(context.createImageData(url));
             // The canvas keeps every image it loaded until unloaded, and an app may send a new picture each second.
             reader.unloadImage(url);
-            console.log("DBG verdict", url, shown);
             return shown ? url : "";
         }
 
