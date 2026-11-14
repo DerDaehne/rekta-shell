@@ -699,9 +699,11 @@ TestCase {
 
     // The keys
 
-    function test_tab_runs_pivot_strip_panorama_then_the_tiles_in_reading_order() {
+    function test_tab_runs_pivot_search_field_strip_panorama_then_the_tiles_in_reading_order() {
         openNow();
         named("pivot").forceActiveFocus();
+        keyClick(Qt.Key_Tab);
+        verify(findChild(named("searchField"), "input").activeFocus, "the search field");
         keyClick(Qt.Key_Tab);
         verify(named("sectionStrip").activeFocus, "the strip");
         keyClick(Qt.Key_Tab);

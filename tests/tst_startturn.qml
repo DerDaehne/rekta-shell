@@ -96,15 +96,16 @@ TestCase {
         turner.paused = true;
     }
 
-    function test_opening_the_title_starts_then_the_strip_then_the_section_heads_then_the_tiles_a_row_15_ms_after_the_one_above_its_parts_spread_over_those_15_ms_front_to_back() {
+    function test_opening_the_title_starts_then_the_search_field_then_the_strip_then_the_section_heads_then_the_tiles_a_row_15_ms_after_the_one_above_its_parts_spread_over_those_15_ms_front_to_back() {
         holdTheOpening();
         const turns = turner.arrivingTurns;
         verifyAboutTheBottomEdge(turns);
         const startOf = item => turnOf(turns, item).at - turner.handOverAt;
         compare(startOf(named("pivot")), 0);
-        compare(startOf(named("sectionStrip")), 15);
-        compare(headings(turns).map(startOf), [30, 35, 40]);
-        compare(pinnedTiles().map(startOf), [45, 48, 51]);
+        compare(startOf(named("searchField")), 15, "a row of its own by its top, below the titles'");
+        compare(startOf(named("sectionStrip")), 30);
+        compare(headings(turns).map(startOf), [45, 50, 55]);
+        compare(pinnedTiles().map(startOf), [60, 63, 66]);
     }
 
     function test_opening_no_part_starts_before_or_with_a_part_in_a_row_above_it() {
@@ -184,7 +185,7 @@ TestCase {
         verifyAboutTheBottomEdge(turner.leavingTurns);
         for (const [item, at] of opening)
             compare(turnOf(turner.leavingTurns, item).at, lastIn - at, item.objectName);
-        compare(turnOf(turner.leavingTurns, named("pivot")).at, 90);
+        compare(turnOf(turner.leavingTurns, named("pivot")).at, 105);
         compare(pinnedTiles().map(tile => turnOf(turner.leavingTurns, tile).at), [45, 42, 39]);
     }
 
@@ -223,7 +224,8 @@ TestCase {
         verify(!turner.back);
         verifyAboutTheBottomEdge(turner.leavingTurns);
         compare(turnOf(turner.leavingTurns, named("pivot")).at, 0);
-        compare(turnOf(turner.leavingTurns, named("sectionStrip")).at, 15);
+        compare(turnOf(turner.leavingTurns, named("searchField")).at, 15);
+        compare(turnOf(turner.leavingTurns, named("sectionStrip")).at, 30);
         compare(turner.leavingTurns[turner.leavingTurns.length - 1].part.item, pressed);
         verify(turner.leavingTurns.every(turn => turn.at <= turnOf(turner.leavingTurns, pressed).at));
     }
