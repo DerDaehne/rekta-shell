@@ -18,14 +18,19 @@ Scope {
     }
 
     function launch(entry: DesktopEntry) {
-        const command = Rules.scopeCommand(entry.id, entry.command, Date.now());
+        start(entry, entry.command);
+    }
+
+    function launchAction(entry: DesktopEntry, action: DesktopAction) {
+        start(entry, action.command);
+    }
+
+    function start(entry: DesktopEntry, command: var) {
+        const context = Rules.launchContext(entry, command, Date.now());
         if (!starts) {
-            console.info(`Launcher: would start ${JSON.stringify(command)}`);
+            console.info(`Launcher: would start ${JSON.stringify(context.command)}`);
             return;
         }
-        const context = { command: command };
-        if (entry.workingDirectory !== "")
-            context.workingDirectory = entry.workingDirectory;
         Quickshell.execDetached(context);
     }
 

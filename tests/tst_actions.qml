@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import DBusCounterpart
+import Start
 import "../shell/services"
 
 TestCase {
@@ -36,6 +37,9 @@ TestCase {
     readonly property var heard: heardAll.filter(sender => sender === owner)
     property var commands
     property var exporter
+    // The apps the Start lists, as Apps.list has them, and the registry over them and the commands.
+    property var apps: null
+    property var registry
 
     Counterpart {
         id: counterpart
@@ -92,13 +96,82 @@ TestCase {
     }
 
     Component {
+        id: registryComponent
+
+        Actions {
+            commands: testCase.commands?.list ?? []
+            apps: testCase.apps
+        }
+    }
+
+    Component {
         id: exporterComponent
 
         ActionsInterface {
             sessionDesktop: ""
-            commands: testCase.commands?.list ?? []
+            entries: testCase.registry?.list ?? []
         }
     }
+
+    // Starts what a desktop action asks for as the shell's launcher does, at a fixed time, and notes what it would run.
+    readonly property QtObject launcher: QtObject {
+        function launchAction(entry: var, action: var) {
+            testCase.calls = [...testCase.calls, Rules.launchContext(entry, action.command, 1234)];
+        }
+    }
+
+    function desktopEntry(id: string, name: string, icon: string, actions: var): var {
+        return {
+            id,
+            name,
+            icon,
+            workingDirectory: "",
+            actions
+        };
+    }
+
+    function desktopAction(id: string, name: string, icon: string, command: var): var {
+        return {
+            id,
+            name,
+            icon,
+            command
+        };
+    }
+
+    // The desktop entries as Quickshell reads them: three apps with desktop actions, Dolphin's with one without Exec (it
+    // would run over D-Bus) and one without a name, Notes without any icon; an app without actions; one only GNOME shows.
+    function desktopEntries(): var {
+        const firefox = desktopEntry("firefox", "Firefox", "firefox", [
+            desktopAction("new-window", "New Window", "", ["firefox", "--new-window"]),
+            desktopAction("new-private-window", "New Private Window", "private-browsing", ["firefox", "--private-window"])
+        ]);
+        const dolphin = desktopEntry("org.kde.dolphin", "Dolphin", "system-file-manager", [
+            desktopAction("home", "Persönlicher Ordner", "user-home", ["dolphin", "--new-window", "~"]),
+            desktopAction("background", "Im Hintergrund", "", []),
+            desktopAction("nameless", "", "", ["dolphin"])
+        ]);
+        dolphin.workingDirectory = "/srv/files";
+        const notes = desktopEntry("org.example.notes", "Notes", "", [desktopAction("new-note", "New Note", "", ["notes", "--new"])]);
+        const kate = desktopEntry("org.kde.kate", "Kate", "kate", []);
+        const tweaks = desktopEntry("org.gnome.tweaks", "Tweaks", "tweaks", [desktopAction("reset", "Reset", "", ["gnome-tweaks", "--reset"])]);
+        return [firefox, dolphin, notes, kate, tweaks];
+    }
+
+    // The apps as the Start lists them under KDE (Apps.read), with only what the registry reads of them.
+    function listedApps(entries: var): var {
+        const files = {
+            "org.gnome.tweaks": {
+                OnlyShowIn: ["GNOME"]
+            }
+        };
+        return Rules.listedApps(entries, files, "KDE").map(entry => ({
+                    id: entry.id,
+                    name: entry.name,
+                    actions: Rules.desktopActions(entry, testCase.launcher)
+                }));
+    }
+
 
     function initTestCase() {
         verify(counterpart.listen(iface, "ActionsChanged"));
@@ -111,7 +184,9 @@ TestCase {
         calls = [];
         replies = {};
         owner = "";
+        apps = null;
         commands = createTemporaryObject(commandsComponent, testCase);
+        registry = createTemporaryObject(registryComponent, testCase);
     }
 
     function exportFor(sessionDesktop: string): var {
@@ -273,6 +348,113 @@ TestCase {
         compare(commands.sink.audio.volume, 0.5);
         compare(calls, []);
         compare(listActions().length, 10, "the interface answers on");
+    }
+
+    // What the registry holds for each desktop action, without its run().
+    function desktopActionsListed(): var {
+        return registry.list.slice(commands.list.length).map(entry => ({
+                    id: entry.id,
+                    text: entry.text,
+                    keywords: entry.keywords,
+                    app: entry.app,
+                    appName: entry.appName,
+                    icon: entry.icon
+                }));
+    }
+
+    function test_the_registry_holds_the_shells_commands_then_each_desktop_action_of_a_listed_app_in_the_apps_words() {
+        compare(registry.list, commands.list, "before the apps are read");
+        apps = listedApps(desktopEntries());
+        compare(registry.list.slice(0, commands.list.length), commands.list);
+        const of = (app, appName) => ({
+                keywords: [appName],
+                app,
+                appName
+            });
+        compare(desktopActionsListed(), [Object.assign(of("org.kde.dolphin", "Dolphin"), {
+                        id: "desktop/org.kde.dolphin/home",
+                        text: "Persönlicher Ordner",
+                        icon: "user-home"
+                    }), Object.assign(of("firefox", "Firefox"), {
+                        id: "desktop/firefox/new-window",
+                        text: "New Window",
+                        icon: "firefox"
+                    }), Object.assign(of("firefox", "Firefox"), {
+                        id: "desktop/firefox/new-private-window",
+                        text: "New Private Window",
+                        icon: "private-browsing"
+                    }), Object.assign(of("org.example.notes", "Notes"), {
+                        id: "desktop/org.example.notes/new-note",
+                        text: "New Note",
+                        icon: ""
+                    })], "Dolphin's actions without Exec or name, Kate without actions and Tweaks, shown only in GNOME, bring none");
+    }
+
+    function test_list_actions_gives_a_desktop_action_its_app_and_icon_and_the_shells_commands_stay_as_they_were() {
+        exportFor("rekta");
+        const own = listActions();
+        apps = listedApps(desktopEntries());
+        const all = listActions();
+        compare(all.slice(0, own.length), own);
+        const plain = (title, keywords, app) => ({
+                title,
+                keywords,
+                app,
+                readOnly: false,
+                destructive: false
+            });
+        compare(all.slice(own.length), [["desktop/org.kde.dolphin/home", Object.assign(plain("Persönlicher Ordner", ["Dolphin"], "org.kde.dolphin"), {
+                            icon: "user-home"
+                        })], ["desktop/firefox/new-window", Object.assign(plain("New Window", ["Firefox"], "firefox"), {
+                            icon: "firefox"
+                        })], ["desktop/firefox/new-private-window", Object.assign(plain("New Private Window", ["Firefox"], "firefox"), {
+                            icon: "private-browsing"
+                        })], ["desktop/org.example.notes/new-note", plain("New Note", ["Notes"], "org.example.notes")]], "an action without any icon has none");
+    }
+
+    function test_invoking_a_desktop_action_starts_its_command_in_a_scope_of_its_app_in_the_apps_directory() {
+        apps = listedApps(desktopEntries());
+        exportFor("rekta");
+        compare(invoke("desktop/org.kde.dolphin/home", {}), {
+            signature: "a{sv}",
+            values: [{}],
+            error: ""
+        });
+        compare(invoke("desktop/firefox/new-private-window", {}).error, "");
+        compare(calls, [{
+                    command: ["systemd-run", "--user", "--scope", "--unit=app-org.kde.dolphin-1234", "--", "dolphin", "--new-window", "~"],
+                    workingDirectory: "/srv/files"
+                }, {
+                    command: ["systemd-run", "--user", "--scope", "--unit=app-firefox-1234", "--", "firefox", "--private-window"]
+                }]);
+    }
+
+    function test_a_desktop_action_the_registry_does_not_list_is_refused_and_nothing_starts() {
+        apps = listedApps(desktopEntries());
+        exportFor("rekta");
+        for (const id of ["desktop/org.kde.dolphin/background", "desktop/org.gnome.tweaks/reset", "desktop/firefox", "desktop/firefox/"]) {
+            const refused = invoke(id, {});
+            compare(refused.error, "org.freedesktop.DBus.Error.Failed", id);
+            compare(refused.values, [`there is no action ${id}`], id);
+        }
+        compare(calls, []);
+    }
+
+    function test_an_app_with_desktop_actions_coming_or_going_sends_actions_changed_once_and_a_reread_that_lists_the_same_sends_none() {
+        const withoutFirefox = () => desktopEntries().filter(entry => entry.id !== "firefox");
+        apps = listedApps(withoutFirefox());
+        exportFor("rekta");
+        apps = listedApps(desktopEntries());
+        tryVerify(() => heard.length === 1);
+        apps = listedApps(desktopEntries());
+        apps = listedApps([...desktopEntries(), desktopEntry("org.kde.okular", "Okular", "okular", [])]);
+        // A round trip on the interface's own connection: a signal it sent before the answer has arrived by now.
+        listActions();
+        compare(heard.length, 1, "the same actions read again, and an app without actions, bring none");
+        apps = listedApps(withoutFirefox());
+        tryVerify(() => heard.length === 2);
+        listActions();
+        compare(heard.length, 2);
     }
 
     function test_version_is_one_and_can_only_be_read() {

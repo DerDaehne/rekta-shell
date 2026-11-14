@@ -43,6 +43,31 @@ function scopeCommand(id, command, stamp) {
     return ["systemd-run", "--user", "--scope", `--unit=app-${escapeUnitName(id)}-${stamp}`, "--", ...command];
 }
 
+// What Quickshell.execDetached() takes to start `command` for a desktop entry, the entry's own or one of its desktop
+// actions': in a scope of the entry's own (scopeCommand), in the entry's working directory if it names one.
+function launchContext(entry, command, stamp) {
+    const context = { command: scopeCommand(entry.id, command, stamp) };
+    if (entry.workingDirectory !== "")
+        context.workingDirectory = entry.workingDirectory;
+    return context;
+}
+
+// The desktop actions of an entry ([Desktop Action] groups) as the action registry lists them, in the words the app
+// gives them and found by the app's name too; each runs through `launcher` as the app starts. One without a name or an
+// Exec of its own is left out: the spec requires the name, and one without Exec runs only over the app's D-Bus
+// (DBusActivatable), which this does not do.
+function desktopActions(entry, launcher) {
+    return Array.from(entry.actions).filter(action => action.name !== "" && action.command.length > 0).map(action => ({
+        id: `desktop/${entry.id}/${action.id}`,
+        text: action.name,
+        keywords: [entry.name],
+        app: entry.id,
+        appName: entry.name,
+        icon: action.icon || entry.icon,
+        run: () => launcher.launchAction(entry, action)
+    }));
+}
+
 // A tile spans one to four units across and one or two down (tiles.md:29–33), at most `most` units.
 function span(units, most) {
     return Math.min(most, Math.max(1, Math.round(Number(units) || 1)));

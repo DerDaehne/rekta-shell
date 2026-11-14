@@ -2469,6 +2469,33 @@ TestCase {
         compare(calls, ["launch Dateien"]);
     }
 
+    function test_the_search_finds_no_desktop_action_of_an_app_only_the_shells_own_commands() {
+        openWithEverything();
+        start.apps = searchableApps().map(app => Object.assign(app, {
+                actions: [{
+                        id: `desktop/${app.id}/new-window`,
+                        text: "Neues Fenster",
+                        keywords: [app.name],
+                        app: app.id,
+                        appName: app.name,
+                        icon: "",
+                        run: () => testCase.calls = [...testCase.calls, `action ${app.name}`]
+                    }]
+            }));
+        typeNow("neues");
+        compare(hitNames(), []);
+        compare(groupNames(), []);
+        verify(findChild(named("noHits"), "sentence").visible);
+        start.query = "";
+        typeNow("firefox");
+        compare(hitNames(), ["Firefox"]);
+        compare(groupNames(), [], "nothing found by the app's name beside the app");
+        start.query = "";
+        typeNow("sp");
+        compare(rowTexts("befehle"), ["sperren"]);
+        compare(calls, []);
+    }
+
     // A–Z, a desktop's apps with rekta's own settings, and two windows, one titled as its app.
     function openOnADesktop() {
         start.apps = [

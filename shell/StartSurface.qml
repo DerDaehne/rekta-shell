@@ -43,6 +43,8 @@ PanelWindow {
     property bool handsToFullScreen: false
     // The shell's commands, see StartPlace.commands.
     property var commands: []
+    // The installed apps this desktop lists, as Apps.list has them.
+    readonly property var apps: installed.list
     // Meta held for the key map (MetaHold), which takes the Meta that follows from the Start.
     property var metaHold: null
     // The list in start.json, null without a usable one.

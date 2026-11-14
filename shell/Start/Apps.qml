@@ -11,7 +11,8 @@ Scope {
 
     property var launcher: null
     property var usage: null
-    // {id, name, genericName, keywords, exec, icon, launch()}; null until the files have been read once.
+    // {id, name, genericName, keywords, exec, icon, launch(), actions}; null until the files have been read once. `actions`
+    // are the app's desktop actions as the action registry lists them (Rules.desktopActions).
     property var list: null
     // The System Settings pages, shaped alike; they have no place in `list`, their entries carry NoDisplay.
     property var settings: []
@@ -25,6 +26,7 @@ Scope {
             keywords: Array.from(entry.keywords),
             exec: exec,
             icon: Quickshell.iconPath(entry.icon, true),
+            actions: Rules.desktopActions(entry, apps.launcher),
             launch: () => {
                 apps.launcher.launch(entry);
                 apps.usage.count(entry.id);

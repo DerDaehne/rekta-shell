@@ -51,6 +51,22 @@ TestCase {
             ["systemd-run", "--user", "--scope", "--unit=app-org.kde.konsole-1234", "--", "konsole", "--new-tab"]);
     }
 
+    function test_an_entry_or_its_action_starts_in_the_entrys_scope_and_working_directory_if_it_names_one() {
+        const konsole = {
+            id: "org.kde.konsole",
+            workingDirectory: ""
+        };
+        compare(Rules.launchContext(konsole, ["konsole", "--new-tab"], 1234), {
+            command: ["systemd-run", "--user", "--scope", "--unit=app-org.kde.konsole-1234", "--", "konsole", "--new-tab"]
+        });
+        compare(Rules.launchContext(Object.assign(konsole, {
+            workingDirectory: "/srv/work"
+        }), ["konsole", "--new-window"], 5), {
+            command: ["systemd-run", "--user", "--scope", "--unit=app-org.kde.konsole-5", "--", "konsole", "--new-window"],
+            workingDirectory: "/srv/work"
+        });
+    }
+
     function test_a_unit_name_writes_what_it_cannot_hold_as_systemd_escape_does() {
         compare(Rules.escapeUnitName("org.kde.kate_2"), "org.kde.kate_2");
         compare(Rules.escapeUnitName("my-app 2"), "my\\x2dapp\\x202");

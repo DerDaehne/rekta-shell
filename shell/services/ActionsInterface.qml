@@ -1,18 +1,18 @@
 import QtQuick
 import RektaShell.DBus
 
-// The shell's commands for other programs on the session bus: rekta.Actions1 at /rekta/Actions lists them as they read
-// now (ListActions), runs one (Invoke) and sends ActionsChanged when what it lists changes. They are the Start's own
-// commands, run as the search runs them, so one that ends the session only opens the banner. The names are working
-// names. In any other session it owns nothing.
+// The action registry for other programs on the session bus: rekta.Actions1 at /rekta/Actions lists its actions as they
+// read now (ListActions), runs one (Invoke) and sends ActionsChanged when what it lists changes. The shell's own are the
+// Start's commands, run as the search runs them, so one that ends the session only opens the banner; an app's desktop
+// action starts as the app does. The names are working names. In any other session it owns nothing.
 // ponytail: any program on the bus may invoke; a portal with permissions per client is to guard it.
 QtObject {
     id: actions
 
     // XDG_SESSION_DESKTOP of the session the shell runs in.
     required property string sessionDesktop
-    // As Commands.list has them.
-    required property var commands
+    // As the registry (Actions.list) has them.
+    required property var entries
     property bool exported: false
     // What ListActions answered when ActionsChanged was last sent, as JSON.
     property string announced: ""
@@ -47,17 +47,21 @@ QtObject {
             properties.keywords = command.keywords;
         if (command.key)
             properties.key = command.key;
+        if (command.app)
+            properties.app = command.app;
+        if (command.icon)
+            properties.icon = command.icon;
         if (command.at !== undefined)
             properties.parameters = amountSchema;
         return [command.id, properties];
     }
 
     function listed(): var {
-        return commands.map(described);
+        return entries.map(described);
     }
 
     function invoke(id: string, parameters: var): var {
-        const command = commands.find(candidate => candidate.id === id);
+        const command = entries.find(candidate => candidate.id === id);
         if (command === undefined)
             throw new Error(`there is no action ${id}`);
         if (command.at === undefined) {
@@ -91,7 +95,7 @@ QtObject {
         bus.emitSignal(path, interfaceName, "ActionsChanged", [], "");
     }
 
-    onCommandsChanged: announce()
+    onEntriesChanged: announce()
 
     Component.onCompleted: {
         if (sessionDesktop !== "rekta")
