@@ -173,9 +173,6 @@ writeShellApplication {
       sleep 0.1
     done
 
-    # KWin hands its screenshot interface only to programs whose desktop file asks for it; nested-shot uses spectacle.
-    cp ${kdePackages.spectacle}/share/applications/org.kde.spectacle.desktop "$home/.local/share/applications/"
-
     # The Nix defaults, as the module's package carries them; the user's own settings live in the session's HOME.
     printf '{"background":"%s"}\n' "$background" >"$home/defaults.json"
 
