@@ -49,5 +49,9 @@ PanelWindow {
         function onPressed() {
             alone.press();
         }
+
+        function onNews(words: string) {
+            alone.say(words);
+        }
     }
 }

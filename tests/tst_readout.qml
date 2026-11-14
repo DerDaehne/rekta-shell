@@ -24,12 +24,20 @@ TestCase {
         signalName: "pressed"
     }
 
+    SignalSpy {
+        id: news
+
+        signalName: "news"
+    }
+
     property var readout
 
     function init() {
         readout = createTemporaryObject(readoutComponent, testCase);
         pressed.target = readout;
         pressed.clear();
+        news.target = readout;
+        news.clear();
     }
 
     function test_a_volume_key_shows_the_volume_in_percent() {
@@ -121,5 +129,60 @@ TestCase {
         compare(readout.word, "tastatur");
         compare(readout.level, -1);
         compare(readout.valueText, "English (US)");
+    }
+
+    function told(): var {
+        return news.signalArguments.map(args => args[0]);
+    }
+
+    function test_a_volume_key_brings_news_only_with_the_value_that_follows_it() {
+        readout.shortcutPressed("kmix", "increase_volume");
+        compare(news.count, 0);
+        readout.volume = 0.86;
+        tryCompare(news, "count", 1);
+        compare(told(), ["lautstärke 86%"]);
+    }
+
+    function test_a_volume_key_then_a_microphone_key_bring_each_value_they_resulted_in_whole_and_nothing_stale() {
+        readout.shortcutPressed("kmix", "increase_volume");
+        readout.volume = 0.86;
+        tryCompare(news, "count", 1);
+        readout.shortcutPressed("kmix", "mic_mute");
+        readout.micMuted = true;
+        tryCompare(news, "count", 2);
+        compare(told(), ["lautstärke 86%", "mikrofon stumm"]);
+    }
+
+    function test_a_volume_key_at_its_limit_brings_no_news() {
+        readout.volume = 1;
+        readout.shortcutPressed("kmix", "increase_volume");
+        compare(pressed.count, 1);
+        readout.volume = 0.95;
+        tryCompare(news, "count", 1);
+        compare(told(), ["lautstärke 95%"]);
+    }
+
+    function test_a_volume_and_its_mute_changing_together_bring_one_piece_of_news() {
+        readout.shortcutPressed("kmix", "mute");
+        readout.volume = 0.5;
+        readout.muted = true;
+        tryCompare(news, "count", 1);
+        compare(told(), ["lautstärke stumm"]);
+    }
+
+    function test_a_change_that_reads_the_same_brings_no_news_and_one_of_another_kind_none_either() {
+        readout.shortcutPressed("kmix", "increase_volume");
+        readout.volume = 0.812;
+        readout.micVolume = 0.3;
+        readout.volume = 0.9;
+        tryCompare(news, "count", 1);
+        compare(told(), ["lautstärke 90%"]);
+    }
+
+    function test_a_brightness_key_and_a_layout_switch_bring_their_value_at_once_as_it_came_with_them() {
+        readout.brightnessReported(51, 255, "brightness_key");
+        compare(told(), ["helligkeit 20%"]);
+        readout.layoutSwitched();
+        compare(told(), ["helligkeit 20%", "tastatur English (US)"]);
     }
 }

@@ -162,6 +162,10 @@ PanelWindow {
         function onPressed() {
             display.press();
         }
+
+        function onNews(words: string) {
+            display.say(words);
+        }
     }
 
     // A toast stands flush with the trailing edge of "meldungen", or of "mehr" while that holds it; the bar spans the

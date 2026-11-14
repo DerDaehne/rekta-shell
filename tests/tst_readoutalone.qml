@@ -232,40 +232,42 @@ TestCase {
         signalName: "announced"
     }
 
-    function test_a_key_under_a_full_screen_window_announces_the_word_and_the_value_once_and_every_change_after() {
+    function saidWords(): var {
+        return saidSpy.signalArguments.map(args => args[0]);
+    }
+
+    function test_under_a_full_screen_window_a_key_itself_says_nothing_and_news_after_it_is_announced_politely() {
         saidSpy.target = alone;
         saidSpy.clear();
         alone.away = true;
         alone.press();
-        alone.press();
-        alone.word = "mikrofon";
-        alone.valueText = "stumm";
-        compare(saidSpy.signalArguments.map(args => args[0]), ["lautstärke 81%", "mikrofon 81%", "mikrofon stumm"]);
+        compare(saidSpy.count, 0);
+        alone.say("lautstärke 86%");
+        alone.say("mikrofon stumm");
+        compare(saidWords(), ["lautstärke 86%", "mikrofon stumm"]);
+        compare(saidSpy.signalArguments[0][1], Accessible.Polite);
     }
 
     function test_nothing_is_announced_without_a_full_screen_window_or_after_the_display_has_gone() {
         saidSpy.target = alone;
         saidSpy.clear();
         alone.press();
-        alone.valueText = "50%";
+        alone.say("lautstärke 50%");
         compare(saidSpy.count, 0);
         showAlone();
-        compare(saidSpy.count, 1);
         expire();
-        alone.valueText = "40%";
-        compare(saidSpy.count, 1);
+        alone.say("lautstärke 40%");
+        compare(saidSpy.count, 0);
     }
 
-    function test_a_key_on_the_way_out_announces_again_when_the_display_comes_back() {
+    function test_news_after_a_key_on_the_way_out_is_announced() {
         saidSpy.target = alone;
         showAlone();
         saidSpy.clear();
         expire();
         alone.press();
-        compare(saidSpy.count, 0);
-        tryCompare(alone, "settled", true, 2000);
-        compare(saidSpy.count, 1);
-        compare(saidSpy.signalArguments[0][0], "lautstärke 81%");
+        alone.say("lautstärke 86%");
+        compare(saidWords(), ["lautstärke 86%"]);
     }
 
     function test_under_reduced_motion_the_display_comes_and_goes_at_once_but_stays_its_time() {

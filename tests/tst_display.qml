@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtTest
+import Readout
 import Rekta
 import "ContactSheets.js" as ContactSheets
 
@@ -67,31 +68,13 @@ TestCase {
         }
     }
 
-    // A scene in a window that is not shown, as the bar is under a full-screen window.
+    // The readout as the shell feeds it: a volume and a microphone that PipeWire reports.
     Component {
-        id: hiddenComponent
+        id: readoutComponent
 
-        Window {
-            property alias display: hiddenDisplay
-
-            visible: false
-            width: 400
-            height: 100
-
-            AppBarClock {
-                id: hiddenClock
-
-                now: new Date(2026, 9, 21, 14, 32)
-            }
-
-            AppBarDisplay {
-                id: hiddenDisplay
-
-                replaces: hiddenClock
-                word: "lautstärke"
-                level: 0.81
-                valueText: "81%"
-            }
+        KeyReadout {
+            volume: 0.81
+            micVolume: 0.3
         }
     }
 
@@ -340,40 +323,48 @@ TestCase {
         verify(!display.visible);
     }
 
-    function test_a_key_announces_the_word_and_the_value_politely_once() {
-        display.press();
-        compare(said.count, 1);
-        compare(said.signalArguments[0][0], "lautstärke 81%");
-        display.press();
-        compare(said.count, 1);
+    function saidWords(): var {
+        return said.signalArguments.map(args => args[0]);
     }
 
-    function test_every_change_while_the_display_shows_is_announced_and_none_while_it_does_not() {
-        display.valueText = "80%";
+    function test_a_key_itself_announces_nothing_as_its_value_comes_after_it() {
+        display.press();
         compare(said.count, 0);
-        display.press();
-        display.word = "mikrofon";
-        display.valueText = "stumm";
-        compare(said.signalArguments.map(args => args[0]), ["lautstärke 80%", "mikrofon 80%", "mikrofon stumm"]);
-        runOutHold();
-        display.valueText = "45%";
-        compare(said.count, 3);
     }
 
-    function test_a_key_during_the_way_back_announces_again() {
+    function test_news_while_the_display_shows_is_announced_politely_and_none_before_or_after() {
+        display.say("lautstärke 80%");
+        display.press();
+        display.say("lautstärke 86%");
+        compare(saidWords(), ["lautstärke 86%"]);
+        compare(said.signalArguments[0][1], Accessible.Polite);
+        runOutHold();
+        display.say("lautstärke 45%");
+        compare(said.count, 1);
+    }
+
+    function test_news_after_a_key_during_the_way_back_is_announced() {
         showDisplay();
         runOutHold();
         tryCompare(turning, "running", true, 500);
         display.press();
-        compare(said.count, 2);
+        display.say("lautstärke 86%");
+        compare(saidWords(), ["lautstärke 86%"]);
     }
 
-    function test_a_display_in_a_window_out_of_sight_announces_nothing() {
-        const hidden = createTemporaryObject(hiddenComponent, testCase);
-        const spy = createTemporaryObject(spyComponent, testCase, { target: hidden.display });
-        hidden.display.press();
-        hidden.display.valueText = "82%";
-        compare(spy.count, 0);
+    function test_a_volume_key_then_a_microphone_key_announce_the_values_they_resulted_in_and_nothing_stale_or_mixed() {
+        const readout = createTemporaryObject(readoutComponent, testCase);
+        display.word = Qt.binding(() => readout.word);
+        display.valueText = Qt.binding(() => readout.valueText);
+        readout.pressed.connect(display.press);
+        readout.news.connect(display.say);
+        readout.shortcutPressed("kmix", "increase_volume");
+        readout.volume = 0.86;
+        tryCompare(said, "count", 1);
+        readout.shortcutPressed("kmix", "mic_mute");
+        readout.micMuted = true;
+        tryCompare(said, "count", 2);
+        compare(saidWords(), ["lautstärke 86%", "mikrofon stumm"]);
     }
 
     function test_the_bar_keeps_its_neighbours_clear_of_the_room_the_display_needs() {

@@ -8,7 +8,7 @@ import QtQuick
 // tileUpdate()): the control turns away about its horizontal middle over half of duration-moderate on ease-out, then
 // the display turns in from the other side over the other half on ease-in, whole all the while; after the last key it
 // stays duration-level, then runs the same flip the other way round. Under reduced motion the two change at once.
-// `press()` is a key: the first brings the display, every later one only keeps it. What it says is announced politely
+// `press()` is a key: the first brings the display, every later one only keeps it. `say()` announces news politely
 // while it shows, as a live region does.
 Item {
     id: display
@@ -34,22 +34,20 @@ Item {
     // The part in sight turns from 0 to -90 as it leaves and from 90 to 0 as it arrives (as CSS rotateX).
     readonly property real angle: arrived ? Tokens.flipAngle * (1 - easeIn.valueForProgress(phase * 2 - 1)) : -Tokens.flipAngle * easeOut.valueForProgress(phase * 2)
 
-    signal announced(string words)
+    signal announced(string words, int politeness)
 
     // A key; the flip itself follows `shown`.
     function press() {
-        if (!shown)
-            say();
         shown = true;
         hold.restart();
     }
 
     // Only a display in sight speaks: under a full-screen window the bar is gone and the display alone says it.
-    function say() {
-        if (!(display.Window.window?.visible ?? false))
+    function say(words: string) {
+        if (!shown || !(display.Window.window?.visible ?? false))
             return;
-        display.Accessible.announce(display.spoken, Accessible.Polite);
-        display.announced(display.spoken);
+        display.Accessible.announce(words, Accessible.Polite);
+        display.announced(words, Accessible.Polite);
     }
 
     // A flip in progress ends before the next one starts, so a key during the way back waits for it.
@@ -80,10 +78,6 @@ Item {
     Accessible.name: spoken
 
     onShownChanged: swap()
-    onSpokenChanged: {
-        if (shown)
-            say();
-    }
 
     Binding {
         target: display.replaces

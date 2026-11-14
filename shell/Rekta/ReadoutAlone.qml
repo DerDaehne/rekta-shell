@@ -5,8 +5,8 @@ import QtQuick
 // glass edge with a fade, as a compact toast does (rekta.css:1167–1172, :1235–1236, :1407; motion.md:36) and the bar's mode
 // change (rekta.css:980–981; motion.md:28), and after the last key and its hold runs the same curve backwards, as the
 // stylesheet's reversed keyframes do (rekta.css:1172). `press()` is a key: the first brings the display, every later one
-// only keeps it, and one during the way back waits until it has gone. What it says is announced politely while it
-// shows, as a live region does (navigation.md, "A short indicator in place of a control").
+// only keeps it, and one during the way back waits until it has gone. `say()` announces news politely while it shows
+// or a key waits for it, as a live region does (navigation.md, "A short indicator in place of a control").
 // ponytail: a new layer surface takes some 60ms to its first frame, so the way in starts with that frame; should no frame
 // ever come the display stays at its start until its hold runs out, then goes.
 Item {
@@ -35,7 +35,7 @@ Item {
     readonly property easingCurve ease: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
     readonly property real progress: ease.valueForProgress(phase)
 
-    signal announced(string words)
+    signal announced(string words, int politeness)
 
     function press() {
         if (!away)
@@ -51,8 +51,6 @@ Item {
     // `mapped` stays true across every change of state: the one that ends is left last.
     function arrive() {
         const fresh = !mapped;
-        if (!shown)
-            say();
         shown = true;
         leaving = false;
         moving.restart();
@@ -63,9 +61,11 @@ Item {
         awaitsFrame = true;
     }
 
-    function say() {
-        alone.Accessible.announce(alone.spoken, Accessible.Polite);
-        alone.announced(alone.spoken);
+    function say(words: string) {
+        if (!shown && !again)
+            return;
+        alone.Accessible.announce(words, Accessible.Polite);
+        alone.announced(words, Accessible.Polite);
     }
 
     function depart() {
@@ -92,10 +92,6 @@ Item {
     onAwayChanged: {
         if (!away)
             vanish();
-    }
-    onSpokenChanged: {
-        if (shown)
-            say();
     }
 
     Connections {

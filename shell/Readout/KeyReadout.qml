@@ -3,7 +3,8 @@ import QtQuick
 // What the display in the middle of the bar says after a key: volume, microphone, brightness or keyboard layout. The
 // values are the current ones of the system, which the shell's sources keep up to date; only a key shows the display,
 // so a change by an app or a slider does not. Plasma's key services (kded6, powerdevil) act on the keys; this only
-// reads them.
+// reads them. `news` is what a live region says: the value a key brought and every later change of the value shown,
+// never the one from before the key, as Rekta sets the words with the new value (behaviour.md, `indicate()`).
 QtObject {
     id: readout
 
@@ -24,8 +25,12 @@ QtObject {
     // -1 where a text stands in place of the meter.
     readonly property real level: view.level
     readonly property string valueText: view.text
+    readonly property string spoken: `${word} ${valueText}`
+    // The words last given as news, or those that stood when a key came whose value is still to come.
+    property string told
 
     signal pressed
+    signal news(string words)
 
     readonly property var kmixKinds: ({
             increase_volume: "volume",
@@ -55,10 +60,32 @@ QtObject {
         }
     }
 
+    // The volume and microphone keys reach the shell before kded6's new value comes back through PipeWire, so what
+    // stands at the key is no news; a key at a limit changes nothing and brings none.
     function show(shownKind: string) {
         kind = shownKind;
+        told = spoken;
         pressed();
     }
+
+    // For a key whose new value came with it.
+    function showWithNews(shownKind: string) {
+        show(shownKind);
+        tell();
+    }
+
+    function tell() {
+        told = spoken;
+        news(spoken);
+    }
+
+    // The parts change one after the other (the word and the value, a volume and its mute); only the whole is news.
+    function tellChange() {
+        if (spoken !== told)
+            tell();
+    }
+
+    onSpokenChanged: Qt.callLater(tellChange)
 
     // A shortcut of kglobalaccel went off; the volume and microphone keys belong to its component "kmix".
     function shortcutPressed(component: string, action: string) {
@@ -74,10 +101,10 @@ QtObject {
             return;
         brightnessMax = max;
         brightness = value;
-        show("brightness");
+        showWithNews("brightness");
     }
 
     function layoutSwitched() {
-        show("layout");
+        showWithNews("layout");
     }
 }
