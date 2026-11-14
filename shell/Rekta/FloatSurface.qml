@@ -30,9 +30,9 @@ Rectangle {
         scroller.contentY = Math.min(top, Math.max(scroller.contentY, top + row.height - scroller.height));
     }
 
-    // Closed by a press outside it, as a compositor closes a popup. The press arrives after the close, so the surface
-    // goes once that press has reached what it landed on: its own control then sees it open and closes it, never opening
-    // it again (rekta.js:2066–2067, a click on the trigger never counts as a click outside).
+    // Closed by a press outside it. It goes once that press has reached what it landed on: its own control then still
+    // sees it open and closes it rather than opening it again (rekta.js:2066–2067, a click on the trigger never counts
+    // as a click outside), and the end of a popup's grab lets the release reach that control.
     function dismiss() {
         Qt.callLater(() => surface.open = false);
     }

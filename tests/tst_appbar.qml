@@ -601,10 +601,19 @@ TestCase {
         verify(back.visible);
         const clicked = createTemporaryObject(spy, testCase, { target: back });
         mouseClick(bar.more, 10, 10);
-        bar.menu.dismiss();
         mouseClick(back, 10, 10);
         compare(clicked.count, 1);
         tryVerify(() => !bar.menu.open, 1000, "the menu closes");
+    }
+
+    function test_a_press_on_an_empty_part_of_the_bar_closes_the_menu_of_more() {
+        makeScene({ barWidth: 760 });
+        const spot = Qt.point(endOf(named("back")) + Tokens.spaceM, bar.height / 2);
+        verify(!controls().concat([bar.more]).some(control => control.visible && control.contains(control.mapFromItem(bar, spot))), "nothing stands there");
+        mouseClick(bar.more, 10, 10);
+        verify(bar.menu.open);
+        mouseClick(bar, spot.x, spot.y);
+        tryVerify(() => !bar.menu.open, 1000, "it closes");
     }
 
     function test_the_middle_cuts_its_words_before_any_control_moves() {

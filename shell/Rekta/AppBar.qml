@@ -271,6 +271,15 @@ Rectangle {
     }
 
     // The others have made room: what waited for them fades in.
+    // Every floating surface a control of the bar has open closes once the press has reached what it landed on.
+    function dismissFloats() {
+        buttons().concat([centre]).forEach(control => {
+            const surface = (control as AppBarButton)?.opens;
+            if (surface?.open)
+                surface.dismiss();
+        });
+    }
+
     function release() {
         buttons().forEach(control => (control.held = !motion.known.includes(control)));
     }
@@ -389,6 +398,21 @@ Rectangle {
             model: bar.plan.moved
 
             delegate: MovedControl {}
+        }
+    }
+
+    // A press on the bar lies outside the surfaces its controls opened, and the compositor leaves a popup open for a
+    // press in the window it belongs to, so the bar closes them itself (states.md, "Floating surfaces": a click outside
+    // closes).
+    Item {
+        anchors.fill: parent
+
+        PointHandler {
+            acceptedButtons: Qt.AllButtons
+            onActiveChanged: {
+                if (active)
+                    bar.dismissFloats();
+            }
         }
     }
 
