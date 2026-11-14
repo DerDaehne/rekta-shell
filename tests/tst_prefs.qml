@@ -42,7 +42,6 @@ TestCase {
         verify(Tokens.reducedMotion);
         compare(Tokens.durationShort, 0);
         Prefs.systemReducedMotion = false;
-        Prefs.systemMoreContrast = false;
         verify(!Tokens.reducedMotion);
     }
 
@@ -51,7 +50,6 @@ TestCase {
         Prefs.motion = "on";
         verify(!Tokens.reducedMotion);
         Prefs.systemReducedMotion = false;
-        Prefs.systemMoreContrast = false;
         Prefs.motion = "off";
         verify(Tokens.reducedMotion);
     }
