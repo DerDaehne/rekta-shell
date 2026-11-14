@@ -431,12 +431,32 @@ TestCase {
         touchEvent(box).release(0, box, 10, 10).commit();
         compare(Tips.target, box, "at once on the tap");
         compare(Tips.text, "comes with the palette");
-        wait(Tokens.durationTipDelay * 2);
+        waitForRendering(testCase);
         compare(Tips.target, box, "it stands after the finger left");
         touchEvent(box).press(0, box, 10, 10).commit();
         compare(Tips.target, null, "the next press hides it");
         touchEvent(box).release(0, box, 10, 10).commit();
         compare(Tips.target, box, "and the next tap shows it again");
+    }
+
+    function test_a_mouse_click_on_a_disabled_control_leaves_no_tip_right_after() {
+        const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 200, disabledReason: "comes with the palette" });
+        const box = findChild(control, "box");
+        mouseMove(testCase, 5, 5);
+        mouseClick(box);
+        compare(Tips.target, null);
+    }
+
+    function test_a_tapped_tip_ignores_its_control_reporting_leaving_until_a_press_hides_it() {
+        const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 200, disabledReason: "comes with the palette" });
+        const box = findChild(control, "box");
+        Tips.showTapped(box, "comes with the palette");
+        Tips.leave(box);
+        compare(Tips.target, box);
+        Tips.hide();
+        Tips.show(box, "again");
+        Tips.leave(box);
+        compare(Tips.target, null, "a tip shown another way still leaves");
     }
 
     function test_a_finger_tap_on_a_control_that_can_act_shows_no_tip() {

@@ -225,10 +225,10 @@ TestCase {
         compare(run.duration, Tokens.durationLong);
         compare(run.easing.bezierCurve, Tokens.easeIn);
         seek(spark, "drawIn", "progress", 0);
-        compare(wipe.width, 0);
+        compare(wipe.width, overhang, "from the strip left of the box");
         seek(spark, "drawIn", "progress", 0.5);
         compare(wipe.x, -overhang, "it grows from the leading edge");
-        near(wipe.x + wipe.width, spark.width / 2, "the trailing half is still covered");
+        near(wipe.x + wipe.width, (spark.width + overhang) / 2, "half of the way: p · (W + 2) from the box edge");
         compare(wipe.height, spark.height + 2 * overhang);
         compare(spark.drawnPoints.length, 6, "the line is whole, only uncovered");
 

@@ -216,7 +216,8 @@ QtObject {
     readonly property real sparkBoxWidth: 200
     readonly property real sparkBoxHeight: 28
     readonly property real sparkStroke: 2
-    // `@keyframes rk-wipe { to { clip-path: inset(-2px) } }`: the uncovered area reaches 2px past the box (rekta.css:227)
+    // `@keyframes rk-wipe { from { clip-path: inset(-2px 100% -2px -2px) } to { clip-path: inset(-2px) } }`: the uncovered
+    // area starts 2px before the box and reaches 2px past it (rekta.css:227)
     readonly property real sparkWipeOverhang: 2
     readonly property real sparkStaleOpacity: 0.35
 

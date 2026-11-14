@@ -149,7 +149,7 @@ Item {
         objectName: "wipe"
         x: -Geometry.sparkWipeOverhang
         y: -Geometry.sparkWipeOverhang
-        width: (spark.width + 2 * Geometry.sparkWipeOverhang) * drawIn.progress
+        width: Geometry.sparkWipeOverhang + (spark.width + Geometry.sparkWipeOverhang) * drawIn.progress
         height: spark.height + 2 * Geometry.sparkWipeOverhang
         clip: true
 
