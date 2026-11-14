@@ -77,8 +77,11 @@ Item {
         return count * cell + (count - 1) * Tokens.spaceS;
     }
 
+    // A tile destroyed since `placed` was last computed reads as null here; the next `placed` leaves it out.
     function apply() {
         for (const cell of placed) {
+            if (!(cell.tile as Tile))
+                continue;
             cell.tile.x = cell.column * (cellWidth + Tokens.spaceS);
             cell.tile.y = cell.row * (Tokens.tileUnit + Tokens.spaceS);
             cell.tile.width = span(spanOf(cell.tile).columns, cellWidth);

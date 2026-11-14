@@ -189,6 +189,22 @@ TestCase {
         compare(wide.x, Tokens.tileUnit + Tokens.spaceS);
     }
 
+    function test_a_tile_removed_while_the_cells_change_width_leaves_the_others_placed_exactly() {
+        const compact = createTemporaryObject(compactComponent, testCase, { width: 700 });
+        const gone = findChild(compact, "small1");
+        compact.order = [...compact.children];
+        gone.destroy();
+        tryCompare(compact.children, "length", 3);
+        compact.width = 500;
+        compact.order = compact.children.filter(child => child);
+        compare(compact.placed.length, 3);
+        for (const cell of compact.placed) {
+            compare(cell.tile.x, cell.column * (compact.cellWidth + Tokens.spaceS), cell.tile.objectName);
+            compare(cell.tile.y, cell.row * (Tokens.tileUnit + Tokens.spaceS), cell.tile.objectName);
+            compare(cell.tile.width, compact.span(compact.spanOf(cell.tile).columns, compact.cellWidth), cell.tile.objectName);
+        }
+    }
+
     function test_compact_a_tile_three_or_four_units_wide_takes_the_whole_row() {
         grid = createTemporaryObject(compactComponent, testCase, {
             width: 600
