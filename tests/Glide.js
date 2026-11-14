@@ -34,8 +34,8 @@ const clockRounding = 2;
 // { steps, from, to } and must have ended on `to`. Qt counts a new animation from the timer's last tick, and a
 // transition may start a frame after its trigger, so the run's clock began no earlier than the last tick before `since`
 // and no later than the second after; within that window the best guess counts. Measured from the earliest, no run may
-// end before `duration` has passed. A step that only sets the start tells no time, and a run without a step on the way
-// never ran.
+// end before `duration` has passed, and measured from the latest, none may still be on its way after it. A step that
+// only sets the start tells no time, and a run without a step on the way never ran.
 function strayOf(runs, duration, curve, since, ticks) {
     const before = ticks.filter(at => at < since);
     const after = ticks.filter(at => at > since);
@@ -43,7 +43,7 @@ function strayOf(runs, duration, curve, since, ticks) {
         return Infinity;
     const earliest = before[before.length - 1];
     const moving = runs.map(run => Object.assign({}, run, { steps: run.steps.filter(step => step.value !== run.from) }));
-    if (moving.some(run => run.steps.length === 0 || !endsOn(run, earliest + duration - clockRounding)))
+    if (moving.some(run => run.steps.length === 0 || !endsWithin(run, earliest + duration - clockRounding, after[1] + duration + clockRounding)))
         return Infinity;
     let best = Infinity;
     for (let began = earliest; began <= after[1]; began++)
@@ -51,9 +51,10 @@ function strayOf(runs, duration, curve, since, ticks) {
     return best;
 }
 
-function endsOn(run, notBefore) {
+function endsWithin(run, notBefore, notAfter) {
     const last = run.steps[run.steps.length - 1];
-    return last.value === run.to && last.at >= notBefore;
+    const onTheWay = run.steps.filter(step => step.value !== run.to);
+    return last.value === run.to && last.at >= notBefore && onTheWay.every(step => step.at <= notAfter);
 }
 
 function strayFrom(run, duration, curve, began) {
