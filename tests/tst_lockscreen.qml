@@ -476,6 +476,8 @@ TestCase {
         compare(clock.font.pixelSize, Math.floor(2 * Tokens.fluid(Tokens.fontSizeNavActive, 1920)));
         compare(clock.font.pixelSize, 144, "at 1920 px");
         compare(clock.font.weight, Tokens.fontWeightLight);
+        compare(clock.lineHeightFactor, Tokens.lineHeightTitle);
+        compare(clock.color, Tokens.color.textPrimary);
         compare(date.text, "donnerstag, 29. oktober");
         compare(date.x, Tokens.spaceXl);
         compare(date.y, clock.y + clock.height);
@@ -489,12 +491,14 @@ TestCase {
         face.active = false;
         tryCompare(rest, "opacity", 0);
         verify(!rest.enabled, "the hidden parts take nothing");
-        const ratio = Tokens.fluid(Tokens.fontSizeNavInactive, 1920) / Tokens.fluid(Tokens.fontSizeNavActive, 1920);
+        const ratio = Tokens.fluid(Tokens.fontSizePivotInactive, 1920) / Tokens.fluid(Tokens.fontSizeDisplay, 1920);
         tryCompare(clock, "shrink", ratio);
-        tryCompare(clock, "color", Tokens.color.textContrastMedium, 1000, "it fades to the inactive title's colour");
+        tryCompare(clock, "color", Tokens.color.textContrastHigh, 1000, "it fades to the inactive title's colour");
+        fuzzyCompare(clock.font.pixelSize * clock.shrink, Tokens.fluid(Tokens.fontSizePivotInactive, 1920), 0.5, "as large as pivot-inactive");
         face.active = true;
         tryVerify(() => clock.shrink > clock.ratio && clock.shrink < 1, 1000, "it grows, not jumps");
         tryCompare(clock, "shrink", 1);
+        tryCompare(clock, "color", Tokens.color.textPrimary);
         tryCompare(rest, "opacity", 1);
         verify(input().activeFocus, "the field takes the keyboard");
     }
@@ -502,7 +506,10 @@ TestCase {
     function test_the_name_and_field_stand_bottom_left_and_the_status_bottom_right() {
         const name = part("name"), signIn = part("signIn"), corner = part("corner");
         compare(name.text, "rekta");
-        compare(name.font.weight, Tokens.fontWeightLight);
+        compare(name.font.weight, Tokens.fontWeightSemibold);
+        compare(name.font.pixelSize, Tokens.fluid(Tokens.fontSizeTitle, 1920));
+        compare(name.lineHeightFactor, Tokens.lineHeightTitle);
+        compare(name.color, Tokens.color.textPrimary);
         compare(signIn.x, Tokens.spaceXl);
         compare(signIn.y + signIn.height, face.height - Tokens.spaceXl);
         compare(part("password").label, "passwort");

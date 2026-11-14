@@ -2,8 +2,8 @@ import QtQuick
 import Rekta
 
 // What one monitor shows while the session is locked, on the plain ground, everything a space-xl from the edges: the
-// time as a large light title top left with the date as its fact line, bottom left the name over the password field
-// and the row of "entsperren" and "benutzer wechseln", bottom right the status area. Only the active monitor
+// time in the display step top left with the date as its fact line, bottom left the name as the screen's one bold title
+// over the password field and the row of "entsperren" and "benutzer wechseln", bottom right the status area. Only the active monitor
 // shows it all; the others show the clock alone, as an inactive title, and the rest comes and goes as a state change
 // (motion.md).
 Rectangle {
@@ -102,7 +102,7 @@ Rectangle {
             anchors.margins: Tokens.spaceXl
             spacing: Tokens.spaceS
 
-            PivotTitle {
+            Title {
                 objectName: "name"
                 text: face.userName
             }
