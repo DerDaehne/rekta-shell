@@ -9,7 +9,7 @@ import org.kde.plasma.workspace.keyboardlayout
 import Readout
 
 // Feeds the key readout from the system: the default audio devices from PipeWire, the volume and microphone keys from
-// kglobalaccel's component "kmix" with the most they raise a volume to from plasma-pa's settings, the brightness keys
+// kglobalaccel's component "kmix" with the most they raise a volume to from the user's plasmaparc, the brightness keys
 // from powerdevil and the layout from KWin. The shell registers none of these keys; kded6 and powerdevil act on them,
 // and this only listens. The side panel shares the bound devices and the displays.
 // ponytail: the kmix keys go through plasma-workspace's DBus module, whose fixed names and paths suffice; move them to the
@@ -49,6 +49,8 @@ Scope {
         }
     }
 
+    // ponytail: only the user's plasmaparc, its first entry, without system-wide defaults or `[$i]` locks; read
+    // KConfig's cascade over XDG_CONFIG_DIRS once a system sets the maximum for its users.
     FileView {
         path: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/plasmaparc`
         printErrors: false
