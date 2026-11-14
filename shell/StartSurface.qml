@@ -82,7 +82,6 @@ PanelWindow {
                 id: entry.id,
                 name: entry.name,
                 icon: Quickshell.iconPath(entry.icon, true),
-                glyph: Rules.ownGlyph(entry.id),
                 columns: tile.columns,
                 rows: tile.rows,
                 index: tile.index,

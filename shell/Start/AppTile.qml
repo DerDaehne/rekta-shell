@@ -63,7 +63,8 @@ Tile {
     Icon {
         objectName: "glyph"
         parent: tile
-        layer.enabled: true
+        layer.enabled: tile.glyph !== ""
+        layer.smooth: true
         x: Geometry.tilePadding
         y: Geometry.tilePadding
         size: tile.rows > 1 ? Tokens.tileIconLarge : Tokens.tileIcon

@@ -394,7 +394,7 @@ function rowGroups(sources, text, starts, noApp) {
         },
         {
             name: "apps",
-            rows: (sources.apps ?? []).map(app => ({ text: app.name, lead: "", icon: app.icon, glyph: app.glyph ?? "", run: () => app.launch() }))
+            rows: (sources.apps ?? []).map(app => ({ text: app.name, lead: "", icon: app.icon, glyph: ownGlyph(app.id), run: () => app.launch() }))
         },
         {
             name: "fenster",

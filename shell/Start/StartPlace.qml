@@ -692,7 +692,7 @@ FocusScope {
                     appId: step.id,
                     label: byId.get(step.id).name,
                     image: byId.get(step.id).icon,
-                    glyphName: byId.get(step.id).glyph ?? ""
+                    glyphName: Rules.ownGlyph(step.id)
                 });
         }
     }
@@ -1602,7 +1602,7 @@ FocusScope {
 
                                 name: app?.name ?? ""
                                 icon: app?.icon ?? ""
-                                glyph: app?.glyph ?? ""
+                                glyph: Rules.ownGlyph(appId)
                                 unseen: start.unseen[appId] ?? 0
                                 line: start.lines[appId] ?? ""
                                 columns: app?.columns ?? 1
@@ -1821,7 +1821,7 @@ FocusScope {
 
                                 name: modelData.name
                                 icon: modelData.icon
-                                glyph: modelData.glyph ?? ""
+                                glyph: Rules.ownGlyph(modelData.id)
                                 unseen: start.unseen[modelData.id] ?? 0
                                 line: start.lines[modelData.id] ?? ""
                                 hasMenu: start.pinFile !== null

@@ -2477,7 +2477,7 @@ TestCase {
             searchableApp("Kate", "Texteditor", ["editor"]),
             searchableApp("Konsole", "Terminal", ["shell"]),
             searchableApp("Okular", "Dokumentbetrachter", ["pdf", "text"]),
-            Object.assign(searchableApp("rekta einstellungen", "Settings", []), { id: "rekta-settings", glyph: "tune" }),
+            Object.assign(searchableApp("rekta einstellungen", "Settings", []), { id: "rekta-settings" }),
             searchableApp("Spectacle", "Bildschirmfoto", ["screenshot"]),
             searchableApp("Teams", "Videokonferenz", ["chat"]),
             searchableApp("Telegram", "Messenger", ["chat"]),
@@ -2541,6 +2541,47 @@ TestCase {
         verify(findChild(row, "glyph").visible);
         compare(findChild(row, "glyph").name, "tune");
         verify(!findChild(row, "icon").visible);
+    }
+
+    function test_rekta_s_own_settings_show_rekta_s_tune_icon_on_their_pinned_tile_and_in_alle_apps() {
+        start.pinned = [Object.assign(fakeApp("rekta einstellungen", 1), { id: "rekta-settings" }), fakeApp("dolphin", 1)];
+        openOnADesktop();
+        const [own, other] = tilesIn("pinned").map(tile => findChild(tile, "glyph"));
+        compare([own.visible, own.name], [true, "tune"]);
+        compare([other.visible, other.name], [false, ""]);
+        named("pivot").select(1);
+        const letterTile = start.letterTiles().find(tile => tile.name === "rekta einstellungen");
+        compare(findChild(letterTile, "glyph").name, "tune");
+        verify(findChild(letterTile, "glyph").visible);
+        verify(!findChild(letterTile, "icon").visible, "not the theme's icon");
+    }
+
+    function iconsUnderTiles(item: var, tile: var): var {
+        const own = (item as Icon) !== null && tile !== null ? [{ icon: item, tile: tile }] : [];
+        const below = (item as Tile) ?? tile;
+        return Array.from(item.children).reduce((all, child) => all.concat(iconsUnderTiles(child, below)), own);
+    }
+
+    function drawnThroughSmoothLayer(icon: var, tile: var): bool {
+        for (let item = icon; item !== tile.parent; item = item.parent) {
+            if (item.layer.enabled)
+                return item.layer.smooth;
+        }
+        return false;
+    }
+
+    // Under a tile's flattened 3D matrix (z = 0) the curve renderer divides by a determinant of 0 and draws nothing.
+    function test_every_rekta_icon_on_a_tile_is_drawn_through_a_smooth_layer_and_only_one_that_shows_a_glyph() {
+        start.pinned = [Object.assign(fakeApp("rekta einstellungen", 1), { id: "rekta-settings" }), fakeApp("dolphin", 1)];
+        openOnADesktop();
+        typeNow("rek");
+        const found = iconsUnderTiles(start, null);
+        const drawing = found.filter(entry => entry.icon.name !== "");
+        compare(drawing.length, 3, "pinned, in alle apps and the hit");
+        for (const entry of drawing)
+            verify(drawnThroughSmoothLayer(entry.icon, entry.tile), String(entry.tile.name));
+        for (const entry of found.filter(entry => entry.icon.name === ""))
+            verify(!entry.icon.layer.enabled, String(entry.tile.name));
     }
 
     function test_down_goes_from_the_tiles_through_the_app_rows_on_to_fenster_and_up_comes_back_using_every_arrow() {
