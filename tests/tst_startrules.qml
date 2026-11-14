@@ -113,11 +113,47 @@ TestCase {
     ].join("\n")
 
     function test_the_show_in_lists_are_read_per_desktop_file_id_from_the_first_directory_that_has_the_file() {
-        const files = Rules.showIn(grepped, dirs);
+        const files = Rules.desktopFileKeys(grepped, dirs);
         verify(files["org.kde.kate"].OnlyShowIn === undefined, "the user's own copy without the list wins");
         compare(files["kde-gnome-only"].OnlyShowIn, ["GNOME", "Unity"], "a subdirectory joins the ID with a dash");
         compare(files["not-kde"].NotShowIn, ["KDE"]);
         compare(files["kde-only"].OnlyShowIn, ["KDE"]);
+    }
+
+    function test_an_entry_runs_over_dbus_only_if_its_first_file_says_true_and_its_id_is_a_bus_name() {
+        const files = Rules.desktopFileKeys([
+            "/u/.local/share/applications/org.gnome.Nautilus.desktop\0Type=Application",
+            "/usr/share/applications/org.gnome.Nautilus.desktop\0DBusActivatable=true",
+            "/usr/share/applications/org.gnome.TextEditor.desktop\0Type=Application",
+            "/usr/share/applications/org.gnome.TextEditor.desktop\0DBusActivatable = true ",
+            "/usr/share/applications/org.gnome.font-viewer.desktop\0DBusActivatable=true",
+            "/usr/share/applications/org.example.Off.desktop\0DBusActivatable=false",
+            "/usr/share/applications/org.example.Yes.desktop\0DBusActivatable=yes",
+            "/usr/share/applications/gnome-mines.desktop\0DBusActivatable=true",
+            "/usr/share/applications/gnome/org.example.Sub.desktop\0DBusActivatable=true",
+            "/usr/share/applications/org.example.2d.desktop\0DBusActivatable=true",
+            ""
+        ].join("\n"), dirs);
+        const runsOverDbus = id => Rules.dbusActivatable(id, files[id]);
+        compare(files["org.gnome.TextEditor"].DBusActivatable, true);
+        compare(files["org.example.Off"].DBusActivatable, false);
+        verify(runsOverDbus("org.gnome.TextEditor"), "space around the value does not count");
+        verify(runsOverDbus("org.gnome.font-viewer"), "a dash is allowed in a bus name");
+        verify(runsOverDbus("gnome-org.example.Sub"), "a subdirectory joins the ID with a dash");
+        verify(!runsOverDbus("org.gnome.Nautilus"), "the user's own copy without the key wins");
+        verify(!runsOverDbus("org.example.Off"));
+        verify(!runsOverDbus("org.example.Yes"), "only true is true");
+        verify(!runsOverDbus("gnome-mines"), "a bus name has two elements at least");
+        verify(!runsOverDbus("org.example.2d"), "an element of a bus name does not begin with a digit");
+        verify(!runsOverDbus("org.example.unread"), "an ID grep found nothing for");
+        verify(!Rules.dbusActivatable(`org.${"x".repeat(252)}`, { DBusActivatable: true }), "a bus name has 255 characters at most");
+        verify(Rules.dbusActivatable(`org.${"x".repeat(251)}`, { DBusActivatable: true }));
+    }
+
+    function test_an_app_that_runs_over_dbus_has_its_id_as_object_path_with_dots_as_slashes_and_dashes_as_underscores() {
+        compare(Rules.applicationPath("org.gnome.TextEditor"), "/org/gnome/TextEditor");
+        compare(Rules.applicationPath("org.gnome.font-viewer"), "/org/gnome/font_viewer");
+        compare(Rules.applicationPath("org.example.my-app.beta-2"), "/org/example/my_app/beta_2");
     }
 
     function fakeEntry(id: string, name: string): var {
@@ -126,7 +162,7 @@ TestCase {
 
     function test_under_kde_an_app_only_for_gnome_or_not_for_kde_is_left_out() {
         const entries = [fakeEntry("org.kde.kate", "Kate"), fakeEntry("kde-gnome-only", "Tweaks"), fakeEntry("not-kde", "Files"), fakeEntry("kde-only", "Discover"), fakeEntry("unread", "Zed")];
-        const files = Rules.showIn(grepped, dirs);
+        const files = Rules.desktopFileKeys(grepped, dirs);
         compare(Rules.listedApps(entries, files, "KDE").map(app => app.name), ["Discover", "Kate", "Zed"]);
         compare(Rules.listedApps(entries, files, "GNOME").map(app => app.name), ["Files", "Kate", "Tweaks", "Zed"]);
         compare(Rules.listedApps(entries, files, "").map(app => app.name), ["Files", "Kate", "Zed"], "no desktop: only apps without OnlyShowIn");

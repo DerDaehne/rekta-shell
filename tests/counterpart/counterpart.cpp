@@ -44,12 +44,13 @@ private:
     Counterpart *m_counterpart;
 };
 
-// Answers every call with the same values, or leaves every call without an answer.
+// Records every call and answers it with the same values, or leaves it without an answer.
 class Answer : public QDBusVirtualObject
 {
 public:
-    Answer(QObject *parent, std::optional<QVariantList> values)
-        : QDBusVirtualObject(parent)
+    Answer(Counterpart *counterpart, std::optional<QVariantList> values)
+        : QDBusVirtualObject(counterpart)
+        , m_counterpart(counterpart)
         , m_values(std::move(values))
     {
     }
@@ -61,12 +62,14 @@ public:
 
     bool handleMessage(const QDBusMessage &message, const QDBusConnection &connection) override
     {
+        m_counterpart->record(message);
         if (m_values)
             connection.send(message.createReply(*m_values));
         return true;
     }
 
 private:
+    Counterpart *m_counterpart;
     std::optional<QVariantList> m_values;
 };
 
@@ -255,6 +258,12 @@ QString Counterpart::uniqueName() const
 
 void Counterpart::record(const QDBusMessage &message)
 {
+    m_lastCall = {
+        {u"path"_s, message.path()},
+        {u"interface"_s, message.interface()},
+        {u"member"_s, message.member()},
+        {u"args"_s, plainValues(message.arguments())},
+    };
     m_lastSignature = message.signature();
     m_variantTypes = variantTypesOf(message.arguments());
     Q_EMIT echoed();

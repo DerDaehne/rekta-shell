@@ -113,10 +113,20 @@ TestCase {
         }
     }
 
-    // Starts what a desktop action asks for as the shell's launcher does, at a fixed time, and notes what it would run.
+    // The shell's launcher, as the session's own shell has it: it calls on the bus.
+    Launcher {
+        id: shellLauncher
+    }
+
+    // Starts what a desktop action asks for as the shell's launcher does, at a fixed time, and notes what it would run;
+    // an action of an app that runs over D-Bus goes to the shell's launcher.
     readonly property QtObject launcher: QtObject {
         function launchAction(entry: var, action: var) {
             testCase.calls = [...testCase.calls, Rules.launchContext(entry, action.command, 1234)];
+        }
+
+        function activateAction(appId: string, actionId: string) {
+            shellLauncher.activateAction(appId, actionId);
         }
     }
 
@@ -158,17 +168,28 @@ TestCase {
         return [firefox, dolphin, notes, kate, tweaks];
     }
 
+    // Two apps that run over D-Bus (DBusActivatable): Text Editor's action has an Exec, Fonts' has none.
+    function dbusEntries(): var {
+        return [desktopEntry("org.gnome.TextEditor", "Text Editor", "org.gnome.TextEditor", [desktopAction("new-window", "New Window", "", ["gnome-text-editor", "--new-window"])]), desktopEntry("org.gnome.font-viewer", "Fonts", "org.gnome.font-viewer", [desktopAction("install-font", "Install Font", "font-x-generic", [])])];
+    }
+
     // The apps as the Start lists them under KDE (Apps.read), with only what the registry reads of them.
     function listedApps(entries: var): var {
         const files = {
             "org.gnome.tweaks": {
                 OnlyShowIn: ["GNOME"]
+            },
+            "org.gnome.TextEditor": {
+                DBusActivatable: true
+            },
+            "org.gnome.font-viewer": {
+                DBusActivatable: true
             }
         };
         return Rules.listedApps(entries, files, "KDE").map(entry => ({
                     id: entry.id,
                     name: entry.name,
-                    actions: Rules.desktopActions(entry, testCase.launcher)
+                    actions: Rules.desktopActions(entry, Rules.dbusActivatable(entry.id, files[entry.id]), testCase.launcher)
                 }));
     }
 
@@ -455,6 +476,64 @@ TestCase {
         tryVerify(() => heard.length === 2);
         listActions();
         compare(heard.length, 2);
+    }
+
+    function test_an_app_that_runs_over_dbus_lists_each_named_action_also_one_without_exec() {
+        apps = listedApps([...desktopEntries(), ...dbusEntries()]);
+        exportFor("rekta");
+        compare(listActions().map(entry => entry[0]).filter(id => id.startsWith("desktop/")), ["desktop/org.kde.dolphin/home", "desktop/firefox/new-window", "desktop/firefox/new-private-window", "desktop/org.gnome.font-viewer/install-font", "desktop/org.example.notes/new-note", "desktop/org.gnome.TextEditor/new-window"], "Dolphin's action without Exec stays out, as Dolphin does not run over D-Bus");
+        compare(action("desktop/org.gnome.font-viewer/install-font"), {
+            title: "Install Font",
+            keywords: ["Fonts"],
+            app: "org.gnome.font-viewer",
+            icon: "font-x-generic",
+            readOnly: false,
+            destructive: false
+        });
+    }
+
+    function test_invoking_an_action_of_an_app_that_runs_over_dbus_calls_activate_action_on_its_name_and_path_and_starts_no_exec() {
+        apps = listedApps(dbusEntries());
+        exportFor("rekta");
+        verify(counterpart.takeName("org.gnome.font-viewer"));
+        verify(counterpart.takeName("org.gnome.TextEditor"));
+        counterpart.answerAt("/org/gnome/font_viewer", []);
+        counterpart.answerAt("/org/gnome/TextEditor", []);
+        for (const [id, path, actionId] of [["desktop/org.gnome.font-viewer/install-font", "/org/gnome/font_viewer", "install-font"], ["desktop/org.gnome.TextEditor/new-window", "/org/gnome/TextEditor", "new-window"]]) {
+            compare(invoke(id, {}), {
+                signature: "a{sv}",
+                values: [{}],
+                error: ""
+            }, id);
+            tryVerify(() => counterpart.lastCall.path === path, 5000, id);
+            compare(counterpart.lastCall, {
+                path,
+                interface: "org.freedesktop.Application",
+                member: "ActivateAction",
+                args: [actionId, [], {}]
+            }, id);
+            compare(counterpart.lastSignature, "sava{sv}", id);
+        }
+        compare(calls, [], "Text Editor's Exec does not run");
+        counterpart.releaseName("org.gnome.font-viewer");
+        counterpart.releaseName("org.gnome.TextEditor");
+    }
+
+    function test_an_action_whose_app_cannot_be_reached_is_logged_as_a_warning_and_invoke_still_answers_at_once() {
+        apps = listedApps(dbusEntries());
+        exportFor("rekta");
+        compare(counterpart.nameOwner("org.gnome.TextEditor"), "");
+        ignoreWarning(/^Launcher: session bus org\.gnome\.TextEditor \/org\/gnome\/TextEditor org\.freedesktop\.Application\.ActivateAction \["new-window",\[\],\{\}\]: org\.freedesktop\.DBus\.Error\.ServiceUnknown: .+$/);
+        compare(invoke("desktop/org.gnome.TextEditor/new-window", {}), {
+            signature: "a{sv}",
+            values: [{}],
+            error: ""
+        });
+        // A round trip on the launcher's own connection: the bus has answered the call before it by now.
+        let answered = false;
+        shellLauncher.sessionBus.call("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetId", [], "", () => answered = true);
+        tryVerify(() => answered);
+        compare(calls, []);
     }
 
     function test_version_is_one_and_can_only_be_read() {

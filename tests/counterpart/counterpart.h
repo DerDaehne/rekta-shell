@@ -14,9 +14,12 @@ class Counterpart : public QObject
     Q_OBJECT
     QML_ELEMENT
 
-    // The signature of the last call to /echo, read from the message on the wire.
+    // The last call to /echo or to a path answerAt() or ignoreAt() put up: {path, interface, member, args}, its arguments
+    // as replied() gives values.
+    Q_PROPERTY(QVariantMap lastCall READ lastCall NOTIFY echoed FINAL)
+    // The signature of that call, read from the message on the wire.
     Q_PROPERTY(QString lastSignature READ lastSignature NOTIFY echoed FINAL)
-    // The Qt types of the values in the last call's a{sv} arguments, by key.
+    // The Qt types of the values in that call's a{sv} arguments, by key.
     Q_PROPERTY(QVariantMap variantTypes READ variantTypes NOTIFY echoed FINAL)
     // The Qt types of the values in the last reply's a{sv} arguments, by key.
     Q_PROPERTY(QVariantMap replyVariantTypes READ replyVariantTypes NOTIFY replied FINAL)
@@ -41,9 +44,9 @@ public:
     Q_INVOKABLE bool takeName(const QString &name);
     // Gives name up and drops what answerAt() or ignoreAt() put up.
     Q_INVOKABLE void releaseName(const QString &name);
-    // Every call to path is answered with these values, typed as QtDBus types them.
+    // Every call to path is recorded and answered with these values, typed as QtDBus types them.
     Q_INVOKABLE void answerAt(const QString &path, const QVariantList &values);
-    // Every call to path stays without an answer.
+    // Every call to path is recorded and stays without an answer.
     Q_INVOKABLE void ignoreAt(const QString &path);
     // Sends count signals in a row, numbered from 1.
     Q_INVOKABLE void flood(const QString &path, const QString &interfaceName, const QString &member, int count);
@@ -51,6 +54,10 @@ public:
     Q_INVOKABLE void callFlood(const QString &service, const QString &path, const QString &interfaceName, const QString &member, int count);
     Q_INVOKABLE QString uniqueName() const;
 
+    QVariantMap lastCall() const
+    {
+        return m_lastCall;
+    }
     QString lastSignature() const
     {
         return m_lastSignature;
@@ -77,6 +84,7 @@ private Q_SLOTS:
 private:
     QStringList m_paths;
     QDBusConnection m_connection;
+    QVariantMap m_lastCall;
     QString m_lastSignature;
     QVariantMap m_variantTypes;
     QVariantMap m_replyVariantTypes;

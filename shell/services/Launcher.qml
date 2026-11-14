@@ -64,17 +64,23 @@ Scope {
         });
     }
 
-    // A method without arguments on the session's or the system's bus; done(error, values), if given, follows its reply,
-    // with error null on success and values the reply's. Where the shell does not act, it follows at once as if the call
-    // had succeeded without values.
-    function call(onSystemBus: bool, service: string, path: string, iface: string, method: string, done: var) {
-        const what = `${onSystemBus ? "system" : "session"} bus ${service} ${path} ${iface}.${method}`;
+    // A desktop action of an app that runs over D-Bus, as the desktop-entry spec has a launcher run it: ActivateAction on
+    // the app's name and path, without a parameter or platform data. An error the app replies is only logged.
+    function activateAction(appId: string, actionId: string) {
+        call(false, appId, Rules.applicationPath(appId), "org.freedesktop.Application", "ActivateAction", [actionId, [], {}], "sava{sv}", null);
+    }
+
+    // A method on the session's or the system's bus, its arguments typed by a full D-Bus signature ("" for none);
+    // done(error, values), if given, follows its reply, with error null on success and values the reply's. Where the
+    // shell does not act, it follows at once as if the call had succeeded without values.
+    function call(onSystemBus: bool, service: string, path: string, iface: string, method: string, args: var, signature: string, done: var) {
+        const what = `${onSystemBus ? "system" : "session"} bus ${service} ${path} ${iface}.${method}${args.length > 0 ? ` ${JSON.stringify(args)}` : ""}`;
         if (!starts) {
             console.info(`Launcher: would call ${what}`);
             done?.(null, []);
             return;
         }
-        (onSystemBus ? systemBus : sessionBus).call(service, path, iface, method, [], "", (error, values) => {
+        (onSystemBus ? systemBus : sessionBus).call(service, path, iface, method, args, signature, (error, values) => {
             if (error)
                 console.warn(`Launcher: ${what}: ${error}`);
             done?.(error, values);

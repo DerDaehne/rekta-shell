@@ -49,7 +49,7 @@ TestCase {
             testCase.asked = [...testCase.asked, ["open", url]];
         }
 
-        function call(onSystemBus, service, path, iface, method, done) {
+        function call(onSystemBus, service, path, iface, method, args, signature, done) {
             testCase.asked = [...testCase.asked, ["call", onSystemBus ? "system" : "session", service, path, iface, method]];
             if (method === "Lock")
                 testCase.lockReply = done;

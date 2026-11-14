@@ -117,7 +117,7 @@ QtObject {
     }
 
     function leave(method: string) {
-        launcher.call(false, "org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", method, null);
+        launcher.call(false, "org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown", method, [], "", null);
     }
 
     // The windows step back while the session is still open, since nothing shows once it is locked; then it locks.
@@ -129,7 +129,7 @@ QtObject {
     }
 
     function askScreenSaver(method: string, done: var) {
-        launcher.call(false, "org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", method, done);
+        launcher.call(false, "org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", method, [], "", done);
     }
 
     // Lock answers without an error also where it locks nothing (kscreenlocker interface.cpp), so the greeter comes
@@ -146,7 +146,7 @@ QtObject {
     function greet() {
         leaving = false;
         windowsBack = false;
-        launcher.call(true, "org.freedesktop.DisplayManager", seatPath, "org.freedesktop.DisplayManager.Seat", "SwitchToGreeter", null);
+        launcher.call(true, "org.freedesktop.DisplayManager", seatPath, "org.freedesktop.DisplayManager.Seat", "SwitchToGreeter", [], "", null);
     }
 
     function stay() {

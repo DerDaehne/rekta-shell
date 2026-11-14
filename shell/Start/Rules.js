@@ -54,19 +54,33 @@ function launchContext(entry, command, stamp) {
     return context;
 }
 
+// Whether an entry runs over D-Bus: its file says DBusActivatable=true and its desktop file ID is a well-known bus name,
+// the name the running app owns (desktop-entry spec, "D-Bus Activation"). Otherwise GLib starts it by Exec, and so does
+// the shell.
+function dbusActivatable(id, file) {
+    return file?.DBusActivatable === true && id.length <= 255 && /^[A-Za-z_-][\w-]*(\.[A-Za-z_-][\w-]*)+$/.test(id);
+}
+
+// The object path of an app that runs over D-Bus: "/" and its desktop file ID with "." as "/" and "-" as "_"
+// (desktop-entry spec, "D-Bus Activation").
+function applicationPath(id) {
+    return `/${id.replace(/\./g, "/").replace(/-/g, "_")}`;
+}
+
 // The desktop actions of an entry ([Desktop Action] groups) as the action registry lists them, in the words the app
-// gives them and found by the app's name too; each runs through `launcher` as the app starts. One without a name or an
-// Exec of its own is left out: the spec requires the name, and one without Exec runs only over the app's D-Bus
-// (DBusActivatable), which this does not do.
-function desktopActions(entry, launcher) {
-    return Array.from(entry.actions).filter(action => action.name !== "" && action.command.length > 0).map(action => ({
+// gives them and found by the app's name too. An app that runs over D-Bus (`dbusActivatable`) runs each of them there,
+// Exec or not, as the spec has a launcher do; any other app starts one as it starts itself, so one without an Exec is
+// left out. One without a name is left out too: the spec requires it.
+function desktopActions(entry, dbusActivatable, launcher) {
+    const runnable = action => action.name !== "" && (dbusActivatable || action.command.length > 0);
+    return Array.from(entry.actions).filter(runnable).map(action => ({
         id: `desktop/${entry.id}/${action.id}`,
         text: action.name,
         keywords: [entry.name],
         app: entry.id,
         appName: entry.name,
         icon: action.icon || entry.icon,
-        run: () => launcher.launchAction(entry, action)
+        run: dbusActivatable ? () => launcher.activateAction(entry.id, action.id) : () => launcher.launchAction(entry, action)
     }));
 }
 
@@ -118,11 +132,11 @@ function desktopId(relativePath) {
     return relativePath.replace(/\.desktop$/, "").replace(/\//g, "-");
 }
 
-// The OnlyShowIn and NotShowIn lists by desktop file ID, from what
-// `grep -R --null -E '^(Type|OnlyShowIn|NotShowIn) *='` prints over `dirs`: a file, a NUL, a line. Each ID keeps the
-// file of the first directory that has one, as the entry Quickshell shows is that one; every entry has a Type, so a
-// file without either list still claims its ID.
-function showIn(text, dirs) {
+// What Quickshell does not give QML, by desktop file ID: the OnlyShowIn and NotShowIn lists and whether DBusActivatable
+// is true, from what `grep -R --null -E '^(Type|OnlyShowIn|NotShowIn|DBusActivatable) *='` prints over `dirs`: a file, a
+// NUL, a line. Each ID keeps the file of the first directory that has one, as the entry Quickshell shows is that one;
+// every entry has a Type, so a file without any of the others still claims its ID.
+function desktopFileKeys(text, dirs) {
     const files = {};
     for (const line of text.split("\n")) {
         const [path, entry] = line.split("\0");
@@ -132,8 +146,9 @@ function showIn(text, dirs) {
             continue;
         const id = desktopId(path.slice(dir.length + 1));
         files[id] = files[id] ?? { path: path };
-        if (files[id].path === path && pair[1] !== "Type")
-            files[id][pair[1]] = pair[2].split(";").filter(name => name !== "");
+        if (files[id].path !== path || pair[1] === "Type")
+            continue;
+        files[id][pair[1]] = pair[1] === "DBusActivatable" ? pair[2].trim() === "true" : pair[2].split(";").filter(name => name !== "");
     }
     return files;
 }
@@ -155,7 +170,7 @@ function byName(a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.name.localeCompare(b.name);
 }
 
-// The entries this desktop shows, A–Z by name; `files` is what showIn() read, `currentDesktop` XDG_CURRENT_DESKTOP.
+// The entries this desktop shows, A–Z by name; `files` is what desktopFileKeys() read, `currentDesktop` XDG_CURRENT_DESKTOP.
 function listedApps(entries, files, currentDesktop) {
     const desktops = String(currentDesktop ?? "").split(":").filter(name => name !== "");
     return entries.filter(entry => shown(files[entry.id] ?? {}, desktops)).sort(byName);
