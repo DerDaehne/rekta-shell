@@ -434,7 +434,7 @@ TestCase {
         compare(place.y, at.y - Tokens.tipGap - 24, "tip-gap above the control, past the bar's top edge");
         compare(place.x, Math.round(at.x + messages.width / 2 - 60), "centred over it");
         const last = findChild(named("controls"), "box");
-        compare(bar.tipPlace(last, Qt.size(300, 24)).x, bar.width - 300 - Tokens.spaceS, "space-s from the window's side");
+        compare(bar.tipPlace(last, Qt.size(300, 24)).x, bar.width - 300 - Tokens.spaceM, "space-m from the window's side");
     }
 
     function test_away_the_bar_slides_down_out_of_sight_with_ease_out() {

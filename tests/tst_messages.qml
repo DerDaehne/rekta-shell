@@ -508,7 +508,7 @@ TestCase {
         const box = findChild(remove, "box");
         const at = box.mapToItem(tip.parent, 0, 0);
         verify(tip.x < at.x + box.width && tip.x + tip.width > at.x, "over its button");
-        compare(tip.x, Math.round(tip.parent.width - Tokens.spaceS - tip.width), "space-s from the panel's trailing edge");
+        compare(tip.x, Math.round(tip.parent.width - Tokens.spaceM - tip.width), "space-m from the panel's trailing edge");
     }
 
     function test_the_focus_reaches_the_remove_button_and_the_actions_with_tab_and_enter_presses_them() {

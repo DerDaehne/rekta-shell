@@ -4,18 +4,17 @@
 // Where floating things go, as pure functions of rectangles in window coordinates. Each returns { x, y, side }; the
 // side ("below" or "above") tells the motion which way to come in.
 
-// A floating surface (states.md, "Floating surfaces"; rekta.js place(), :2012–2034): below its control, aligned to its
-// leading edge, or centred on it with align "centre"; above it when there is no room below; never outside the window.
-// ponytail: space-s from the window's edges and the side by the room alone are Rekta 0.5.0's; 0.6.0 keeps space-m,
-// goes above only when it fits there and else takes the side with more room at a capped height (rekta.js:2012–2034).
+// A floating surface (states.md, "Floating surfaces"; rekta.js place(), :2012–2034): space-xs from its control and
+// space-m from the window's edges; below it when it fits there, else above when it fits there, else on the side with
+// more room, kept inside the window where it may cover its control. Aligned to the control's leading edge, or centred
+// on it with align "centre".
 function float(control, size, window, align = "start") {
     const gap = Rekta.Tokens.spaceXs;
-    const edge = Rekta.Tokens.spaceS;
+    const edge = Rekta.Tokens.spaceM;
     const roomBelow = window.height - control.bottom - gap - edge;
     const roomAbove = control.top - gap - edge;
-    const side = size.height <= roomBelow || roomBelow >= roomAbove ? "below" : "above";
+    const side = size.height <= roomBelow ? "below" : size.height <= roomAbove ? "above" : roomBelow >= roomAbove ? "below" : "above";
     const wanted = side === "below" ? control.bottom + gap : control.top - gap - size.height;
-    // rekta.js lets one too tall for either side run off the bottom; like rekta-core it stays in, over its control.
     const y = Math.max(edge, Math.min(wanted, window.height - edge - size.height));
     const x = align === "centre" ? centredX(control, size, window) : leadingX(control, size, window);
     return { x: Math.round(x), y: Math.round(y), side: side };
@@ -23,10 +22,9 @@ function float(control, size, window, align = "start") {
 
 // A tooltip (navigation.md, "Tooltips"; rekta.js placeTip(), :3025–3033): centred above its control, below it when
 // there is no room above, kept from the window's sides.
-// ponytail: space-s from the sides is Rekta 0.5.0's; 0.6.0 keeps space-m (rekta.js:3026).
 function tip(control, size, window) {
     const gap = Rekta.Tokens.tipGap;
-    const edge = Rekta.Tokens.spaceS;
+    const edge = Rekta.Tokens.spaceM;
     const above = control.top - gap - size.height >= edge;
     const centred = control.left + control.width / 2 - size.width / 2;
     const x = Math.min(Math.max(edge, centred), window.width - size.width - edge);
@@ -35,13 +33,13 @@ function tip(control, size, window) {
 }
 
 function centredX(control, size, window) {
-    const edge = Rekta.Tokens.spaceS;
+    const edge = Rekta.Tokens.spaceM;
     return Math.max(edge, Math.min(control.left + (control.width - size.width) / 2, window.width - edge - size.width));
 }
 
 // One too near the trailing edge opens from the control's trailing edge instead.
 function leadingX(control, size, window) {
-    const edge = Rekta.Tokens.spaceS;
+    const edge = Rekta.Tokens.spaceM;
     const fits = control.left + size.width <= window.width - edge;
     return fits ? Math.max(edge, control.left) : Math.max(edge, Math.min(control.right, window.width - edge) - size.width);
 }

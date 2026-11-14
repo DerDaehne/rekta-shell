@@ -373,7 +373,7 @@ TestCase {
         compare(fromPopup.y, inBar.y);
         compare(fromPopup.side, "above");
         const moved = scene.bar.popupTipPlace(previous, size, Qt.point(40, origin.y));
-        compare(moved.x, Math.min(inBar.x + 40, scene.bar.width - size.width - Tokens.spaceS));
+        compare(moved.x, Math.min(inBar.x + 40, scene.bar.width - size.width - Tokens.spaceM));
     }
 
     function test_the_month_s_tip_is_drawn_in_ink_above_its_arrow_in_both_themes() {

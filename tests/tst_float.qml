@@ -128,7 +128,7 @@ TestCase {
     }
 
     function verifyInside(placed, size, label) {
-        const edge = Tokens.spaceS;
+        const edge = Tokens.spaceM;
         verify(placed.x >= edge && placed.x + size.width <= window.width - edge, `${label}: x ${placed.x}`);
         verify(placed.y >= edge && placed.y + size.height <= window.height - edge, `${label}: y ${placed.y}`);
     }
@@ -167,6 +167,29 @@ TestCase {
         verifyInside(above, Qt.size(200, 500), "above");
     }
 
+    function test_a_surface_keeps_space_m_from_each_window_edge_its_control_touches() {
+        const tall = Qt.size(200, window.height - 2 * Tokens.spaceM);
+        compare(Placement.float(Qt.rect(0, 100, 80, 32), Qt.size(200, 150), window).x, Tokens.spaceM, "leading edge");
+        compare(Placement.float(Qt.rect(920, 100, 80, 32), Qt.size(200, 150), window).x, window.width - Tokens.spaceM - 200, "trailing edge");
+        compare(Placement.float(Qt.rect(0, 100, 80, 32), Qt.size(200, 150), window, "centre").x, Tokens.spaceM, "centred, leading edge");
+        compare(Placement.float(Qt.rect(100, 0, 80, 32), tall, window).y, Tokens.spaceM, "top edge");
+        const atFoot = Placement.float(Qt.rect(100, 568, 80, 32), tall, window);
+        compare(atFoot.y, Tokens.spaceM, "bottom edge, too tall for either side");
+    }
+
+    function test_it_goes_below_only_when_it_fits_there_with_space_m_to_spare() {
+        // 228 below and 300 above, counted from space-m: 232 fits only above.
+        compare(Placement.float(Qt.rect(100, 320, 80, 32), Qt.size(200, 232), window), { x: 100, y: 320 - Tokens.spaceXs - 232, side: "above" });
+    }
+
+    function test_too_tall_for_either_side_it_takes_the_side_with_more_room_inside_the_window_over_its_control() {
+        const size = Qt.size(200, window.height - 2 * Tokens.spaceM);
+        compare(Placement.float(Qt.rect(100, 100, 80, 32), size, window), { x: 100, y: Tokens.spaceM, side: "below" }, "more room below; it covers the control");
+        compare(Placement.float(Qt.rect(100, 450, 80, 32), size, window), { x: 100, y: Tokens.spaceM, side: "above" }, "more room above");
+        const shorter = Qt.size(200, 500);
+        compare(Placement.float(Qt.rect(100, 100, 80, 32), shorter, window).y, window.height - Tokens.spaceM - 500, "pushed up to space-m from the bottom");
+    }
+
     function test_a_centred_surface_is_as_far_left_of_the_control_s_centre_as_right_of_it() {
         const placed = Placement.float(Qt.rect(500, 100, 80, 32), Qt.size(250, 150), window, "centre");
         compare(placed.x + 125, 540);
@@ -184,7 +207,7 @@ TestCase {
         const placed = Placement.float(Qt.rect(900, 100, 80, 32), Qt.size(200, 150), window);
         compare(placed.x, 980 - 200);
         const offRight = Placement.float(Qt.rect(950, 100, 80, 32), Qt.size(200, 150), window);
-        compare(offRight.x, window.width - Tokens.spaceS - 200, "a control past the edge opens from the window's edge");
+        compare(offRight.x, window.width - Tokens.spaceM - 200, "a control past the edge opens from the window's edge");
     }
 
     function test_a_surface_never_leaves_the_window() {
@@ -209,8 +232,8 @@ TestCase {
     }
 
     function test_a_tip_keeps_off_the_window_s_sides() {
-        compare(Placement.tip(Qt.rect(0, 300, 32, 32), Qt.size(120, 25), window).x, Tokens.spaceS);
-        compare(Placement.tip(Qt.rect(980, 300, 20, 32), Qt.size(120, 25), window).x, window.width - Tokens.spaceS - 120);
+        compare(Placement.tip(Qt.rect(0, 300, 32, 32), Qt.size(120, 25), window).x, Tokens.spaceM);
+        compare(Placement.tip(Qt.rect(980, 300, 20, 32), Qt.size(120, 25), window).x, window.width - Tokens.spaceM - 120);
     }
 
     function test_a_surface_has_the_ground_a_hairline_edge_and_no_shadow() {
@@ -257,6 +280,9 @@ TestCase {
         verify(scroller.interactive, "it scrolls");
         surface.area = Qt.size(1000, 400);
         compare(surface.height, 240);
+        surface.area = Qt.size(1000, 60);
+        compare(surface.height, 60 - 2 * Tokens.spaceM, "in a low window, at most the window less space-m on each side");
+        verify(scroller.interactive, "it scrolls the rest");
     }
 
     function test_a_surface_comes_in_with_a_fade_and_a_4px_shift_away_from_its_control_over_duration_float() {

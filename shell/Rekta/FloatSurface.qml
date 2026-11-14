@@ -2,9 +2,10 @@ import QtQuick
 
 // A surface that floats next to the control that opened it (states.md, "Floating surfaces"; rekta.css:1003–1011): bg, a
 // 1px text-contrast-medium edge, radius-s, no shadow. As wide as its widest row, from 12rem up to 24rem (less in a
-// narrow window); at most 24rem or 60% of the window high, scrolling the rest. It comes in with a fade and a 4px shift
-// away from its control and leaves at once. The host floats it above the window (an overlay, or a popup of its own
-// where it must reach past the window) and places it with Placement.float, which also gives its side.
+// narrow window); at most 24rem, 60% of the window or the window less space-m above and below
+// high (rekta.js:2024), scrolling the rest. It comes in with a fade and a 4px shift away from its control and leaves at
+// once. The host floats it above the window (an overlay, or a popup of its own where it must reach past the window)
+// and places it with Placement.float, which also gives its side.
 Rectangle {
     id: surface
 
@@ -19,7 +20,7 @@ Rectangle {
     default property alias content: column.data
     readonly property alias rows: column.children
     readonly property real maxWidth: Math.min(Geometry.floatMaxSize, area.width - 2 * Tokens.spaceM)
-    readonly property real maxHeight: Math.min(Geometry.floatMaxSize, Geometry.floatMaxHeightShare * area.height)
+    readonly property real maxHeight: Math.max(0, Math.min(Geometry.floatMaxSize, Geometry.floatMaxHeightShare * area.height, area.height - 2 * Tokens.spaceM))
     readonly property real widestRow: Array.from(rows).reduce((widest, row) => row.visible || !surface.visible ? Math.max(widest, row.implicitWidth) : widest, 0)
 
     // Scrolls a row into view, as focus does on the web.

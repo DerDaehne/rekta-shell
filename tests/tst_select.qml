@@ -110,9 +110,9 @@ TestCase {
 
             Select {
                 objectName: "hosted"
-                x: 150
+                x: 140
                 width: 140
-                options: [{ text: "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) of the monitor on the left", value: 0 }]
+                options: [{ text: "HDMI 3", value: 0 }]
                 currentIndex: 0
             }
 
@@ -563,17 +563,17 @@ TestCase {
         mouseClick(box(hosted));
         const surface = list(hosted);
         compare(surface.parent, findChild(host, "layer"));
-        verify(surface.width > hosted.width, "wider than its field for its long option");
+        verify(surface.width > hosted.width, "wider than its field, at its least width");
         compare(surface.x + surface.width, hosted.x + hosted.width, "too wide to open from the field's leading edge, it ends with the field");
     }
 
-    function test_a_list_too_wide_for_its_host_past_the_fields_end_ends_space_s_before_the_hosts_edge() {
+    function test_a_list_too_wide_for_its_host_past_the_fields_end_ends_space_m_before_the_hosts_edge() {
         const host = createTemporaryObject(hostComponent, scene);
         const atEdge = findChild(host, "atEdge");
         mouseClick(box(atEdge));
         const surface = list(atEdge);
-        verify(atEdge.x + atEdge.width > host.width - Tokens.spaceS, "the field reaches into the host's margin");
-        compare(surface.x + surface.width, host.width - Tokens.spaceS);
+        verify(atEdge.x + atEdge.width > host.width - Tokens.spaceM, "the field reaches into the host's margin");
+        compare(surface.x + surface.width, host.width - Tokens.spaceM);
     }
 
     function test_a_long_option_is_cut_in_the_box_and_in_its_row() {
