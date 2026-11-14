@@ -171,10 +171,18 @@ private:
         const QString type = m_interfaces.value(interfaceName).properties.value(name);
         if (type.isEmpty())
             return message.createErrorReply(QDBusError::UnknownProperty, u"%1 has no property %2"_s.arg(interfaceName, name));
-        const Marshalling::Encoded value = m_owner->ask(message.path(), interfaceName, name, {}, type);
+        const Marshalling::Encoded value = askProperty(message.path(), interfaceName, name, type);
         if (!value.error.isEmpty())
             return message.createErrorReply(QDBusError::Failed, value.error);
         return message.createReply(QVariant::fromValue(QDBusVariant(value.arguments.constFirst())));
+    }
+
+    Marshalling::Encoded askProperty(const QString &path, const QString &interfaceName, const QString &name, const QString &type) const
+    {
+        Marshalling::Encoded value = m_owner->ask(path, interfaceName, name, {}, type);
+        if (value.error.isEmpty() && value.arguments.size() != 1)
+            value.error = u"the handler gave no value for %1"_s.arg(name);
+        return value;
     }
 
     QDBusMessage getAll(const QDBusMessage &message, const QString &interfaceName) const
@@ -184,7 +192,7 @@ private:
             return message.createErrorReply(QDBusError::UnknownInterface, u"%1 has no interface %2"_s.arg(message.path(), interfaceName));
         QVariantMap values;
         for (const auto &[name, type] : interface->properties.asKeyValueRange()) {
-            const Marshalling::Encoded value = m_owner->ask(message.path(), interfaceName, name, {}, type);
+            const Marshalling::Encoded value = askProperty(message.path(), interfaceName, name, type);
             if (!value.error.isEmpty())
                 return message.createErrorReply(QDBusError::Failed, value.error);
             values.insert(name, value.arguments.constFirst());
@@ -346,8 +354,11 @@ Marshalling::Encoded DBusConnection::ask(const QString &path,
     if (!engine || !m_handler.isCallable())
         return {{}, u"no handler answers %1"_s.arg(member)};
     const QJSValue result = m_handler.call({path, interfaceName, member, engine->toScriptValue(args)});
-    if (result.isError())
-        return {{}, result.property(u"message"_s).toString()};
+    if (result.isError()) {
+        // An empty text would read as success to every caller, so an Error thrown without a message still needs one.
+        const QString message = result.property(u"message"_s).toString();
+        return {{}, message.isEmpty() ? u"the handler of %1 threw"_s.arg(member) : message};
+    }
     return Marshalling::encode(replyValues(result, signature), signature);
 }
 

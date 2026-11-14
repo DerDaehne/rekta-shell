@@ -445,6 +445,20 @@ TestCase {
         compare(get("org.rekta.Gauge", "Level").values, [7], "the object answers on");
     }
 
+    function test_a_property_whose_handler_throws_an_error_without_a_message_is_answered_with_a_dbus_error() {
+        const name = "org.rekta.Test.GaugeSilent";
+        const bus = ownGauge(name);
+        bus.handler = () => {
+            throw new Error();
+        };
+        compare(callFromCounterpart(name, "/gauge", properties, "Get", ["org.rekta.Gauge", "Level"]), {
+            signature: "s",
+            values: ["the handler of Level threw"],
+            error: "org.freedesktop.DBus.Error.Failed"
+        });
+        compare(callFromCounterpart(name, "/gauge", properties, "GetAll", ["org.rekta.Gauge"]).error, "org.freedesktop.DBus.Error.Failed");
+    }
+
     function test_own_refuses_a_property_whose_type_is_not_one_complete_type() {
         const bus = connection();
         ignoreWarning(/is not XML or has a type that is not a valid D-Bus signature/);
@@ -459,6 +473,19 @@ TestCase {
         const answer = callFromCounterpart(name, "/jobs", "org.rekta.Jobs", "fail", []);
         compare(answer.error, "org.freedesktop.DBus.Error.Failed");
         compare(answer.values, ["broken"]);
+    }
+
+    function test_a_method_whose_handler_throws_an_error_without_a_message_answers_with_a_dbus_error() {
+        const name = "org.rekta.Test.ThrowingSilently";
+        const bus = ownJobs(name);
+        bus.handler = () => {
+            throw new Error();
+        };
+        compare(callFromCounterpart(name, "/jobs", "org.rekta.Jobs", "count", []), {
+            signature: "s",
+            values: ["the handler of count threw"],
+            error: "org.freedesktop.DBus.Error.Failed"
+        });
     }
 
     function test_unknown_methods_interfaces_and_argument_types_are_answered_with_dbus_errors() {
