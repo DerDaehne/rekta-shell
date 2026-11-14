@@ -9,6 +9,7 @@ import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import Quickshell.Wayland
 import org.kde.plasma.workspace.dbus as DBus
+import RektaShell.DBus
 import Notices
 import Settings
 import Panel
@@ -81,6 +82,18 @@ PanelWindow {
         panel.close();
     }
 
+    // A swipe draws the panel in on the primary screen.
+    function drawIn(share: real) {
+        if (!panel.open)
+            shownOn = primaryScreen;
+        panel.drawIn(share);
+    }
+
+    // KWin holds the right edge for a finger that draws the panel in only while the panel is away.
+    function tellKWin() {
+        kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setPanelShown", [panel.open], "b");
+    }
+
     function setDark(on: bool) {
         controls.setDark(on);
     }
@@ -118,6 +131,8 @@ PanelWindow {
         focus: true
         titles: ["steuerung", "meldungen"]
         onClosed: surface.panelClosed()
+        onOpenChanged: surface.tellKWin()
+        Component.onCompleted: surface.tellKWin()
 
         Controls {
             id: controls
@@ -191,6 +206,42 @@ PanelWindow {
         Messages {
             board: surface.notices
             onActed: panel.close()
+        }
+    }
+
+    // KWin's rekta-fadeback, which holds the right edge of the primary screen for a finger that draws the panel in, and
+    // three fingers swiping left or right on the touchpad; outside the rekta session nothing answers.
+    DBusConnection {
+        id: kwin
+    }
+
+    DBus.SignalWatcher {
+        service: "org.kde.KWin"
+        path: "/RektaFadeBack"
+        iface: "org.rekta.FadeBack"
+
+        function dbusedgeFingerMoved(distance: real) {
+            surface.drawIn(distance / panel.panelWidth);
+        }
+
+        function dbusedgeFingerLetGo() {
+            panel.letGoIn();
+        }
+
+        function dbustouchpadLeft(progress: real) {
+            surface.drawIn(progress);
+        }
+
+        function dbustouchpadLeftLetGo() {
+            panel.letGoIn();
+        }
+
+        function dbustouchpadRight(progress: real) {
+            panel.drawOut(progress);
+        }
+
+        function dbustouchpadRightLetGo() {
+            panel.letGoOut();
         }
     }
 

@@ -9,7 +9,7 @@ import Rekta
 // (motion.md, "Sheets"); unlike Rekta's side panel (`.rk-sheet--side`, rekta.css:1095–1106) nothing beside it is shaded
 // or blocked and it arrives on ease-out. Its pivot picks a facet. Escape, its close button at the top trailing corner
 // (states.md:243–247), a touch swipe towards the trailing edge and close() send it away; a tip that shows takes Escape
-// first. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move through the controls, and
+// first. A swipe from its host (drawIn(), drawOut()) moves it as a finger on it does. Focus starts at the first control of the facet in sight, Tab and ↑ ↓ move through the controls, and
 // once the panel has gone the focus goes back. A sheet a facet opens lies over the panel's ground (`sheets`); while one
 // is open the panel keeps still. A press anywhere in it hides a tip, as scrolling does.
 // What a facet keeps at hand stands at the panel's edge nearest the app bar (`edge`), below its scroll: the app bar is
@@ -33,6 +33,9 @@ FocusScope {
     property int quietFrames: 0
     // Runs from 0 to 1 as it comes in, and back to 0 as it leaves.
     property real entry: 1
+    // A swipe draws it in from away, or out from open, until it lets go.
+    property bool drawingIn: false
+    property bool drawingOut: false
     readonly property real contentWidth: 2.5 * Tokens.tileUnit + Tokens.spaceS
     readonly property real panelWidth: Geometry.hairline + 2 * Tokens.spaceM + contentWidth
     readonly property real shift: (1 - entry) * panelWidth
@@ -46,19 +49,17 @@ FocusScope {
     // It has gone.
     signal closed
 
-    // Opens on a facet, or turns to it while open; while it leaves, it comes back.
+    // Opens on a facet, or turns to it while open; while it leaves, or a swipe draws it in, it comes in.
     function show(index: int, byPointer: bool) {
         if (!open) {
-            standOn(index);
-            memo.focused = Window.activeFocusItem;
-            open = true;
-            entry = 0;
+            appear(index);
         } else {
             pivot.select(index);
             ringsHidden = byPointer;
-            if (!going.running)
+            if (!going.running && !drawingIn)
                 return;
         }
+        drawingIn = false;
         going.stop();
         comingIn.restart();
         ringsHidden = byPointer;
@@ -110,11 +111,63 @@ FocusScope {
             first.forceActiveFocus(Qt.TabFocusReason);
     }
 
+    // Shows on a facet from wholly beyond the trailing edge, keeping where the focus was to give it back.
+    function appear(index: int) {
+        standOn(index);
+        memo.focused = Window.activeFocusItem;
+        open = true;
+        entry = 0;
+    }
+
     function close() {
         if (!open || going.running)
             return;
+        drawingIn = false;
+        drawingOut = false;
         comingIn.stop();
         going.start();
+    }
+
+    // A swipe draws it in on "steuerung", `share` of its width, while it is away or this swipe draws it; a swipe that
+    // has not come in yet opens nothing. It follows the swipe also under reduced motion, as it is moved by hand.
+    function drawIn(share: real) {
+        if (!drawingIn && (open || share <= 0))
+            return;
+        if (!open) {
+            appear(0);
+            ringsHidden = true;
+            drawingIn = true;
+        }
+        entry = Math.min(Math.max(0, share), 1);
+    }
+
+    // Let go at half its width or more (the half as at pull()), it comes in all the way with the focus on its first
+    // control; before, it goes and gives the focus back.
+    function letGoIn() {
+        if (!drawingIn)
+            return;
+        drawingIn = false;
+        if (entry < 0.5) {
+            close();
+            return;
+        }
+        comingIn.restart();
+        focusFirst();
+    }
+
+    // A swipe draws the open panel out, `share` of its width, as a finger on it does; not over an open sheet.
+    function drawOut(share: real) {
+        if (!drawingOut && (!open || drawingIn || going.running || sheetOpen))
+            return;
+        drawingOut = true;
+        pull(share * panelWidth);
+    }
+
+    function letGoOut() {
+        if (!drawingOut)
+            return;
+        drawingOut = false;
+        letGo();
     }
 
     // A finger pulls it towards the trailing edge; let go past half its width it goes on out, else it comes back.

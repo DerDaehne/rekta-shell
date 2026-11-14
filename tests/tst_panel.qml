@@ -939,6 +939,137 @@ TestCase {
         verify(side.open);
     }
 
+    function test_a_swipe_from_away_draws_the_panel_in_on_steuerung_and_it_follows_the_swipe() {
+        side.show(1);
+        side.close();
+        const panel = findChild(side, "panel");
+        side.drawIn(0.3);
+        verify(side.open, "it shows as the swipe comes in");
+        compare(side.currentIndex, 0, "on steuerung");
+        compare(side.entry, 0.3);
+        fuzzyCompare(panel.x, 900 - 0.3 * side.panelWidth, 0.01);
+        side.drawIn(0.6);
+        fuzzyCompare(panel.x, 900 - 0.6 * side.panelWidth, 0.01, "it follows");
+        side.drawIn(0.2);
+        fuzzyCompare(panel.x, 900 - 0.2 * side.panelWidth, 0.01, "also back");
+        side.drawIn(1.4);
+        compare(side.entry, 1, "never further in than its place");
+    }
+
+    function test_a_swipe_let_go_at_half_its_width_has_the_panel_come_in_with_the_focus_on_its_first_control() {
+        Prefs.motion = "on";
+        side.drawIn(0.5);
+        side.letGoIn();
+        verify(findChild(side, "comingIn").running, "it comes in from where it stands");
+        compare(side.entry, 0.5);
+        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        verify(side.open);
+        compare(side.currentIndex, 0);
+        verify(control("density").activeFocus, "the first control holds the focus");
+        compare(ringsShowing(control("density")), 0, "without a ring, as after a pointer");
+    }
+
+    function test_a_swipe_let_go_before_half_its_width_has_the_panel_go_and_give_the_focus_back() {
+        Prefs.motion = "on";
+        const closed = createTemporaryObject(spyComponent, testCase, { target: side, signalName: "closed" });
+        side.drawIn(0.49);
+        side.letGoIn();
+        verify(findChild(side, "goingOut").running, "it goes the way it leaves");
+        tryCompare(closed, "count", 1, Tokens.durationModerate * 4);
+        verify(!side.open);
+        compare(side.entry, 0);
+        verify(named("opener").activeFocus, "and the focus goes back");
+    }
+
+    function test_a_swipe_that_has_not_come_in_opens_nothing() {
+        side.drawIn(0);
+        side.drawIn(-0.2);
+        verify(!side.open);
+        side.letGoIn();
+        verify(!side.open);
+        verify(named("opener").activeFocus);
+    }
+
+    function test_a_swipe_drawing_in_leaves_the_open_panel_where_it_is() {
+        side.show(1);
+        side.drawIn(0.3);
+        compare(side.entry, 1);
+        compare(side.currentIndex, 1, "and on its facet");
+        side.letGoIn();
+        verify(side.open);
+        compare(side.entry, 1);
+    }
+
+    function test_shown_while_a_swipe_draws_it_in_it_comes_in_and_the_letting_go_changes_nothing() {
+        side.drawIn(0.2);
+        side.show(0);
+        compare(side.entry, 1);
+        verify(control("density").activeFocus);
+        side.letGoIn();
+        verify(side.open);
+        compare(side.entry, 1);
+    }
+
+    function test_a_swipe_drawing_out_follows_and_past_half_its_width_the_panel_goes_and_gives_the_focus_back() {
+        side.show(0);
+        const panel = findChild(side, "panel");
+        side.drawOut(0.3);
+        fuzzyCompare(panel.x, 900 - 0.7 * side.panelWidth, 0.01, "it follows towards the trailing edge");
+        side.drawOut(0.6);
+        fuzzyCompare(panel.x, 900 - 0.4 * side.panelWidth, 0.01);
+        side.letGoOut();
+        verify(!side.open, "let go past half its width, it goes");
+        verify(named("opener").activeFocus, "and gives the focus back");
+    }
+
+    function test_a_swipe_drawing_out_let_go_before_half_its_width_has_the_panel_come_back() {
+        Prefs.motion = "on";
+        showSettled(0);
+        side.drawOut(0.4);
+        side.letGoOut();
+        verify(findChild(side, "comingIn").running, "it comes back");
+        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        verify(side.open);
+        verify(control("density").activeFocus, "with the focus where it was");
+    }
+
+    function test_a_swipe_drawing_out_while_the_panel_is_away_or_over_an_open_sheet_does_nothing() {
+        side.drawOut(0.6);
+        side.letGoOut();
+        verify(!side.open, "away, it stays away");
+        compare(side.entry, 1);
+        giveNetworks(controls);
+        showSettled(0);
+        mouseClick(control("chooseNetwork"));
+        waitForRendering(side);
+        mouseClick(rowsOf("wifiBranch")[3]);
+        verify(sheet().open);
+        side.drawOut(0.6);
+        compare(side.entry, 1, "over a sheet the panel keeps still");
+        side.letGoOut();
+        verify(side.open);
+        verify(sheet().open);
+    }
+
+    function test_under_reduced_motion_the_panel_follows_a_swipe_and_its_end_stands_at_once() {
+        side.drawIn(0.4);
+        compare(side.entry, 0.4, "it follows, moved by hand");
+        side.drawIn(0.7);
+        side.letGoIn();
+        compare(side.entry, 1, "in at once");
+        side.drawOut(0.3);
+        fuzzyCompare(side.entry, 0.7, 0.0001, "it follows out as well");
+        side.letGoOut();
+        compare(side.entry, 1, "back at once");
+        side.drawOut(0.6);
+        side.letGoOut();
+        verify(!side.open, "gone at once");
+        side.drawIn(0.3);
+        side.letGoIn();
+        verify(!side.open, "a short swipe in goes at once");
+        compare(side.entry, 0);
+    }
+
     function test_escape_closes_it_from_every_control() {
         for (const name of ["dark", "doNotDisturb", "density", "powerProfile", "lock", "sessionActions"]) {
             side.show(0);

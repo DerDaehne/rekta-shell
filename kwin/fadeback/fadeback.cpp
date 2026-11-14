@@ -81,6 +81,14 @@ struct TouchpadSwipe {
     bool moving = false;
 };
 
+// A finger swiping in from one edge of the primary screen. KWin triggers the action as it lets go.
+struct TouchEdge {
+    ElectricBorder border;
+    QAction letGo;
+    bool fingerDown = false;
+    bool held = false;
+};
+
 // A window that far back.
 struct Look {
     qreal scale = 1;
@@ -106,6 +114,10 @@ struct Splash {
 // closing's. KWin swallows a second finger and reports a cancelled touch as a release. Three fingers swiping up on the
 // touchpad do what that finger does, and swiping down what the finger drawing the Start down does: the effect tells
 // the shell how far of KWin's whole swipe they have come and when they let go.
+//
+// A finger swiping in from the right edge of the primary screen, and three fingers swiping left on the touchpad, draw
+// the side panel in; three fingers swiping right draw it out. The shell tells the effect whether the panel shows: the
+// right edge is held only while it does not, so a finger on the open panel's own edge reaches the panel.
 class FadeBackEffect : public Effect
 {
     Q_OBJECT
@@ -130,6 +142,8 @@ public Q_SLOTS:
     Q_SCRIPTABLE void setStartOutAt(double elapsed, int pace);
     // The session bar's surface shows by `opacity` from now on, and KWin's blur behind it by its square.
     Q_SCRIPTABLE void setSessionOpacity(double opacity);
+    // The side panel shows, on any screen.
+    Q_SCRIPTABLE void setPanelShown(bool shown);
 
 Q_SIGNALS:
     // A finger on the bottom edge of the primary screen is `distance` px above where it set down.
@@ -140,6 +154,13 @@ Q_SIGNALS:
     Q_SCRIPTABLE void touchpadUpLetGo();
     Q_SCRIPTABLE void touchpadDown(double progress);
     Q_SCRIPTABLE void touchpadDownLetGo();
+    Q_SCRIPTABLE void touchpadLeft(double progress);
+    Q_SCRIPTABLE void touchpadLeftLetGo();
+    Q_SCRIPTABLE void touchpadRight(double progress);
+    Q_SCRIPTABLE void touchpadRightLetGo();
+    // A finger on the right edge of the primary screen is `distance` px left of where it set down.
+    Q_SCRIPTABLE void edgeFingerMoved(double distance);
+    Q_SCRIPTABLE void edgeFingerLetGo();
 
 private:
     void watch(LayerSurfaceV1Interface *layer);
@@ -160,9 +181,9 @@ private:
     void holdSplash(EffectWindow *w);
     void fadeSplash(std::chrono::nanoseconds presentation);
     bool fading() const;
-    void holdEdge();
-    void fingerAt(const QPointF &delta, LogicalOutput *output);
-    void letGo();
+    void holdEdges();
+    void hold(TouchEdge &edge, bool wanted, void (FadeBackEffect::*moved)(double));
+    void takeEdge(TouchEdge &edge, void (FadeBackEffect::*letGo)());
     void takeSwipe(SwipeDirection direction, TouchpadSwipe &swipe, void (FadeBackEffect::*moved)(double),
                    void (FadeBackEffect::*letGo)());
 
@@ -184,12 +205,13 @@ private:
     static constexpr const char *sessionScope = "DOCK";
     QPointer<LayerSurfaceV1Interface> m_session;
     qreal m_sessionOpacity = 1;
-    // KWin triggers it as the finger on the edge lets go.
-    QAction m_finger;
-    bool m_fingerDown = false;
-    bool m_edgeHeld = false;
+    TouchEdge m_bottomEdge{ElectricBottom};
+    TouchEdge m_rightEdge{ElectricRight};
+    bool m_panelShown = false;
     TouchpadSwipe m_swipeUp;
     TouchpadSwipe m_swipeDown;
+    TouchpadSwipe m_swipeLeft;
+    TouchpadSwipe m_swipeRight;
 };
 
 FadeBackEffect::FadeBackEffect()
@@ -205,13 +227,19 @@ FadeBackEffect::FadeBackEffect()
     connect(waylandServer()->findChild<LayerShellV1Interface *>(), &LayerShellV1Interface::surfaceCreated,
             this, &FadeBackEffect::watch);
     connect(effects, &EffectsHandler::windowClosed, this, &FadeBackEffect::holdSplash);
-    connect(&m_finger, &QAction::triggered, this, &FadeBackEffect::letGo);
-    holdEdge();
+    takeEdge(m_bottomEdge, &FadeBackEffect::fingerLetGo);
+    takeEdge(m_rightEdge, &FadeBackEffect::edgeFingerLetGo);
+    // ponytail: KWin owns every press in the outer 8 px of an edge it holds, so while the panel is away a finger there
+    // reaches no window (a scrollbar's outer rim, say). Should that matter, ask KWin for a narrower touch target.
+    holdEdges();
     // ponytail: KWin runs every swipe of a finger count and direction together; with more than one row of virtual
-    // desktops its own three fingers up and down switch the desktop as well, and nothing in its config turns that off.
-    // The shell follows no desktops; should it matter, take another finger count or direction here.
+    // desktops its own three fingers up and down switch the desktop as well, with more than one column its three and
+    // four fingers left and right, and nothing in its config turns that off. The shell follows no desktops; should it
+    // matter, take another finger count or direction here.
     takeSwipe(SwipeDirection::Up, m_swipeUp, &FadeBackEffect::touchpadUp, &FadeBackEffect::touchpadUpLetGo);
     takeSwipe(SwipeDirection::Down, m_swipeDown, &FadeBackEffect::touchpadDown, &FadeBackEffect::touchpadDownLetGo);
+    takeSwipe(SwipeDirection::Left, m_swipeLeft, &FadeBackEffect::touchpadLeft, &FadeBackEffect::touchpadLeftLetGo);
+    takeSwipe(SwipeDirection::Right, m_swipeRight, &FadeBackEffect::touchpadRight, &FadeBackEffect::touchpadRightLetGo);
 }
 
 FadeBackEffect::~FadeBackEffect()
@@ -359,7 +387,7 @@ void FadeBackEffect::step()
     m_onPrimary = look(std::max(m_start.progress, m_leave.progress));
     m_elsewhere = look(m_leave.progress);
     fadeStart(m_start.progress);
-    holdEdge();
+    holdEdges();
 }
 
 // The window's own opacity, not the paint data's: KWin's blur follows it as well, and it holds once the effect rests
@@ -379,6 +407,12 @@ void FadeBackEffect::setSessionOpacity(double opacity)
     }
     m_sessionOpacity = opacity;
     fadeSession();
+}
+
+void FadeBackEffect::setPanelShown(bool shown)
+{
+    m_panelShown = shown;
+    holdEdges();
 }
 
 // The window's own opacity, as for the Start: KWin's blur follows it, by its square.
@@ -434,44 +468,47 @@ bool FadeBackEffect::fading() const
     return !m_splash.windows.isEmpty();
 }
 
-// The edge is the Start's way in only while the Start is gone, so a finger at the bottom of the open Start reaches the
-// Start; a finger swiping keeps it until it lets go. The edge alone sets nothing in motion.
-void FadeBackEffect::holdEdge()
+// The bottom edge is the Start's way in only while the Start is gone, so a finger at the bottom of the open Start reaches
+// the Start, and the right edge the side panel's only while the panel is away; a finger swiping keeps its edge until it
+// lets go. An edge alone sets nothing in motion.
+void FadeBackEffect::holdEdges()
 {
-    const bool wanted = m_fingerDown || !m_start.active();
-    if (wanted == m_edgeHeld) {
-        return;
-    }
-    m_edgeHeld = wanted;
-    if (!wanted) {
-        effects->unregisterTouchBorder(ElectricBottom, &m_finger);
-        return;
-    }
-    // KWin holds the bottom edge of every screen with nothing below it; only the primary screen's opens the Start.
-    effects->registerRealtimeTouchBorder(ElectricBottom, &m_finger, [this](ElectricBorder, const QPointF &delta, LogicalOutput *output) {
-        fingerAt(delta, output);
-    });
+    hold(m_bottomEdge, !m_start.active(), &FadeBackEffect::fingerMoved);
+    hold(m_rightEdge, !m_panelShown, &FadeBackEffect::edgeFingerMoved);
 }
 
-void FadeBackEffect::fingerAt(const QPointF &delta, LogicalOutput *output)
+void FadeBackEffect::hold(TouchEdge &edge, bool wanted, void (FadeBackEffect::*moved)(double))
 {
-    if (output != primaryScreen()) {
+    wanted = wanted || edge.fingerDown;
+    if (wanted == edge.held) {
         return;
     }
-    m_fingerDown = true;
-    Q_EMIT fingerMoved(-delta.y());
+    edge.held = wanted;
+    if (!wanted) {
+        effects->unregisterTouchBorder(edge.border, &edge.letGo);
+        return;
+    }
+    // KWin holds that edge of every screen with nothing beyond it; only the primary screen's is the shell's way in.
+    effects->registerRealtimeTouchBorder(edge.border, &edge.letGo, [this, &edge, moved](ElectricBorder, const QPointF &delta, LogicalOutput *output) {
+        if (output != primaryScreen()) {
+            return;
+        }
+        edge.fingerDown = true;
+        Q_EMIT(this->*moved)(edge.border == ElectricBottom ? -delta.y() : -delta.x());
+    });
 }
 
 // KWin may still be handing the release along the edge, so it is freed only on the event loop's next turn. The shell
 // may answer nothing, the Start having opened all the way while the finger held.
-void FadeBackEffect::letGo()
+void FadeBackEffect::takeEdge(TouchEdge &edge, void (FadeBackEffect::*letGo)())
 {
-    if (!m_fingerDown) {
-        return;
-    }
-    m_fingerDown = false;
-    Q_EMIT fingerLetGo();
-    QMetaObject::invokeMethod(this, &FadeBackEffect::holdEdge, Qt::QueuedConnection);
+    connect(&edge.letGo, &QAction::triggered, this, [this, &edge, letGo] {
+        if (!std::exchange(edge.fingerDown, false)) {
+            return;
+        }
+        Q_EMIT(this->*letGo)();
+        QMetaObject::invokeMethod(this, &FadeBackEffect::holdEdges, Qt::QueuedConnection);
+    });
 }
 
 // Holding the swipe sets nothing in motion; only the shell, answering, does.
