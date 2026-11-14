@@ -45,6 +45,8 @@ function scopeCommand(id, command, stamp) {
 
 // What Quickshell.execDetached() takes to start `command` for a desktop entry, the entry's own or one of its desktop
 // actions': in a scope of the entry's own (scopeCommand), in the entry's working directory if it names one.
+// ponytail: Quickshell drops %i, %c and %k from Exec, so an app starts without them (only KMail uses %c today); an own
+// Exec parser over execString would expand them, if an app needs it (%k would still need the file path).
 function launchContext(entry, command, stamp) {
     const context = { command: scopeCommand(entry.id, command, stamp) };
     if (entry.workingDirectory !== "")
