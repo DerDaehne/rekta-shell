@@ -1,18 +1,20 @@
 import QtQuick
 
-// A short display with no bar to stand in, in a glass of its own along the bottom edge: the word over Rekta's meter
-// with its value (ReadoutFace). It comes only while `away` holds, the bar being out of sight. It rises from below the
-// glass edge with a fade, as a compact toast does (rekta.css:1167–1172, :1235–1236, :1407; motion.md:36) and the bar's mode
-// change (rekta.css:980–981; motion.md:28), and after the last key and its hold runs the same curve backwards, as the
-// stylesheet's reversed keyframes do (rekta.css:1172). `press()` is a key: the first brings the display, every later one
-// only keeps it, and one during the way back waits until it has gone. `say()` announces news politely while it shows
-// or a key waits for it, as a live region does (navigation.md, "A short indicator in place of a control").
+// A short display with no bar to stand in, in a glass of its own along the bottom edge: the same line of icon, meter and
+// value as in the bar (ReadoutFace), the bar's padding around it; the word is only said. It comes only while `away`
+// holds, the bar being out of sight. It rises from below the glass edge with a fade, as a compact toast does
+// (rekta.css:1167–1172, :1235–1236, :1407; motion.md:36) and the bar's mode change (rekta.css:980–981; motion.md:28),
+// and after the last key and its hold runs the same curve backwards, as the stylesheet's reversed keyframes do
+// (rekta.css:1172). `press()` is a key: the first brings the display, every later one only keeps it, and one during the
+// way back waits until it has gone. `say()` announces news politely while it shows or a key waits for it, as a live
+// region does (navigation.md, "A short indicator in place of a control").
 // ponytail: a new layer surface takes some 60ms to its first frame, so the way in starts with that frame; should no frame
 // ever come the display stays at its start until its hold runs out, then goes.
 Item {
     id: alone
 
     property string word
+    property string icon
     // 0 to 1, or -1 to show `valueText` alone.
     property real level: -1
     property string valueText
@@ -84,7 +86,7 @@ Item {
         leaving = false;
     }
 
-    implicitWidth: Tokens.tileUnit + 2 * Tokens.spaceM
+    implicitWidth: face.implicitWidth + 2 * Tokens.spaceM
     implicitHeight: Tokens.appbarHeight
     Accessible.role: Accessible.StaticText
     Accessible.name: spoken
@@ -152,10 +154,12 @@ Item {
         }
 
         ReadoutFace {
+            id: face
+
             x: Tokens.spaceM
-            width: Tokens.tileUnit
+            width: implicitWidth
             height: parent.height
-            word: alone.word
+            icon: alone.icon
             level: alone.level
             valueText: alone.valueText
         }

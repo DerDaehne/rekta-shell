@@ -88,7 +88,7 @@ PanelWindow {
         viewportHeight: panel.modelData?.height ?? 0
         area: Qt.size(panel.modelData?.width ?? 0, panel.modelData?.height ?? 0)
         centre: clock
-        centreReserve: panel.showsReadout ? display.implicitWidth : 0
+        centreReserve: panel.showsReadout ? display.room : 0
         away: panel.away
 
         AppBarStatus {
@@ -121,6 +121,7 @@ PanelWindow {
             // The opposite of the display alone (ReadoutSurface), which speaks as soon as the bar starts to slide away.
             speaks: !(panel.windows?.fullScreenOn(panel.modelData) ?? false)
             word: panel.readout.word
+            icon: panel.readout.icon
             level: panel.readout.level
             valueText: panel.readout.valueText
         }

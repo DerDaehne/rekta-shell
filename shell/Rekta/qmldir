@@ -22,6 +22,7 @@ PictureIcon 1.0 PictureIcon.qml
 FocusRing 1.0 FocusRing.qml
 StatusTag 1.0 StatusTag.qml
 Meter 1.0 Meter.qml
+MeterTrack 1.0 MeterTrack.qml
 Progress 1.0 Progress.qml
 BusyLine 1.0 BusyLine.qml
 Dots 1.0 Dots.qml

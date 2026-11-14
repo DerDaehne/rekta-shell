@@ -39,6 +39,7 @@ PanelWindow {
         anchors.fill: parent
         away: host.windows.fullScreenOn(host.primaryScreen)
         word: host.readout.word
+        icon: host.readout.icon
         level: host.readout.level
         valueText: host.readout.valueText
     }

@@ -28,6 +28,8 @@ QtObject {
     readonly property real progressTrackOpacity: 0.2
     // `.rk-meter { height: 6px }` (rekta.css:711)
     readonly property real meterHeight: 6
+    // A level indicator's value: `.rk-toast-level { min-width: 4ch }` (rekta.css:1233)
+    readonly property int levelValueMinChars: 4
     // `.rk-tag { gap: 6px }`, `.rk-tag::before { width: 8px; height: 8px }` (rekta.css:790–791)
     // The same square starts a field's error: `.rk-field[data-status='error'] .rk-hint::before { width: 8px; height: 8px;
     // margin-right: 6px }` (rekta.css:407)

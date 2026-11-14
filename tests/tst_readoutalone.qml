@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "ReadoutLine.js" as ReadoutLine
 import "Glide.js" as Glide
 
 TestCase {
@@ -23,6 +24,7 @@ TestCase {
             width: implicitWidth
             height: implicitHeight
             word: "lautstärke"
+            icon: "speaker"
             level: 0.81
             valueText: "81%"
         }
@@ -73,35 +75,58 @@ TestCase {
         verify(!hold.running);
     }
 
-    function test_a_key_under_a_full_screen_window_shows_the_word_the_level_and_the_value() {
+    function test_under_a_full_screen_window_the_glass_shows_the_bar_s_line_with_the_bar_s_padding_as_wide_as_it() {
         alone.away = true;
         alone.press();
         verify(alone.mapped);
         tryCompare(alone, "settled", true, 2000);
-        const meter = findChild(alone, "meter");
-        verify(meter.visible);
-        compare(meter.label, "lautstärke");
-        compare(meter.value, 0.81);
-        compare(meter.valueText, "81%");
+        const face = findChild(alone, "icon").parent;
+        ReadoutLine.verify(testCase, face, Tokens, Geometry, zeroIn(findChild(alone, "value")));
+        compare(face.x, Tokens.spaceM);
+        compare(face.y, 0);
+        compare(face.width, face.implicitWidth);
+        compare(face.height, Tokens.appbarHeight, "the line is centred on the bar's height");
+        compare(alone.implicitWidth, face.implicitWidth + 2 * Tokens.spaceM);
+        compare(alone.glass.width, alone.width);
+        compare(findChild(face, "icon").name, "speaker");
     }
 
-    function test_a_text_without_a_level_shows_over_its_word() {
+    function test_without_a_level_the_glass_shows_the_icon_and_the_value_alone() {
         alone.away = true;
         alone.level = -1;
         alone.word = "tastatur";
+        alone.icon = "edit";
         alone.valueText = "English (US)";
         alone.press();
-        verify(!findChild(alone, "meter").visible);
-        verify(findChild(alone, "plain").visible);
+        const face = findChild(alone, "icon").parent;
+        ReadoutLine.verify(testCase, face, Tokens, Geometry, zeroIn(findChild(alone, "value")));
+        compare(alone.glass.width, face.implicitWidth + 2 * Tokens.spaceM);
     }
 
-    function test_the_glass_is_the_bar_s_height_and_the_tile_unit_wide_with_the_bar_s_padding() {
+    function test_the_word_is_said_but_not_shown() {
+        alone.away = true;
+        alone.press();
+        compare(alone.Accessible.name, "lautstärke 81%");
+        compare(ReadoutLine.shownTexts(alone), ["81%"]);
+    }
+
+    function test_the_glass_is_the_bar_s_height_and_glass() {
         compare(alone.glass.height, Tokens.appbarHeight);
-        compare(alone.glass.width, Tokens.tileUnit + 2 * Tokens.spaceM);
         compare(alone.glass.color, Tokens.color.glass);
         compare(findChild(alone, "hairline").height, Geometry.hairline);
         compare(alone.height, Tokens.appbarHeight);
         compare(Geometry.toastRise, 12);
+    }
+
+    function zeroIn(value: var): real {
+        zeroMetrics.font = value.font;
+        return zeroMetrics.advanceWidth;
+    }
+
+    TextMetrics {
+        id: zeroMetrics
+
+        text: "0"
     }
 
     function test_it_stays_the_hold_and_then_goes_and_is_unmapped_after_the_way_out() {
@@ -287,9 +312,10 @@ TestCase {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
         const shown = [
-            { word: "lautstärke", level: 0.81, valueText: "81%" },
-            { word: "mikrofon", level: 0, valueText: "stumm" },
-            { word: "tastatur", level: -1, valueText: "English (US)" }
+            { word: "lautstärke", icon: "speaker", level: 0.6, valueText: "60%" },
+            { word: "mikrofon", icon: "microphone-muted", level: 0, valueText: "stumm" },
+            { word: "helligkeit", icon: "theme", level: 0.35, valueText: "35%" },
+            { word: "tastatur", icon: "edit", level: -1, valueText: "de" }
         ];
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
@@ -305,7 +331,7 @@ TestCase {
         }
     }
 
-    // The display three times on the ground, as it stands over a full-screen window.
+    // The display with each of the four values on the ground, as it stands over a full-screen window.
     Component {
         id: sheetComponent
 
@@ -314,8 +340,8 @@ TestCase {
 
             required property var shown
 
-            width: 3 * (Tokens.tileUnit + 2 * Tokens.spaceM) + 80
-            height: Tokens.appbarHeight + 40
+            width: 2 * Tokens.tileUnit + 160
+            height: 4 * (Tokens.appbarHeight + 20) + 20
             color: Tokens.color.bg
 
             Repeater {
@@ -328,11 +354,12 @@ TestCase {
                     required property int index
 
                     objectName: "one"
-                    x: 20 + index * (width + 20)
-                    y: 20
+                    x: 20
+                    y: 20 + index * (Tokens.appbarHeight + 20)
                     width: implicitWidth
                     height: implicitHeight
                     word: modelData.word
+                    icon: modelData.icon
                     level: modelData.level
                     valueText: modelData.valueText
                 }

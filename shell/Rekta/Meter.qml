@@ -59,28 +59,10 @@ Column {
         }
     }
 
-    Rectangle {
-        id: track
-
+    MeterTrack {
         width: meter.width
-        height: Geometry.meterHeight
-        color: Tokens.color.textContrastLow
-        clip: true
-
-        Rectangle {
-            objectName: "fill"
-            width: track.width * Math.min(1, Math.max(0, meter.value))
-            height: track.height
-            color: meter.status === "" ? Tokens.color.textPrimary : statusMark.mark
-
-            Behavior on width {
-                NumberAnimation {
-                    duration: Tokens.durationModerate
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: Tokens.easeBase
-                }
-            }
-        }
+        value: meter.value
+        mark: meter.status === "" ? Tokens.color.textPrimary : statusMark.mark
     }
 
     StatusTag {

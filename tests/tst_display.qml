@@ -5,6 +5,7 @@ import QtTest
 import Readout
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "ReadoutLine.js" as ReadoutLine
 
 TestCase {
     id: testCase
@@ -13,7 +14,8 @@ TestCase {
     // Objects created inside an invisible test case are never rendered, so contact sheets would stay empty.
     visible: true
     when: windowShown
-    width: 1200
+    // As wide as the contact sheet's widest bar.
+    width: 1920
     height: 600
 
     // A bar with a clock in its centre and a display that takes the clock's place, with the room it needs reserved.
@@ -40,7 +42,7 @@ TestCase {
                 y: stage.height - height
                 width: stage.width
                 centre: appClock
-                centreReserve: appDisplay.implicitWidth
+                centreReserve: appDisplay.room
 
                 AppBarButton { id: leading; icon: "window"; text: "back" }
                 AppBarMiddle { id: words; parts: ["konsole", "a title that runs on and on and on and on and on and on and on and on and on and on and on and on and on and on and on and on and on and on and on"] }
@@ -59,6 +61,7 @@ TestCase {
                     objectName: "display"
                     replaces: appClock
                     word: "lautstärke"
+                    icon: "speaker"
                     level: 0.81
                     valueText: "81%"
                 }
@@ -381,66 +384,173 @@ TestCase {
         compare(saidWords(), ["lautstärke 86%", "mikrofon stumm"]);
     }
 
-    function test_the_bar_keeps_its_neighbours_clear_of_the_room_the_display_needs() {
-        verify(scene.middle.width > 0);
-        verify(scene.middle.x + scene.middle.width <= (scene.width - Tokens.tileUnit) / 2 + 0.5);
-        verify(scene.after.x >= (scene.width + Tokens.tileUnit) / 2 - 0.5);
+    function test_the_word_is_said_with_the_value_but_never_shown() {
+        const readout = createTemporaryObject(readoutComponent, testCase);
+        display.word = Qt.binding(() => readout.word);
+        display.icon = Qt.binding(() => readout.icon);
+        display.level = Qt.binding(() => readout.level);
+        display.valueText = Qt.binding(() => readout.valueText);
+        readout.pressed.connect(display.press);
+        readout.news.connect(display.say);
+        readout.shortcutPressed("kmix", "increase_volume");
+        nextEvent();
+        readout.volume = 0.86;
+        tryCompare(said, "count", 1);
+        compare(saidWords(), ["lautstärke 86%"]);
+        compare(display.Accessible.name, "lautstärke 86%");
+        tryCompare(display, "displayStands", true, 2000);
+        compare(ReadoutLine.shownTexts(display), ["86%"]);
+        compare(findChild(display, "icon").name, "speaker");
+    }
+
+    function test_the_line_holds_the_icon_the_meter_and_the_value_space_s_apart_as_wide_as_they_are() {
+        Prefs.motion = "off";
+        display.press();
+        const parts = ReadoutLine.verify(testCase, face(), Tokens, Geometry, zeroIn(findChild(display, "value")));
+        compare(display.width, face().implicitWidth);
+        compare(display.height, Geometry.appBarControl);
+        compare(face().height, Geometry.appBarControl);
+        tryCompare(findChild(parts.meter, "fill"), "width", Tokens.tileUnit * 0.81);
+    }
+
+    function test_without_a_level_only_the_icon_and_the_value_stand_and_a_short_value_keeps_4ch() {
+        Prefs.motion = "off";
+        display.level = -1;
+        display.icon = "edit";
+        display.valueText = "de";
+        display.press();
+        const parts = ReadoutLine.verify(testCase, face(), Tokens, Geometry, zeroIn(findChild(display, "value")));
+        const zero = zeroIn(parts.value);
+        verify(parts.value.implicitWidth < 4 * zero);
+        compare(parts.value.width, 4 * zero);
+        display.valueText = "English (US)";
+        ReadoutLine.verify(testCase, face(), Tokens, Geometry, zero);
+        verify(parts.value.width > 4 * zero);
+        compare(display.width, face().implicitWidth);
     }
 
     function test_the_display_stands_centred_over_the_clock() {
-        compare(display.x + display.width / 2, clock.x + clock.width / 2);
-        compare(display.width, Tokens.tileUnit);
-    }
-
-    function test_a_level_shows_the_meter_and_a_missing_one_shows_the_text_alone() {
         Prefs.motion = "off";
         display.press();
-        const meter = findChild(display, "meter");
-        const plain = findChild(display, "plain");
-        verify(meter.visible);
-        verify(!plain.visible);
-        display.level = -1;
-        display.valueText = "English (US)";
-        verify(!meter.visible);
-        verify(plain.visible);
+        compare(display.x + display.width / 2, clock.x + clock.width / 2);
+        compare(display.y + display.height / 2, clock.y + clock.height / 2);
+    }
+
+    function test_while_the_clock_stands_its_neighbours_keep_only_its_own_width_free() {
+        compare(display.room, 0);
+        compare(middleEnd(), Math.round(scene.bar.width / 2 - clock.implicitWidth / 2 - scene.bar.gap));
+    }
+
+    function test_the_display_takes_its_room_halfway_through_its_flip_and_only_the_edge_towards_it_glides_aside() {
+        Prefs.motion = "on";
+        const end = middleEnd();
+        const start = scene.middle.x;
+        const clockX = clock.x;
+        const trailing = scene.after.x;
+        verify(display.implicitWidth > clock.implicitWidth, "the display is wider than the clock");
+        display.press();
+        stopAt(0.49);
+        compare(display.room, 0);
+        verify(!scene.bar.gliding);
+        display.phase = 0.5;
+        compare(display.room, display.implicitWidth);
+        verify(scene.bar.gliding, "the neighbours glide");
+        compare(middleEnd(), end, "from where they stood");
+        compare(scene.bar.reflow.run.duration, Tokens.durationModerate);
+        compare(scene.bar.reflow.run.easing.bezierCurve, Tokens.easeBase);
+        tryCompare(scene.bar, "gliding", false, 2000);
+        compare(middleEnd(), Math.round(scene.bar.width / 2 - display.implicitWidth / 2 - scene.bar.gap));
+        compare(scene.middle.x, start, "the far edge stays");
+        compare(clock.x, clockX, "the clock stays");
+        compare(scene.after.x, trailing, "a control packed at the far end stays");
+    }
+
+    function test_the_display_gives_its_room_back_halfway_through_the_way_back_and_the_neighbours_glide_back() {
+        Prefs.motion = "on";
+        const end = middleEnd();
+        showDisplay();
+        tryCompare(scene.bar, "gliding", false, 2000);
+        const aside = middleEnd();
+        verify(aside < end);
+        runOutHold();
+        stopAt(0.49);
+        compare(display.room, display.implicitWidth);
+        verify(!scene.bar.gliding);
+        display.phase = 0.5;
+        compare(display.room, 0);
+        verify(scene.bar.gliding, "the neighbours glide back");
+        compare(middleEnd(), aside, "from where they stood");
+        tryCompare(scene.bar, "gliding", false, 2000);
+        compare(middleEnd(), end);
+    }
+
+    function test_under_reduced_motion_the_neighbours_make_room_at_once() {
+        Prefs.motion = "off";
+        display.press();
+        verify(!scene.bar.gliding);
+        compare(middleEnd(), Math.round(scene.bar.width / 2 - display.implicitWidth / 2 - scene.bar.gap));
+    }
+
+    function face(): var {
+        return findChild(display, "icon").parent;
+    }
+
+    function middleEnd(): real {
+        return scene.middle.x + scene.middle.width;
+    }
+
+    function zeroIn(value: var): real {
+        zeroMetrics.font = value.font;
+        return zeroMetrics.advanceWidth;
+    }
+
+    TextMetrics {
+        id: zeroMetrics
+
+        text: "0"
     }
 
     function test_contact_sheet() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
-        const bars = [
-            { word: "lautstärke", level: 0.81, valueText: "81%" },
-            { word: "mikrofon", level: 0, valueText: "stumm" },
-            { word: "tastatur", level: -1, valueText: "English (US)" }
-        ];
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             Prefs.motion = "off";
-            const sheet = createTemporaryObject(sheetComponent, testCase, { bars });
-            const displays = sheet.children.filter(child => child.objectName === "row").map(row => findChild(row, "display"));
-            const holds = displays.map(display => findChild(display, "hold"));
-            holds.forEach(timer => timer.interval = 60000);
+            const sheet = createTemporaryObject(sheetComponent, testCase);
+            const displays = allNamed(sheet, "display");
+            displays.forEach(display => findChild(display, "hold").interval = 60000);
             displays.forEach(display => display.press());
+            tryVerify(() => displays.every(display => display.displayStands && display.phase === 1));
             waitForRendering(sheet);
             grabImage(sheet).save(`display-sheet-${theme}.png`);
         }
     }
 
-    // The bar three times, the display standing in the centre with a volume, a muted microphone and a layout.
+    function allNamed(item: Item, name: string): var {
+        return Array.from(item.children).reduce((found, child) => found.concat(child.objectName === name ? [child] : allNamed(child, name)), []);
+    }
+
+    // The bar at 1920 px with each of the four values standing in place of the clock, then a dense bar at 1280 px:
+    // two status words, "im hintergrund 3" and "meldungen 12" around the volume.
     Component {
         id: sheetComponent
 
         Rectangle {
             id: sheet
 
-            required property var bars
+            readonly property var shown: [
+                { word: "lautstärke", icon: "speaker", level: 0.6, valueText: "60%" },
+                { word: "mikrofon", icon: "microphone-muted", level: 0, valueText: "stumm" },
+                { word: "helligkeit", icon: "theme", level: 0.35, valueText: "35%" },
+                { word: "tastatur", icon: "edit", level: -1, valueText: "de" }
+            ]
 
-            width: 1200
-            height: 3 * Tokens.appbarHeight + 40
+            width: 1920
+            height: 5 * (Tokens.appbarHeight + 20) + 20
             color: Tokens.color.bg
 
             Repeater {
-                model: sheet.bars
+                model: sheet.shown
 
                 delegate: AppBar {
                     id: row
@@ -448,12 +558,11 @@ TestCase {
                     required property var modelData
                     required property int index
 
-                    objectName: "row"
-
-                    y: 20 + index * Tokens.appbarHeight
+                    y: 20 + index * (Tokens.appbarHeight + 20)
                     width: sheet.width
+                    area: Qt.size(width, 1080)
                     centre: rowClock
-                    centreReserve: Tokens.tileUnit
+                    centreReserve: rowDisplay.room
 
                     AppBarButton { icon: "window"; text: "back" }
                     AppBarMiddle { parts: ["konsole", "~/projects: build the shell"] }
@@ -461,19 +570,63 @@ TestCase {
                     AppBarClock {
                         id: rowClock
 
+                        locale: Qt.locale("de_DE")
                         now: new Date(2026, 9, 21, 14, 32)
                     }
 
                     AppBarDisplay {
+                        id: rowDisplay
+
                         objectName: "display"
                         replaces: rowClock
                         word: row.modelData.word
+                        icon: row.modelData.icon
                         level: row.modelData.level
                         valueText: row.modelData.valueText
                     }
 
                     AppBarButton { icon: "bell"; text: "meldungen" }
                 }
+            }
+
+            AppBar {
+                y: 20 + 4 * (Tokens.appbarHeight + 20)
+                width: 1280
+                area: Qt.size(width, 800)
+                centre: denseClock
+                centreReserve: denseDisplay.room
+
+                AppBarStatus {
+                    keys: ["muted", "doNotDisturb", "more"]
+                    words: [
+                        { key: "muted", word: "stumm", status: "", opens: "sound", name: "stumm" },
+                        { key: "doNotDisturb", word: "nicht stören", status: "", opens: "doNotDisturb", name: "nicht stören" }
+                    ]
+                }
+
+                AppBarMiddle { parts: ["konsole", "~/projects: build the shell"] }
+
+                AppBarClock {
+                    id: denseClock
+
+                    locale: Qt.locale("de_DE")
+                    now: new Date(2026, 9, 21, 14, 32)
+                }
+
+                AppBarDisplay {
+                    id: denseDisplay
+
+                    objectName: "display"
+                    replaces: denseClock
+                    word: "lautstärke"
+                    icon: "speaker"
+                    level: 0.6
+                    valueText: "60%"
+                }
+
+                AppBarButton { icon: "window"; text: "im hintergrund"; count: 3; priority: 0 }
+                AppBarButton { icon: "bell"; text: "meldungen"; count: 12; priority: 2 }
+                AppBarButton { icon: "tune"; text: "steuerung"; priority: 1 }
             }
         }
     }

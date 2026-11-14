@@ -131,6 +131,23 @@ TestCase {
         compare(readout.valueText, "Deutsch");
     }
 
+    function test_each_kind_brings_its_icon_and_a_volume_muted_or_at_nothing_its_muted_one() {
+        const cases = [
+            { set: () => readout.shortcutPressed("kmix", "increase_volume"), icon: "speaker" },
+            { set: () => (readout.muted = true), icon: "speaker-muted" },
+            { set: () => { readout.muted = false; readout.volume = 0; }, icon: "speaker-muted" },
+            { set: () => readout.shortcutPressed("kmix", "mic_mute"), icon: "microphone" },
+            { set: () => (readout.micMuted = true), icon: "microphone-muted" },
+            { set: () => { readout.micMuted = false; readout.micVolume = 0; }, icon: "microphone-muted" },
+            { set: () => readout.brightnessReported(0, 255, "brightness_key"), icon: "theme" },
+            { set: () => readout.layoutSwitched("Deutsch"), icon: "edit" }
+        ];
+        for (const [i, step] of cases.entries()) {
+            step.set();
+            compare(readout.icon, step.icon, `step ${i}`);
+        }
+    }
+
     // PipeWire tells a value in an event of its own, after the key's: lets the events pending until now run.
     function nextEvent() {
         wait(0);

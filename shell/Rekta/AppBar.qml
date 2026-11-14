@@ -224,9 +224,10 @@ Rectangle {
             targets.push(...status.places(x));
     }
 
-    // What the sides have to lay out in; the controls glide only while it stays as it is.
+    // The room the bar lays out in; the controls glide only while it stays as it is. The centre item, or what stands in
+    // its place, widening is a control widening: its neighbours glide aside.
     function roomKey(): string {
-        return JSON.stringify([height, plan.sides.map(region => [region.start, region.end])]);
+        return JSON.stringify([width, height, padding]);
     }
 
     // Every control but the centre, the status words among them, also those that are not present yet, so that one that
@@ -238,7 +239,7 @@ Rectangle {
     // What changes at once: what goes, into "more" or for good, starts fading out; the middle and the words follow the
     // plan. Once nothing fades any more, the rest glide to their places; what comes waits unseen where it will rest until
     // they have made room, then fades in, so nothing lies over anything (motion.md, "Arriving, leaving"). A change of the
-    // room the sides have, such as the window's width, lays out at once: what that change brings comes and goes without a
+    // bar's room, such as the window's width, lays out at once: what that change brings comes and goes without a
     // fade, what comes or goes after it fades again.
     function apply() {
         const room = roomKey();

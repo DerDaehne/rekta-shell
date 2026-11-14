@@ -24,6 +24,8 @@ QtObject {
     readonly property real brightnessShare: brightnessMax > 0 ? Math.min(1, brightness / brightnessMax) : 0
     readonly property var view: describe(kind)
     readonly property string word: view.word
+    // One of Rekta's icons.
+    readonly property string icon: view.icon
     // -1 where a text stands in place of the meter.
     readonly property real level: view.level
     readonly property string valueText: view.text
@@ -73,16 +75,24 @@ QtObject {
         return false;
     }
 
+    // A volume at nothing, muted or not, shows its muted icon, as Rekta's own does (site.js:932).
+    function withIcon(view: var, icon: string): var {
+        return Object.assign(view, { icon: view.level > 0 ? icon : `${icon}-muted` });
+    }
+
     function describe(kind: string): var {
         switch (kind) {
         case "mic":
-            return { word: "mikrofon", level: micMuted ? 0 : Math.min(1, micVolume), text: micMuted ? "stumm" : percent(micVolume) };
+            return withIcon({ word: "mikrofon", level: micMuted ? 0 : Math.min(1, micVolume), text: micMuted ? "stumm" : percent(micVolume) }, "microphone");
         case "brightness":
-            return { word: "helligkeit", level: brightnessShare, text: percent(brightnessShare) };
+            // ponytail: Rekta has no brightness icon; its "theme", a half-filled circle, stands in until Rekta answers the
+            // report of that gap.
+            return { word: "helligkeit", icon: "theme", level: brightnessShare, text: percent(brightnessShare) };
         case "layout":
-            return { word: "tastatur", level: -1, text: layoutName };
+            // ponytail: Rekta has no keyboard icon; its "edit", a pen, stands in until Rekta answers the report of that gap.
+            return { word: "tastatur", icon: "edit", level: -1, text: layoutName };
         default:
-            return { word: "lautstärke", level: muted ? 0 : Math.min(1, volume), text: muted ? "stumm" : percent(volume) };
+            return withIcon({ word: "lautstärke", level: muted ? 0 : Math.min(1, volume), text: muted ? "stumm" : percent(volume) }, "speaker");
         }
     }
 

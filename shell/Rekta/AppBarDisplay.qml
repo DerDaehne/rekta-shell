@@ -2,20 +2,22 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A short display that takes the place of a bar control, such as the clock, after a key: the word over Rekta's meter
-// with its value in tabular figures (data.md, "Meters"), or over a plain text when there is no level. The two swap as a
-// live tile flips to a new status (navigation.md, "A short indicator in place of a control"; rekta.js indicate(),
-// tileUpdate()): the control turns away about its horizontal middle over half of duration-moderate on ease-out, then
-// the display turns in from the other side over the other half on ease-in, whole all the while; after the last key it
-// stays duration-level, then runs the same flip the other way round. Under reduced motion the two change at once.
-// `press()` is a key: the first brings the display, every later one only keeps it. `say()` announces news politely
-// while it shows, as a live region does.
+// A short display that takes the place of a bar control, such as the clock, after a key: its icon, meter and value in
+// one line (ReadoutFace), as wide as they are; the word is only said. The two swap as a live tile flips to a new status
+// (navigation.md, "A short indicator in place of a control"; rekta.js indicate(), tileUpdate()): the control turns away
+// about its horizontal middle over half of duration-moderate on ease-out, then the display turns in from the other side
+// over the other half on ease-in, whole all the while; after the last key it stays duration-level, then runs the same
+// flip the other way round. Under reduced motion the two change at once. The bar keeps `room` free while the display
+// stands, from the middle of one flip to the middle of the other, where Rekta swaps the content; the neighbours glide
+// aside and back (motion.md, "Resize and re-flow"). `press()` is a key: the first brings the display, every later one
+// only keeps it. `say()` announces news politely while it shows, as a live region does.
 Item {
     id: display
 
     // The control the display takes the place of.
     required property Item replaces
     property string word
+    property string icon
     // 0 to 1, or -1 to show `valueText` alone.
     property real level: -1
     property string valueText
@@ -31,6 +33,8 @@ Item {
     property bool toDisplay: false
     readonly property bool arrived: phase >= 0.5
     readonly property bool displayStands: arrived === toDisplay
+    // The width the bar keeps free for the display in place of the control's own.
+    readonly property real room: displayStands ? implicitWidth : 0
     readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
     readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
     // The part in sight turns from 0 to -90 as it leaves and from 90 to 0 as it arrives (as CSS rotateX).
@@ -59,8 +63,8 @@ Item {
         turning.restart();
     }
 
-    implicitWidth: Tokens.tileUnit
-    implicitHeight: Geometry.appBarControl
+    implicitWidth: face.implicitWidth
+    implicitHeight: face.implicitHeight
     x: replaces.x + (replaces.width - width) / 2
     y: replaces.y + (replaces.height - height) / 2
     visible: displayStands
@@ -129,8 +133,10 @@ Item {
     }
 
     ReadoutFace {
+        id: face
+
         anchors.fill: parent
-        word: display.word
+        icon: display.icon
         level: display.level
         valueText: display.valueText
     }
