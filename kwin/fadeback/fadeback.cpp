@@ -106,7 +106,8 @@ struct Splash {
 // and the Start's surface fades in over them with its glass and blur. As the session is left, the windows on every
 // screen step back the same way behind a clear surface. Either surface sets them off by taking the keyboard and brings
 // them forward by handing it over. After login the splash fades onto the shell's ground. How far and how fast come
-// from the shell's Rekta module.
+// from the shell's Rekta module. A sheet's surface, shaded and blurred behind, shows by the opacity the shell gives its
+// namespace, so KWin's blur fades with the shading.
 //
 // A finger swiping up from the bottom edge of the primary screen opens the Start: the effect holds that edge while the
 // Start is gone, tells the shell over D-Bus how far up the finger has come and when it lets go, and the shell sets the
@@ -140,8 +141,9 @@ public Q_SLOTS:
     Q_SCRIPTABLE void setStartAt(double elapsed, int pace);
     // The same on their way forward as the Start closes back, from all the way back.
     Q_SCRIPTABLE void setStartOutAt(double elapsed, int pace);
-    // The session bar's surface shows by `opacity` from now on, and KWin's blur behind it by its square.
-    Q_SCRIPTABLE void setSessionOpacity(double opacity);
+    // The shell's layer surfaces of namespace `scope` show by `opacity` from now on, and KWin's blur behind them by its
+    // square: a sheet's surface fades its blur with its shading this way.
+    Q_SCRIPTABLE void setSheetOpacity(const QString &scope, double opacity);
     // The side panel shows, on any screen.
     Q_SCRIPTABLE void setPanelShown(bool shown);
 
@@ -175,7 +177,7 @@ private:
     Look look(qreal progress) const;
     void step();
     void fadeStart(qreal opacity) const;
-    void fadeSession() const;
+    void fadeSheet(const QString &scope) const;
     bool stepsBack(const EffectWindow *w) const;
     bool moving() const;
     void holdSplash(EffectWindow *w);
@@ -201,10 +203,10 @@ private:
     Look m_onPrimary;
     Look m_elsewhere;
     Splash m_splash;
-    // KWin types it a dock all the same, ignoring the case; the shell writes the bar's and the key map's "dock".
-    static constexpr const char *sessionScope = "DOCK";
-    QPointer<LayerSurfaceV1Interface> m_session;
-    qreal m_sessionOpacity = 1;
+    // The latest layer surface of each namespace, and the opacity the shell gives a sheet's: each sheet surface has a
+    // namespace of its own and lies on one screen.
+    QHash<QString, QPointer<LayerSurfaceV1Interface>> m_layers;
+    QHash<QString, qreal> m_sheetOpacity;
     TouchEdge m_bottomEdge{ElectricBottom};
     TouchEdge m_rightEdge{ElectricRight};
     bool m_panelShown = false;
@@ -245,8 +247,10 @@ FadeBackEffect::FadeBackEffect()
 FadeBackEffect::~FadeBackEffect()
 {
     fadeStart(1);
-    m_sessionOpacity = 1;
-    fadeSession();
+    for (const QString &scope : m_sheetOpacity.keys()) {
+        m_sheetOpacity.insert(scope, 1);
+        fadeSheet(scope);
+    }
 }
 
 void FadeBackEffect::watch(LayerSurfaceV1Interface *layer)
@@ -257,10 +261,8 @@ void FadeBackEffect::watch(LayerSurfaceV1Interface *layer)
         }
     }
     // KWin has made the surface's window by now, before its first frame; Qt makes a new surface for each showing.
-    if (layer->scope() == QLatin1StringView(sessionScope)) {
-        m_session = layer;
-        fadeSession();
-    }
+    m_layers.insert(layer->scope(), layer);
+    fadeSheet(layer->scope());
 }
 
 void FadeBackEffect::follow(Retreat &retreat, LayerSurfaceV1Interface *layer)
@@ -400,13 +402,13 @@ void FadeBackEffect::fadeStart(qreal opacity) const
     }
 }
 
-void FadeBackEffect::setSessionOpacity(double opacity)
+void FadeBackEffect::setSheetOpacity(const QString &scope, double opacity)
 {
     if (!(opacity >= 0 && opacity <= 1)) {
         return;
     }
-    m_sessionOpacity = opacity;
-    fadeSession();
+    m_sheetOpacity.insert(scope, opacity);
+    fadeSheet(scope);
 }
 
 void FadeBackEffect::setPanelShown(bool shown)
@@ -416,10 +418,12 @@ void FadeBackEffect::setPanelShown(bool shown)
 }
 
 // The window's own opacity, as for the Start: KWin's blur follows it, by its square.
-void FadeBackEffect::fadeSession() const
+void FadeBackEffect::fadeSheet(const QString &scope) const
 {
-    if (Window *session = m_session ? waylandServer()->findWindow(m_session->surface()) : nullptr) {
-        session->setOpacity(m_sessionOpacity);
+    const LayerSurfaceV1Interface *layer = m_layers.value(scope);
+    Window *sheet = layer ? waylandServer()->findWindow(layer->surface()) : nullptr;
+    if (sheet && m_sheetOpacity.contains(scope)) {
+        sheet->setOpacity(m_sheetOpacity.value(scope));
     }
 }
 

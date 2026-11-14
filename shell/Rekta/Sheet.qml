@@ -31,6 +31,11 @@ Item {
     // Runs from 0 to 1 as it comes in, and back to 0 as it leaves; the shading comes and goes with it (rekta.css:1074–1075,
     // rekta.js:1823–1828).
     property real entry: 1
+    // Set by a host that has KWin blur what lies behind and shows its whole surface by surfaceOpacity. The sheet then
+    // shows by that once more, so shading and sheet show by entry, and so does KWin's blur, which goes with the square
+    // of the surface's opacity: shading and blur fade as one (rekta.css:1073–1074).
+    property bool surfaceFades: false
+    readonly property real surfaceOpacity: surfaceFades ? Math.sqrt(entry) : 1
     readonly property real shift: -(1 - entry) * Geometry.sheetShift
     readonly property bool sideways: Prefs.sizeClass(width, height) === "sideways"
     default property alias content: form.data
@@ -115,6 +120,7 @@ Item {
     }
 
     visible: open
+    opacity: surfaceOpacity
 
     // Below a tip (45), as a floating surface (behaviour.md, `keys.on`): Escape is a close request.
     Component.onCompleted: memo.offLayer = KeyLayers.on(40, (event, focusItem) => {
@@ -167,7 +173,7 @@ Item {
         objectName: "shading"
         anchors.fill: parent
         color: Tokens.color.shading
-        opacity: sheet.entry
+        opacity: sheet.surfaceFades ? 1 : sheet.entry
 
         // Nothing behind reacts while it is open; a tap on the shading, not on the sheet, is a close request
         // (rekta.js:1867–1871).
@@ -193,7 +199,7 @@ Item {
         x: (sheet.width - width) / 2
         width: Math.min(Geometry.sheetMaxWidth, sheet.width)
         height: Math.min(sheet.height - Tokens.spaceXl, scroller.contentHeight + Geometry.hairline)
-        opacity: sheet.entry
+        opacity: sheet.surfaceFades ? 1 : sheet.entry
         // Faded as one, as CSS opacity is, so the hairline beneath does not show through the ground.
         layer.enabled: sheet.entry < 1
         color: Tokens.color.textContrastLow

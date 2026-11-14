@@ -175,13 +175,13 @@ in
     touch $out
   '';
 
-  # The session bar's namespace "DOCK" is a dock only while KWin ignores the case as it types a layer surface; else KWin
-  # takes the bar for a normal window, which tiling scripts move.
+  # The sheet surfaces' namespaces, the session bar's "DOCK" and the key map's "Dock", are docks only while KWin ignores
+  # the case as it types a layer surface; else KWin takes them for normal windows, which tiling scripts move.
   kwin-types-docks-ignoring-case = pkgs.runCommand "rekta-shell-kwin-types-docks-ignoring-case" { } ''
     # Read to a file: `grep -q` ending a pipeline early would hand tar a SIGPIPE, which pipefail reports as a miss.
     tar -xOf ${qt.kwin.src} --wildcards '*/src/layershellv1window.cpp' > layershellv1window.cpp
     if ! grep -qF 'scopeToType.value(scope.toLower(),' layershellv1window.cpp; then
-      echo "KWin no longer types a layer surface by its lowercased namespace; the session bar's \"DOCK\" needs another tag" >&2
+      echo "KWin no longer types a layer surface by its lowercased namespace; the sheet surfaces' \"DOCK\" and \"Dock\" need other tags" >&2
       exit 1
     fi
     touch $out

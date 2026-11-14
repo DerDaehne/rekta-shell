@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import RektaShell.DBus
 import KeyMap
 import Rekta
 import org.kde.plasma.workspace.dbus as DBus
@@ -11,8 +12,9 @@ import "services"
 
 // The key map's surface: the whole primary screen above every window, the Start and the bar, mapped only while the
 // sheet shows. Asked for by `?` or the search, it holds the keyboard until it goes; shown while Meta is held, it takes
-// neither keys nor the pointer, so the window under it keeps both, and it goes as Meta comes up. Namespace "dock" for
-// the reason the session banner's surface gives.
+// neither keys nor the pointer, so the window under it keeps both, and it goes as Meta comes up. Namespace "Dock" for
+// the reasons the session banner's surface gives for its "DOCK": KWin's fade-back fades this surface, and its blur with
+// the shading, as the sheet tells it.
 PanelWindow {
     id: surface
 
@@ -36,7 +38,7 @@ PanelWindow {
     color: "transparent"
     visible: primaryScreen !== null && map.open
     mask: map.held ? empty : null
-    WlrLayershell.namespace: "dock"
+    WlrLayershell.namespace: "Dock"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: map.held ? WlrKeyboardFocus.None : WlrKeyboardFocus.Exclusive
     // A deliberate deviation, as for the session banner: KWin blurs at the strength of its blur effect.
@@ -55,7 +57,13 @@ PanelWindow {
         focus: true
         launcher: surface.launcher
         Keys.onPressed: event => KeyLayers.dispatch(event, Window.activeFocusItem)
+        surfaceFades: true
         onAsked: surface.asked()
+        onSurfaceOpacityChanged: kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setSheetOpacity", [surface.WlrLayershell.namespace, map.surfaceOpacity], "sd")
+    }
+
+    DBusConnection {
+        id: kwin
     }
 
     MetaHold {

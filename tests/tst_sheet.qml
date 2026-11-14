@@ -344,6 +344,33 @@ TestCase {
         compare(findChild(sheet, "shading").opacity, 0, "opened again, the shading comes in again");
     }
 
+    // How much of a part shows once KWin has faded the host's surface: by its own opacity, the sheet's and the surface's.
+    function shown(part: Item): real {
+        return part.opacity * sheet.opacity * sheet.surfaceOpacity;
+    }
+
+    function test_on_a_surface_kwin_fades_shading_blur_and_sheet_show_as_one_by_its_entry_at_every_point_of_its_way() {
+        sheet.surfaceFades = true;
+        sheet.show();
+        for (const entry of [0, 0.04, 0.25, 0.5, 0.81, 1]) {
+            sheet.entry = entry;
+            fuzzyCompare(shown(findChild(sheet, "shading")), entry, 1e-9, `shading at ${entry}`);
+            fuzzyCompare(sheet.surfaceOpacity * sheet.surfaceOpacity, entry, 1e-9, `KWin's blur, by the square of the surface's opacity, at ${entry}`);
+            fuzzyCompare(shown(panel(sheet)), entry, 1e-9, `sheet at ${entry}, faded once`);
+            compare(panel(sheet).layer.enabled, entry < 1, `the sheet faded as one at ${entry}`);
+        }
+    }
+
+    function test_on_a_surface_kwin_leaves_whole_the_sheet_and_its_shading_fade_alone() {
+        sheet.show();
+        for (const entry of [0, 0.25, 0.5, 1]) {
+            sheet.entry = entry;
+            compare(sheet.surfaceOpacity, 1, `the surface whole at ${entry}`);
+            compare(shown(findChild(sheet, "shading")), entry, `shading at ${entry}`);
+            compare(shown(panel(sheet)), entry, `sheet at ${entry}`);
+        }
+    }
+
     function test_a_close_while_it_leaves_ends_it_at_once_with_the_answer_it_leaves_with() {
         Prefs.motion = "on";
         openFully(sheet);
