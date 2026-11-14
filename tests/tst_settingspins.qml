@@ -426,6 +426,18 @@ TestCase {
         tryCompare(testCase, "listedIdsNow", ["systemsettings", "org.gone.app", "org.kde.konsole"], Geometry.rowLeaveShare * Tokens.durationShort + 500);
     }
 
+    function test_a_row_let_go_past_half_its_width_goes_on_to_its_full_width_fading_over_point_six_of_duration_short() {
+        Prefs.motion = "on";
+        const dolphin = row("Dolphin");
+        pull(dolphin, 0.6);
+        const pulled = dolphin.pulled;
+        verify(pulled > 0.5 * dolphin.width);
+        tryVerify(() => dolphin.leaving > 0.3 && dolphin.leaving < 1);
+        fuzzyCompare(dolphin.transform[0].x, pulled + dolphin.leaving * (dolphin.width - pulled), 0.01);
+        fuzzyCompare(dolphin.opacity, 1 - dolphin.leaving, 0.01);
+        tryCompare(testCase, "listedIdsNow", ["systemsettings", "org.gone.app", "org.kde.konsole"], Geometry.rowLeaveShare * Tokens.durationShort + 500);
+    }
+
     function test_after_a_row_has_left_the_others_close_the_gap_over_duration_moderate() {
         Prefs.motion = "on";
         const gone = row("org.gone.app");

@@ -8,8 +8,8 @@ import Rekta
 // body, cut, and under it up to two of the notification's actions as quiet buttons. A click, Enter or Space presses the
 // row, tinted on hover and press like a toast's text. A removable row always has the button; Delete, or pulling it
 // towards the trailing edge, are shortcuts to it (collections.md:164–166). Let go past half its width the pulled row leaves,
-// else it glides back. Leaving, it drifts and fades as a row that leaves a list does (motion.md, "Arriving, leaving");
-// then it has gone.
+// else it glides back. Leaving, it fades and drifts as a row that leaves a list does, a pulled row on to its full width
+// (motion.md, "Arriving, leaving"); then it has gone.
 Item {
     id: row
 
@@ -43,6 +43,9 @@ Item {
     // Runs from 0 to 1 as it leaves.
     property real leaving: 0
     readonly property bool going: leaving > 0 || goingOut.running
+    // Pulled past half its width: let go, it leaves the rest of its width (rekta.js:3539–3542).
+    readonly property bool pulledAway: pulled > Geometry.rowPullAway * width
+    readonly property real leaveDistance: pulledAway ? width - pulled : Geometry.rowLeaveDrift
 
     signal pressed
     signal actionPressed(string identifier)
@@ -59,7 +62,7 @@ Item {
     }
 
     function letGo() {
-        if (pulled > Geometry.rowPullAway * width)
+        if (pulledAway)
             removing();
         else
             glidingBack.start();
@@ -88,6 +91,7 @@ Item {
     NumberAnimation {
         id: goingOut
 
+        objectName: "goingOut"
         target: row
         property: "leaving"
         to: 1
@@ -113,7 +117,7 @@ Item {
         id: content
 
         objectName: "content"
-        x: row.pulled + row.leaving * Geometry.rowLeaveDrift
+        x: row.pulled + row.leaving * row.leaveDistance
         width: row.width
         height: row.height
         opacity: 1 - row.leaving

@@ -316,7 +316,9 @@ TestCase {
         compare(sheet.shift, -16, "it starts 16px above its place");
         compare(panel(sheet).opacity, 0, "and fades in");
         verify(panel(sheet).layer.enabled, "as one, as CSS opacity does");
-        compare(sheet.shade, 1, "the shading is there at once");
+        compare(findChild(sheet, "shading").opacity, 0, "the shading comes in with it");
+        tryVerify(() => sheet.entry > 0.3 && sheet.entry < 0.7, Tokens.durationShort * 4, "half way in");
+        compare(findChild(sheet, "shading").opacity, sheet.entry, "the shading as far in as the sheet");
         tryVerify(() => !comingIn.running, Tokens.durationShort * 4, "it has come in");
         compare(sheet.shift, 0);
         compare(panel(sheet).opacity, 1);
@@ -335,20 +337,22 @@ TestCase {
         sheet.request("cancel");
         verify(sheet.visible, "it is still there as it leaves");
         compare(closedSpy.count, 0, "its answer counts once it has gone");
-        tryVerify(() => sheet.shift < -8 && findChild(sheet, "shading").opacity < 0.5, Tokens.durationShort * 4, "it moves up and the shading fades");
+        tryVerify(() => sheet.shift < -8, Tokens.durationShort * 4, "it moves up");
+        compare(findChild(sheet, "shading").opacity, sheet.entry, "and the shading fades with it");
         closedWith("cancel");
         sheet.show();
-        compare(sheet.shade, 1, "opened again, the shading is back at once");
+        compare(findChild(sheet, "shading").opacity, 0, "opened again, the shading comes in again");
     }
 
-    function test_a_close_while_it_leaves_ends_it_at_once() {
+    function test_a_close_while_it_leaves_ends_it_at_once_with_the_answer_it_leaves_with() {
         Prefs.motion = "on";
         openFully(sheet);
         sheet.request("cancel");
         sheet.close("save");
         compare(closedSpy.count, 1);
-        compare(closedSpy.signalArguments[0][0], "save");
+        compare(closedSpy.signalArguments[0][0], "cancel");
         verify(!sheet.visible);
+        verify(named("opener").activeFocus, "the focus goes back once it has gone");
     }
 
     function test_a_request_while_it_leaves_ends_the_leave_and_it_opens_again_on_the_form() {
@@ -367,7 +371,7 @@ TestCase {
         verify(!sheet.asking, "opened again, it shows the form");
     }
 
-    function test_a_request_while_a_confirmation_leaves_answers_with_its_own_answer() {
+    function test_a_request_while_a_confirmation_leaves_keeps_the_answer_it_leaves_with() {
         Prefs.motion = "on";
         const answered = createTemporaryObject(answeredSpyComponent, testCase, { target: confirm });
         confirm.show();
@@ -376,7 +380,7 @@ TestCase {
         verify(confirm.visible, "it leaves with ok");
         mouseClick(confirm, 100, 500);
         compare(answered.count, 1, "the tap on the shading ended the leave at once");
-        compare(answered.signalArguments[0][0], false, "and answered cancel");
+        compare(answered.signalArguments[0][0], true, "and kept ok");
     }
 
     function test_with_unsaved_input_a_request_while_it_leaves_keeps_the_answer_it_leaves_with() {
@@ -398,6 +402,7 @@ TestCase {
         compare(sheet.entry, 1);
         compare(sheet.shift, 0);
         compare(panel(sheet).opacity, 1);
+        compare(findChild(sheet, "shading").opacity, 1, "the shading stands at once");
         sheet.request("cancel");
         compare(closedSpy.count, 1, "gone at once");
         verify(!sheet.visible);

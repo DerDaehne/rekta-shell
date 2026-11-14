@@ -8,8 +8,8 @@ import Rekta
 // end (collections.md:164–166). An app that is not installed shows its id, and "nicht installiert" beside it. Delete
 // anywhere in the row, or pulling the row towards the trailing edge, unpin it too; a pull starts never on a control,
 // and with a finger never within space-l of the window's edge (rekta.js:3487ff.). Let go past half its width the row
-// leaves, else it glides back. A row leaves drifting 12px and fading over 0.6 × duration-short, and arrives 6px from
-// above, fading in over duration-short (motion.md:24–25).
+// leaves, else it glides back. A row leaves drifting 12px, a pulled one on to its full width, fading over 0.6 ×
+// duration-short, and arrives 6px from above, fading in over duration-short (motion.md:24–25).
 SortableRow {
     id: row
 
@@ -32,6 +32,9 @@ SortableRow {
     property real leaving: 0
     property real arriving: 0
     readonly property bool going: leaving > 0 || goingOut.running
+    // Pulled past half its width: let go, it leaves the rest of its width (rekta.js:3539–3542).
+    readonly property bool pulledAway: pulled > Geometry.rowPullAway * width
+    readonly property real leaveDistance: pulledAway ? width - pulled : Geometry.rowLeaveDrift
     // A hairline row holds its controls space-s from its hairlines (rekta.css:74), at least the density's row height.
     readonly property real lineHeight: Math.max(Tokens.rowHeight, Tokens.controlHeight + 2 * Tokens.spaceS)
 
@@ -48,7 +51,7 @@ SortableRow {
     }
 
     function letGo() {
-        if (pulled > Geometry.rowPullAway * width)
+        if (pulledAway)
             row.group.remove(row);
         else
             glidingBack.start();
@@ -75,7 +78,7 @@ SortableRow {
     disabledReason: group.disabledReason
     opacity: (1 - leaving) * (1 - arriving)
     transform: Translate {
-        x: row.pulled + row.leaving * Geometry.rowLeaveDrift
+        x: row.pulled + row.leaving * row.leaveDistance
         y: -row.arriving * Geometry.rowEnterShift
     }
 

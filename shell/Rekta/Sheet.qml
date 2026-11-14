@@ -28,10 +28,9 @@ Item {
     // Set by show(), request() and close(): open from show() until it has gone, asking while the question shows.
     property bool open: false
     property bool asking: false
-    // Runs from 0 to 1 as it comes in, and back to 0 as it leaves.
+    // Runs from 0 to 1 as it comes in, and back to 0 as it leaves; the shading comes and goes with it (rekta.css:1074–1075,
+    // rekta.js:1823–1828).
     property real entry: 1
-    // The shading's opacity: there at once, it fades as the sheet leaves.
-    property real shade: 1
     readonly property real shift: -(1 - entry) * Geometry.sheetShift
     readonly property bool sideways: Prefs.sizeClass(width, height) === "sideways"
     default property alias content: form.data
@@ -44,7 +43,6 @@ Item {
             return;
         memo.focused = opener ?? Window.activeFocusItem;
         open = true;
-        shade = 1;
         KeyLayers.opened(sheet);
         comingIn.restart();
         (initialFocus ?? startGuard.nextItemInFocusChain(true)).forceActiveFocus();
@@ -55,11 +53,9 @@ Item {
     function request(answer: string) {
         if (!open)
             return;
-        // While it leaves, a request ends the leave at once; with unsaved input it keeps the answer the sheet leaves with,
-        // otherwise it takes its own. ponytail: taking its own answer is Rekta 0.5.0's; 0.6.0 keeps the answer the sheet
-        // leaves with for every request and only ends the leaving (rekta.js:1813–1814, :1819, :1863).
+        // While it leaves, a request only ends the leaving at once (rekta.js:1863).
         if (going.running)
-            leave(dirty ? memo.answer : answer);
+            leave(memo.answer);
         else if (asking)
             keepEditing();
         else if (dirty)
@@ -86,16 +82,16 @@ Item {
         memo.beforeAsking?.forceActiveFocus();
     }
 
-    // It leaves the way it came, and its answer counts once it has gone; a close while it leaves ends it at once
-    // (rekta.js:1802, :1819).
+    // It leaves the way it came, and its answer counts once it has gone. The answer stands as it starts to leave: a
+    // close while it leaves only ends the leaving at once (rekta.js:1813–1814, :1819).
     function leave(answer: string) {
         asking = false;
-        memo.answer = answer;
         if (going.running) {
             going.stop();
             gone();
             return;
         }
+        memo.answer = answer;
         comingIn.stop();
         going.start();
     }
@@ -154,36 +150,24 @@ Item {
         easing.bezierCurve: Tokens.easeIn
     }
 
-    ParallelAnimation {
+    NumberAnimation {
         id: going
 
+        objectName: "goingUp"
+        target: sheet
+        property: "entry"
+        to: 0
+        duration: 0.8 * Tokens.durationShort
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Tokens.easeOut
         onFinished: sheet.gone()
-
-        NumberAnimation {
-            objectName: "goingUp"
-            target: sheet
-            property: "entry"
-            to: 0
-            duration: 0.8 * Tokens.durationShort
-            easing.type: Easing.Bezier
-            easing.bezierCurve: Tokens.easeOut
-        }
-
-        // ponytail: the shading fades linearly as the sheet leaves, as in Rekta 0.5.0; 0.6.0 eases it out with the sheet
-        // (rekta.js:1828).
-        NumberAnimation {
-            target: sheet
-            property: "shade"
-            to: 0
-            duration: 0.8 * Tokens.durationShort
-        }
     }
 
     Rectangle {
         objectName: "shading"
         anchors.fill: parent
         color: Tokens.color.shading
-        opacity: sheet.shade
+        opacity: sheet.entry
 
         // Nothing behind reacts while it is open; a tap on the shading, not on the sheet, is a close request
         // (rekta.js:1867–1871).
