@@ -29,8 +29,8 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     // A deliberate deviation as in the bar: KWin's blur has its own strength. Only at rest: a region moving in the
     // window or out of it leaves KWin's blur an empty framebuffer.
-    BackgroundEffect.blurRegion: Region {
-        item: alone.settled ? alone.glass : null
+    BackgroundEffect.blurRegion: BlurRegion {
+        behind: alone.settled ? alone.glass : null
     }
 
     ReadoutAlone {

@@ -67,8 +67,8 @@ PanelWindow {
     // A deliberate deviation: KWin blurs at the strength of its blur effect, as ext-background-effect has no radius for
     // rekta.css:800's blur(12px). The glass slides without it: a region moving out of the window leaves KWin's blur an
     // empty framebuffer.
-    BackgroundEffect.blurRegion: Region {
-        item: panel.away || bar.sliding ? null : bar
+    BackgroundEffect.blurRegion: BlurRegion {
+        behind: panel.away || bar.sliding ? null : bar
     }
 
     // A status word opens its place in the controls; the background word opens the menu of the background apps instead.

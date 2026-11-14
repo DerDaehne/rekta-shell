@@ -55,6 +55,17 @@
       default = null;
       description = "Whether the Start shows \"zuletzt\", the files used last, as KDE's activity manager keeps them. False hides the section, and the shell then reads nothing of what was opened. Null leaves it shown. It takes effect with the default package once the module is enabled, as the default that a \"showRecent\" in the user's ~/.config/rekta-shell/settings.json overrides.";
     };
+
+    transparency = lib.mkOption {
+      type = lib.types.nullOr (
+        lib.types.enum [
+          "reduce"
+          "normal"
+        ]
+      );
+      default = null;
+      description = "Rekta's less transparency: \"reduce\" makes glass the ground colour and blurs nothing behind the app bar, the Start or a shading, \"normal\" keeps glass translucent over a blur. Null follows the system, which on Plasma reports no such preference, so it stays normal. It takes effect with the default package once the module is enabled, as the default that a \"transparency\" in the user's ~/.config/rekta-shell/settings.json overrides.";
+    };
   };
 
   # Options that are gone; setting one stops the build with a word on why.
@@ -78,6 +89,7 @@
         density
         searchEscape
         showRecent
+        transparency
         ;
     };
 }

@@ -33,6 +33,11 @@ function generate(change) {
 	}
 }
 
+// Rekta's #rrggbbaa as Qt's #aarrggbb.
+function qtColour(hex) {
+	return hex.length === 9 ? `#${hex.slice(7)}${hex.slice(1, 7)}` : hex;
+}
+
 function assertRefused(change, message) {
 	const { status, stderr } = generate(change);
 	assert.equal(status, 1);
@@ -85,6 +90,24 @@ test('a third density stops the generator', () => {
 
 test('themes with different tokens stop the generator', () => {
 	assertRefused((t) => delete t.themes.dark.glass, /Colours: the modes do not share the same tokens/);
+});
+
+test('under reduced transparency glass takes the ground of every theme, and only glass', () => {
+	const { tokens } = generate(() => {});
+	const reduced = [...tokens.matchAll(/^        (\w+): tokens\.reducedTransparency \? (\w+) : "(#\w+)"$/gm)];
+	assert.deepEqual(
+		reduced.map(([, name, taken, colour]) => [name, taken, colour]),
+		['light', 'dark', 'light-contrast', 'dark-contrast'].map((theme) => ['glass', 'bg', qtColour(originalTokens.themes[theme].glass)]),
+	);
+	assert.match(tokens, /^    property bool reducedTransparency: false$/m);
+});
+
+test('themes without glass or without a ground stop the generator', () => {
+	const withoutEither = (name) => (t) => {
+		for (const theme of Object.values(t.themes)) delete theme[name];
+	};
+	assertRefused(withoutEither('glass'), /reduced transparency: no colour glass in the themes/);
+	assertRefused(withoutEither('bg'), /reduced transparency: no colour bg in the themes/);
 });
 
 test('a malformed colour stops the generator', () => {

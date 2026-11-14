@@ -55,6 +55,12 @@ TestCase {
                 value: shellSettings.value("contrast")
             }
 
+            Binding {
+                target: Prefs
+                property: "transparency"
+                value: shellSettings.value("transparency")
+            }
+
             Layers {
                 id: shellSettings
             }
@@ -101,6 +107,7 @@ TestCase {
     function cleanup() {
         Prefs.motion = "system";
         Prefs.systemMoreContrast = false;
+        Prefs.systemReducedTransparency = false;
     }
 
     function pivot(): var {
@@ -332,6 +339,49 @@ TestCase {
         verify(hintOf("contrast").endsWith("vorgabe: wie das system."));
     }
 
+    function test_the_aussehen_place_offers_less_transparency_in_flaeche_below_the_tile_echo_off_by_default() {
+        const toggle = control("transparency");
+        compare(toggle.label, "weniger transparenz");
+        verify(!toggle.checked);
+        verify(isInside(toggle, groupAt("fläche")));
+        const echo = control("echo").parent.parent;
+        const transparency = toggle.parent.parent;
+        compare(transparency.y - (echo.y + echo.height), Tokens.spaceM);
+    }
+
+    function test_less_transparency_writes_reduce_then_normal_and_the_shell_follows_at_once() {
+        control("transparency").activate();
+        compare(written().transparency, "reduce");
+        verify(Tokens.reducedTransparency);
+        verify(Qt.colorEqual(Tokens.color.glass, Tokens.color.bg));
+        verify(control("transparency").checked);
+        control("transparency").activate();
+        compare(written().transparency, "normal");
+        verify(!Tokens.reducedTransparency);
+        verify(!Qt.colorEqual(Tokens.color.glass, Tokens.color.bg));
+        verify(!control("transparency").checked);
+    }
+
+    function test_less_transparency_shows_on_while_the_system_asks_for_it_and_off_writes_normal() {
+        Prefs.systemReducedTransparency = true;
+        verify(control("transparency").checked, "system is the default and follows the system");
+        verify(Tokens.reducedTransparency);
+        control("transparency").activate();
+        compare(written().transparency, "normal");
+        verify(!Tokens.reducedTransparency, "normal wins over the system");
+    }
+
+    function test_with_less_transparency_set_in_nix_the_toggle_is_on_and_the_hint_names_that_default() {
+        host.app.defaultsText = '{"transparency":"reduce"}';
+        verify(control("transparency").checked);
+        verify(!hintOf("transparency").includes("vorgabe"));
+        host.app.userText = '{"version":1,"transparency":"normal"}';
+        verify(!control("transparency").checked);
+        verify(hintOf("transparency").endsWith("vorgabe: an."));
+        host.app.defaultsText = "";
+        verify(hintOf("transparency").endsWith("vorgabe: wie das system."));
+    }
+
     function test_choosing_what_escape_does_writes_it_and_the_shell_follows() {
         pivot().select(1);
         const select = control("searchEscape");
@@ -388,7 +438,7 @@ TestCase {
         host.app.userText = "{ not json";
         let writes = 0;
         host.app.writeRequested.connect(() => writes++);
-        for (const name of ["searchEscape", "echo", "contrast"]) {
+        for (const name of ["searchEscape", "echo", "contrast", "transparency"]) {
             verify(control(name).disabled, name);
             compare(control(name).disabledReason, "datei nicht lesbar", name);
             verify(hintOf(name).includes("kein gültiges json") && hintOf(name).includes("korrigiere oder lösche"), name);
@@ -412,7 +462,7 @@ TestCase {
     }
 
     function test_a_usable_file_leaves_the_fields_enabled() {
-        for (const name of ["searchEscape", "echo", "contrast"])
+        for (const name of ["searchEscape", "echo", "contrast", "transparency"])
             verify(!control(name).disabled, name);
     }
 

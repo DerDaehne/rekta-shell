@@ -1,8 +1,9 @@
 pragma Singleton
 import QtQuick
 
-// The inputs that pick Rekta's values (platforms.md, "Switching"): theme, density, motion and contrast each follow a
-// system source unless overridden; the window-size class follows the place. Prefs feeds the first four to Tokens.
+// The inputs that pick Rekta's values (platforms.md, "Switching"): theme, density, motion, contrast and transparency each
+// follow a system source unless overridden; the window-size class follows the place. Prefs feeds the first five to
+// Tokens.
 QtObject {
     id: prefs
 
@@ -11,12 +12,16 @@ QtObject {
     property string density: "auto" // auto | comfortable | compact
     property string motion: "system" // system | on | off
     property string contrast: "system" // system | more | normal
+    property string transparency: "system" // system | reduce | normal
 
     // System sources. Under Plasma the KDE platform theme feeds the colour scheme; the shell sets reduced motion.
     property int systemColorScheme: Application.styleHints.colorScheme
     property bool systemReducedMotion: false
     // ponytail: Plasma 6.8's portal sends no contrast, so this stays false there; it follows once a platform sets it.
     property bool systemMoreContrast: Application.styleHints.accessibility.contrastPreference === Qt.ContrastPreference.HighContrast
+    // ponytail: neither Qt 6.12 nor Plasma 6.8 reports reduced transparency, so this stays false and only the override
+    // reduces it; bind it here once a platform reports one.
+    property bool systemReducedTransparency: false
     // ponytail: no touch detection yet, so "auto" is compact (a fine pointer); detect touch screens when one appears.
     property bool systemHasTouch: false
 
@@ -24,6 +29,7 @@ QtObject {
     readonly property string resolvedDensity: density === "comfortable" || density === "compact" ? density : systemHasTouch ? "comfortable" : "compact"
     readonly property bool reducedMotion: motion === "off" || (motion === "system" && systemReducedMotion)
     readonly property bool moreContrast: moreContrastFor(contrast)
+    readonly property bool reducedTransparency: reducedTransparencyFor(transparency)
 
     readonly property list<Binding> bindings: [
         Binding {
@@ -45,12 +51,22 @@ QtObject {
             target: Tokens
             property: "moreContrast"
             value: prefs.moreContrast
+        },
+        Binding {
+            target: Tokens
+            property: "reducedTransparency"
+            value: prefs.reducedTransparency
         }
     ]
 
     // Whether a contrast setting means more contrast; anything but more and normal follows the system.
     function moreContrastFor(setting: string): bool {
         return setting === "more" || (setting !== "normal" && systemMoreContrast);
+    }
+
+    // Whether a transparency setting means less transparency; anything but reduce and normal follows the system.
+    function reducedTransparencyFor(setting: string): bool {
+        return setting === "reduce" || (setting !== "normal" && systemReducedTransparency);
     }
 
     // Sideways when the place is wide enough and the viewport not too short, else compact (layout.md, size classes).

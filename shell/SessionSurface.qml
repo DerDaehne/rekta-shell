@@ -56,8 +56,8 @@ PanelWindow {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     // A deliberate deviation, as for the app bar: KWin blurs at the strength of its blur effect, not the shading's
     // blur(4px) (rekta.css:1073).
-    BackgroundEffect.blurRegion: Region {
-        item: banner.shaded ? banner : null
+    BackgroundEffect.blurRegion: BlurRegion {
+        behind: banner.shaded ? banner : null
     }
 
     SessionBanner {

@@ -119,8 +119,8 @@ PanelWindow {
     WlrLayershell.layer: !place.wanted && (handsToFullScreen || windows.fullScreenOn(primaryScreen)) ? WlrLayer.Overlay : WlrLayer.Top
     WlrLayershell.keyboardFocus: place.holdsKeyboard && !askingAgain ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     // A deliberate deviation, as for the app bar: KWin blurs at the strength of its blur effect, not glass's blur(12px).
-    BackgroundEffect.blurRegion: Region {
-        item: place.shown ? place : null
+    BackgroundEffect.blurRegion: BlurRegion {
+        behind: place.shown ? place : null
     }
 
     StartPlace {

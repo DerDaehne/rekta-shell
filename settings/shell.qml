@@ -36,6 +36,12 @@ ShellRoot {
 
     Binding {
         target: Prefs
+        property: "transparency"
+        value: settingsFiles.value("transparency")
+    }
+
+    Binding {
+        target: Prefs
         property: "density"
         value: settingsFiles.value("density")
     }

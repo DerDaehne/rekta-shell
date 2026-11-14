@@ -15,9 +15,11 @@ TestCase {
         Prefs.density = "auto";
         Prefs.motion = "system";
         Prefs.contrast = "system";
+        Prefs.transparency = "system";
         Prefs.systemColorScheme = Qt.ColorScheme.Light;
         Prefs.systemReducedMotion = false;
         Prefs.systemMoreContrast = false;
+        Prefs.systemReducedTransparency = false;
         Prefs.systemHasTouch = false;
     }
 
@@ -83,6 +85,54 @@ TestCase {
         verify(!Tokens.moreContrast);
         Prefs.systemMoreContrast = true;
         verify(Tokens.moreContrast);
+    }
+
+    // Each of the four colour sets the shell can be in: light, dark, and each with more contrast.
+    function forEachColourSet(check: var) {
+        for (const theme of ["light", "dark"]) {
+            for (const contrast of ["normal", "more"]) {
+                Prefs.theme = theme;
+                Prefs.contrast = contrast;
+                check(`${theme}, ${contrast} contrast`);
+            }
+        }
+    }
+
+    function test_less_transparency_makes_glass_the_ground_in_every_colour_set() {
+        Prefs.transparency = "reduce";
+        verify(Tokens.reducedTransparency);
+        forEachColourSet(set => verify(Qt.colorEqual(Tokens.color.glass, Tokens.color.bg), set));
+    }
+
+    // Rekta's glass is #ffffffd1 or #0e0e12d1; the contrast sets' glass is already their ground.
+    function test_normal_transparency_keeps_glass_translucent_where_its_set_has_it() {
+        Prefs.transparency = "normal";
+        verify(!Tokens.reducedTransparency);
+        forEachColourSet(set => fuzzyCompare(Tokens.color.glass.a, Tokens.moreContrast ? 1 : 0xd1 / 255, 0.002, set));
+    }
+
+    function test_transparency_follows_the_system_live() {
+        Prefs.systemReducedTransparency = true;
+        verify(Tokens.reducedTransparency);
+        verify(Qt.colorEqual(Tokens.color.glass, Tokens.color.bg));
+        Prefs.systemReducedTransparency = false;
+        verify(!Tokens.reducedTransparency);
+        fuzzyCompare(Tokens.color.glass.a, 0xd1 / 255, 0.002);
+    }
+
+    function test_transparency_reduce_and_normal_win_over_the_system() {
+        Prefs.transparency = "reduce";
+        verify(Tokens.reducedTransparency);
+        Prefs.systemReducedTransparency = true;
+        Prefs.transparency = "normal";
+        verify(!Tokens.reducedTransparency);
+    }
+
+    function test_a_transparency_that_is_none_of_the_two_follows_the_system() {
+        Prefs.transparency = "less";
+        verify(!Tokens.reducedTransparency);
+        Prefs.systemReducedTransparency = true;
+        verify(Tokens.reducedTransparency);
     }
 
     function test_density_is_compact_for_a_fine_pointer_and_comfortable_for_touch() {

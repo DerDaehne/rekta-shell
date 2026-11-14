@@ -40,8 +40,8 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: map.held ? WlrKeyboardFocus.None : WlrKeyboardFocus.Exclusive
     // A deliberate deviation, as for the session banner: KWin blurs at the strength of its blur effect.
-    BackgroundEffect.blurRegion: Region {
-        item: map.open ? map : null
+    BackgroundEffect.blurRegion: BlurRegion {
+        behind: map.open ? map : null
     }
 
     Region {

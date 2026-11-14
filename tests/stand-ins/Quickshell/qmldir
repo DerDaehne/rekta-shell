@@ -1,3 +1,4 @@
 module Quickshell
 Scope 1.0 Scope.qml
 singleton DesktopEntries 1.0 DesktopEntries.qml
+Region 1.0 Region.qml

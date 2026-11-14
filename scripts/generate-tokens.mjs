@@ -21,6 +21,10 @@ const SKIPPED_GROUPS = new Set(['name', 'version', 'units', 'descriptions', 'hoo
 // QML reads a property named on<Capital> as a signal handler, so such tokens need another QML name.
 const QML_NAMES = { 'on-accent': 'textOnAccent' };
 
+// Under reduced transparency a colour takes another's value in every theme: glass becomes the ground (colour.md, "More
+// contrast, less transparency"; platforms.md:78).
+const REDUCED_TRANSPARENCY = { glass: 'bg' };
+
 function camel(name) {
 	const qmlName = QML_NAMES[name] ?? name.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
 	if (/^on[A-Z_]/.test(qmlName)) throw new Error(`${name}: QML would read ${qmlName} as a signal handler; add it to QML_NAMES`);
@@ -67,6 +71,13 @@ function modeInstance(type, mode, values, format) {
 	return [`    readonly property ${type} ${camel(mode)}: ${type} {`, ...lines, '    }'];
 }
 
+// A theme's colour; one that changes under reduced transparency names the colour it takes then.
+function colour(hex, name) {
+	const reduced = REDUCED_TRANSPARENCY[name];
+	if (reduced === undefined) return `"${qtColour(hex)}"`;
+	return `tokens.reducedTransparency ? ${camel(reduced)} : "${qtColour(hex)}"`;
+}
+
 function typography(entries) {
 	return Object.entries(entries).map(([name, value]) => {
 		if (name === 'font-sans') return property('string', name, JSON.stringify(FONT_SANS));
@@ -111,6 +122,8 @@ function expectKnownGroups(tokens) {
 	if (unknown.length) throw new Error(`no mapping for token group(s): ${unknown.join(', ')}`);
 	expectModes('themes', tokens.themes, THEMES);
 	expectModes('densities', tokens.densities, ['comfortable', 'compact']);
+	const lost = Object.entries(REDUCED_TRANSPARENCY).flat().filter((name) => !(name in tokens.themes.light));
+	if (lost.length) throw new Error(`reduced transparency: no colour ${lost.join(', ')} in the themes`);
 }
 
 function inputs(tokens) {
@@ -120,9 +133,12 @@ function inputs(tokens) {
 		'import QtQuick',
 		'',
 		'QtObject {',
-		'    // Inputs: set from the preferences (theme, more contrast, density, reduced motion).',
+		'    id: tokens',
+		'',
+		'    // Inputs: set from the preferences (theme, more contrast, reduced transparency, density, reduced motion).',
 		'    property string theme: "light"',
 		'    property bool moreContrast: false',
+		'    property bool reducedTransparency: false',
 		'    property string density: "compact"',
 		'    property bool reducedMotion: false',
 	];
@@ -132,7 +148,7 @@ function modes(tokens) {
 	const densityKeys = Object.keys(tokens.densities.compact);
 	return [
 		...modeComponent('Colours', 'color', tokens.themes),
-		...Object.entries(tokens.themes).flatMap(([theme, colours]) => modeInstance('Colours', theme, colours, (hex) => `"${qtColour(hex)}"`)),
+		...Object.entries(tokens.themes).flatMap(([theme, colours]) => modeInstance('Colours', theme, colours, colour)),
 		'    readonly property Colours color: theme === "dark" ? (moreContrast ? darkContrast : dark) : (moreContrast ? lightContrast : light)',
 		...accents(tokens.accents),
 		'',

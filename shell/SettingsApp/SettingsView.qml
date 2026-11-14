@@ -59,7 +59,7 @@ FocusScope {
     // The fields of the groups that have any, by group; a group without one says its fields are still to come.
     readonly property var contents: ({
             "farben": contrastField,
-            "fläche": echoField,
+            "fläche": surfaceFields,
             "suche": escapeField,
             "angeheftet": pinnedField,
             "zuletzt": recentField
@@ -98,6 +98,18 @@ FocusScope {
     function contrastWord(value: string): string {
         return ({
                 more: "an",
+                normal: "aus"
+            })[value] ?? "wie das system";
+    }
+
+    // On where the shell takes less transparency: set so, or following a system that asks for it.
+    function transparencyReduced(): bool {
+        return Prefs.reducedTransparencyFor(settings.value("transparency"));
+    }
+
+    function transparencyWord(value: string): string {
+        return ({
+                reduce: "an",
                 normal: "aus"
             })[value] ?? "wie das system";
     }
@@ -209,25 +221,52 @@ FocusScope {
         }
     }
 
+    // Two fields, a default block gap apart (the token space-m).
     Component {
-        id: echoField
+        id: surfaceFields
 
-        Setting {
-            hint: "ein blasser abdruck der kacheln unten rechts im hintergrund."
-            problem: view.problem
-            presetWord: view.settings.differs("background") ? (view.settings.preset("background") === "rekta" ? "an" : "aus") : ""
+        Column {
+            spacing: Tokens.spaceM
 
-            Toggle {
-                objectName: "echo"
+            Setting {
                 width: parent.width
-                disabledReason: view.disabledReason
-                label: "kachel-echo"
-                onWord: "an"
-                offWord: "aus"
-                checked: view.echoOn()
-                onToggled: {
-                    view.settings.set("background", checked ? "rekta" : "solid");
-                    checked = Qt.binding(() => view.echoOn());
+                hint: "ein blasser abdruck der kacheln unten rechts im hintergrund."
+                problem: view.problem
+                presetWord: view.settings.differs("background") ? (view.settings.preset("background") === "rekta" ? "an" : "aus") : ""
+
+                Toggle {
+                    objectName: "echo"
+                    width: parent.width
+                    disabledReason: view.disabledReason
+                    label: "kachel-echo"
+                    onWord: "an"
+                    offWord: "aus"
+                    checked: view.echoOn()
+                    onToggled: {
+                        view.settings.set("background", checked ? "rekta" : "solid");
+                        checked = Qt.binding(() => view.echoOn());
+                    }
+                }
+            }
+
+            Setting {
+                width: parent.width
+                hint: "glas wird deckend wie der grund, und nichts dahinter verschwimmt."
+                problem: view.problem
+                presetWord: view.settings.differs("transparency") ? view.transparencyWord(view.settings.preset("transparency")) : ""
+
+                Toggle {
+                    objectName: "transparency"
+                    width: parent.width
+                    disabledReason: view.disabledReason
+                    label: "weniger transparenz"
+                    onWord: "an"
+                    offWord: "aus"
+                    checked: view.transparencyReduced()
+                    onToggled: {
+                        view.settings.set("transparency", checked ? "reduce" : "normal");
+                        checked = Qt.binding(() => view.transparencyReduced());
+                    }
                 }
             }
         }

@@ -3,9 +3,12 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    // Inputs: set from the preferences (theme, more contrast, density, reduced motion).
+    id: tokens
+
+    // Inputs: set from the preferences (theme, more contrast, reduced transparency, density, reduced motion).
     property string theme: "light"
     property bool moreContrast: false
+    property bool reducedTransparency: false
     property string density: "compact"
     property bool reducedMotion: false
 
@@ -73,7 +76,7 @@ QtObject {
         hover: "#2e949598"
         disabled: "#949598"
         shading: "#ab010205"
-        glass: "#d1ffffff"
+        glass: tokens.reducedTransparency ? bg : "#d1ffffff"
     }
     readonly property Colours dark: Colours {
         bg: "#0e0e12"
@@ -106,7 +109,7 @@ QtObject {
         hover: "#2e949598"
         disabled: "#7e7f82"
         shading: "#ab262629"
-        glass: "#d10e0e12"
+        glass: tokens.reducedTransparency ? bg : "#d10e0e12"
     }
     readonly property Colours lightContrast: Colours {
         bg: "#ffffff"
@@ -139,7 +142,7 @@ QtObject {
         hover: "#2e949598"
         disabled: "#949598"
         shading: "#ab010205"
-        glass: "#ffffff"
+        glass: tokens.reducedTransparency ? bg : "#ffffff"
     }
     readonly property Colours darkContrast: Colours {
         bg: "#0e0e12"
@@ -172,7 +175,7 @@ QtObject {
         hover: "#2e949598"
         disabled: "#7e7f82"
         shading: "#ab262629"
-        glass: "#0e0e12"
+        glass: tokens.reducedTransparency ? bg : "#0e0e12"
     }
     readonly property Colours color: theme === "dark" ? (moreContrast ? darkContrast : dark) : (moreContrast ? lightContrast : light)
     readonly property var accents: ({

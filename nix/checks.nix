@@ -244,6 +244,16 @@ in
     touch $out
   '';
 
+  # No unit test can load a surface: each blur goes through BlurRegion, which takes it away under less transparency.
+  blur-goes-through-blur-region = pkgs.runCommand "rekta-shell-blur-goes-through-blur-region" { } ''
+    if grep -rn --include='*.qml' blurRegion ${../shell} ${../settings} ${../lockscreen} |
+      grep -v 'BackgroundEffect.blurRegion: BlurRegion {$'; then
+      echo "a surface blurs past BlurRegion, so less transparency would keep its blur" >&2
+      exit 1
+    fi
+    touch $out
+  '';
+
   # Window-level behaviour no unit test can instantiate: the open Start lies over the bar without moving it, and
   # a toast keeps its own surface on the overlay layer above the Start.
   start-covers-the-bar = pkgs.runCommand "rekta-shell-start-covers-the-bar" { } ''
@@ -391,10 +401,11 @@ in
             searchEscape = "back";
             showRecent = false;
             contrast = "more";
+            transparency = "reduce";
           };
         }
       ]
-    ) "the Start or contrast options changed a system that does not enable the module";
+    ) "the Start, contrast or transparency options changed a system that does not enable the module";
     assert lib.assertMsg (
       toplevel [ plasma ] == toplevel [
         plasma
@@ -445,8 +456,8 @@ in
         exit 1
       }
       defaults=${enabled.programs.rekta-shell.package}/share/rekta-shell/defaults.json
-      if grep -q -e searchEscape -e showRecent -e contrast $defaults; then
-        echo "the module names a search escape, showRecent or contrast without being asked to" >&2
+      if grep -q -e searchEscape -e showRecent -e contrast -e transparency $defaults; then
+        echo "the module names a search escape, showRecent, contrast or transparency without being asked to" >&2
         exit 1
       fi
       chosen=${
@@ -454,10 +465,11 @@ in
           searchEscape = "back";
           showRecent = false;
           contrast = "more";
+          transparency = "reduce";
         }).programs.rekta-shell.package
       }/share/rekta-shell/defaults.json
-      grep -qF '"searchEscape":"back"' $chosen && grep -qF '"showRecent":false' $chosen && grep -qF '"contrast":"more"' $chosen || {
-        echo "the search escape, showRecent or contrast option is not in the package defaults" >&2
+      grep -qF '"searchEscape":"back"' $chosen && grep -qF '"showRecent":false' $chosen && grep -qF '"contrast":"more"' $chosen && grep -qF '"transparency":"reduce"' $chosen || {
+        echo "the search escape, showRecent, contrast or transparency option is not in the package defaults" >&2
         exit 1
       }
       # With both modules on, whichever rekta-settings comes first in PATH names the same defaults.
