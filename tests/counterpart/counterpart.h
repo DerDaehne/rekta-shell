@@ -44,6 +44,8 @@ public:
     Q_INVOKABLE void ignoreAt(const QString &path);
     // Sends count signals in a row, numbered from 1.
     Q_INVOKABLE void flood(const QString &path, const QString &interfaceName, const QString &member, int count);
+    // Sends count calls in a row without waiting for their answers.
+    Q_INVOKABLE void callFlood(const QString &service, const QString &path, const QString &interfaceName, const QString &member, int count);
     Q_INVOKABLE QString uniqueName() const;
 
     QString lastSignature() const

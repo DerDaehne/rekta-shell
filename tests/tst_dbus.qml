@@ -454,6 +454,26 @@ TestCase {
         }
     }
 
+    // Gone right after the calls went out, never after an answer: waiting for one lets the calls drain first.
+    function test_an_owner_that_goes_away_while_calls_to_it_still_pour_in_leaves_the_process_running() {
+        for (let round = 0; round < 400; ++round) {
+            // A name of its own each round, so no round queues behind the one before.
+            const name = "org.rekta.Test.Flood" + round;
+            goingAway = connectionComponent.createObject(testCase, {
+                handler: () => 1
+            });
+            verify(goingAway.own(name, "/flood", `
+                <interface name="org.rekta.Flood">
+                  <method name="ping">
+                    <arg type="u" direction="out"/>
+                  </method>
+                </interface>`));
+            counterpart.callFlood(name, "/flood", "org.rekta.Flood", "ping", 200);
+            goingAway.destroy();
+            tryVerify(() => goingAway === null, 5000, `round ${round}`);
+        }
+    }
+
     function test_a_name_is_free_once_its_owner_is_gone() {
         const name = "org.rekta.Test.Gone";
         const only = ownWho(name, "only");

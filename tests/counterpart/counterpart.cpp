@@ -171,6 +171,12 @@ void Counterpart::flood(const QString &path, const QString &interfaceName, const
         emitSignal(path, interfaceName, member, {QVariant(uint(i))});
 }
 
+void Counterpart::callFlood(const QString &service, const QString &path, const QString &interfaceName, const QString &member, int count)
+{
+    for (int i = 0; i < count; ++i)
+        m_connection.send(QDBusMessage::createMethodCall(service, path, interfaceName, member));
+}
+
 QString Counterpart::uniqueName() const
 {
     return m_connection.baseService();
