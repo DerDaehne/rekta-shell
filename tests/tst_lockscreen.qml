@@ -488,6 +488,7 @@ TestCase {
         Prefs.motion = "on";
         waitForRendering(face);
         const clock = part("clock"), rest = part("rest");
+        const baseline = clock.mapToItem(face, 0, clock.baselineOffset).y;
         face.active = false;
         tryCompare(rest, "opacity", 0);
         verify(!rest.enabled, "the hidden parts take nothing");
@@ -495,6 +496,7 @@ TestCase {
         tryCompare(clock, "shrink", ratio);
         tryCompare(clock, "color", Tokens.color.textContrastHigh, 1000, "it fades to the inactive title's colour");
         fuzzyCompare(clock.font.pixelSize * clock.shrink, Tokens.fluid(Tokens.fontSizePivotInactive, 1920), 0.5, "as large as pivot-inactive");
+        fuzzyCompare(clock.mapToItem(face, 0, clock.baselineOffset).y, baseline, 0.5, "scaled around its baseline");
         face.active = true;
         tryVerify(() => clock.shrink > clock.ratio && clock.shrink < 1, 1000, "it grows, not jumps");
         tryCompare(clock, "shrink", 1);
