@@ -172,11 +172,12 @@ PanelWindow {
         value: bell.overflowed ? bar.more.x + bar.more.width : bell.x + bell.width
     }
 
+    // Not while "meldungen", back from "mehr", still waits unseen for the others to make room.
     Binding {
         when: panel.showsToasts
         target: panel.toaster
         property: "countInSight"
-        value: !panel.away && !bell.overflowed
+        value: !panel.away && bell.showing
     }
 
     // Rekta lays floating surfaces above the toasts, but KWin keeps the bar's popups below the overlay layer the toasts

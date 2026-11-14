@@ -693,6 +693,46 @@ TestCase {
         compare(endOf(bar.more), bar.width - bar.padding);
     }
 
+    function test_with_a_centre_item_a_full_trailing_side_leaves_the_middle_ending_before_it() {
+        makeScene({ barWidth: 760, withCentre: true });
+        const middle = named("middle");
+        verify(bar.more.visible);
+        verify(!named("back").overflowed, "the leading side keeps its own");
+        verify(middle.visible, "the middle stays");
+        verify(middle.width > 0);
+        compare(endOf(middle), named("centre").x - bar.gap);
+    }
+
+    function test_with_a_centre_item_the_middle_is_gone_while_the_leading_side_has_given_a_control_away_unless_pinned() {
+        makeScene({ barWidth: 1600, withCentre: true });
+        const middle = named("middle");
+        named("back").text = "back to the place before this one, and to the one before that, and further back still, as far as the history of this window goes";
+        settle();
+        verify(named("back").overflowed);
+        verify(!middle.visible, "the unpinned middle has gone");
+        middle.pinned = true;
+        settle();
+        verify(middle.visible, "a pinned one stays");
+    }
+
+    function test_a_control_coming_back_from_more_shows_only_once_the_others_have_made_room() {
+        Prefs.motion = "on";
+        makeScene({ viewportHeight: 400 });
+        const pause = named("pause");
+        pause.text = "pause every build of every branch, every pull request and every nightly run of the shell and its tests";
+        settle();
+        const moved = controls().filter(control => control.overflowed);
+        verify(moved.length > 0 && moved.every(control => !control.showing), "they are in more");
+        pause.text = "pause";
+        holdGlide();
+        for (const control of moved) {
+            verify(control.wanted, `${control.objectName} is back in the bar`);
+            verify(control.held && !control.showing, `${control.objectName} is not showing while the others glide`);
+        }
+        bar.reflow.run.complete();
+        verify(moved.every(control => control.showing), "they show once the others have made room");
+    }
+
     function test_among_equally_important_controls_the_last_moves_first() {
         makeScene({ viewportHeight: 400 });
         const first = named("in the background");
@@ -900,6 +940,10 @@ TestCase {
         compare(endOf(shown[shown.length - 1]), bar.width - bar.padding, "the bar ends at its new end");
         checkClear("in the new room");
         scene.backgroundShown = true;
+        holdGlide();
+        verify(!background.visible, "it waits unseen while the others make room");
+        bar.reflow.run.complete();
+        verify(background.visible, "it shows once they have");
         verify(background.opacity < 1, "it fades in");
         scene.barWidth = 1200;
         compare(background.opacity, 1, "it is there at once");

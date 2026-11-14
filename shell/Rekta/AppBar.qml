@@ -104,8 +104,17 @@ Rectangle {
     function shows(item: Item, moved: var, moreShown: bool): bool {
         const middle = item as AppBarMiddle;
         if (middle)
-            return middle.present && (!moreShown || middle.pinned);
+            return middle.present && (middle.pinned || !middleGivesWay(moved, moreShown));
         return !moved.includes(item);
+    }
+
+    // The unpinned middle gives way while "more" shows; around a centre item only while the leading side has given a
+    // control away: a full trailing side leaves it alone (navigation.md, "A control in the middle").
+    function middleGivesWay(moved: var, moreShown: bool): bool {
+        if (!centre)
+            return moreShown;
+        const order = Array.from(strip.children);
+        return moved.some(item => order.indexOf(item) < order.indexOf(centre));
     }
 
     // The room an item needs at least: the middle gives all of it up, unless pinned; the status words take what their limit
