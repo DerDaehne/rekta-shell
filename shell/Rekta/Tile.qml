@@ -148,7 +148,11 @@ Item {
             const rotateX = Qt.matrix4x4(1, 0, 0, 0, 0, Math.cos(ax), -Math.sin(ax), 0, 0, Math.sin(ax), Math.cos(ax), 0, 0, 0, 0, 1);
             const rotateY = Qt.matrix4x4(Math.cos(ay), 0, Math.sin(ay), 0, 0, 1, 0, 0, -Math.sin(ay), 0, Math.cos(ay), 0, 0, 0, 0, 1);
             const scale = Qt.matrix4x4(s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1);
-            return back.times(perspective).times(rotateX).times(rotateY).times(scale).times(toCentre);
+            const turned = back.times(perspective).times(rotateX).times(rotateY).times(scale).times(toCentre);
+            // z passes through, as under Qt's Rotation: Qt's curve renderer (Icon) and distance-field text scale by
+            // the root of the determinant, and with z dropped it is 0: icons vanish and text smears.
+            turned.m33 = 1;
+            return turned;
         }
     }
 

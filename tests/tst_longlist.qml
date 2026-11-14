@@ -167,6 +167,22 @@ TestCase {
         tryCompare(pressed, "sink", 0, Tokens.durationShort + 200);
     }
 
+    // Qt's curve renderer (Rekta's icons) and its distance-field text scale by the root of the determinant; with z
+    // dropped it is 0, and on the GPU an icon in a row vanishes and its words smear.
+    function test_its_turn_passes_z_through_so_its_determinant_is_never_zero_at_rest_or_pressed() {
+        const pressed = row(1);
+        const matrix = () => pressed.transform[0].matrix;
+        compare(matrix().determinant(), 1, "at rest");
+        mousePress(pressed, pressed.width - 2, 2);
+        tryCompare(pressed, "sink", 1, Tokens.durationPress + 100);
+        compare(matrix().row(2), Qt.vector4d(0, 0, 1, 0));
+        const rad = Math.PI / 180;
+        const scale = Tokens.rowPressScale;
+        fuzzyCompare(matrix().determinant(), scale ** 2 * Math.cos(pressed.pressY * pressed.tilt * rad) * Math.cos(pressed.pressX * pressed.tilt * rad), 1e-6);
+        mouseRelease(pressed, pressed.width - 2, 2);
+        tryCompare(pressed, "sink", 0, Tokens.durationShort + 200);
+    }
+
     function test_a_press_eases_in_over_press_and_back_over_short() {
         const ticks = Glide.ticks(testCase);
         const pressed = row(1);

@@ -227,6 +227,21 @@ TestCase {
         tryCompare(tile, "sink", 0, Tokens.durationShort * 3);
     }
 
+    // Qt's curve renderer (Rekta's icons) and its distance-field text scale by the root of the determinant; with z
+    // dropped it is 0, and on the GPU an icon on a tile vanishes and its words smear.
+    function test_its_turn_passes_z_through_so_its_determinant_is_never_zero_at_rest_or_pressed() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
+        const matrix = () => tile.transform[0].matrix;
+        compare(matrix().determinant(), 1, "at rest");
+        mousePress(tile, tile.width - 1, tile.height - 1);
+        tryCompare(tile, "sink", 1, Tokens.durationPress * 3);
+        compare(matrix().row(2), Qt.vector4d(0, 0, 1, 0));
+        const rad = Math.PI / 180;
+        fuzzyCompare(matrix().determinant(), tile.pressScale ** 2 * Math.cos(tile.tiltX * rad) * Math.cos(tile.tiltY * rad), 1e-6);
+        mouseRelease(tile, tile.width - 1, tile.height - 1);
+        tryCompare(tile, "sink", 0, Tokens.durationShort * 3);
+    }
+
     function test_it_sinks_in_over_duration_press_and_comes_back_over_duration_short() {
         const ticks = Glide.ticks(testCase);
         const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
