@@ -226,6 +226,48 @@ TestCase {
         signalName: "mappedChanged"
     }
 
+    SignalSpy {
+        id: saidSpy
+
+        signalName: "announced"
+    }
+
+    function test_a_key_under_a_full_screen_window_announces_the_word_and_the_value_once_and_every_change_after() {
+        saidSpy.target = alone;
+        saidSpy.clear();
+        alone.away = true;
+        alone.press();
+        alone.press();
+        alone.word = "mikrofon";
+        alone.valueText = "stumm";
+        compare(saidSpy.signalArguments.map(args => args[0]), ["lautstärke 81%", "mikrofon 81%", "mikrofon stumm"]);
+    }
+
+    function test_nothing_is_announced_without_a_full_screen_window_or_after_the_display_has_gone() {
+        saidSpy.target = alone;
+        saidSpy.clear();
+        alone.press();
+        alone.valueText = "50%";
+        compare(saidSpy.count, 0);
+        showAlone();
+        compare(saidSpy.count, 1);
+        expire();
+        alone.valueText = "40%";
+        compare(saidSpy.count, 1);
+    }
+
+    function test_a_key_on_the_way_out_announces_again_when_the_display_comes_back() {
+        saidSpy.target = alone;
+        showAlone();
+        saidSpy.clear();
+        expire();
+        alone.press();
+        compare(saidSpy.count, 0);
+        tryCompare(alone, "settled", true, 2000);
+        compare(saidSpy.count, 1);
+        compare(saidSpy.signalArguments[0][0], "lautstärke 81%");
+    }
+
     function test_under_reduced_motion_the_display_comes_and_goes_at_once_but_stays_its_time() {
         Prefs.motion = "off";
         failOnWarning(/setPaused|TypeError|ReferenceError|Binding loop/);

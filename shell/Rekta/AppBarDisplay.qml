@@ -3,14 +3,13 @@ pragma ComponentBehavior: Bound
 import QtQuick
 
 // A short display that takes the place of a bar control, such as the clock, after a key: the word over Rekta's meter
-// with its value in tabular figures (data.md, "Meters"), or over a plain text when there is no level. The control turns
-// away around its bottom edge and the display turns in, from the other side, once the control is three quarters
-// through; after the last key it stays, then runs the same turn the other way round. The turns use the place change's
-// curves and shares (rekta.css:1283–1318, rekta.js:594), half of duration-moderate each way. Under reduced motion the
-// two change at once; the display still stays duration-level. `press()` is a key: the first brings the display, every
-// later one only keeps it.
-// ponytail: Rekta's indicate() now flips the two in turn as a live tile does, on ease-out and ease-in without the
-// overlap (rekta.js:4152–4179, :4190–4197); the place change's curves stand until the display follows it.
+// with its value in tabular figures (data.md, "Meters"), or over a plain text when there is no level. The two swap as a
+// live tile flips to a new status (navigation.md, "A short indicator in place of a control"; rekta.js indicate(),
+// tileUpdate()): the control turns away about its horizontal middle over half of duration-moderate on ease-out, then
+// the display turns in from the other side over the other half on ease-in, whole all the while; after the last key it
+// stays duration-level, then runs the same flip the other way round. Under reduced motion the two change at once.
+// `press()` is a key: the first brings the display, every later one only keeps it. What it says is announced politely
+// while it shows, as a live region does.
 Item {
     id: display
 
@@ -20,36 +19,40 @@ Item {
     // 0 to 1, or -1 to show `valueText` alone.
     property real level: -1
     property string valueText
+    readonly property string spoken: `${word} ${valueText}`
     // From the first key until the hold after the last one has passed; set by `press()` and the hold alone.
     property bool shown: false
-    // Where the swap stands, in turn durations: the leaving part runs 0 to 1, the arriving one 0.75 to 1.75.
-    property real phase: span
-    // The direction of the swap running or last run.
+    // Where the flip stands, 0 to 1, linear in time: the leaving part turns over the first half, the arriving one over
+    // the second.
+    property real phase: 1
+    // The direction of the flip running or last run.
     property bool toDisplay: false
-    readonly property real span: 1 + Tokens.turnOverlap
-    readonly property real turnTime: Tokens.durationModerate / 2
-    readonly property real leaving: Math.min(1, phase)
-    readonly property real arriving: Math.min(1, Math.max(0, phase - Tokens.turnOverlap))
-    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeTurnOut })
-    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeTurnIn })
-    // The leaving part is whole for its first share, then fades; the arriving one is whole after its first share.
-    readonly property real leaveFade: 1 - easeOut.valueForProgress(Math.max(0, (leaving - Tokens.turnOutWhole) / (1 - Tokens.turnOutWhole)))
-    readonly property real arriveFade: easeIn.valueForProgress(Math.min(1, arriving / Tokens.turnInWhole))
-    readonly property real turnedOut: Tokens.flipAngle * easeOut.valueForProgress(leaving)
-    readonly property real turnedIn: Tokens.flipAngle * (1 - easeIn.valueForProgress(arriving))
-    // The control turns toward one side, the display toward the other: -90 at its start in, and on its way out.
-    readonly property real replacesAngle: toDisplay ? turnedOut : turnedIn
-    readonly property real displayAngle: -(toDisplay ? turnedIn : turnedOut)
-    readonly property real replacesFade: toDisplay ? leaveFade : arriveFade
-    readonly property real displayFade: toDisplay ? arriveFade : leaveFade
+    readonly property bool arrived: phase >= 0.5
+    readonly property bool displayStands: arrived === toDisplay
+    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+    // The part in sight turns from 0 to -90 as it leaves and from 90 to 0 as it arrives (as CSS rotateX).
+    readonly property real angle: arrived ? Tokens.flipAngle * (1 - easeIn.valueForProgress(phase * 2 - 1)) : -Tokens.flipAngle * easeOut.valueForProgress(phase * 2)
 
-    // A key; the swap itself follows `shown`.
+    signal announced(string words)
+
+    // A key; the flip itself follows `shown`.
     function press() {
+        if (!shown)
+            say();
         shown = true;
         hold.restart();
     }
 
-    // A swap in progress ends before the next one starts, so a key during the way back waits for it.
+    // Only a display in sight speaks: under a full-screen window the bar is gone and the display alone says it.
+    function say() {
+        if (!(display.Window.window?.visible ?? false))
+            return;
+        display.Accessible.announce(display.spoken, Accessible.Polite);
+        display.announced(display.spoken);
+    }
+
+    // A flip in progress ends before the next one starts, so a key during the way back waits for it.
     function swap() {
         if (turning.running || toDisplay === shown)
             return;
@@ -61,8 +64,7 @@ Item {
     implicitHeight: Geometry.appBarControl
     x: replaces.x + (replaces.width - width) / 2
     y: replaces.y + (replaces.height - height) / 2
-    opacity: displayFade
-    visible: opacity > 0
+    visible: displayStands
     transform: Rotation {
         axis {
             x: 1
@@ -70,19 +72,23 @@ Item {
             z: 0
         }
         origin.x: display.width / 2
-        origin.y: display.height
+        origin.y: display.height / 2
         distanceToPlane: Tokens.turnstilePerspective
-        angle: display.displayAngle
+        angle: display.angle
     }
     Accessible.role: Accessible.StaticText
-    Accessible.name: `${word} ${valueText}`
+    Accessible.name: spoken
 
     onShownChanged: swap()
+    onSpokenChanged: {
+        if (shown)
+            say();
+    }
 
     Binding {
         target: display.replaces
         property: "opacity"
-        value: display.replacesFade
+        value: display.displayStands ? 0 : 1
     }
 
     Binding {
@@ -91,7 +97,6 @@ Item {
         value: !display.shown
     }
 
-    // The control turns about the middle of its bottom edge.
     property Rotation replacesTurn: Rotation {
         axis {
             x: 1
@@ -99,9 +104,9 @@ Item {
             z: 0
         }
         origin.x: display.replaces.width / 2
-        origin.y: display.replaces.height
+        origin.y: display.replaces.height / 2
         distanceToPlane: Tokens.turnstilePerspective
-        angle: display.replacesAngle
+        angle: display.displayStands ? 0 : display.angle
     }
 
     Component.onCompleted: replaces.transform = Array.from(replaces.transform).concat([replacesTurn])
@@ -122,8 +127,8 @@ Item {
         target: display
         property: "phase"
         from: 0
-        to: display.span
-        duration: display.span * display.turnTime
+        to: 1
+        duration: Tokens.durationModerate
 
         onRunningChanged: display.swap()
     }

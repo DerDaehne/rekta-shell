@@ -67,12 +67,53 @@ TestCase {
         }
     }
 
+    // A scene in a window that is not shown, as the bar is under a full-screen window.
+    Component {
+        id: hiddenComponent
+
+        Window {
+            property alias display: hiddenDisplay
+
+            visible: false
+            width: 400
+            height: 100
+
+            AppBarClock {
+                id: hiddenClock
+
+                now: new Date(2026, 9, 21, 14, 32)
+            }
+
+            AppBarDisplay {
+                id: hiddenDisplay
+
+                replaces: hiddenClock
+                word: "lautstärke"
+                level: 0.81
+                valueText: "81%"
+            }
+        }
+    }
+
+    Component {
+        id: spyComponent
+
+        SignalSpy {
+            signalName: "announced"
+        }
+    }
+
+    // Rekta's curves, read from the tokens here rather than from the display.
+    readonly property easingCurve tokenOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
+    readonly property easingCurve tokenIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var scene
     property var clock
     property var display
     property var turning
     property var hold
+    property var said
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
@@ -81,6 +122,7 @@ TestCase {
         display = scene.display;
         turning = findChild(display, "turning");
         hold = findChild(display, "hold");
+        said = createTemporaryObject(spyComponent, testCase, { target: display });
     }
 
     function cleanup() {
@@ -88,7 +130,7 @@ TestCase {
         Prefs.motion = "system";
     }
 
-    // Shows a moment of the swap: stops the animation and sets where it stands, in turn durations.
+    // Shows a moment of the flip: stops the animation and sets where it stands, 0 to 1.
     function stopAt(phase: real) {
         turning.pause();
         display.phase = phase;
@@ -101,61 +143,103 @@ TestCase {
         hold.triggered();
     }
 
-    function test_the_display_is_hidden_and_the_clock_whole_until_a_key() {
+    function clockTurn(): var {
+        return clock.transform[clock.transform.length - 1];
+    }
+
+    function displayTurn(): var {
+        return display.transform[0];
+    }
+
+    // The display after its flip in, standing.
+    function showDisplay() {
+        display.press();
+        tryCompare(turning, "running", false, 2000);
+        compare(display.phase, 1);
+    }
+
+    // What shows on every frame of one whole flip, run by the animation itself.
+    function recordFlip(): var {
+        const frames = [];
+        const record = () => frames.push({ phase: display.phase, clockOpacity: clock.opacity, displayShown: display.visible, displayOpacity: display.opacity });
+        display.phaseChanged.connect(record);
+        tryCompare(turning, "running", false, 2000);
+        display.phaseChanged.disconnect(record);
+        return frames;
+    }
+
+    function test_the_display_is_hidden_and_the_clock_whole_and_upright_until_a_key() {
         verify(!display.shown);
         verify(!display.visible);
         compare(clock.opacity, 1);
-        compare(display.replacesAngle, 0);
+        compare(clockTurn().angle, 0);
     }
 
     function test_a_key_turns_the_clock_away_and_the_display_in() {
-        display.press();
+        showDisplay();
         verify(display.shown);
-        tryCompare(display, "phase", display.span, 2000);
         compare(clock.opacity, 0);
+        verify(display.visible);
         compare(display.opacity, 1);
-        compare(display.replacesAngle, Tokens.flipAngle);
-        compare(display.displayAngle, 0);
+        compare(displayTurn().angle, 0);
     }
 
-    function test_the_swap_takes_half_of_duration_moderate_a_turn_and_the_display_starts_when_the_clock_is_three_quarters_through() {
+    function test_the_flip_takes_duration_moderate_and_changes_halfway() {
         display.press();
-        compare(turning.duration, (1 + Tokens.turnOverlap) * Tokens.durationModerate / 2);
-        stopAt(Tokens.turnOverlap - 0.01);
-        compare(display.opacity, 0);
-        verify(display.replacesAngle > 0 && display.replacesAngle < Tokens.flipAngle);
-        stopAt(Tokens.turnOverlap + 0.05);
-        verify(display.opacity > 0);
-        verify(display.displayAngle < 0);
+        compare(turning.duration, Tokens.durationModerate);
+        stopAt(0.499);
+        verify(!display.visible);
+        compare(clock.opacity, 1);
+        stopAt(0.5);
+        verify(display.visible);
+        compare(clock.opacity, 0);
     }
 
-    function test_the_clock_turns_about_its_bottom_edge_through_90_degrees_and_the_display_comes_in_from_minus_90() {
-        display.press();
-        stopAt(Tokens.turnOverlap);
-        compare(display.displayAngle, -Tokens.flipAngle);
-        stopAt(1);
-        compare(display.replacesAngle, Tokens.flipAngle);
-        const turn = clock.transform[clock.transform.length - 1];
-        compare(turn.origin.y, clock.height);
-        compare(turn.origin.x, clock.width / 2);
-        compare(turn.axis.x, 1);
+    function test_both_turn_about_their_horizontal_middle_with_the_turnstile_perspective() {
+        for (const turn of [clockTurn(), displayTurn()]) {
+            compare(turn.axis.x, 1);
+            compare(turn.axis.y, 0);
+            compare(turn.axis.z, 0);
+            compare(turn.distanceToPlane, Tokens.turnstilePerspective);
+        }
+        compare(clockTurn().origin.x, clock.width / 2);
+        compare(clockTurn().origin.y, clock.height / 2);
+        compare(displayTurn().origin.x, display.width / 2);
+        compare(displayTurn().origin.y, display.height / 2);
     }
 
-    function test_the_clock_stays_whole_for_its_first_40_percent_then_fades() {
+    function test_the_clock_turns_away_to_minus_90_on_ease_out_over_the_first_half_while_the_display_waits() {
         display.press();
-        stopAt(Tokens.turnOutWhole);
-        compare(display.replacesFade, 1);
-        stopAt(0.7);
-        verify(display.replacesFade > 0 && display.replacesFade < 1);
-        compare(clock.opacity, display.replacesFade);
+        for (const phase of [0, 0.1, 0.25, 0.4]) {
+            stopAt(phase);
+            compare(clockTurn().angle, -Tokens.flipAngle * tokenOut.valueForProgress(phase * 2), `clock at ${phase}`);
+            compare(clock.opacity, 1);
+            verify(!display.visible, `display hidden at ${phase}`);
+        }
+        stopAt(0.49999);
+        fuzzyCompare(clockTurn().angle, -Tokens.flipAngle, 0.01);
     }
 
-    function test_the_display_is_whole_after_its_first_35_percent() {
+    function test_the_display_turns_in_from_90_on_ease_in_over_the_second_half_while_the_clock_stays_away() {
         display.press();
-        stopAt(Tokens.turnOverlap + Tokens.turnInWhole);
-        compare(display.displayFade, 1);
-        stopAt(Tokens.turnOverlap + 0.1);
-        verify(display.displayFade > 0 && display.displayFade < 1);
+        for (const phase of [0.5, 0.6, 0.75, 0.9, 1]) {
+            stopAt(phase);
+            compare(displayTurn().angle, Tokens.flipAngle * (1 - tokenIn.valueForProgress(phase * 2 - 1)), `display at ${phase}`);
+            compare(display.opacity, 1);
+            verify(display.visible);
+            compare(clock.opacity, 0, `clock away at ${phase}`);
+        }
+    }
+
+    function test_on_no_frame_of_the_flip_are_both_in_sight_and_nothing_fades() {
+        display.press();
+        const frames = recordFlip();
+        verify(frames.length > 2, "the flip ran over several frames");
+        for (const frame of frames) {
+            verify(frame.displayShown !== (frame.clockOpacity === 1), `exactly one in sight at ${frame.phase}`);
+            verify(frame.clockOpacity === 0 || frame.clockOpacity === 1, `clock whole or gone at ${frame.phase}`);
+            compare(frame.displayOpacity, 1, `display whole at ${frame.phase}`);
+        }
     }
 
     function test_the_display_stays_duration_level_after_a_key() {
@@ -166,56 +250,66 @@ TestCase {
         verify(!display.shown);
     }
 
-    function test_a_second_key_only_extends_the_stay_without_a_new_turn() {
-        display.press();
-        tryCompare(display, "phase", display.span, 2000);
+    function test_a_second_key_only_extends_the_stay_without_a_new_flip() {
+        showDisplay();
         hold.stop();
         display.press();
-        compare(display.phase, display.span);
+        compare(display.phase, 1);
         verify(!turning.running);
         verify(display.shown);
-        compare(display.opacity, 1);
+        verify(display.visible);
         runOutHold();
         verify(!display.shown);
     }
 
-    function test_the_way_back_runs_the_turns_the_other_way_round_the_display_leaving_first() {
-        display.press();
-        tryCompare(display, "phase", display.span, 2000);
+    function test_the_way_back_flips_the_display_away_first_then_the_clock_in() {
+        showDisplay();
         runOutHold();
         tryCompare(turning, "running", true, 500);
-        stopAt(0.5);
-        verify(display.displayAngle < 0 && display.displayAngle > -Tokens.flipAngle);
-        compare(display.opacity, display.leaveFade);
+        stopAt(0.25);
+        compare(displayTurn().angle, -Tokens.flipAngle * tokenOut.valueForProgress(0.5));
+        verify(display.visible);
         compare(clock.opacity, 0);
-        stopAt(Tokens.turnOverlap);
-        compare(display.replacesAngle, Tokens.flipAngle);
-        stopAt(display.span);
+        stopAt(0.75);
+        compare(clockTurn().angle, Tokens.flipAngle * (1 - tokenIn.valueForProgress(0.5)));
         compare(clock.opacity, 1);
-        compare(display.replacesAngle, 0);
-        compare(display.displayAngle, -Tokens.flipAngle);
+        verify(!display.visible);
     }
 
-    function test_the_clock_is_whole_and_the_display_gone_after_the_way_back() {
-        display.press();
-        tryCompare(display, "phase", display.span, 2000);
+    function test_on_no_frame_of_the_way_back_are_both_in_sight_and_nothing_fades() {
+        showDisplay();
         runOutHold();
+        tryCompare(turning, "running", true, 500);
+        const frames = recordFlip();
+        verify(frames.length > 2, "the flip ran over several frames");
+        for (const frame of frames) {
+            verify(frame.displayShown !== (frame.clockOpacity === 1), `exactly one in sight at ${frame.phase}`);
+            verify(frame.clockOpacity === 0 || frame.clockOpacity === 1, `clock whole or gone at ${frame.phase}`);
+            compare(frame.displayOpacity, 1, `display whole at ${frame.phase}`);
+        }
+    }
+
+    function test_the_clock_is_whole_upright_and_the_display_gone_after_the_way_back() {
+        showDisplay();
+        runOutHold();
+        tryCompare(turning, "running", true, 500);
         tryCompare(turning, "running", false, 1000);
         compare(clock.opacity, 1);
+        compare(clockTurn().angle, 0);
         verify(!display.visible);
         verify(clock.enabled);
     }
 
     function test_a_key_during_the_way_back_brings_the_display_again_after_it() {
-        display.press();
-        tryCompare(display, "phase", display.span, 2000);
+        showDisplay();
         runOutHold();
         tryCompare(turning, "running", true, 500);
         display.press();
         compare(display.toDisplay, false);
         tryCompare(display, "toDisplay", true, 1000);
-        tryCompare(display, "phase", display.span, 1000);
-        compare(display.opacity, 1);
+        tryCompare(turning, "running", false, 1000);
+        verify(display.visible);
+        compare(clock.opacity, 0);
     }
 
     function test_the_clock_takes_no_clicks_while_the_display_stands_over_it() {
@@ -226,10 +320,11 @@ TestCase {
     function test_under_reduced_motion_the_clock_and_the_display_change_at_once() {
         Prefs.motion = "off";
         display.press();
+        verify(!turning.running);
         compare(clock.opacity, 0);
+        verify(display.visible);
         compare(display.opacity, 1);
-        compare(display.displayAngle, 0);
-        wait(300);
+        compare(displayTurn().angle, 0);
         verify(display.shown);
     }
 
@@ -239,8 +334,46 @@ TestCase {
         compare(hold.interval, Tokens.durationLevel);
         verify(display.shown);
         runOutHold();
+        verify(!turning.running);
         compare(clock.opacity, 1);
+        compare(clockTurn().angle, 0);
         verify(!display.visible);
+    }
+
+    function test_a_key_announces_the_word_and_the_value_politely_once() {
+        display.press();
+        compare(said.count, 1);
+        compare(said.signalArguments[0][0], "lautstärke 81%");
+        display.press();
+        compare(said.count, 1);
+    }
+
+    function test_every_change_while_the_display_shows_is_announced_and_none_while_it_does_not() {
+        display.valueText = "80%";
+        compare(said.count, 0);
+        display.press();
+        display.word = "mikrofon";
+        display.valueText = "stumm";
+        compare(said.signalArguments.map(args => args[0]), ["lautstärke 80%", "mikrofon 80%", "mikrofon stumm"]);
+        runOutHold();
+        display.valueText = "45%";
+        compare(said.count, 3);
+    }
+
+    function test_a_key_during_the_way_back_announces_again() {
+        showDisplay();
+        runOutHold();
+        tryCompare(turning, "running", true, 500);
+        display.press();
+        compare(said.count, 2);
+    }
+
+    function test_a_display_in_a_window_out_of_sight_announces_nothing() {
+        const hidden = createTemporaryObject(hiddenComponent, testCase);
+        const spy = createTemporaryObject(spyComponent, testCase, { target: hidden.display });
+        hidden.display.press();
+        hidden.display.valueText = "82%";
+        compare(spy.count, 0);
     }
 
     function test_the_bar_keeps_its_neighbours_clear_of_the_room_the_display_needs() {
