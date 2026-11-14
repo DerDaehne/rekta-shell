@@ -54,9 +54,9 @@ let
   '';
 in
 # A KWin of its own, headless in a virtual framebuffer or, with --window, as a window in the running desktop. It starts
-# from an empty environment with its own HOME, runtime directory, config directories, a session bus without service
-# activation and a PipeWire without devices, so neither the desktop's plugins, config and services reach it nor does
-# anything it starts (portals, wallets, FUSE mounts) reach the desktop.
+# from an empty environment with its own HOME, runtime directory, config directories, a session and a system bus without
+# service activation and a PipeWire without devices, so neither the desktop's plugins, config and services reach it nor
+# does anything it starts (portals, wallets, FUSE mounts) reach the desktop.
 writeShellApplication {
   name = "rekta-nested";
   runtimeInputs = [ coreutils ];
@@ -118,6 +118,7 @@ writeShellApplication {
       stop "''${kwin:-}"
       stop "''${wireplumber_pid:-}"
       stop "''${pipewire_pid:-}"
+      stop "''${system_bus_pid:-}"
       stop "''${bus_pid:-}"
       rm -rf "$home"
     }
@@ -159,19 +160,27 @@ writeShellApplication {
     )
     [ -n "''${LOCALE_ARCHIVE:-}" ] && session+=(LOCALE_ARCHIVE="$LOCALE_ARCHIVE")
 
-    mapfile -t bus < <(env -i "''${session[@]}" dbus-daemon --config-file=${./nested-bus.xml} --fork --print-address=1 --print-pid=1)
+    start_bus() {
+      env -i "''${session[@]}" dbus-daemon --config-file=${./nested-bus.xml} --fork --print-address=1 --print-pid=1
+    }
+    mapfile -t bus < <(start_bus)
     bus_pid="''${bus[1]}"
-    session+=(DBUS_SESSION_BUS_ADDRESS="''${bus[0]}")
+    # A system bus of its own without services: a call to logind, UPower, NetworkManager or RTKit fails there at once
+    # instead of reaching the host's, where it could change the host or have its bus start a service.
+    mapfile -t system_bus < <(start_bus)
+    system_bus_pid="''${system_bus[1]}"
+    session+=(DBUS_SESSION_BUS_ADDRESS="''${bus[0]}" DBUS_SYSTEM_BUS_ADDRESS="''${system_bus[0]}")
 
     # The shell connects to PipeWire once, as it starts, so the socket has to be there before KWin starts the shell.
     env -i "''${session[@]}" pipewire &
     pipewire_pid=$!
-    env -i "''${session[@]}" wireplumber --profile nested &
-    wireplumber_pid=$!
     for _ in {1..50}; do
       [ -S "$home/runtime/pipewire-0" ] && break
       sleep 0.1
     done
+    # WirePlumber quits if PipeWire's socket is not there yet.
+    env -i "''${session[@]}" wireplumber --profile nested &
+    wireplumber_pid=$!
 
     # The Nix defaults, as the module's package carries them; the user's own settings live in the session's HOME.
     printf '{"background":"%s"}\n' "$background" >"$home/defaults.json"

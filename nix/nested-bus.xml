@@ -1,6 +1,6 @@
 <!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
-<!-- A session bus for the nested session without service activation: nothing it starts may reach the host. -->
+<!-- The nested session's session and system bus, without service activation: nothing it starts may reach the host. -->
 <busconfig>
   <type>session</type>
   <listen>unix:tmpdir=/tmp</listen>

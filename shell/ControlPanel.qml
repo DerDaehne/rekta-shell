@@ -101,7 +101,8 @@ PanelWindow {
         controls.setDoNotDisturb(on);
     }
 
-    // The nested session reaches the host's system bus: only the session's own shell acts on it, elsewhere it logs.
+    // Run by hand on the desktop (`qs --path`), the shell shares the host's system bus: only the session's own shell
+    // acts on it, elsewhere it logs.
     function actOnSystemBus(what: string, act: var) {
         if (launcher.starts)
             act();
@@ -154,7 +155,8 @@ PanelWindow {
             iconFor: name => Quickshell.iconPath(name, true)
             onRun: command => surface.launcher.run(command)
             onLockAsked: surface.launcher.lock()
-            // The nested session reaches the host's system bus: only the session's own shell sets the profile.
+            // Run by hand on the desktop, the shell shares the host's system bus: only the session's own shell sets
+            // the profile.
             onPowerProfileChosen: profile => {
                 if (surface.launcher.starts)
                     PowerProfiles.profile = profile;

@@ -194,8 +194,11 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   with `enable`: an option may default on once enabled, but importing a module without
   `enable` still changes nothing.
 - The nested session is isolated: it starts from an empty environment (allow-list)
-  with its own HOME, runtime and config directories and a session
-  bus without service activation. Never pass the desktop's environment, runtime
+  with its own HOME, runtime and config directories and a session bus and a system
+  bus of its own, both without services or activation: a call to logind, UPower,
+  NetworkManager, BlueZ or RTKit fails there instead of reaching the host, so its
+  shell sees no network, Bluetooth, battery or power profiles (try those in the VM).
+  `session.env` carries both addresses. Never pass the desktop's environment, runtime
   directory or bus into it: its plugins and config leak in, and portals or wallets
   started there break the real session's services. It runs a PipeWire and WirePlumber
   of its own (config from the store only, no devices, no D-Bus) for KWin's
