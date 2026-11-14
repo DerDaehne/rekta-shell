@@ -168,6 +168,10 @@ TestCase {
 
     // A 16 × 16 one, as a DBusMenu hands over the PNG of an entry at its own size.
     readonly property string smallIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mOwKvtAEmIY1TCqYfhqAAByVKAQbSDPuAAAAABJRU5ErkJggg=="
+
+    // A 32 × 32 one that no other test of this file loads, so it is never in Qt's cache already and always loads a while.
+    readonly property string largeIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKklEQVR42mOwKvtAU8QwasGoBaMWjFowasGoBaMWjFowasGoBaMWDBULAIMpgFuqhFcIAAAAAElFTkSuQmCC"
+
     // Icon names as Quickshell hands them over; the stand-in for the icon theme knows only mail-client.
     readonly property string knownIcon: "image://icon/mail-client"
     readonly property string unknownIcon: "image://icon/no-such-icon"
@@ -501,6 +505,20 @@ TestCase {
         steam.icon = smallIcon;
         judged(menu);
         compare(shown, [provided("blue-16.png"), smallIcon]);
+    }
+
+    // The canvas sets `available` at once but announces it queued, so the announcement may come while a new picture loads.
+    function test_the_reader_announcing_itself_while_a_new_picture_loads_keeps_the_last_one() {
+        const steam = steamWithAPicture();
+        const menu = open([steam]);
+        judged(menu);
+        const row = rowAt(menu, "Steam");
+        const shown = iconsOf(row);
+        steam.icon = largeIcon;
+        compare(findChild(row, "pictureLoaded").status, Image.Loading);
+        findChild(row, "pictureReader").availableChanged();
+        judged(menu);
+        compare(shown, [largeIcon]);
     }
 
     function test_a_row_keeps_none_of_the_pictures_it_judged_when_an_app_sends_one_after_another() {

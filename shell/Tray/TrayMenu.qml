@@ -172,6 +172,9 @@ Menu {
         property string real: ""
 
         function verdict(): string {
+            // The canvas announces itself only later (a queued availableChanged), maybe while a new picture loads.
+            if (loaded.status === Image.Loading)
+                return check.real;
             // A row that has left its window has no context.
             const context = reader.available ? reader.getContext("2d") : null;
             if (context === null || loaded.status !== Image.Ready)
@@ -196,10 +199,7 @@ Menu {
             objectName: "pictureLoaded"
             source: check.source
             asynchronous: false
-            onStatusChanged: {
-                if (status !== Image.Loading)
-                    check.real = check.verdict();
-            }
+            onStatusChanged: check.real = check.verdict()
         }
 
         Canvas {
