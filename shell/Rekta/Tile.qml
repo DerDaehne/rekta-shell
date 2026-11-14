@@ -19,7 +19,7 @@ Item {
     // How its place arrives (behaviour.md, `data-rk-arriving`), set by the place: "arriving" builds the tile in,
     // "turned" does not (the turn was the arrival; sparklines still draw in), "" once the arrival is over.
     property string arrival: ""
-    // Its place in the build-in order; past ten tiles they rise together.
+    // Its place in the build-in order; from the fourth on they rise together.
     property int buildIndex: 0
     // True while its live region holds still: news waits (live.md, "Holding still").
     property bool held: false
@@ -93,16 +93,15 @@ Item {
         liveNews.tell(kind, change);
     }
 
-    // Only an arriving place builds in: never after a turn, never for new live data. Each tile rises duration-stagger
-    // after the one before it, from ten on all together.
-    // ponytail: the build-in is Rekta 0.5.0's; 0.6.0 rises arrive-distance over duration-long on ease-landing, whole after
-    // duration-short, duration-greet apart and four steps at most (rekta.css:97–104, :188–189).
+    // Only an arriving place builds in: never after a turn, never for new live data. Each tile rises duration-greet after
+    // the one before it, from the fourth on all together (rekta.css:97–105).
     function followArrival() {
         if (arrival !== "arriving") {
             buildInRun.complete();
             return;
         }
-        buildIn.progress = 0;
+        buildIn.rise = 0;
+        buildIn.fade = 0;
         buildInRun.restart();
     }
 
@@ -112,7 +111,7 @@ Item {
 
     implicitWidth: columns * Tokens.tileUnit + (columns - 1) * Tokens.spaceS
     implicitHeight: rows * Tokens.tileUnit + (rows - 1) * Tokens.spaceS
-    opacity: buildIn.progress
+    opacity: buildIn.fade
     // A peek's old number leaves through the tile's edge.
     clip: liveNews.peeking
     activeFocusOnTab: opens
@@ -143,7 +142,7 @@ Item {
             const cx = tile.width / 2;
             const cy = tile.height / 2;
             const toCentre = Qt.matrix4x4(1, 0, 0, -cx, 0, 1, 0, -cy, 0, 0, 1, 0, 0, 0, 0, 1);
-            const back = Qt.matrix4x4(1, 0, 0, cx, 0, 1, 0, cy + (1 - buildIn.progress) * Geometry.buildInRise, 0, 0, 1, 0, 0, 0, 0, 1);
+            const back = Qt.matrix4x4(1, 0, 0, cx, 0, 1, 0, cy + (1 - buildIn.rise) * Tokens.arriveDistance, 0, 0, 1, 0, 0, 0, 0, 1);
             const perspective = Qt.matrix4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, -1 / Tokens.turnstilePerspective, 1);
             const rotateX = Qt.matrix4x4(1, 0, 0, 0, 0, Math.cos(ax), -Math.sin(ax), 0, 0, Math.sin(ax), Math.cos(ax), 0, 0, 0, 0, 1);
             const rotateY = Qt.matrix4x4(Math.cos(ay), 0, Math.sin(ay), 0, 0, 1, 0, 0, -Math.sin(ay), 0, Math.cos(ay), 0, 0, 0, 0, 1);
@@ -327,13 +326,15 @@ Item {
         }
     }
 
-    // Building in: 0 to 1 over duration-moderate, eased in; it fades up and rises by buildInRise. Before its turn
-    // comes it waits unseen, as the CSS animation fills backwards.
+    // Building in (rekta.css:102–104, :188–189): the tile rises arrive-distance over duration-long and fades up over
+    // duration-short, both on ease-landing, quick at first and settling long. Before its turn comes it waits unseen, as
+    // the CSS animations fill backwards.
     QtObject {
         id: buildIn
 
         objectName: "buildIn"
-        property real progress: 1
+        property real rise: 1
+        property real fade: 1
     }
 
     SequentialAnimation {
@@ -342,16 +343,27 @@ Item {
         objectName: "buildInRun"
 
         PauseAnimation {
-            duration: Math.min(tile.buildIndex, Geometry.buildInStaggerCap) * Tokens.durationStagger
+            duration: Math.min(tile.buildIndex, Geometry.greetSteps) * Tokens.durationGreet
         }
-        NumberAnimation {
-            target: buildIn
-            property: "progress"
-            from: 0
-            to: 1
-            duration: Tokens.durationModerate
-            easing.type: Easing.Bezier
-            easing.bezierCurve: Tokens.easeIn
+        ParallelAnimation {
+            NumberAnimation {
+                target: buildIn
+                property: "rise"
+                from: 0
+                to: 1
+                duration: Tokens.durationLong
+                easing.type: Easing.Bezier
+                easing.bezierCurve: Tokens.easeLanding
+            }
+            NumberAnimation {
+                target: buildIn
+                property: "fade"
+                from: 0
+                to: 1
+                duration: Tokens.durationShort
+                easing.type: Easing.Bezier
+                easing.bezierCurve: Tokens.easeLanding
+            }
         }
     }
 

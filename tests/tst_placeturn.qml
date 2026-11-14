@@ -454,7 +454,8 @@ TestCase {
         tile.arrival = "arriving";
         turnToSecond();
         compare(tile.arrival, "", "the turn wins over the build-in");
-        compare(findChild(tile, "buildIn").progress, 1, "it leaves from its end state");
+        compare(findChild(tile, "buildIn").rise, 1, "it leaves from its end state");
+        compare(findChild(tile, "buildIn").fade, 1, "it leaves from its end state");
         turner.elapsed = 5000;
         turner.go(second, first, {
             back: true

@@ -19,6 +19,7 @@ TestCase {
 
     readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
     readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
+    readonly property easingCurve landing: ({ type: Easing.Bezier, bezierCurve: Tokens.easeLanding })
 
     Component {
         id: liveTile
@@ -125,11 +126,25 @@ TestCase {
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
+        // No news came before this test.
+        Greet.since = -Infinity;
+        Greet.told = 0;
     }
 
     function cleanup() {
         Prefs.motion = "system";
         Prefs.theme = "system";
+        Greet.now = () => Date.now();
+    }
+
+    // The news of each tile, told at once.
+    function tellAll(tiles) {
+        for (const tile of tiles)
+            tile.news("peek", () => part(tile, "stat").value = String(Number(part(tile, "stat").value) + 1));
+    }
+
+    function waitsOf(tiles) {
+        return tiles.map(tile => part(tile, "news").wait);
     }
 
     function part(tile, name) {
@@ -299,29 +314,48 @@ TestCase {
         tryCompare(spark, "opacity", 1, Tokens.durationShort * 4);
     }
 
-    function test_an_arriving_place_builds_its_tiles_in_rising_6px_with_a_fade_over_duration_moderate() {
+    function test_an_arriving_tile_rises_arrive_distance_over_duration_long_and_fades_up_over_duration_short_both_landing() {
+        const ticks = Glide.ticks(testCase);
         const tile = createTemporaryObject(liveTile, testCase);
+        const buildIn = part(tile, "buildIn");
+        const rises = Glide.record(buildIn, "rise");
+        const fades = Glide.record(buildIn, "fade");
+        const since = Date.now();
         tile.arrival = "arriving";
         const run = part(tile, "buildInRun");
         verify(run.running);
         compare(tile.opacity, 0);
-        near(tile.mapToItem(testCase, 0, 0).y - tile.y, 6, "rise");
-        const rise = run.animations[1];
-        compare(rise.duration, Tokens.durationModerate);
-        compare(rise.easing.bezierCurve, Tokens.easeIn);
-        seek(tile, "buildIn", "progress", 0.5);
-        compare(tile.opacity, 0.5);
-        near(tile.mapToItem(testCase, 0, 0).y - tile.y, 3, "half-way");
-        tile.arrival = "";
-        compare(tile.opacity, 1);
+        near(tile.mapToItem(testCase, 0, 0).y - tile.y, Tokens.arriveDistance, "it starts arrive-distance below");
+        tryCompare(buildIn, "rise", 1, Tokens.durationLong * 3);
+        tryCompare(buildIn, "fade", 1, Tokens.durationLong * 3);
+        const riseStray = Glide.strayOf([{ steps: rises, from: 0, to: 1 }], Tokens.durationLong, landing, since, ticks);
+        verify(riseStray < 0.06, `the rise follows ease-landing over duration-long, off by ${riseStray}`);
+        const fadeStray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }], Tokens.durationShort, landing, since, ticks);
+        verify(fadeStray < 0.06, `the fade follows ease-landing over duration-short, off by ${fadeStray}`);
         near(tile.mapToItem(testCase, 0, 0).y - tile.y, 0, "at rest");
     }
 
-    function test_tiles_build_in_staggered_by_their_index_and_from_ten_on_together() {
-        for (const [index, steps] of [[0, 0], [3, 3], [10, 10], [15, 10]]) {
+    function test_half_risen_a_tile_stands_half_of_arrive_distance_below_and_a_turn_or_the_arrival_s_end_sets_it_at_rest() {
+        const tile = createTemporaryObject(liveTile, testCase);
+        tile.arrival = "arriving";
+        seek(tile, "buildIn", "rise", 0.5);
+        part(tile, "buildIn").fade = 0.5;
+        compare(tile.opacity, 0.5);
+        near(tile.mapToItem(testCase, 0, 0).y - tile.y, Tokens.arriveDistance / 2, "half-way");
+        tile.arrival = "";
+        compare(tile.opacity, 1);
+        near(tile.mapToItem(testCase, 0, 0).y - tile.y, 0, "at rest");
+        tile.arrival = "arriving";
+        tile.arrival = "turned";
+        compare(tile.opacity, 1, "a turn ends the build-in at once");
+        near(tile.mapToItem(testCase, 0, 0).y - tile.y, 0, "at rest after a turn");
+    }
+
+    function test_tiles_build_in_duration_greet_apart_in_their_order_four_steps_at_most() {
+        for (const [index, steps] of [[0, 0], [1, 1], [2, 2], [3, 3], [4, 3], [9, 3]]) {
             const tile = createTemporaryObject(liveTile, testCase, { buildIndex: index });
             tile.arrival = "arriving";
-            compare(part(tile, "buildInRun").animations[0].duration, steps * Tokens.durationStagger, `index ${index}`);
+            compare(part(tile, "buildInRun").animations[0].duration, steps * Tokens.durationGreet, `index ${index}`);
             compare(tile.opacity, 0, `unseen until its turn (${index})`);
         }
     }
@@ -527,6 +561,105 @@ TestCase {
         verify(part(tile, "peekRun").running);
     }
 
+    function test_news_on_several_tiles_at_once_comes_in_reading_order_duration_greet_apart_whatever_order_it_was_told_in() {
+        const first = createTemporaryObject(liveTile, testCase, { x: 100, y: 100 });
+        const second = createTemporaryObject(liveTile, testCase, { x: 300, y: 100 });
+        const third = createTemporaryObject(liveTile, testCase, { x: 100, y: 300 });
+        waitForRendering(third);
+        tellAll([third, second, first]);
+        tryCompare(part(third, "news"), "wait", 2 * Tokens.durationGreet);
+        compare(waitsOf([first, second, third]), [0, Tokens.durationGreet, 2 * Tokens.durationGreet]);
+        for (const tile of [first, second, third]) {
+            const run = part(tile, "peekRun");
+            verify(run.running, "each peek is on its way");
+            compare(run.animations[0].duration, part(tile, "news").wait, "its wait comes before its motion");
+            compare(run.duration, Tokens.durationModerate, "the peek itself keeps its time");
+        }
+    }
+
+    function test_four_steps_at_most_the_rest_of_the_tiles_with_news_go_with_the_fourth() {
+        const tiles = [0, 1, 2, 3, 4, 5].map(k => createTemporaryObject(liveTile, testCase, { x: 100 + 200 * (k % 3), y: 100 + 200 * Math.floor(k / 3) }));
+        waitForRendering(tiles[5]);
+        tellAll(tiles);
+        tryCompare(part(tiles[5], "news"), "wait", 3 * Tokens.durationGreet);
+        compare(waitsOf(tiles), [0, 1, 2, 3, 3, 3].map(step => step * Tokens.durationGreet));
+    }
+
+    function test_news_within_duration_moderate_of_the_first_takes_the_next_step_and_after_it_the_count_starts_over() {
+        const tiles = [0, 1, 2, 3].map(k => createTemporaryObject(liveTile, testCase, { x: 100 + 200 * k, y: 100 }));
+        waitForRendering(tiles[3]);
+        Greet.now = () => 1000;
+        tellAll([tiles[0], tiles[1]]);
+        tryCompare(part(tiles[1], "news"), "wait", Tokens.durationGreet);
+        Greet.now = () => 1100;
+        tellAll([tiles[2]]);
+        tryCompare(part(tiles[2], "news"), "wait", 2 * Tokens.durationGreet - 100, 500, "the third step, less the time already gone");
+        Greet.now = () => 1000 + Tokens.durationModerate;
+        tellAll([tiles[3]]);
+        tryCompare(Greet, "told", 4, 500, "at duration-moderate it still counts in the run");
+        compare(part(tiles[3], "news").wait, 0, "its step has passed");
+        Greet.now = () => 1001 + Tokens.durationModerate;
+        tellAll([tiles[0]]);
+        tryCompare(Greet, "told", 1, 500, "a new run of news");
+        compare(part(tiles[0], "news").wait, 0);
+    }
+
+    function test_news_on_one_tile_alone_waits_nothing_and_a_tile_told_twice_before_the_frame_joins_once() {
+        const tile = createTemporaryObject(liveTile, testCase);
+        const stat = part(tile, "stat");
+        tile.news("peek", () => stat.value = "413");
+        tile.news("peek", () => stat.value = "414");
+        wait(0);
+        compare(part(tile, "news").wait, 0);
+        compare(Greet.told, 1);
+    }
+
+    function test_news_whose_step_has_passed_waits_nothing_though_the_tile_waited_last_time() {
+        const first = createTemporaryObject(liveTile, testCase, { x: 100, y: 100 });
+        const second = createTemporaryObject(liveTile, testCase, { x: 100, y: 300 });
+        waitForRendering(second);
+        Greet.now = () => 1000;
+        tellAll([first, second]);
+        tryCompare(part(second, "news"), "wait", Tokens.durationGreet);
+        Greet.now = () => 1000 + 3 * Tokens.durationGreet;
+        tellAll([second]);
+        wait(0);
+        compare(part(second, "news").wait, 0);
+        compare(part(second, "peekRun").animations[0].duration, 0, "no pause before the motion");
+    }
+
+    function test_while_it_waits_a_peek_shows_the_old_number_standing_and_a_flip_stands_unturned_changing_only_after() {
+        const first = createTemporaryObject(liveTile, testCase, { x: 100, y: 100 });
+        const second = createTemporaryObject(liveTile, testCase, { x: 100, y: 300 });
+        const third = createTemporaryObject(liveTile, testCase, { x: 100, y: 500, status: "info" });
+        waitForRendering(third);
+        tellAll([first, second]);
+        third.news("flip", () => third.status = "error");
+        tryCompare(part(third, "news"), "wait", 2 * Tokens.durationGreet);
+        compare(part(second, "news").wait, Tokens.durationGreet);
+        const ghost = part(second, "ghost");
+        verify(ghost.visible, "the old number stands");
+        compare(ghost.opacity, 1);
+        compare(ghost.value, "412");
+        compare(part(second, "incoming").opacity, 0, "the new one waits below");
+        compare(part(second, "peek").phase, 0);
+        compare(part(third, "news").flipAngle, 0, "unturned");
+        compare(third.status, "info", "unchanged while it waits");
+        tryVerify(() => part(third, "flip").phase > 0, Tokens.durationModerate, "then it turns");
+        compare(third.status, "info", "the change comes halfway through the turn, not before");
+        tryCompare(third, "status", "error", Tokens.durationModerate * 3);
+    }
+
+    function test_under_reduced_motion_news_on_several_tiles_comes_at_once() {
+        Prefs.motion = "off";
+        const tiles = [0, 1, 2].map(k => createTemporaryObject(liveTile, testCase, { x: 100, y: 100 + 200 * k }));
+        tellAll(tiles);
+        compare(tiles.map(tile => part(tile, "stat").value), ["413", "413", "413"]);
+        wait(0);
+        compare(waitsOf(tiles), [0, 0, 0]);
+        verify(tiles.every(tile => !part(tile, "ghost").visible));
+    }
+
     function test_under_reduced_motion_end_states_come_at_once_and_values_keep_updating() {
         Prefs.motion = "off";
         const tile = createTemporaryObject(liveTile, testCase, { arrival: "arriving", buildIndex: 4 });
@@ -568,11 +701,13 @@ TestCase {
         return list;
     }
 
-    function buildingIn(progress) {
+    // The build-in at `share` of duration-long: the rise on its curve, the fade whole after duration-short of it.
+    function buildingIn(share) {
         return (tile, stat, spark) => {
             tile.arrival = "arriving";
-            seek(tile, "buildIn", "progress", progress);
-            seek(spark, "drawIn", "progress", progress);
+            seek(tile, "buildIn", "rise", landing.valueForProgress(share));
+            part(tile, "buildIn").fade = landing.valueForProgress(Math.min(1, share * Tokens.durationLong / Tokens.durationShort));
+            seek(spark, "drawIn", "progress", share);
         };
     }
 

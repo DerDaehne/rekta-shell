@@ -70,6 +70,7 @@ PressOutside 1.0 PressOutside.qml
 singleton Turnstile 1.0 Turnstile.qml
 singleton FadeBack 1.0 FadeBack.qml
 Sparkline 1.0 Sparkline.qml
+singleton Greet 1.0 Greet.qml
 TileNews 1.0 TileNews.qml
 Toaster 1.0 Toaster.qml
 Toast 1.0 Toast.qml

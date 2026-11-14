@@ -186,10 +186,9 @@ QtObject {
     readonly property real sameHeftStagger: 0.5
     readonly property real sameHeftWithin: 0.05
 
-    // ponytail: the build-in is Rekta 0.5.0's, a 6px rise delayed by `min(var(--rk-i, 0), 10) * duration-stagger`; 0.6.0
-    // rises arrive-distance, duration-greet apart and four steps at most (rekta.css:97–104, :188).
-    readonly property real buildInRise: 6
-    readonly property int buildInStaggerCap: 10
+    // Tiles building in, and tiles with news at once, follow one another four steps at most, the rest with the fourth:
+    // `min(var(--rk-i, 0), 3)` (rekta.css:103–104), `Math.min(news.n, 3)` (rekta.js:4146)
+    readonly property int greetSteps: 3
     // Coming and going in a list or a grid (rekta.js:4085–4086, :4093, :4096–4097, :4117): a tile arrives from
     // `translateY(6px) scale(0.96)`, a row from `translateY(-6px)`; both leave over `duration-short * 0.6`, a tile to
     // `scale(0.9)`, a row to `translateX(12px)`; past `going.length + coming.length > 60` the change applies at once.

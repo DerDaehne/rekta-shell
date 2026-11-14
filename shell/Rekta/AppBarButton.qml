@@ -8,7 +8,8 @@ import QtQuick
 // reason shows as its tooltip (on touch when it is tapped) and moves into "more" with it, as Rekta has it in the
 // bar (forms.md:304–313). A count follows the word ("meldungen 3"); a new count peeks in as a live tile's news
 // does (motion.md, "Live tile news"; rekta.js tileUpdate()): the old one leaves upwards over 0.6 ×
-// duration-moderate while the new one rises from below over 0.8 ×, after 0.2 ×.
+// duration-moderate while the new one rises from below over 0.8 ×, after 0.2 ×; with news on other tiles at once, one
+// after another (Greet).
 Item {
     id: control
 
@@ -16,6 +17,8 @@ Item {
     property string text
     // 0 shows none.
     property int count: 0
+    // How long the count's peek waits for its step among the tiles with news at once, in ms.
+    property real peekWait: 0
     readonly property string words: count > 0 ? `${text} ${count}` : text
     property string disabledReason
     // Higher stays longer when the bar is full; the least important moves into "more" first (rekta.js appbar()).
@@ -126,10 +129,23 @@ Item {
             return;
         peek.was = peek.now;
         peek.now = count;
-        if (away)
+        if (away) {
             peekRun.complete();
-        else
-            peekRun.restart();
+            return;
+        }
+        peekWait = 0;
+        peek.phase = 0;
+        peekRun.restart();
+        Greet.join(control);
+    }
+
+    // Its step comes (Greet): the peek starts over behind the wait, nothing having moved yet.
+    function waitFor(ms: real) {
+        peekWait = ms;
+        if (ms === 0 || !peekRun.running)
+            return;
+        peek.phase = 0;
+        peekRun.restart();
     }
 
     // Focus comes only from the keyboard, so the reason shows at once.
@@ -336,15 +352,26 @@ Item {
         readonly property real rising: easeIn.valueForProgress(Math.max(0, (phase - Geometry.peekInDelay) / Geometry.peekInShare))
     }
 
-    NumberAnimation {
+    // The wait before the peek, then the peek itself; its duration is the peek's own.
+    SequentialAnimation {
         id: peekRun
 
+        readonly property alias duration: peekMotion.duration
+
         objectName: "peekRun"
-        target: peek
-        property: "phase"
-        from: 0
-        to: 1
-        duration: Tokens.durationModerate
+
+        PauseAnimation {
+            duration: control.peekWait
+        }
+        NumberAnimation {
+            id: peekMotion
+
+            target: peek
+            property: "phase"
+            from: 0
+            to: 1
+            duration: Tokens.durationModerate
+        }
     }
 
     // The face's last way, away or back; phase runs 0 to 1, linear, over that way's time, and each way eases its own curve.

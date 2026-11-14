@@ -94,6 +94,9 @@ TestCase {
 
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
+        // No news came before this test.
+        Greet.since = -Infinity;
+        Greet.told = 0;
     }
 
     function cleanup() {
@@ -272,6 +275,25 @@ TestCase {
         tryVerify(() => !findChild(control, "peekRun").running);
         compare(findChild(control, "count").opacity, 1);
         verify(!findChild(control, "ghost").visible);
+    }
+
+    // A notification counts on an app's tile in the Start and in the bar at once; the bar lies below the tile.
+    function test_a_count_with_news_at_once_as_a_tile_above_it_peeks_duration_greet_after_the_tile() {
+        const tile = createTemporaryQmlObject(`import QtQuick
+            import Rekta
+            Tile { x: 100; y: 100; Stat { objectName: "stat"; value: "3"; label: "unread" } }`, testCase);
+        const control = createTemporaryObject(buttonComponent, testCase, { count: 3, y: 600 });
+        waitForRendering(control);
+        control.count = 4;
+        tile.news("peek", () => findChild(tile, "stat").value = "4");
+        tryCompare(control, "peekWait", Tokens.durationGreet);
+        compare(findChild(tile, "news").wait, 0, "the tile above goes first");
+        const run = findChild(control, "peekRun");
+        verify(run.running);
+        compare(run.animations[0].duration, Tokens.durationGreet, "its wait comes before its motion");
+        compare(run.duration, Tokens.durationModerate, "the peek itself keeps its time");
+        compare(findChild(control, "peek").phase, 0, "the old count stands while it waits");
+        compare(findChild(control, "ghost").opacity, 1);
     }
 
     // Holds the way the face of `control` has begun, away or back, and sets it `share` of the way along its time.

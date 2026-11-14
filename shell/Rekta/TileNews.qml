@@ -4,7 +4,7 @@ import QtQuick
 // new number: the part that peeks as it was leaves upwards over 0.6 × that while the new one rises from below over 0.8 ×,
 // after 0.2 ×. A flip, for a new status: the tile turns away around its horizontal axis over the first half, changes, and
 // turns back. A continuous reading is no news and changes in place. While held, news waits, and comes in one step when
-// the tile is let go (live.md, "Holding still").
+// the tile is let go (live.md, "Holding still"). News on several tiles at once comes one after another (Greet).
 Item {
     id: news
 
@@ -13,6 +13,8 @@ Item {
     // The part the tile marks to peek (rekta.js:4200), a count.
     property TextRole marked: null
     property bool held: false
+    // How long the news waits for its step among the tiles with news at once, in ms.
+    property real wait: 0
     readonly property bool peeking: peek.target !== null
     // How far the flip has turned the tile around its horizontal axis, in degrees (as CSS rotateX).
     readonly property real flipAngle: flip.phase < 0.5 ? -Tokens.flipAngle * easeOut.valueForProgress(flip.phase * 2) : Tokens.flipAngle * (1 - easeIn.valueForProgress(flip.phase * 2 - 1))
@@ -32,6 +34,7 @@ Item {
 
     function show(kind: string, change: var) {
         finish();
+        wait = 0;
         if (kind !== "peek" && kind !== "flip") {
             change();
             return;
@@ -40,6 +43,20 @@ Item {
             startFlip(change);
         else
             startPeek(change);
+    }
+
+    // Its step comes (Greet): the motion starts over behind the wait, nothing having moved yet.
+    function waitFor(ms: real) {
+        wait = ms;
+        if (ms === 0)
+            return;
+        if (peekRun.running) {
+            peek.phase = 0;
+            peekRun.restart();
+        } else if (flipRun.running) {
+            flip.phase = 0;
+            flipRun.restart();
+        }
     }
 
     function finish() {
@@ -106,13 +123,16 @@ Item {
             return;
         peek.to = part.mapToItem(news, 0, 0);
         peek.target = part;
+        peek.phase = 0;
         peekRun.restart();
+        Greet.join(news);
     }
 
     function startFlip(change: var) {
         flip.change = change;
         flip.phase = 0;
         flipRun.restart();
+        Greet.join(news);
     }
 
     function turnOver() {
@@ -154,16 +174,27 @@ Item {
         readonly property real rising: news.easeIn.valueForProgress(Math.max(0, (phase - Geometry.peekInDelay) / Geometry.peekInShare))
     }
 
-    NumberAnimation {
+    // The wait before the peek, then the peek itself; its duration is the peek's own.
+    SequentialAnimation {
         id: peekRun
 
+        readonly property alias duration: peekMotion.duration
+
         objectName: "peekRun"
-        target: peek
-        property: "phase"
-        from: 0
-        to: 1
-        duration: Tokens.durationModerate
         onFinished: peek.target = null
+
+        PauseAnimation {
+            duration: news.wait
+        }
+        NumberAnimation {
+            id: peekMotion
+
+            target: peek
+            property: "phase"
+            from: 0
+            to: 1
+            duration: Tokens.durationModerate
+        }
     }
 
     // The stat or the marked part as it was, where it was, leaving through the tile's edge.
@@ -222,14 +253,24 @@ Item {
         }
     }
 
-    NumberAnimation {
+    SequentialAnimation {
         id: flipRun
 
+        readonly property alias duration: flipMotion.duration
+
         objectName: "flipRun"
-        target: flip
-        property: "phase"
-        from: 0
-        to: 1
-        duration: Tokens.durationModerate
+
+        PauseAnimation {
+            duration: news.wait
+        }
+        NumberAnimation {
+            id: flipMotion
+
+            target: flip
+            property: "phase"
+            from: 0
+            to: 1
+            duration: Tokens.durationModerate
+        }
     }
 }
