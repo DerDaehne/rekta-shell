@@ -645,6 +645,7 @@ TestCase {
     }
 
     function test_a_leaving_row_drifts_towards_the_trailing_edge_and_fades_then_the_rest_close_the_gap() {
+        const ticks = Glide.ticks(testCase);
         three();
         openOnMessages();
         Prefs.motion = "on";
@@ -660,15 +661,16 @@ TestCase {
         tryVerify(() => summaries().length === 2, 1000);
         compare(summaries(), ["ben", "anna"]);
         tryVerify(() => closes.length > 0 && ben.y === 0, 1000, "the rest have closed the gap");
-        const leaving = Glide.strayOf([{ steps: drifts, from: 0, to: Geometry.rowLeaveDrift }, { steps: fades, from: 1, to: 0 }], Geometry.rowLeaveShare * Tokens.durationShort, easeOut, since);
+        const leaving = Glide.strayOf([{ steps: drifts, from: 0, to: Geometry.rowLeaveDrift }, { steps: fades, from: 1, to: 0 }], Geometry.rowLeaveShare * Tokens.durationShort, easeOut, since, ticks);
         verify(leaving < 0.06, `it drifts and fades together, off by ${leaving}`);
         const left = drifts[drifts.length - 1].at;
         verify(closes[0].at >= left, "the rest wait for it");
-        const closing = Glide.strayOf([{ steps: closes, from: benWas, to: 0 }], Tokens.durationModerate, easeBase, left);
+        const closing = Glide.strayOf([{ steps: closes, from: benWas, to: 0 }], Tokens.durationModerate, easeBase, left, ticks);
         verify(closing < 0.06, `the rest close the gap, not jump: off by ${closing}`);
     }
 
     function test_the_others_make_room_along_ease_base_over_duration_moderate() {
+        const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
         const column = createTemporaryObject(roomComponent, testCase);
         const row = column.second;
@@ -677,13 +679,14 @@ TestCase {
         const since = Date.now();
         column.gone = false;
         tryVerify(() => moved.length > 0 && !column.move.running, Tokens.durationModerate * 4, "it has made room");
-        const stray = Glide.strayOf([{ steps: moved, from: 100, to: 0 }, { steps: faded, from: 0.2, to: 1 }], Tokens.durationModerate, easeBase, since);
+        const stray = Glide.strayOf([{ steps: moved, from: 100, to: 0 }, { steps: faded, from: 0.2, to: 1 }], Tokens.durationModerate, easeBase, since, ticks);
         verify(stray < 0.06, `it follows ease-base over duration-moderate, moving and fading together, off by ${stray}`);
         compare(row.y, 0);
         compare(row.opacity, 1);
     }
 
     function test_a_row_that_comes_back_slides_in_from_above_and_fades_up() {
+        const ticks = Glide.ticks(testCase);
         three();
         openOnMessages();
         keyClick(Qt.Key_Delete);
@@ -694,7 +697,7 @@ TestCase {
         const fades = Glide.record(cleo, "opacity");
         const falls = Glide.record(cleo, "y");
         tryVerify(() => fades.length > 0 && cleo.opacity === 1, Tokens.durationShort * 4, "it has arrived");
-        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: cleo.y - Geometry.rowEnterShift, to: cleo.y }], Tokens.durationShort, easeIn, since);
+        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: cleo.y - Geometry.rowEnterShift, to: cleo.y }], Tokens.durationShort, easeIn, since, ticks);
         verify(stray < 0.06, `it slides in from above and fades up together over duration-short, off by ${stray}`);
         compare(cleo.y, 0);
     }

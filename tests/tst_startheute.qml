@@ -429,6 +429,7 @@ TestCase {
     }
 
     function test_a_new_row_slides_in_from_above_over_duration_short() {
+        const ticks = Glide.ticks(testCase);
         three();
         openNow();
         const since = Date.now();
@@ -437,7 +438,7 @@ TestCase {
         const fades = Glide.record(dora, "opacity");
         const falls = Glide.record(dora, "y");
         tryVerify(() => fades.length > 0 && dora.opacity === 1, Tokens.durationShort * 4, "it has arrived");
-        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: dora.y - Geometry.rowEnterShift, to: dora.y }], Tokens.durationShort, easeIn, since);
+        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: dora.y - Geometry.rowEnterShift, to: dora.y }], Tokens.durationShort, easeIn, since, ticks);
         verify(stray < 0.06, `it slides in from above and fades up together over duration-short, off by ${stray}`);
     }
 
@@ -563,6 +564,7 @@ TestCase {
     }
 
     function test_the_waiting_button_arrives_from_above_and_fades_up() {
+        const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
         three();
         openNow();
@@ -576,7 +578,7 @@ TestCase {
         tryVerify(() => !findChild(more, "arrive").running, Tokens.durationShort * 4, "it has arrived");
         compare(more.opacity, 1);
         compare(more.transform[0].y, 0);
-        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: -Geometry.arriveDrop, to: 0 }], Tokens.durationShort, easeIn, since);
+        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: -Geometry.arriveDrop, to: 0 }], Tokens.durationShort, easeIn, since, ticks);
         verify(stray < 0.06, `it fades up from above over duration-short, off by ${stray}`);
     }
 

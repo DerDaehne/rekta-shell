@@ -266,6 +266,7 @@ TestCase {
     }
 
     function test_the_dragged_row_follows_the_pointer_and_the_others_make_room_in_duration_short() {
+        const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
         press(0);
         pull(0, Geometry.gripDragStart);
@@ -276,13 +277,14 @@ TestCase {
         compare(row("mail").offset, rowHeight() + 1, "the pointer, at once");
         verify(kalender.offset > -rowHeight(), "making room takes its time");
         tryCompare(kalender, "offset", -rowHeight(), Tokens.durationShort * 4);
-        const stray = Glide.strayOf([room], Tokens.durationShort, easeBase, since);
+        const stray = Glide.strayOf([room], Tokens.durationShort, easeBase, since, ticks);
         verify(stray < 0.06, `it makes room over duration-short, off by ${stray}`);
         compare(row("dateien").offset, 0, "rows beyond the place stay");
         release(0, rowHeight() + 1);
     }
 
     function test_on_release_everything_settles_with_flip_in_duration_moderate() {
+        const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
         press(0);
         pull(0, Geometry.gripDragStart);
@@ -296,7 +298,7 @@ TestCase {
         compare(mail.y, rowHeight() + 1, "from where it showed");
         compare(row("kalender").y, 0, "the one that made room is already there");
         tryVerify(() => settling.steps.length > 0 && settling.steps[settling.steps.length - 1].value === 0, Tokens.durationModerate * 4, "it settles");
-        const stray = Glide.strayOf([settling], Tokens.durationModerate, easeBase, since);
+        const stray = Glide.strayOf([settling], Tokens.durationModerate, easeBase, since, ticks);
         verify(stray < 0.06, `it settles over duration-moderate, off by ${stray}`);
         compare(mail.y, rowHeight());
     }
@@ -438,6 +440,7 @@ TestCase {
     }
 
     function test_a_keyboard_move_glides_with_flip_in_duration_moderate() {
+        const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
         const mail = row("mail");
         const gliding = { steps: Glide.record(mail, "offset"), from: -rowHeight(), to: 0 };
@@ -445,7 +448,7 @@ TestCase {
         keyClick(Qt.Key_Down, Qt.AltModifier);
         compare(mail.y, 0, "from where it showed");
         tryVerify(() => gliding.steps.length > 0 && gliding.steps[gliding.steps.length - 1].value === 0, Tokens.durationModerate * 4, "it glides");
-        const stray = Glide.strayOf([gliding], Tokens.durationModerate, easeBase, gliding.steps[0].at);
+        const stray = Glide.strayOf([gliding], Tokens.durationModerate, easeBase, gliding.steps[0].at, ticks);
         verify(stray < 0.06, `it glides over duration-moderate, off by ${stray}`);
         compare(mail.y, rowHeight());
         compare(row("kalender").y, 0);

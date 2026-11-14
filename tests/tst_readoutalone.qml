@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -211,10 +212,11 @@ TestCase {
         alone.away = true;
         alone.press();
         wait(500);
+        const shown = Glide.record(alone, "shown");
         const further = Date.now();
         alone.press();
         tryCompare(alone, "shown", false, 3000);
-        verify(Date.now() - further >= 500, "the further key starts the hold again");
+        verify(shown[0].at - further >= 500, "the further key starts the hold again");
         tryCompare(alone, "mapped", false, 3000);
     }
 

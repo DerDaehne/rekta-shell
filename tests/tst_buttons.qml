@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -194,11 +195,12 @@ TestCase {
         const box = findChild(button, "box");
         compare(line.y, box.height + 2, "it runs 2px under the frame");
         compare(line.width, box.width - 4);
+        const shows = Glide.record(line, "visible");
         const began = Date.now();
         button.pending = true;
         verify(!line.visible, "not at once");
         tryCompare(line, "visible", true, Tokens.durationBusyDelay * 2);
-        verify(Date.now() - began >= Tokens.durationBusyDelay / 2, "not before busy-delay");
+        verify(shows[0].at - began >= Tokens.durationBusyDelay / 2, "not before busy-delay");
         button.pending = false;
         compare(findChild(button, "label").text, "save schedule");
         verify(!line.visible, "the line goes with the label");

@@ -5,6 +5,7 @@ import QtTest
 import KeyMap
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -215,9 +216,12 @@ TestCase {
 
     function test_meta_held_alone_for_long_press_shows_the_map_and_its_end_hides_it() {
         const hold = createTemporaryObject(holdComponent, testCase);
+        const shows = Glide.record(hold, "showing");
+        const began = Date.now();
         hold.alone();
         verify(!hold.showing);
         tryCompare(hold, "showing", true, 3 * Tokens.durationLongPress);
+        verify(shows[0].at - began >= 0.8 * Tokens.durationLongPress, "not before long-press");
         hold.ended();
         verify(!hold.showing);
     }

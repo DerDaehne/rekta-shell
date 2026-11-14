@@ -344,6 +344,7 @@ TestCase {
     }
 
     function test_the_glide_and_the_size_change_take_their_own_times() {
+        const ticks = Glide.ticks(testCase);
         const pivot = createTemporaryObject(pivotComponent, testCase);
         const strip = findChild(pivot, "strip");
         const glide = findChild(pivot, "glide");
@@ -358,9 +359,9 @@ TestCase {
         compare(strip.contentX, strip.contentWidth - strip.width, "at the end of the strip");
         compare(word.shrink, 1, "the size change is over");
         glides.to = strip.contentX;
-        const sizeStray = Glide.strayOf([sizes], Tokens.durationPivotSize, easeInOut, since);
+        const sizeStray = Glide.strayOf([sizes], Tokens.durationPivotSize, easeInOut, since, ticks);
         verify(sizeStray < 0.06, `the size changes over pivot-size, off by ${sizeStray}`);
-        const glideStray = Glide.strayOf([glides], Tokens.durationPivotGlide, easePivotGlide, since);
+        const glideStray = Glide.strayOf([glides], Tokens.durationPivotGlide, easePivotGlide, since, ticks);
         verify(glideStray < 0.06, `the glide runs over pivot-glide, off by ${glideStray}`);
     }
 
@@ -454,6 +455,7 @@ TestCase {
     }
 
     function test_a_facet_comes_in_from_the_side_of_its_place_in_the_order() {
+        const ticks = Glide.ticks(testCase);
         const facets = createTemporaryObject(facetsComponent, testCase);
         const shift = findChild(facets, "shift");
         const holder = findChild(facets, "holder");
@@ -476,7 +478,7 @@ TestCase {
         tryVerify(() => !enter.running, Tokens.durationModerate * 2, "it has come in");
         compare(shift.x, 0);
         compare(holder.opacity, 1);
-        const stray = Glide.strayOf([{ steps: moves, from: Tokens.slideDistance, to: 0 }, { steps: fades, from: 0, to: 1 }], 0.75 * Tokens.durationModerate, easeOut, since);
+        const stray = Glide.strayOf([{ steps: moves, from: Tokens.slideDistance, to: 0 }, { steps: fades, from: 0, to: 1 }], 0.75 * Tokens.durationModerate, easeOut, since, ticks);
         verify(stray < 0.06, `it moves and fades in together over 0.75 × duration-moderate, off by ${stray}`);
         facets.currentIndex = 1;
         compare(shift.x, -Tokens.slideDistance, "back: from slide-distance at the leading edge");

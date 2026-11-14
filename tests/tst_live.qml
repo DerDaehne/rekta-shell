@@ -5,6 +5,7 @@ import QtQuick.Shapes
 import QtTest
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -359,9 +360,11 @@ TestCase {
         const stat = part(tile, "stat");
         const began = Date.now();
         tile.news("peek", () => stat.value = "413");
-        verify(part(tile, "ghost").visible);
-        tryCompare(part(tile, "ghost"), "visible", false, Tokens.durationModerate * 3);
-        verify(Date.now() - began >= Tokens.durationModerate / 2, "still there halfway through duration-moderate");
+        const ghost = part(tile, "ghost");
+        verify(ghost.visible);
+        const shown = Glide.record(ghost, "visible");
+        tryCompare(ghost, "visible", false, Tokens.durationModerate * 3);
+        verify(shown[0].at - began >= Tokens.durationModerate / 2, "still there halfway through duration-moderate");
         verify(!tile.clip);
     }
 

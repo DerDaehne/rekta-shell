@@ -11,21 +11,49 @@ function record(object, property) {
     return steps;
 }
 
+// The times of the animation timer's ticks while the test runs, beginning with one already taken. Every animation of
+// the thread advances on them, and under load they come late together with the steps they bound.
+function ticks(testCase) {
+    const clock = testCase.createTemporaryQmlObject(`import QtQuick
+        NumberAnimation {
+            id: clock
+            property real t
+            target: clock; property: "t"; from: 0; to: 1; duration: 1000; loops: Animation.Infinite; running: true
+        }`, testCase);
+    const at = [];
+    clock.tChanged.connect(() => at.push(Date.now()));
+    testCase.tryVerify(() => at.length > 0, 1000, "the animation timer ticks");
+    return at;
+}
+
+// Date.now() and the timer each round to the millisecond.
+const clockRounding = 2;
+
 // How far runs stray, at the most, as a share of their way, from going together along `curve` (anything with
-// valueForProgress, such as an easingCurve) over `duration` ms. Each run is { steps, from, to }, started at `since`.
-// When their clock began no one sees: Qt counts a new animation from its timer's last tick, which may lie up to a frame
-// before the start, so up to half the duration before `since` and by the first step on the way at the latest, the best
-// guess counts. A step that only sets the start tells no time (a transition may set it a frame after its clock began),
-// and a run without a step on the way never ran.
-function strayOf(runs, duration, curve, since) {
-    const moving = runs.map(run => Object.assign({}, run, { steps: run.steps.filter(step => step.value !== run.from) }));
-    if (moving.some(run => run.steps.length === 0))
+// valueForProgress, such as an easingCurve) over `duration` ms, started by what happened at `since`. Each run is
+// { steps, from, to } and must have ended on `to`. Qt counts a new animation from the timer's last tick, and a
+// transition may start a frame after its trigger, so the run's clock began no earlier than the last tick before `since`
+// and no later than the second after; within that window the best guess counts. Measured from the earliest, no run may
+// end before `duration` has passed. A step that only sets the start tells no time, and a run without a step on the way
+// never ran.
+function strayOf(runs, duration, curve, since, ticks) {
+    const before = ticks.filter(at => at < since);
+    const after = ticks.filter(at => at > since);
+    if (before.length === 0 || after.length < 2)
         return Infinity;
-    const latest = Math.min(...[].concat(...moving.map(run => run.steps.map(step => step.at))));
+    const earliest = before[before.length - 1];
+    const moving = runs.map(run => Object.assign({}, run, { steps: run.steps.filter(step => step.value !== run.from) }));
+    if (moving.some(run => run.steps.length === 0 || !endsOn(run, earliest + duration - clockRounding)))
+        return Infinity;
     let best = Infinity;
-    for (let began = since - Math.round(duration / 2); began <= latest; began++)
+    for (let began = earliest; began <= after[1]; began++)
         best = Math.min(best, Math.max(...moving.map(run => strayFrom(run, duration, curve, began))));
     return best;
+}
+
+function endsOn(run, notBefore) {
+    const last = run.steps[run.steps.length - 1];
+    return last.value === run.to && last.at >= notBefore;
 }
 
 function strayFrom(run, duration, curve, began) {

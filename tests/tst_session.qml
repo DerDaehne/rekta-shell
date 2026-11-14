@@ -5,6 +5,7 @@ import QtTest
 import Rekta
 import Session
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -491,13 +492,14 @@ TestCase {
 
     function test_the_windows_step_back_at_rektas_pace_while_the_session_is_still_open_and_only_then_it_locks() {
         Prefs.motion = "on";
+        const locks = Glide.record(testCase, "asked");
         const began = Date.now();
         button("switchUser").click();
         verify(sessionActions().leaving, "the host shows its clear surface");
         verify(sessionActions().windowsBack, "holding the keyboard, so the windows step back");
         compare(asked, [], "nothing is locked at once");
         tryCompare(testCase, "asked", [lockCall], Tokens.durationModerate * 3);
-        verify(Date.now() - began >= 0.8 * Tokens.durationModerate, "nothing is locked while they step back");
+        verify(locks[0].at - began >= 0.8 * Tokens.durationModerate, "nothing is locked while they step back");
         verify(sessionActions().windowsBack, "they stand back while it locks");
     }
 
@@ -764,8 +766,9 @@ TestCase {
     }
 
     function test_the_line_runs_down_with_the_time_left_under_motion() {
-        Prefs.motion = "on";
         startCountdown("shutdown");
+        // Motion switched on before the countdown would glide the line from full towards an empty one meanwhile.
+        Prefs.motion = "on";
         const line = part("line");
         verify(line.visible);
         compare(line.height, Geometry.toastLine);

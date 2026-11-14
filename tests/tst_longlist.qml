@@ -168,6 +168,7 @@ TestCase {
     }
 
     function test_a_press_eases_in_over_press_and_back_over_short() {
+        const ticks = Glide.ticks(testCase);
         const pressed = row(1);
         const steps = Glide.record(pressed, "sink");
         const down = Date.now();
@@ -177,9 +178,9 @@ TestCase {
         const released = Date.now();
         mouseRelease(pressed);
         tryCompare(pressed, "sink", 0, Tokens.durationShort * 3);
-        const inStray = Glide.strayOf([{ steps: sinking, from: 0, to: 1 }], Tokens.durationPress, easeBase, down);
+        const inStray = Glide.strayOf([{ steps: sinking, from: 0, to: 1 }], Tokens.durationPress, easeBase, down, ticks);
         verify(inStray < 0.06, `it eases in over duration-press, not jumps: off by ${inStray}`);
-        const backStray = Glide.strayOf([{ steps, from: 1, to: 0 }], Tokens.durationShort, easeBase, released);
+        const backStray = Glide.strayOf([{ steps, from: 1, to: 0 }], Tokens.durationShort, easeBase, released, ticks);
         verify(backStray < 0.06, `and back over duration-short: off by ${backStray}`);
     }
 

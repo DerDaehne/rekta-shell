@@ -358,6 +358,7 @@ TestCase {
     }
 
     function test_a_new_row_slides_in_over_duration_short() {
+        const ticks = Glide.ticks(testCase);
         three();
         openNow();
         const since = Date.now();
@@ -366,7 +367,7 @@ TestCase {
         const fades = Glide.record(d, "opacity");
         const falls = Glide.record(d, "y");
         tryVerify(() => fades.length > 0 && d.opacity === 1, Tokens.durationShort * 4, "it has arrived");
-        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: d.y - Geometry.rowEnterShift, to: d.y }], Tokens.durationShort, easeIn, since);
+        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: d.y - Geometry.rowEnterShift, to: d.y }], Tokens.durationShort, easeIn, since, ticks);
         verify(stray < 0.06, `it slides in from above and fades up together over duration-short, off by ${stray}`);
     }
 

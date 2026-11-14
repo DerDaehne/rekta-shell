@@ -141,6 +141,7 @@ TestCase {
     }
 
     function test_a_resized_tile_scales_from_its_old_size_and_its_content_shows_over_the_last_45_percent() {
+        const ticks = Glide.ticks(testCase);
         const tile = named("tile");
         const facts = findChild(tile, "content");
         const shows = Glide.record(tile, "contentOpacity");
@@ -159,7 +160,7 @@ TestCase {
         tryVerify(() => !presence.running, 1000);
         compare(tile.contentOpacity, 1);
         const lastShare = { valueForProgress: share => Math.max(0, share - Geometry.resizeContentFrom) / (1 - Geometry.resizeContentFrom) };
-        const stray = Glide.strayOf([{ steps: shows, from: 0, to: 1 }], Tokens.durationModerate, lastShare, since);
+        const stray = Glide.strayOf([{ steps: shows, from: 0, to: 1 }], Tokens.durationModerate, lastShare, since, ticks);
         verify(stray < 0.06, `hidden before 55%, then shown evenly to the end: off by ${stray}`);
         compare(tile.width, 2 * Tokens.tileUnit + Tokens.spaceS);
     }

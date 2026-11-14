@@ -442,6 +442,7 @@ TestCase {
     }
 
     function test_after_a_row_has_left_the_others_close_the_gap_over_duration_moderate() {
+        const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
         const gone = row("org.gone.app");
         const closing = { steps: Glide.record(gone, "offset"), to: 0 };
@@ -450,7 +451,7 @@ TestCase {
         verify(gone.offset > 0, "it starts where it showed");
         closing.from = closing.steps[0].value;
         tryVerify(() => closing.steps.length > 0 && closing.steps[closing.steps.length - 1].value === 0, Tokens.durationModerate * 4, "the gap closes");
-        const stray = Glide.strayOf([closing], Tokens.durationModerate, easeBase, closing.steps[0].at);
+        const stray = Glide.strayOf([closing], Tokens.durationModerate, easeBase, closing.steps[0].at, ticks);
         verify(stray < 0.06, `the gap closes over duration-moderate, off by ${stray}`);
     }
 
@@ -739,6 +740,7 @@ TestCase {
     }
 
     function test_after_a_move_the_rows_settle_over_duration_moderate() {
+        const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
         const settings = row("Systemeinstellungen");
         settings.grip.forceActiveFocus();
@@ -747,7 +749,7 @@ TestCase {
         verify(settings.offset < 0, "it glides from where it showed");
         settling.from = settling.steps[0].value;
         tryVerify(() => settling.steps.length > 0 && settling.steps[settling.steps.length - 1].value === 0, Tokens.durationModerate * 4, "it settles");
-        const stray = Glide.strayOf([settling], Tokens.durationModerate, easeBase, settling.steps[0].at);
+        const stray = Glide.strayOf([settling], Tokens.durationModerate, easeBase, settling.steps[0].at, ticks);
         verify(stray < 0.06, `it settles over duration-moderate, off by ${stray}`);
     }
 

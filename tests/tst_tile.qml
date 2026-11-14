@@ -196,6 +196,7 @@ TestCase {
     }
 
     function test_it_sinks_in_over_duration_press_and_comes_back_over_duration_short() {
+        const ticks = Glide.ticks(testCase);
         const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
         const steps = Glide.record(tile, "sink");
         const pressed = Date.now();
@@ -205,9 +206,9 @@ TestCase {
         const released = Date.now();
         mouseRelease(tile, tile.width / 2, tile.height / 2);
         tryCompare(tile, "sink", 0, Tokens.durationShort * 3);
-        const inStray = Glide.strayOf([{ steps: sinking, from: 0, to: 1 }], Tokens.durationPress, easeBase, pressed);
+        const inStray = Glide.strayOf([{ steps: sinking, from: 0, to: 1 }], Tokens.durationPress, easeBase, pressed, ticks);
         verify(inStray < 0.06, `in over duration-press, off by ${inStray}`);
-        const backStray = Glide.strayOf([{ steps, from: 1, to: 0 }], Tokens.durationShort, easeBase, released);
+        const backStray = Glide.strayOf([{ steps, from: 1, to: 0 }], Tokens.durationShort, easeBase, released, ticks);
         verify(backStray < 0.06, `back over duration-short, off by ${backStray}`);
     }
 
@@ -391,11 +392,12 @@ TestCase {
         const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
         const activations = createTemporaryObject(spy, testCase, { target: tile });
         const touch = touchEvent(tile);
+        const asks = Glide.record(asked, "count");
         const pressed = Date.now();
         touch.press(0, tile, 40, 60).commit();
         compare(asked.count, 0, "not at once");
         tryCompare(asked, "count", 1, Tokens.durationLongPress * 2);
-        verify(Date.now() - pressed >= Tokens.durationLongPress * 0.8, "not before long-press");
+        verify(asks[0].at - pressed >= Tokens.durationLongPress * 0.8, "not before long-press");
         compare(asked.signalArguments[0][0], Qt.point(40, 60));
         touch.release(0, tile, 40, 60).commit();
         compare(activations.count, 0);

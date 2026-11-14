@@ -180,10 +180,15 @@ TestCase {
 
     function test_quick_work_never_shows_the_busy_line() {
         const line = createTemporaryObject(busyComponent, testCase);
+        const shows = Glide.record(line, "shown");
+        const began = Date.now();
         line.busy = true;
+        wait(Tokens.durationBusyDelay / 3);
+        const worked = Date.now() - began;
         line.busy = false;
         wait(Tokens.durationBusyDelay);
-        verify(!line.shown);
+        // A wait stretched by load to busy-delay is no quick work, and Qt may fire a coarse timer up to 5 % early.
+        verify(shows.length === 0 || worked >= 0.95 * Tokens.durationBusyDelay, `it showed after ${worked} ms of work`);
     }
 
     function test_under_reduced_motion_the_busy_line_stands_at_full_width_in_medium_contrast() {
