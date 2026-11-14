@@ -954,6 +954,9 @@ TestCase {
         fuzzyCompare(panel.x, 900 - 0.2 * side.panelWidth, 0.01, "also back");
         side.drawIn(1.4);
         compare(side.entry, 1, "never further in than its place");
+        side.drawIn(-0.3);
+        compare(side.entry, 0, "nor further out than the trailing edge");
+        verify(side.open, "and it shows until the swipe lets go");
     }
 
     function test_a_swipe_let_go_at_half_its_width_has_the_panel_come_in_with_the_focus_on_its_first_control() {
@@ -1010,6 +1013,18 @@ TestCase {
         compare(side.entry, 1);
     }
 
+    function test_closed_while_a_swipe_draws_it_in_it_goes_and_the_swipe_brings_it_back_no_more() {
+        Prefs.motion = "on";
+        side.drawIn(0.8);
+        side.toggle(0, false);
+        verify(findChild(side, "goingOut").running, "it goes");
+        side.letGoIn();
+        verify(!findChild(side, "comingIn").running, "the letting go does not bring it back");
+        tryCompare(side, "open", false, Tokens.durationModerate * 4);
+        side.drawIn(0);
+        verify(!side.open, "nor does the swipe, back where it set out");
+    }
+
     function test_a_swipe_drawing_out_follows_and_past_half_its_width_the_panel_goes_and_gives_the_focus_back() {
         side.show(0);
         const panel = findChild(side, "panel");
@@ -1031,6 +1046,21 @@ TestCase {
         tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
         verify(side.open);
         verify(control("density").activeFocus, "with the focus where it was");
+    }
+
+    function test_each_swipe_is_let_go_only_by_its_own_letting_go() {
+        side.drawIn(0.3);
+        side.drawOut(0.6);
+        compare(side.entry, 0.3, "a swipe out leaves the swipe in where it is");
+        side.letGoOut();
+        verify(side.open, "and so does its letting go");
+        compare(side.entry, 0.3);
+        side.drawIn(0.8);
+        side.letGoIn();
+        compare(side.entry, 1);
+        side.drawOut(0.3);
+        side.letGoIn();
+        fuzzyCompare(side.entry, 0.7, 0.0001, "and a swipe in let go the swipe out");
     }
 
     function test_a_swipe_drawing_out_while_the_panel_is_away_or_over_an_open_sheet_does_nothing() {
