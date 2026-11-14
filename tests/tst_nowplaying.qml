@@ -751,7 +751,7 @@ TestCase {
         verify(stray < 0.06, `it slides and fades together along ease-out, off by ${stray}`);
     }
 
-    function test_after_previous_the_track_before_slides_in_from_the_leading_edge() {
+    function test_after_previous_the_track_before_slides_in_once_from_the_leading_edge_however_its_words_arrive() {
         const ticks = Glide.ticks(testCase);
         const one = givePlayer();
         showSettled();
@@ -761,8 +761,11 @@ TestCase {
         compare(one.calls, ["previous"]);
         const since = Date.now();
         nextTrack(one);
+        one.trackArtist = "Portishead";
+        one.trackAlbum = "Dummy";
         const stray = cameIn(recorded, -Tokens.slideDistance, since, ticks);
         verify(stray < 0.06, `off by ${stray}`);
+        compare(recorded.shifts.filter(step => Math.abs(step.value) === Tokens.slideDistance).length, 1, "it comes in once");
     }
 
     function test_a_media_key_back_also_brings_the_track_from_the_leading_edge_and_the_next_one_after_it_from_the_trailing() {
@@ -793,7 +796,7 @@ TestCase {
         verify(stray < 0.06, `off by ${stray}`);
     }
 
-    function test_a_pick_in_the_select_slides_the_picked_players_track_in_from_its_side_of_the_select() {
+    function test_a_pick_in_the_select_slides_the_picked_players_track_in_from_its_side_of_the_select_while_the_select_stays_still() {
         const ticks = Glide.ticks(testCase);
         const browser = player({ identity: "Firefox", playbackState: PlayerChoice.Paused, trackTitle: "A talk" });
         controls.choice.players = [browser, player()];
@@ -801,12 +804,16 @@ TestCase {
         Prefs.motion = "on";
         const picker = part("player");
         let recorded = entry();
+        const pickerX = picker.mapToItem(recorded.region, 0, 0).x;
         picker.forceActiveFocus();
         keyClick(Qt.Key_Return);
         keyClick(Qt.Key_Up);
         let since = Date.now();
         keyClick(Qt.Key_Return);
         compare(picker.currentText, "Firefox");
+        tryVerify(() => findChild(recorded.region, "entering").running, 1000, "the picked track comes in");
+        compare(seenOpacity(picker, recorded.region), 1, "the select stays");
+        compare(picker.mapToItem(recorded.region, 0, 0).x, pickerX, "the select stays in place");
         let stray = cameIn(recorded, -Tokens.slideDistance, since, ticks);
         verify(stray < 0.06, `one earlier in the select comes from the leading edge, off by ${stray}`);
         recorded = entry();
@@ -817,6 +824,34 @@ TestCase {
         compare(picker.currentText, "Elisa");
         stray = cameIn(recorded, Tokens.slideDistance, since, ticks);
         verify(stray < 0.06, `one later in the select comes from the trailing edge, off by ${stray}`);
+    }
+
+    function test_after_a_skip_back_that_brought_no_new_track_a_skip_forward_brings_its_track_from_the_trailing_edge() {
+        const one = givePlayer();
+        showSettled();
+        Prefs.motion = "on";
+        const recorded = entry();
+        mouseClick(part("previous"));
+        mouseClick(part("next"));
+        compare(one.calls, ["previous", "next"]);
+        nextTrack(one);
+        tryVerify(() => recorded.shifts.length > 0, 1000, "the new track comes in");
+        compare(recorded.shifts[0].value, Tokens.slideDistance);
+    }
+
+    function test_another_artist_or_album_under_the_same_title_is_another_track_and_slides_in() {
+        const one = givePlayer();
+        showSettled();
+        Prefs.motion = "on";
+        let recorded = entry();
+        one.trackArtist = "Portishead";
+        tryVerify(() => recorded.shifts.length > 0, 1000, "another artist comes in");
+        compare(recorded.shifts[0].value, Tokens.slideDistance);
+        tryVerify(() => !findChild(recorded.region, "entering").running, 1000);
+        recorded = entry();
+        one.trackAlbum = "Dummy";
+        tryVerify(() => recorded.shifts.length > 0, 1000, "another album comes in");
+        compare(recorded.shifts[0].value, Tokens.slideDistance);
     }
 
     function test_the_first_display_and_new_data_of_the_same_track_stand_still() {
