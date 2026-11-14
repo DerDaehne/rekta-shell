@@ -21,6 +21,7 @@ TestCase {
     height: 800
 
     readonly property easingCurve easeBase: ({ type: Easing.Bezier, bezierCurve: Tokens.easeBase })
+    readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
 
     readonly property string pinkIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGN4aTWLbMQwqnlU86jmUc0DqxkAreu3b+7dCC4AAAAASUVORK5CYII="
 
@@ -221,8 +222,8 @@ TestCase {
         combo().choose(combo().shown.findIndex(option => option.value === id));
     }
 
-    // Pulls a row's name towards the trailing edge by a share of the row's width and lets it go.
-    function pull(target: var, share: real) {
+    // Pulls a row's name towards the trailing edge by a share of the row's width, still held; returns where in the scene.
+    function drag(target: var, share: real): point {
         const scene = view.Window.window.contentItem;
         const from = findChild(target, "pullArea").mapToItem(scene, 40, target.height / 2);
         const to = from.x + share * target.width;
@@ -230,7 +231,16 @@ TestCase {
         mouseMove(scene, from.x + 20, from.y);
         mouseMove(scene, (from.x + to) / 2, from.y);
         mouseMove(scene, to, from.y);
-        mouseRelease(scene, to, from.y);
+        return Qt.point(to, from.y);
+    }
+
+    function letGo(at: point) {
+        mouseRelease(view.Window.window.contentItem, at.x, at.y);
+    }
+
+    // Pulls it and lets it go.
+    function pull(target: var, share: real) {
+        letGo(drag(target, share));
     }
 
     function test_each_entry_of_the_file_is_a_row_in_the_files_order_with_grip_icon_name_size_and_loesen() {
@@ -415,30 +425,39 @@ TestCase {
     }
 
     function test_a_leaving_row_drifts_twelve_pixels_and_fades_over_point_six_of_duration_short() {
+        const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
         const dolphin = row("Dolphin");
+        const drifts = Glide.record(dolphin.transform[0], "x");
+        const fades = Glide.record(dolphin, "opacity");
+        const since = Date.now();
         findChild(dolphin, "remove").clicked();
         verify(dolphin.going);
         compare(file.text, usersFile, "the entry goes once the row has left");
         const goingOut = findChild(dolphin, "goingOut");
         compare(goingOut.duration, Geometry.rowLeaveShare * Tokens.durationShort);
         compare(goingOut.easing.bezierCurve, Tokens.easeOut);
-        tryVerify(() => dolphin.leaving > 0.3 && dolphin.leaving < 1);
-        fuzzyCompare(dolphin.transform[0].x, dolphin.leaving * Geometry.rowLeaveDrift, 0.01);
-        fuzzyCompare(dolphin.opacity, 1 - dolphin.leaving, 0.01);
-        tryCompare(testCase, "listedIdsNow", ["systemsettings", "org.gone.app", "org.kde.konsole"], Geometry.rowLeaveShare * Tokens.durationShort + 500);
+        tryCompare(testCase, "listedIdsNow", ["systemsettings", "org.gone.app", "org.kde.konsole"]);
+        const stray = Glide.strayOf([{ steps: drifts, from: 0, to: Geometry.rowLeaveDrift }, { steps: fades, from: 1, to: 0 }], Geometry.rowLeaveShare * Tokens.durationShort, easeOut, since, ticks);
+        verify(stray < 0.06, `it drifts and fades together, off by ${stray}`);
     }
 
     function test_a_row_let_go_past_half_its_width_goes_on_to_its_full_width_fading_over_point_six_of_duration_short() {
+        const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
         const dolphin = row("Dolphin");
-        pull(dolphin, 0.6);
+        const at = drag(dolphin, 0.6);
         const pulled = dolphin.pulled;
         verify(pulled > 0.5 * dolphin.width);
-        tryVerify(() => dolphin.leaving > 0.3 && dolphin.leaving < 1);
-        fuzzyCompare(dolphin.transform[0].x, pulled + dolphin.leaving * (dolphin.width - pulled), 0.01);
-        fuzzyCompare(dolphin.opacity, 1 - dolphin.leaving, 0.01);
-        tryCompare(testCase, "listedIdsNow", ["systemsettings", "org.gone.app", "org.kde.konsole"], Geometry.rowLeaveShare * Tokens.durationShort + 500);
+        // Summed as the row sums it, so the last step equals it exactly.
+        const fullWidth = pulled + (dolphin.width - pulled);
+        const goes = Glide.record(dolphin.transform[0], "x");
+        const fades = Glide.record(dolphin, "opacity");
+        const since = Date.now();
+        letGo(at);
+        tryCompare(testCase, "listedIdsNow", ["systemsettings", "org.gone.app", "org.kde.konsole"]);
+        const stray = Glide.strayOf([{ steps: goes, from: pulled, to: fullWidth }, { steps: fades, from: 1, to: 0 }], Geometry.rowLeaveShare * Tokens.durationShort, easeOut, since, ticks);
+        verify(stray < 0.06, `on from where it was let go to its full width, fading as it goes, off by ${stray}`);
     }
 
     function test_after_a_row_has_left_the_others_close_the_gap_over_duration_moderate() {

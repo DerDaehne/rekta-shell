@@ -622,6 +622,7 @@ TestCase {
     }
 
     function test_a_row_let_go_past_half_its_width_goes_on_to_its_full_width_fading_then_the_rest_close_the_gap() {
+        const ticks = Glide.ticks(testCase);
         three();
         openOnMessages();
         Prefs.motion = "on";
@@ -632,16 +633,22 @@ TestCase {
         compare(goingOut.duration, Geometry.rowLeaveShare * Tokens.durationShort);
         compare(goingOut.easing.type, Easing.Bezier);
         compare(goingOut.easing.bezierCurve, Tokens.easeOut);
-        pull(ben, 0.6, true);
+        pull(ben, 0.6, false);
         const pulled = ben.pulled;
         verify(pulled > 0.5 * ben.width);
+        // Summed as the row sums it, so the last step equals it exactly.
+        const fullWidth = pulled + (ben.width - pulled);
         const going = findChild(ben, "content");
-        tryVerify(() => ben.leaving > 0.3 && ben.leaving < 1, 1000, "it leaves");
-        fuzzyCompare(going.x, pulled + ben.leaving * (ben.width - pulled), 0.01, "on from where it was let go to its full width");
-        fuzzyCompare(going.opacity, 1 - ben.leaving, 0.01, "fading as it goes");
-        compare(anna.y, annaWas, "the rest wait for it");
+        const goes = Glide.record(going, "x");
+        const fades = Glide.record(going, "opacity");
+        const closes = Glide.record(anna, "y");
+        const since = Date.now();
+        mouseRelease(ben, 10 + 0.6 * ben.width, ben.height / 2);
         tryVerify(() => summaries().length === 2, 1000);
+        const leaving = Glide.strayOf([{ steps: goes, from: pulled, to: fullWidth }, { steps: fades, from: 1, to: 0 }], Geometry.rowLeaveShare * Tokens.durationShort, easeOut, since, ticks);
+        verify(leaving < 0.06, `on from where it was let go to its full width, fading as it goes, off by ${leaving}`);
         tryVerify(() => anna.y < annaWas, 1000, "then the rest close the gap");
+        verify(closes[0].order > goes[goes.length - 1].order, "the rest wait for it");
     }
 
     function test_a_leaving_row_drifts_towards_the_trailing_edge_and_fades_then_the_rest_close_the_gap() {
