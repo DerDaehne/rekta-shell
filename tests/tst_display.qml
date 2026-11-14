@@ -323,6 +323,11 @@ TestCase {
         verify(!display.visible);
     }
 
+    // PipeWire tells a value in an event of its own, after the key's: lets the events pending until now run.
+    function nextEvent() {
+        wait(0);
+    }
+
     function saidWords(): var {
         return said.signalArguments.map(args => args[0]);
     }
@@ -366,9 +371,11 @@ TestCase {
         readout.pressed.connect(display.press);
         readout.news.connect(display.say);
         readout.shortcutPressed("kmix", "increase_volume");
+        nextEvent();
         readout.volume = 0.86;
         tryCompare(said, "count", 1);
         readout.shortcutPressed("kmix", "mic_mute");
+        nextEvent();
         readout.micMuted = true;
         tryCompare(said, "count", 2);
         compare(saidWords(), ["lautstärke 86%", "mikrofon stumm"]);

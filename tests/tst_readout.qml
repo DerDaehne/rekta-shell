@@ -131,6 +131,11 @@ TestCase {
         compare(readout.valueText, "English (US)");
     }
 
+    // PipeWire tells a value in an event of its own, after the key's: lets the events pending until now run.
+    function nextEvent() {
+        wait(0);
+    }
+
     function told(): var {
         return news.signalArguments.map(args => args[0]);
     }
@@ -138,6 +143,7 @@ TestCase {
     function test_a_volume_key_brings_news_only_with_the_value_that_follows_it() {
         readout.shortcutPressed("kmix", "increase_volume");
         compare(news.count, 0);
+        nextEvent();
         readout.volume = 0.86;
         tryCompare(news, "count", 1);
         compare(told(), ["lautstärke 86%"]);
@@ -145,9 +151,11 @@ TestCase {
 
     function test_a_volume_key_then_a_microphone_key_bring_each_value_they_resulted_in_whole_and_nothing_stale() {
         readout.shortcutPressed("kmix", "increase_volume");
+        nextEvent();
         readout.volume = 0.86;
         tryCompare(news, "count", 1);
         readout.shortcutPressed("kmix", "mic_mute");
+        nextEvent();
         readout.micMuted = true;
         tryCompare(news, "count", 2);
         compare(told(), ["lautstärke 86%", "mikrofon stumm"]);
@@ -157,6 +165,7 @@ TestCase {
         readout.volume = 1;
         readout.shortcutPressed("kmix", "increase_volume");
         compare(pressed.count, 1);
+        nextEvent();
         readout.volume = 0.95;
         tryCompare(news, "count", 1);
         compare(told(), ["lautstärke 95%"]);
@@ -164,6 +173,7 @@ TestCase {
 
     function test_a_volume_and_its_mute_changing_together_bring_one_piece_of_news() {
         readout.shortcutPressed("kmix", "mute");
+        nextEvent();
         readout.volume = 0.5;
         readout.muted = true;
         tryCompare(news, "count", 1);
@@ -172,8 +182,11 @@ TestCase {
 
     function test_a_change_that_reads_the_same_brings_no_news_and_one_of_another_kind_none_either() {
         readout.shortcutPressed("kmix", "increase_volume");
+        nextEvent();
         readout.volume = 0.812;
+        nextEvent();
         readout.micVolume = 0.3;
+        nextEvent();
         readout.volume = 0.9;
         tryCompare(news, "count", 1);
         compare(told(), ["lautstärke 90%"]);
