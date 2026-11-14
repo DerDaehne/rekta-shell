@@ -250,6 +250,7 @@ Rectangle {
     }
 
     function arrange(room: string, still: bool) {
+        placeCentre();
         for (const item of plan.sides.reduce((items, region) => items.concat(region.items), [])) {
             const middle = item as AppBarMiddle;
             if (middle)
@@ -285,11 +286,15 @@ Rectangle {
         buttons().forEach(control => (control.held = !motion.known.includes(control)));
     }
 
+    // The centre never waits for the others: it stays centred while a control fades out to make room for it.
+    function placeCentre() {
+        if (!centre)
+            return;
+        centre.x = Math.round((width - centre.implicitWidth) / 2);
+        centre.y = Math.round((height - centre.height) / 2);
+    }
+
     function layOut(glide: bool) {
-        if (centre) {
-            centre.x = Math.round((width - centre.implicitWidth) / 2);
-            centre.y = Math.round((height - centre.height) / 2);
-        }
         const targets = [];
         plan.sides.forEach(region => place(region, targets));
         motion.show(targets, glide);

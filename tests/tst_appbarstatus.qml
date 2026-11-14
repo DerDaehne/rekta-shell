@@ -493,6 +493,29 @@ TestCase {
         verify(word("microphone").visible && word("microphone").fading, "it fades out where it stands");
     }
 
+    // The clock grows at once; its neighbours make room only after the control has faded and they have glided.
+    function test_a_clock_that_widens_and_costs_a_control_its_place_stays_centred_while_the_control_fades_and_clear_once_it_has() {
+        Prefs.motion = "on";
+        makeScene({ shown: everything, reserve: 0, clockNow: testCase.narrowestClock });
+        findChild(scene, "background").present = false;
+        settle();
+        const clock = findChild(scene, "clock");
+        const centred = () => Math.round((scene.bar.width - clock.implicitWidth) / 2);
+        const trailingRoom = findChild(scene, "messages").width + scene.bar.gap + findChild(scene, "controls").width;
+        scene.barWidth = barWidthFor(Math.max(scene.status.widthAt(1), trailingRoom) + 0.25);
+        settle();
+        verify(!findChild(scene, "controls").overflowed, "every control fits beside the narrow clock");
+        const narrow = clock.implicitWidth;
+        scene.clockNow = testCase.widestClock;
+        verify(clock.implicitWidth > narrow, "the clock widens");
+        tryVerify(() => findChild(scene, "controls").fading, 1000, "a control fades out into more first");
+        compare(clock.x, centred(), "the clock is centred while the control fades");
+        settle();
+        verify(findChild(scene, "controls").overflowed && scene.bar.more.visible, "the control has gone into more");
+        compare(clock.x, centred(), "the clock is centred once it has");
+        checkClear("once the others have made room", ["middle", "clock", "messages", "controls"].map(name => findChild(scene, name)).concat(testCase.keys.map(word), [scene.bar.more]));
+    }
+
     function test_a_word_that_gives_its_place_to_the_count_fades_out_as_a_control_moving_into_more_does() {
         Prefs.motion = "on";
         makeScene({ shown: [muted] });
