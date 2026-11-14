@@ -54,25 +54,27 @@ function launchContext(entry, command, stamp) {
     return context;
 }
 
-// Whether an entry runs over D-Bus: its file says DBusActivatable=true and its desktop file ID is a well-known bus name,
-// the name the running app owns (desktop-entry spec, "D-Bus Activation"). Otherwise GLib starts it by Exec, and so does
-// the shell.
-function dbusActivatable(id, file) {
-    return file?.DBusActivatable === true && id.length <= 255 && /^[A-Za-z_-][\w-]*(\.[A-Za-z_-][\w-]*)+$/.test(id);
+// The bus name of an app that runs over D-Bus, "" for any other: its file (desktopFileKeys) says DBusActivatable=true,
+// and the file's name without ".desktop", not its desktop file ID, is a well-known bus name, which the running app owns
+// (desktop-entry spec, "D-Bus Activation"). Otherwise GLib starts it by Exec, and so does the shell.
+function busName(file) {
+    const name = String(file?.path ?? "").split("/").pop().replace(/\.desktop$/, "");
+    const valid = name.length <= 255 && /^[A-Za-z_-][\w-]*(\.[A-Za-z_-][\w-]*)+$/.test(name);
+    return file?.DBusActivatable === true && valid ? name : "";
 }
 
-// The object path of an app that runs over D-Bus: "/" and its desktop file ID with "." as "/" and "-" as "_"
-// (desktop-entry spec, "D-Bus Activation").
-function applicationPath(id) {
-    return `/${id.replace(/\./g, "/").replace(/-/g, "_")}`;
+// The object path of an app that runs over D-Bus: "/" and its bus name with "." as "/" and "-" as "_" (desktop-entry
+// spec, "D-Bus Activation").
+function applicationPath(name) {
+    return `/${name.replace(/\./g, "/").replace(/-/g, "_")}`;
 }
 
 // The desktop actions of an entry ([Desktop Action] groups) as the action registry lists them, in the words the app
-// gives them and found by the app's name too. An app that runs over D-Bus (`dbusActivatable`) runs each of them there,
-// Exec or not, as the spec has a launcher do; any other app starts one as it starts itself, so one without an Exec is
-// left out. One without a name is left out too: the spec requires it.
-function desktopActions(entry, dbusActivatable, launcher) {
-    const runnable = action => action.name !== "" && (dbusActivatable || action.command.length > 0);
+// gives them and found by the app's name too. An app that runs over D-Bus under `busName` runs each of them there,
+// Exec or not, as the spec has a launcher do; any other app ("") starts one as it starts itself, so one without an
+// Exec is left out. One without a name is left out too: the spec requires it.
+function desktopActions(entry, busName, launcher) {
+    const runnable = action => action.name !== "" && (busName !== "" || action.command.length > 0);
     return Array.from(entry.actions).filter(runnable).map(action => ({
         id: `desktop/${entry.id}/${action.id}`,
         text: action.name,
@@ -80,7 +82,7 @@ function desktopActions(entry, dbusActivatable, launcher) {
         app: entry.id,
         appName: entry.name,
         icon: action.icon || entry.icon,
-        run: dbusActivatable ? () => launcher.activateAction(entry.id, action.id) : () => launcher.launchAction(entry, action)
+        run: busName !== "" ? () => launcher.activateAction(busName, action.id) : () => launcher.launchAction(entry, action)
     }));
 }
 

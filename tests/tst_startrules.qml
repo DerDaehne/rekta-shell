@@ -120,7 +120,7 @@ TestCase {
         compare(files["kde-only"].OnlyShowIn, ["KDE"]);
     }
 
-    function test_an_entry_runs_over_dbus_only_if_its_first_file_says_true_and_its_id_is_a_bus_name() {
+    function test_an_entry_runs_over_dbus_under_its_file_name_only_if_its_first_file_says_true_and_that_name_is_a_bus_name() {
         const files = Rules.desktopFileKeys([
             "/u/.local/share/applications/org.gnome.Nautilus.desktop\0Type=Application",
             "/usr/share/applications/org.gnome.Nautilus.desktop\0DBusActivatable=true",
@@ -129,28 +129,38 @@ TestCase {
             "/usr/share/applications/org.gnome.font-viewer.desktop\0DBusActivatable=true",
             "/usr/share/applications/org.example.Off.desktop\0DBusActivatable=false",
             "/usr/share/applications/org.example.Yes.desktop\0DBusActivatable=yes",
+            "/usr/share/applications/org.example.Capital.desktop\0DBusActivatable=True",
             "/usr/share/applications/gnome-mines.desktop\0DBusActivatable=true",
             "/usr/share/applications/gnome/org.example.Sub.desktop\0DBusActivatable=true",
             "/usr/share/applications/org.example.2d.desktop\0DBusActivatable=true",
+            "/usr/share/applications/org.example.c++.desktop\0DBusActivatable=true",
+            "/usr/share/applications/org.example.a@b.desktop\0DBusActivatable=true",
+            "/usr/share/applications/org.example.dot..desktop\0DBusActivatable=true",
             ""
         ].join("\n"), dirs);
-        const runsOverDbus = id => Rules.dbusActivatable(id, files[id]);
+        const busNameOf = id => Rules.busName(files[id]);
         compare(files["org.gnome.TextEditor"].DBusActivatable, true);
         compare(files["org.example.Off"].DBusActivatable, false);
-        verify(runsOverDbus("org.gnome.TextEditor"), "space around the value does not count");
-        verify(runsOverDbus("org.gnome.font-viewer"), "a dash is allowed in a bus name");
-        verify(runsOverDbus("gnome-org.example.Sub"), "a subdirectory joins the ID with a dash");
-        verify(!runsOverDbus("org.gnome.Nautilus"), "the user's own copy without the key wins");
-        verify(!runsOverDbus("org.example.Off"));
-        verify(!runsOverDbus("org.example.Yes"), "only true is true");
-        verify(!runsOverDbus("gnome-mines"), "a bus name has two elements at least");
-        verify(!runsOverDbus("org.example.2d"), "an element of a bus name does not begin with a digit");
-        verify(!runsOverDbus("org.example.unread"), "an ID grep found nothing for");
-        verify(!Rules.dbusActivatable(`org.${"x".repeat(252)}`, { DBusActivatable: true }), "a bus name has 255 characters at most");
-        verify(Rules.dbusActivatable(`org.${"x".repeat(251)}`, { DBusActivatable: true }));
+        compare(busNameOf("org.gnome.TextEditor"), "org.gnome.TextEditor", "space around the value does not count");
+        compare(busNameOf("org.gnome.font-viewer"), "org.gnome.font-viewer", "a dash is allowed in a bus name");
+        compare(busNameOf("gnome-org.example.Sub"), "org.example.Sub", "a file in a subdirectory: its name, not its desktop file ID");
+        compare(Rules.applicationPath(busNameOf("gnome-org.example.Sub")), "/org/example/Sub");
+        compare(busNameOf("org.gnome.Nautilus"), "", "the user's own copy without the key wins");
+        compare(busNameOf("org.example.Off"), "");
+        compare(busNameOf("org.example.Yes"), "", "only true is true");
+        compare(busNameOf("org.example.Capital"), "", "true is written in lower case");
+        compare(busNameOf("gnome-mines"), "", "a bus name has two elements at least");
+        compare(busNameOf("org.example.2d"), "", "an element of a bus name does not begin with a digit");
+        compare(busNameOf("org.example.c++"), "", "a bus name holds only letters, digits, _ and -");
+        compare(busNameOf("org.example.a@b"), "");
+        compare(busNameOf("org.example.dot."), "", "no element is empty");
+        compare(busNameOf("org.example.unread"), "", "an ID grep found nothing for");
+        const fileNamed = name => ({ path: `/usr/share/applications/${name}.desktop`, DBusActivatable: true });
+        compare(Rules.busName(fileNamed(`org.${"x".repeat(252)}`)), "", "a bus name has 255 characters at most");
+        compare(Rules.busName(fileNamed(`org.${"x".repeat(251)}`)), `org.${"x".repeat(251)}`);
     }
 
-    function test_an_app_that_runs_over_dbus_has_its_id_as_object_path_with_dots_as_slashes_and_dashes_as_underscores() {
+    function test_an_app_that_runs_over_dbus_has_its_bus_name_as_object_path_with_dots_as_slashes_and_dashes_as_underscores() {
         compare(Rules.applicationPath("org.gnome.TextEditor"), "/org/gnome/TextEditor");
         compare(Rules.applicationPath("org.gnome.font-viewer"), "/org/gnome/font_viewer");
         compare(Rules.applicationPath("org.example.my-app.beta-2"), "/org/example/my_app/beta_2");

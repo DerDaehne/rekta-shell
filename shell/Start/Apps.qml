@@ -27,7 +27,7 @@ Scope {
             keywords: Array.from(entry.keywords),
             exec: exec,
             icon: Quickshell.iconPath(entry.icon, true),
-            actions: Rules.desktopActions(entry, Rules.dbusActivatable(entry.id, file), apps.launcher),
+            actions: Rules.desktopActions(entry, Rules.busName(file), apps.launcher),
             launch: () => {
                 apps.launcher.launch(entry);
                 apps.usage.count(entry.id);

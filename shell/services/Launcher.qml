@@ -65,9 +65,9 @@ Scope {
     }
 
     // A desktop action of an app that runs over D-Bus, as the desktop-entry spec has a launcher run it: ActivateAction on
-    // the app's name and path, without a parameter or platform data. An error the app replies is only logged.
-    function activateAction(appId: string, actionId: string) {
-        call(false, appId, Rules.applicationPath(appId), "org.freedesktop.Application", "ActivateAction", [actionId, [], {}], "sava{sv}", null);
+    // the app's bus name and its path, without a parameter or platform data. An error the app replies is only logged.
+    function activateAction(busName: string, actionId: string) {
+        call(false, busName, Rules.applicationPath(busName), "org.freedesktop.Application", "ActivateAction", [actionId, [], {}], "sava{sv}", null);
     }
 
     // A method on the session's or the system's bus, its arguments typed by a full D-Bus signature ("" for none);

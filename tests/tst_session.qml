@@ -19,7 +19,7 @@ TestCase {
 
     readonly property string seat: "/org/freedesktop/DisplayManager/Seat0"
     // What the actions asked the launcher for, oldest first: ["run", command], ["launch", id], ["open", url] or
-    // ["call", bus, service, path, interface, method].
+    // ["call", bus, service, path, interface, method, args, signature].
     property var asked: []
     // The replies to a lock and to the question whether the session is locked, which the launcher holds back until the
     // test gives them: reply(error, values).
@@ -50,7 +50,7 @@ TestCase {
         }
 
         function call(onSystemBus, service, path, iface, method, args, signature, done) {
-            testCase.asked = [...testCase.asked, ["call", onSystemBus ? "system" : "session", service, path, iface, method]];
+            testCase.asked = [...testCase.asked, ["call", onSystemBus ? "system" : "session", service, path, iface, method, args, signature]];
             if (method === "Lock")
                 testCase.lockReply = done;
             else if (method === "GetActive")
@@ -162,9 +162,9 @@ TestCase {
     readonly property var endingNames: ["logout", "reboot", "shutdown"]
     readonly property var actionNames: ["lock", "switchUser", "logout", "reboot", "shutdown", "systemMonitor"]
 
-    // The call each action makes, as the recorder writes it down.
+    // The call each action makes, as the recorder writes it down: none of them takes an argument.
     function callOf(service, path, iface, method, bus) {
-        return ["call", bus ?? "session", service, path, iface, method];
+        return ["call", bus ?? "session", service, path, iface, method, [], ""];
     }
 
     readonly property var lockCall: callOf("org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", "Lock")
