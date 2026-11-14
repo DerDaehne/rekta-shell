@@ -44,6 +44,7 @@ TestCase {
 
             property alias bar: appBar
             property alias status: words
+            property alias backgroundMenu: backgroundMenu
             property real barWidth: 1600
             property var shown: []
             property date clockNow: testCase.widestClock
@@ -69,6 +70,7 @@ TestCase {
                     keys: testCase.keys
                     words: scene.shown
                     more: stateModel.more
+                    surfaces: ({ background: backgroundMenu })
                 }
 
                 AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects: build the shell and its tests"] }
@@ -79,6 +81,8 @@ TestCase {
             }
 
             StatusWords { id: stateModel }
+
+            FloatSurface { id: backgroundMenu }
         }
     }
 
@@ -282,6 +286,29 @@ TestCase {
         compare(word("screen").Accessible.name, "bildschirm geteilt, öffnet im hintergrund");
         mouseClick(word("screen"), 10, 10);
         compare(spy.signalArguments[0][0].opens, "background");
+    }
+
+    // The compositor dismisses the menu's popup on a press outside it, before that press reaches the bar or while it is held.
+    function test_a_press_on_the_screen_word_while_the_background_menu_is_open_closes_it_also_when_the_press_has_dismissed_the_popup() {
+        makeScene({ shown: [screen, muted] });
+        const spy = createTemporaryObject(pressSpy, testCase, { target: scene.status });
+        tryVerify(() => standing().length === 2);
+        const menu = scene.backgroundMenu;
+        for (const order of ["before the press", "while it is held"]) {
+            menu.open = true;
+            if (order === "before the press")
+                menu.dismiss();
+            mousePress(word("screen"), 10, 10);
+            if (order === "while it is held")
+                menu.dismiss();
+            tryVerify(() => !menu.open, 1000, `dismissed ${order}: it closes`);
+            mouseRelease(word("screen"), 10, 10);
+            compare(spy.count, 0, `dismissed ${order}: the release does not open it again`);
+        }
+        mouseClick(word("screen"), 10, 10);
+        compare(spy.count, 1, "with the menu closed a press opens it");
+        mouseClick(word("muted"), 10, 10);
+        compare(spy.count, 2, "a word that opens no floating surface is pressed as before");
     }
 
     function test_a_word_fades_in_and_the_middle_makes_room() {

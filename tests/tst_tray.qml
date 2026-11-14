@@ -264,6 +264,25 @@ TestCase {
         keyClick({ "enter": Qt.Key_Return, "space": Qt.Key_Space, "right": Qt.Key_Right }[how]);
     }
 
+    // The compositor dismisses the menu's popup on a press outside it, before that press reaches the bar or while it is held.
+    function test_a_press_on_the_control_while_its_menu_is_open_closes_it_also_when_the_press_has_dismissed_the_popup() {
+        const menu = open(threeApps());
+        const control = scene.control;
+        menu.close(false);
+        for (const order of ["before the press", "while it is held"]) {
+            mouseClick(control, 10, 10);
+            verify(menu.open, order);
+            if (order === "before the press")
+                menu.dismiss();
+            mousePress(control, 10, 10);
+            if (order === "while it is held")
+                menu.dismiss();
+            tryVerify(() => !menu.open, 1000, `dismissed ${order}: it closes`);
+            mouseRelease(control, 10, 10);
+            verify(!menu.open, `dismissed ${order}: the release does not open it again`);
+        }
+    }
+
     function test_any_press_on_an_app_with_a_menu_opens_it_in_place_even_when_the_app_has_a_window() {
         for (const how of ["click", "right click", "enter", "space", "right"]) {
             calls = [];

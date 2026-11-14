@@ -30,6 +30,13 @@ Rectangle {
         scroller.contentY = Math.min(top, Math.max(scroller.contentY, top + row.height - scroller.height));
     }
 
+    // Closed by a press outside it, as a compositor closes a popup. The press arrives after the close, so the surface
+    // goes once that press has reached what it landed on: its own control then sees it open and closes it, never opening
+    // it again (rekta.js:2066–2067, a click on the trigger never counts as a click outside).
+    function dismiss() {
+        Qt.callLater(() => surface.open = false);
+    }
+
     // Its size with its rows laid out now, not at the next frame, so a host can place it as it opens.
     function measured(): size {
         column.forceLayout();

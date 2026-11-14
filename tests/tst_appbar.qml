@@ -577,6 +577,36 @@ TestCase {
         verify(!menu.open, "more closes it again");
     }
 
+    // The compositor dismisses the menu's popup on a press outside it, before that press reaches the bar or while it is held.
+    function test_a_press_on_more_while_its_menu_is_open_closes_it_also_when_the_press_has_dismissed_the_popup() {
+        makeScene({ barWidth: 760 });
+        const menu = bar.menu;
+        for (const order of ["before the press", "while it is held"]) {
+            mouseClick(bar.more, 10, 10);
+            verify(menu.open, order);
+            if (order === "before the press")
+                menu.dismiss();
+            mousePress(bar.more, 10, 10);
+            if (order === "while it is held")
+                menu.dismiss();
+            tryVerify(() => !menu.open, 1000, `dismissed ${order}: it closes`);
+            mouseRelease(bar.more, 10, 10);
+            verify(!menu.open, `dismissed ${order}: the release does not open it again`);
+        }
+    }
+
+    function test_a_press_on_another_control_while_the_menu_of_more_is_open_closes_the_menu_and_presses_that_control() {
+        makeScene({ barWidth: 760 });
+        const back = named("back");
+        verify(back.visible);
+        const clicked = createTemporaryObject(spy, testCase, { target: back });
+        mouseClick(bar.more, 10, 10);
+        bar.menu.dismiss();
+        mouseClick(back, 10, 10);
+        compare(clicked.count, 1);
+        tryVerify(() => !bar.menu.open, 1000, "the menu closes");
+    }
+
     function test_the_middle_cuts_its_words_before_any_control_moves() {
         makeScene({ viewportHeight: 400 });
         const middle = named("middle");

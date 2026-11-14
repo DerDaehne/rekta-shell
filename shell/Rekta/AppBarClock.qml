@@ -35,6 +35,7 @@ AppBarButton {
     }
 
     text: `${time} ${day}`
+    opens: surface
     // Two lines from the padding on, the time over the date, set by hand: a Column would size itself only at polish.
     face: Item {
         x: Geometry.appBarControlPadding

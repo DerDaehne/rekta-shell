@@ -215,6 +215,23 @@ TestCase {
         verify(!calendar.open);
     }
 
+    // The compositor dismisses the month's popup on a press outside it, before that press reaches the bar or while it is held.
+    function test_a_press_on_the_clock_while_the_month_is_open_closes_it_also_when_the_press_has_dismissed_the_popup() {
+        const calendar = clock.calendar;
+        for (const order of ["before the press", "while it is held"]) {
+            mouseClick(clock, 20, 20);
+            verify(calendar.open, order);
+            if (order === "before the press")
+                calendar.dismiss();
+            mousePress(clock, 20, 20);
+            if (order === "while it is held")
+                calendar.dismiss();
+            tryVerify(() => !calendar.open, 1000, `dismissed ${order}: it closes`);
+            mouseRelease(clock, 20, 20);
+            verify(!calendar.open, `dismissed ${order}: the release does not open it again`);
+        }
+    }
+
     function test_the_open_month_is_centred_over_the_clock_in_both_densities() {
         for (const density of ["compact", "comfortable"]) {
             Prefs.density = density;

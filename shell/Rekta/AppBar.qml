@@ -363,6 +363,7 @@ Rectangle {
         icon: "more"
         text: "mehr"
         overflowed: true
+        opens: moreMenu
 
         onClicked: {
             if (moreMenu.open)

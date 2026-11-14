@@ -94,6 +94,7 @@ PanelWindow {
         AppBarStatus {
             keys: panel.status.keys
             words: panel.status.deviations
+            surfaces: ({ background: background.menu })
             more: panel.status.more
 
             onActivated: (word, byPointer) => panel.openWord(word, byPointer)
@@ -199,8 +200,6 @@ PanelWindow {
         barWindow: panel
         surface: bar.menu
         place: bar.menuPlace
-
-        onDismissed: bar.menu.close(false)
     }
 
     FloatPopup {
@@ -209,8 +208,6 @@ PanelWindow {
         barWindow: panel
         surface: background.menu
         place: bar.floatPlace(background.overflowed ? bar.more : background, Qt.size(background.menu.width, background.menu.height))
-
-        onDismissed: background.menu.close(false)
     }
 
     FloatPopup {
@@ -219,8 +216,6 @@ PanelWindow {
         barWindow: panel
         surface: clock.calendar
         place: bar.floatPlace(clock, Qt.size(clock.calendar.width, clock.calendar.height), "centre")
-
-        onDismissed: clock.closeCalendar(false)
     }
 
     // A tooltip rises past the bar's own window too. It never takes the pointer, so its popup lets every click through.
@@ -271,8 +266,6 @@ PanelWindow {
         // From AppBar.floatPlace: where it goes in the bar's window, and on which side of its control.
         required property var place
 
-        signal dismissed
-
         // The linter cannot see PopupAnchor's members: Quickshell and its window module depend on each other.
         anchor.window: barWindow // qmllint disable missing-property
         anchor.rect: Qt.rect(place.x, place.y, 1, 1) // qmllint disable missing-property
@@ -284,7 +277,7 @@ PanelWindow {
 
         onVisibleChanged: {
             if (!visible && !remap.remapping)
-                dismissed();
+                surface.dismiss();
         }
 
         PopupRemap {

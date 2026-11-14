@@ -17,6 +17,7 @@ AppBarButton {
     text: "im hintergrund"
     count: apps.length
     present: apps.length > 0
+    opens: list
     onClicked: {
         if (list.open)
             list.close(true);

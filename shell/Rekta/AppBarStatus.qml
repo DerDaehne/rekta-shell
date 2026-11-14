@@ -20,6 +20,8 @@ Item {
     property var words: []
     // The word for the deviations beyond the limit, as a function of those: { key, word, status, name }.
     property var more: hidden => null
+    // The floating surfaces words open, by the place they name (`opens`); a press on a word whose surface is open closes it.
+    property var surfaces: ({})
     // Every key the words may have, in the order they stand on the bar.
     property list<string> keys: []
     // The most words that stand, and how many do; the bar lowers it when it has no room for them all.
@@ -129,6 +131,7 @@ Item {
         objectName: `status-${modelData}`
         text: shown?.name ?? ""
         present: current !== undefined
+        opens: status.surfaces[shown?.opens] ?? null
         face: StatusTag {
             x: Geometry.appBarControlPadding
             y: (Geometry.appBarControl - implicitHeight) / 2

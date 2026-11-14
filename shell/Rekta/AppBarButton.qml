@@ -38,6 +38,9 @@ Item {
     // rekta.js:4211, :4197). The width stays and the control takes no press while away; a count that changes meanwhile
     // comes back with the face, without a peek of its own.
     property bool away: false
+    // The floating surface the control opens, if any. A press that finds it open only closes it.
+    property FloatSurface opens: null
+    property bool pressFoundOpen: false
     readonly property bool showing: wanted && !held
     // While it fades out it stays where it was, and the bar closes the gap after it (motion.md, "Arriving, leaving").
     readonly property bool fading: fadeRun.running && !fade.arriving
@@ -270,10 +273,17 @@ Item {
             // A slow click is still a click.
             longPressThreshold: 0
 
-            onTapped: control.click()
+            onTapped: {
+                if (control.pressFoundOpen)
+                    control.opens.open = false;
+                else
+                    control.click();
+            }
             onPressedChanged: {
-                if (pressed)
-                    Tips.hide();
+                if (!pressed)
+                    return;
+                control.pressFoundOpen = control.opens?.open ?? false;
+                Tips.hide();
             }
         }
 
