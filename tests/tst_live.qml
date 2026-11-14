@@ -20,6 +20,7 @@ TestCase {
     readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
     readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
     readonly property easingCurve landing: ({ type: Easing.Bezier, bezierCurve: Tokens.easeLanding })
+    readonly property easingCurve linear: ({ type: Easing.Linear })
 
     Component {
         id: liveTile
@@ -127,8 +128,7 @@ TestCase {
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         // No news came before this test.
-        Greet.since = -Infinity;
-        Greet.told = 0;
+        Greet.runs = new Map();
     }
 
     function cleanup() {
@@ -145,6 +145,11 @@ TestCase {
 
     function waitsOf(tiles) {
         return tiles.map(tile => part(tile, "news").wait);
+    }
+
+    // How many pieces of news this window's run has counted.
+    function toldHere() {
+        return Greet.runs.get(testCase.Window.window)?.told ?? 0;
     }
 
     function part(tile, name) {
@@ -596,11 +601,11 @@ TestCase {
         tryCompare(part(tiles[2], "news"), "wait", 2 * Tokens.durationGreet - 100, 500, "the third step, less the time already gone");
         Greet.now = () => 1000 + Tokens.durationModerate;
         tellAll([tiles[3]]);
-        tryCompare(Greet, "told", 4, 500, "at duration-moderate it still counts in the run");
+        tryVerify(() => toldHere() === 4, 500, "at duration-moderate it still counts in the run");
         compare(part(tiles[3], "news").wait, 0, "its step has passed");
         Greet.now = () => 1001 + Tokens.durationModerate;
         tellAll([tiles[0]]);
-        tryCompare(Greet, "told", 1, 500, "a new run of news");
+        tryVerify(() => toldHere() === 1, 500, "a new run of news");
         compare(part(tiles[0], "news").wait, 0);
     }
 
@@ -611,7 +616,67 @@ TestCase {
         tile.news("peek", () => stat.value = "414");
         wait(0);
         compare(part(tile, "news").wait, 0);
-        compare(Greet.told, 1);
+        compare(toldHere(), 1);
+    }
+
+    // The bar and the Start are windows of their own, lying on the screen as they will.
+    function test_news_in_another_window_counts_on_its_own_and_waits_nothing_for_this_one() {
+        const here = createTemporaryObject(liveTile, testCase, { x: 100, y: 100 });
+        const other = createTemporaryQmlObject(`import QtQuick
+            import Rekta
+            Window { visible: true; width: 400; height: 400; Tile { objectName: "tile"; x: 100; y: 300; Stat { objectName: "stat"; value: "412"; label: "requests a second" } } }`, testCase);
+        const there = findChild(other, "tile");
+        waitForRendering(there);
+        tellAll([here, there]);
+        tryVerify(() => toldHere() === 1, 500, "this window counts only its own");
+        compare(waitsOf([here, there]), [0, 0], "each is the first of its window");
+        compare(Greet.runs.get(other).told, 1);
+    }
+
+    function test_a_tile_s_wait_holds_its_peek_which_then_runs_its_whole_time_from_its_step_on() {
+        const ticks = Glide.ticks(testCase);
+        const tiles = [0, 1, 2].map(k => createTemporaryObject(liveTile, testCase, { x: 100, y: 100 + 200 * k }));
+        waitForRendering(tiles[2]);
+        const phases = Glide.record(part(tiles[2], "peek"), "phase");
+        const since = Date.now();
+        tellAll(tiles);
+        tryCompare(part(tiles[2], "news"), "wait", 2 * Tokens.durationGreet);
+        tryCompare(part(tiles[2], "news"), "peeking", false, Tokens.durationModerate * 3);
+        // Its way from the telling: still for its wait, then the peek's own linear phase.
+        const whole = 2 * Tokens.durationGreet + Tokens.durationModerate;
+        const heldThenLinear = { valueForProgress: share => Math.max(0, (share * whole - 2 * Tokens.durationGreet) / Tokens.durationModerate) };
+        const stray = Glide.strayOf([{ steps: phases, from: 0, to: 1 }], whole, heldThenLinear, since, ticks);
+        verify(stray < 0.06, `the peek runs its whole time from its step on, off by ${stray}`);
+    }
+
+    function test_told_alone_after_it_waited_last_time_a_tile_s_peek_starts_at_once() {
+        const ticks = Glide.ticks(testCase);
+        const first = createTemporaryObject(liveTile, testCase, { x: 100, y: 100 });
+        const second = createTemporaryObject(liveTile, testCase, { x: 100, y: 300 });
+        waitForRendering(second);
+        tellAll([first, second]);
+        tryCompare(part(second, "news"), "wait", Tokens.durationGreet);
+        tryCompare(part(second, "news"), "peeking", false, Tokens.durationModerate * 3);
+        const phases = Glide.record(part(second, "peek"), "phase");
+        const since = Date.now();
+        tellAll([second]);
+        tryCompare(part(second, "news"), "peeking", false, Tokens.durationModerate * 3);
+        compare(part(second, "news").wait, 0);
+        const stray = Glide.strayOf([{ steps: phases, from: 0, to: 1 }], Tokens.durationModerate, linear, since, ticks);
+        verify(stray < 0.06, `it starts at once, off by ${stray}`);
+    }
+
+    function test_as_it_is_told_again_after_a_finished_peek_the_old_number_stands_before_anything_moves() {
+        const tile = createTemporaryObject(liveTile, testCase);
+        waitForRendering(tile);
+        const stat = part(tile, "stat");
+        tile.news("peek", () => stat.value = "413");
+        tryCompare(part(tile, "news"), "peeking", false, Tokens.durationModerate * 3);
+        tile.news("peek", () => stat.value = "414");
+        compare(part(tile, "peek").phase, 0, "nothing has moved yet");
+        compare(part(tile, "ghost").opacity, 1);
+        compare(part(tile, "ghost").value, "413");
+        compare(part(tile, "incoming").opacity, 0);
     }
 
     function test_news_whose_step_has_passed_waits_nothing_though_the_tile_waited_last_time() {

@@ -95,8 +95,7 @@ TestCase {
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         // No news came before this test.
-        Greet.since = -Infinity;
-        Greet.told = 0;
+        Greet.runs = new Map();
     }
 
     function cleanup() {
@@ -277,7 +276,20 @@ TestCase {
         verify(!findChild(control, "ghost").visible);
     }
 
-    // A notification counts on an app's tile in the Start and in the bar at once; the bar lies below the tile.
+    function test_as_a_count_changes_again_after_a_finished_peek_the_old_one_stands_before_anything_moves() {
+        Prefs.motion = "on";
+        const control = createTemporaryObject(buttonComponent, testCase, { count: 3 });
+        control.count = 4;
+        tryVerify(() => !findChild(control, "peekRun").running, Tokens.durationModerate * 3);
+        control.count = 5;
+        compare(findChild(control, "peek").phase, 0, "nothing has moved yet");
+        compare(findChild(control, "ghost").opacity, 1);
+        compare(findChild(control, "ghost").text, " 4");
+        compare(findChild(control, "count").opacity, 0);
+    }
+
+    // In one window a count below a tile with news at once peeks after the tile; the shell's bar is a window of its own
+    // and so counts alone.
     function test_a_count_with_news_at_once_as_a_tile_above_it_peeks_duration_greet_after_the_tile() {
         const tile = createTemporaryQmlObject(`import QtQuick
             import Rekta
