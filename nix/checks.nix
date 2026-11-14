@@ -256,6 +256,16 @@ in
     touch $out
   '';
 
+  # The bar's window no unit test can instantiate either: a toast counts "meldungen" in sight only once it shows, not
+  # while it waits, back from "mehr", for the others to make room (tst_appbar.qml holds what `showing` means).
+  count-in-sight = pkgs.runCommand "rekta-shell-count-in-sight" { } ''
+    if ! grep -qF 'value: !panel.away && bell.showing' ${../shell/Bar.qml}; then
+      echo "Bar.qml: the toaster's countInSight must follow bell.showing, so a held \"meldungen\" is not in sight" >&2
+      exit 1
+    fi
+    touch $out
+  '';
+
   qmllint = pkgs.runCommand "rekta-shell-qmllint" { LANG = "C.UTF-8"; } ''
     find ${qml} -name '*.qml' -print0 | xargs -0 ${pkgs.lib.getExe rekta-qmllint} -I ${qml}/shell
     touch $out

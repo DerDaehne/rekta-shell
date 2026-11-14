@@ -130,7 +130,8 @@ Rectangle {
     }
 
     function fits(region: var, moved: var, moreShown: bool, statusLimit: int): bool {
-        const shown = region.items.filter(item => shows(item, moved, moreShown));
+        // Around a centre item the unpinned middle only takes what the leading side leaves, its gap too (rekta.js twoSides()).
+        const shown = region.items.filter(item => shows(item, moved, moreShown) && !(centre && (item as AppBarMiddle)?.pinned === false));
         const widths = shown.map(item => least(item, statusLimit));
         if (moreShown && region.more)
             widths.push(moreButton.implicitWidth);

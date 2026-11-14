@@ -703,6 +703,19 @@ TestCase {
         compare(endOf(middle), named("centre").x - bar.gap);
     }
 
+    function test_with_a_centre_item_the_unpinned_middle_takes_no_room_from_the_leading_side() {
+        // As narrow as the bar will be, so its padding stays the same.
+        makeScene({ barWidth: 300, withCentre: true });
+        const back = named("back");
+        const centre = named("centre");
+        // The leading side runs from the padding to a gap before the centre; this width gives it exactly "back".
+        const exact = 2 * (back.width + bar.padding + bar.gap + centre.width / 2);
+        scene.barWidth = exact;
+        verify(!back.overflowed, "at exactly its room the leading side keeps it");
+        scene.barWidth = exact - 2;
+        verify(back.overflowed, "a pixel less and it moves into more");
+    }
+
     function test_with_a_centre_item_the_middle_is_gone_while_the_leading_side_has_given_a_control_away_unless_pinned() {
         makeScene({ barWidth: 1600, withCentre: true });
         const middle = named("middle");
