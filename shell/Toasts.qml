@@ -34,7 +34,7 @@ PanelWindow {
     mask: Region {
         item: region.open
     }
-    WlrLayershell.namespace: "rekta-toasts"
+    WlrLayershell.namespace: "dock"
     WlrLayershell.layer: stepsBack ? WlrLayer.Top : WlrLayer.Overlay
     WlrLayershell.keyboardFocus: region.reached ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 

@@ -25,8 +25,8 @@ PanelWindow {
     focusable: false
     color: "transparent"
     mask: Region {}
-    // Not "desktop": KWin lists that namespace among the windows to switch between.
-    WlrLayershell.namespace: "rekta-background"
+    // Not "desktop": KWin lists that type among the windows to switch between.
+    WlrLayershell.namespace: "dock"
     WlrLayershell.layer: WlrLayer.Background
 
     Backdrop {

@@ -198,8 +198,9 @@ private:
     }
 
     QObject *m_rules;
-    Retreat m_start{"rekta-start", "progress"};
-    Retreat m_leave{"rekta-leave", "leaveProgress"};
+    // Each a spelling of "dock" of its own: KWin types the shell's surfaces by the namespace lowercased.
+    Retreat m_start{"dOck", "progress"};
+    Retreat m_leave{"doCk", "leaveProgress"};
     Look m_onPrimary;
     Look m_elsewhere;
     Splash m_splash;
@@ -451,6 +452,9 @@ void FadeBackEffect::holdSplash(EffectWindow *w)
         m_splash = {};
     }
     m_splash.windows.insert(w, EffectWindowDeletedRef(w));
+    // glide, fade and scale close no window another effect holds; they leave the splash alone only by a class that the
+    // wrapped program under Nix does not have.
+    w->setData(WindowClosedGrabRole, QVariant::fromValue(static_cast<void *>(this)));
     effects->addRepaintFull();
 }
 

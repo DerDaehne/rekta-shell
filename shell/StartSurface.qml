@@ -107,7 +107,8 @@ PanelWindow {
     mask: Region {
         item: place.takesInput ? place : null
     }
-    WlrLayershell.namespace: "rekta-start"
+    // A dock to KWin, which reads the namespace lowercased; the fade-back knows the Start by this spelling.
+    WlrLayershell.namespace: "dOck"
     // A place lies below the toasts (Rekta's layers), so the Start keeps to the top layer: on one layer KWin raises the
     // surface that takes the keyboard over the others, as the Start when it opens. A full-screen window that has the
     // keyboard lies above that layer, so the Start rises as it starts to close when it may hand the keyboard back to one,

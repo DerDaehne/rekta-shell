@@ -5,7 +5,7 @@ rekta-metaholdEnabled=true
 slideEnabled=false
 # rekta-fadeback fades the splash out after login, in Rekta's duration and curve.
 loginEnabled=false
-# scale opens every layer surface of a namespace KWin does not know, the shell's too; Rekta gives it no meaning.
+# scale opens and closes every window on a curve of its own; Rekta gives it no meaning.
 scaleEnabled=false
 # screenedge lights an edge as a finger or the pointer comes near it; Rekta gives it no meaning.
 screenedgeEnabled=false

@@ -175,13 +175,14 @@ in
     touch $out
   '';
 
-  # The sheet surfaces' namespaces, the session bar's "DOCK" and the key map's "Dock", are docks only while KWin ignores
-  # the case as it types a layer surface; else KWin takes them for normal windows, which tiling scripts move.
+  # The spellings of "dock" that tell the fade-back the shell's surfaces apart (the Start's "dOck", the session bar's
+  # "DOCK", the key map's "Dock" and others) are docks only while KWin ignores the case as it types a layer surface; else
+  # KWin takes them for normal windows.
   kwin-types-docks-ignoring-case = pkgs.runCommand "rekta-shell-kwin-types-docks-ignoring-case" { } ''
     # Read to a file: `grep -q` ending a pipeline early would hand tar a SIGPIPE, which pipefail reports as a miss.
     tar -xOf ${qt.kwin.src} --wildcards '*/src/layershellv1window.cpp' > layershellv1window.cpp
     if ! grep -qF 'scopeToType.value(scope.toLower(),' layershellv1window.cpp; then
-      echo "KWin no longer types a layer surface by its lowercased namespace; the sheet surfaces' \"DOCK\" and \"Dock\" need other tags" >&2
+      echo "KWin no longer types a layer surface by its lowercased namespace; the shell's spellings of \"dock\" need other tags" >&2
       exit 1
     fi
     touch $out
@@ -232,12 +233,17 @@ in
       touch $out
     '';
 
-  # KWin makes a layer surface of a namespace it does not know a normal window, which tiling scripts move into the work
-  # area: a surface that keeps a zone clear for itself would leave that zone, unless it is a dock.
-  docked-surfaces-are-docks = pkgs.runCommand "rekta-shell-docked-surfaces-are-docks" { } ''
-    for file in $(grep -rlE --include='*.qml' '^\s*exclusiveZone:' ${../shell}); do
-      if ! grep -q 'WlrLayershell.namespace: "dock"' "$file"; then
-        echo "$(basename "$file") keeps a zone clear but is no dock to KWin" >&2
+  # KWin makes a layer surface of a namespace it does not know, or of none, a normal window: tiling scripts place it as
+  # they place an app's, out of any zone it keeps clear for itself, and glide, fade and scale animate it. Of the types
+  # KWin knows, only a dock is left alone by its own effects, so every surface of the shell is one.
+  shell-surfaces-are-docks = pkgs.runCommand "rekta-shell-shell-surfaces-are-docks" { } ''
+    if grep -rnE --include='*.qml' 'WlrLayershell.namespace:' ${../shell} | grep -viE 'WlrLayershell.namespace: "dock"$' >&2; then
+      echo "a surface of the shell is no dock to KWin" >&2
+      exit 1
+    fi
+    for file in $(grep -rlE --include='*.qml' 'PanelWindow \{' ${../shell}); do
+      if ! grep -qF 'WlrLayershell.namespace:' "$file"; then
+        echo "$(basename "$file") names no namespace, so it is no dock to KWin" >&2
         exit 1
       fi
     done

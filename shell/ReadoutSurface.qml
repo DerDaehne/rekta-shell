@@ -25,7 +25,7 @@ PanelWindow {
     focusable: false
     color: "transparent"
     mask: Region {}
-    WlrLayershell.namespace: "rekta-readout"
+    WlrLayershell.namespace: "dock"
     WlrLayershell.layer: WlrLayer.Overlay
     // A deliberate deviation as in the bar: KWin's blur has its own strength. Only at rest: a region moving in the
     // window or out of it leaves KWin's blur an empty framebuffer.

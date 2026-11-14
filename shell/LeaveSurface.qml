@@ -24,7 +24,8 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     visible: primaryScreen !== null && leaving
-    WlrLayershell.namespace: "rekta-leave"
+    // A dock to KWin, which reads the namespace lowercased; the fade-back knows this surface by this spelling.
+    WlrLayershell.namespace: "doCk"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: holdsKeyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     onHoldsKeyboardChanged: confirmingHandOver = !holdsKeyboard && leaving
