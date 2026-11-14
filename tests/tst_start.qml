@@ -3217,4 +3217,17 @@ TestCase {
         tryVerify(() => searchField().inputFocus);
         verify(searchField().visible);
     }
+
+    function test_typing_in_the_field_while_the_start_turns_out_searches_nothing() {
+        openWithApps();
+        Prefs.motion = "on";
+        mouseClick(searchField());
+        start.close(null);
+        verify(turner.running);
+        keyClick("f");
+        compare(start.query, "");
+        tryVerify(() => !start.shown, 3000);
+        compare(closedSpy.count, 1);
+        verify(!start.searching);
+    }
 }
