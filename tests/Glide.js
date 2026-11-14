@@ -84,3 +84,16 @@ function strayFrom(run, duration, curve, began) {
         return Math.abs((step.value - run.from) / (run.to - run.from) - curve.valueForProgress(share));
     }));
 }
+
+// How far two runs driven by one value lie apart, as shares of their ways, at the end of each tick both stepped in:
+// paired by the steps' order, never by a clock, so a busy machine cannot part them.
+function apartPerTick(one, other, ticks) {
+    const shareAtTick = run => {
+        const shares = new Map();
+        for (const step of run.steps)
+            shares.set(ticks.filter(tick => tick.order < step.order).length, (step.value - run.from) / (run.to - run.from));
+        return shares;
+    };
+    const others = shareAtTick(other);
+    return [...shareAtTick(one)].filter(([tick]) => others.has(tick)).map(([tick, share]) => Math.abs(share - others.get(tick)));
+}

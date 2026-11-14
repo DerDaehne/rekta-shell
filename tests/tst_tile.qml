@@ -512,6 +512,34 @@ TestCase {
         compare(asked.count, 0);
     }
 
+    // Presses on a sunk 4-wide tile near its edge, moves `way` px in the window and returns whether the long press holds.
+    function longPressHoldsOnASunkTileAfter(way: real): bool {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true, hasMenu: true, columns: 4 });
+        const asked = createTemporaryObject(menuSpy, testCase, { target: tile });
+        const moves = createTemporaryObject(moveSpy, testCase, { target: findChild(tile, "area") });
+        const longPress = findChild(tile, "longPress");
+        // Held off until the tile has sunk, so a busy machine cannot ask for the menu before the move.
+        longPress.interval = 3600000;
+        const at = tile.mapToItem(testCase, 10, tile.height / 2);
+        const touch = touchEvent(tile);
+        touch.press(0, testCase, at.x, at.y).commit();
+        tryVerify(() => tile.sink === 1, 5000, "it has sunk");
+        touch.move(0, testCase, at.x + way, at.y).commit();
+        tryCompare(moves, "count", 1);
+        const holds = longPress.running;
+        longPress.interval = Tokens.durationLongPress;
+        if (holds)
+            tryCompare(asked, "count", 1, Tokens.durationLongPress * 4, "the menu comes");
+        touch.release(0, testCase, at.x + way, at.y).commit();
+        compare(asked.count, holds ? 1 : 0);
+        return holds;
+    }
+
+    function test_a_long_press_on_a_sunk_wide_tile_counts_the_finger_s_way_on_the_screen() {
+        verify(longPressHoldsOnASunkTileAfter(Geometry.longPressSlop), "exactly the slop still asks for the menu");
+        verify(!longPressHoldsOnASunkTileAfter(Geometry.longPressSlop + 1), "past the slop it asks for none");
+    }
+
     function test_a_long_press_on_a_tile_without_a_menu_is_a_press() {
         const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
         const activations = createTemporaryObject(spy, testCase, { target: tile });

@@ -647,6 +647,8 @@ TestCase {
         tryVerify(() => summaries().length === 2, 1000);
         const leaving = Glide.strayOf([{ steps: goes, from: pulled, to: fullWidth }, { steps: fades, from: 1, to: 0 }], Geometry.rowLeaveShare * Tokens.durationShort, easeOut, since, ticks);
         verify(leaving < 0.06, `on from where it was let go to its full width, fading as it goes, off by ${leaving}`);
+        const apart = Glide.apartPerTick({ steps: goes, from: pulled, to: fullWidth }, { steps: fades, from: 1, to: 0 }, ticks);
+        verify(apart.length > 0 && Math.max(...apart) < 0.01, `its way and its fade go as one, apart by ${apart}`);
         tryVerify(() => anna.y < annaWas, 1000, "then the rest close the gap");
         verify(closes[0].order > goes[goes.length - 1].order, "the rest wait for it");
     }

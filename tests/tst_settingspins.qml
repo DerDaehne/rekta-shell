@@ -440,6 +440,8 @@ TestCase {
         tryCompare(testCase, "listedIdsNow", ["systemsettings", "org.gone.app", "org.kde.konsole"]);
         const stray = Glide.strayOf([{ steps: drifts, from: 0, to: Geometry.rowLeaveDrift }, { steps: fades, from: 1, to: 0 }], Geometry.rowLeaveShare * Tokens.durationShort, easeOut, since, ticks);
         verify(stray < 0.06, `it drifts and fades together, off by ${stray}`);
+        const apart = Glide.apartPerTick({ steps: drifts, from: 0, to: Geometry.rowLeaveDrift }, { steps: fades, from: 1, to: 0 }, ticks);
+        verify(apart.length > 0 && Math.max(...apart) < 0.01, `its drift and its fade go as one, apart by ${apart}`);
     }
 
     function test_a_row_let_go_past_half_its_width_goes_on_to_its_full_width_fading_over_point_six_of_duration_short() {
@@ -458,6 +460,8 @@ TestCase {
         tryCompare(testCase, "listedIdsNow", ["systemsettings", "org.gone.app", "org.kde.konsole"]);
         const stray = Glide.strayOf([{ steps: goes, from: pulled, to: fullWidth }, { steps: fades, from: 1, to: 0 }], Geometry.rowLeaveShare * Tokens.durationShort, easeOut, since, ticks);
         verify(stray < 0.06, `on from where it was let go to its full width, fading as it goes, off by ${stray}`);
+        const apart = Glide.apartPerTick({ steps: goes, from: pulled, to: fullWidth }, { steps: fades, from: 1, to: 0 }, ticks);
+        verify(apart.length > 0 && Math.max(...apart) < 0.01, `its way and its fade go as one, apart by ${apart}`);
     }
 
     function test_after_a_row_has_left_the_others_close_the_gap_over_duration_moderate() {
