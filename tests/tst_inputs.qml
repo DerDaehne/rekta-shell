@@ -74,7 +74,7 @@ TestCase {
 
                 Toggle { label: "wifi" }
                 Toggle { label: "bluetooth"; checked: true }
-                Toggle { label: "airplane"; disabledReason: "set by the administrator" }
+                Toggle { label: "airplane"; checked: true; disabledReason: "set by the administrator" }
                 Slider { width: parent.width; label: "volume"; from: 0; to: 100; stepSize: 1; value: 40; valueText: `${value}%` }
                 Slider { width: parent.width; label: "brightness"; value: 0.7; disabledReason: "no backlight" }
                 Segments { options: ["light", "dark", "system"]; currentIndex: 1 }
@@ -163,15 +163,49 @@ TestCase {
     }
 
     function test_a_disabled_toggle_stays_and_says_why() {
-        const toggle = createTemporaryObject(toggleComponent, testCase, { disabledReason: "set by the administrator" });
+        const toggle = createTemporaryObject(toggleComponent, testCase, { checked: true, disabledReason: "set by the administrator" });
         mouseClick(toggle);
-        verify(!toggle.checked);
+        verify(toggle.checked, "a click changes nothing");
         compare(findChild(toggle, "track").border.color, Tokens.color.disabled);
-        compare(findChild(toggle, "word").color, Tokens.color.textContrastHigh, "the word keeps its colour");
+        compare(findChild(toggle, "fill").color, Tokens.color.disabled, "on");
+        compare(findChild(toggle, "thumb").color, Tokens.color.disabled);
+        compare(findChild(toggle, "label").color, Tokens.color.disabled);
+        compare(findChild(toggle, "word").color, Tokens.color.disabled);
+        toggle.disabledReason = "";
+        compare(findChild(toggle, "fill").color, Tokens.color.accent);
+        compare(findChild(toggle, "word").color, Tokens.color.textContrastHigh);
+        toggle.disabledReason = "set by the administrator";
+        toggle.checked = false;
+        compare(findChild(toggle, "word").color, Tokens.color.disabled, "off");
+        compare(findChild(toggle, "thumb").color, Tokens.color.disabled);
         const why = findChild(toggle, "why");
         const word = findChild(toggle, "word");
         compare(toggle.mapFromItem(why, 0, why.baselineOffset).y, toggle.mapFromItem(word, 0, word.baselineOffset).y, "the reason sits on the line of the word");
         compare(toggle.Accessible.description, "set by the administrator");
+    }
+
+    // The first handler under `item` that sets a cursor.
+    function cursorOf(item) {
+        const hover = item.data.find(child => child instanceof HoverHandler);
+        if (hover)
+            return hover.cursorShape;
+        for (const child of item.children) {
+            const found = cursorOf(child);
+            if (found !== undefined)
+                return found;
+        }
+        return undefined;
+    }
+
+    function test_segments_toggle_and_slider_show_the_hand_and_not_allowed_when_disabled() {
+        for (const component of [segmentsComponent, toggleComponent, sliderComponent]) {
+            const control = createTemporaryObject(component, testCase);
+            compare(cursorOf(control), Qt.PointingHandCursor, `${control}`);
+            control.disabledReason = "not now";
+            compare(cursorOf(control), Qt.ForbiddenCursor, `${control}`);
+            control.disabledReason = "";
+            compare(cursorOf(control), Qt.PointingHandCursor, `${control}`);
+        }
     }
 
     function test_a_slider_follows_the_keys_within_its_range() {
@@ -345,14 +379,19 @@ TestCase {
         }
     }
 
-    function test_disabled_segments_keep_the_chosen_accent_and_say_why() {
+    function test_disabled_segments_grey_the_chosen_option_to_a_disabled_block_with_bg_words_and_say_why() {
         useColourfulAccent();
         const segments = createTemporaryObject(segmentsComponent, testCase, { disabledReason: "one output only" });
         const slide = findChild(segments, "slide");
         verify(slide.visible);
-        compare(slide.color, Qt.color("#1f5fd1"));
-        for (const option of optionsOf(segments))
+        compare(slide.color, Tokens.color.disabled);
+        const options = optionsOf(segments);
+        for (const option of options)
             compare(option.border.color, Tokens.color.disabled);
+        const wordOf = option => Array.from(option.children).find(child => child.text !== undefined);
+        compare(wordOf(options[0]).color, Tokens.color.bg, "the chosen word");
+        compare(wordOf(options[1]).color, Tokens.color.disabled);
+        compare(wordOf(options[2]).color, Tokens.color.disabled);
         const why = findChild(segments, "why");
         verify(why.visible);
         compare(why.text, "one output only");

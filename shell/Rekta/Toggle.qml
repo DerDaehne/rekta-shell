@@ -43,6 +43,10 @@ Item {
         onTapped: toggle.activate()
     }
 
+    HoverHandler {
+        cursorShape: toggle.disabled ? Qt.ForbiddenCursor : Qt.PointingHandCursor
+    }
+
     Row {
         id: row
 
@@ -81,7 +85,7 @@ Item {
                 y: inset
                 width: toggle.checked ? track.width - 2 * inset - (Geometry.toggleThumb + Geometry.togglePadding) : 0
                 height: track.height - 2 * inset
-                color: Tokens.color.accent
+                color: toggle.disabled ? Tokens.color.disabled : Tokens.color.accent
 
                 Behavior on width {
                     NumberAnimation {
@@ -124,8 +128,7 @@ Item {
             font.family: Tokens.fontSans
             font.pixelSize: Tokens.fontSizeS
             font.weight: Tokens.fontWeightRegular
-            // ponytail: the word keeps its colour when disabled, as in Rekta 0.5.0; 0.6.0 greys it (rekta.css:490).
-            color: Tokens.color.textContrastHigh
+            color: toggle.disabled ? Tokens.color.disabled : Tokens.color.textContrastHigh
         }
     }
 

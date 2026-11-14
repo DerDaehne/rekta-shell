@@ -4,11 +4,9 @@ import QtQuick
 
 // Two to five options seen at a glance (forms.md, "Inputs"; rekta.css:530–552): joined buttons, the chosen one in the
 // accent. On a choice made here the accent block slides over from the old one and the chosen label turns light
-// halfway (motion.md, segments). Disabled, the frames and words grey but the chosen one keeps its accent, and the reason
-// stands beside it on the words' line while it fits the width, else below, wrapped within the width (the hint is
-// inline after the control, forms.md, "Disabled controls say why").
-// ponytail: the accent kept when disabled is Rekta 0.5.0's; 0.6.0 greys the chosen one to a disabled fill with bg
-// words (rekta.css:551–552).
+// halfway (motion.md, segments). Disabled, the frames and words grey and the chosen one is a grey block with `bg`
+// words, and the reason stands beside it on the words' line while it fits the width, else below, wrapped within the
+// width (the hint is inline after the control, forms.md, "Disabled controls say why").
 Item {
     id: segments
 
@@ -91,7 +89,7 @@ Item {
             bottomLeftRadius: chosen ? chosen.bottomLeftRadius : 0
             topRightRadius: chosen ? chosen.topRightRadius : 0
             bottomRightRadius: chosen ? chosen.bottomRightRadius : 0
-            color: Tokens.color.accent
+            color: segments.disabled ? Tokens.color.disabled : Tokens.color.accent
 
             Behavior on x {
                 enabled: segments.sliding
@@ -166,7 +164,7 @@ Item {
                         font.family: Tokens.fontSans
                         font.pixelSize: Tokens.fontSizeS
                         font.weight: Tokens.fontWeightSemibold
-                        color: segments.disabled ? Tokens.color.disabled : option.lit ? Tokens.color.textOnAccent : Tokens.color.textPrimary
+                        color: segments.disabled ? (option.chosen ? Tokens.color.bg : Tokens.color.disabled) : option.lit ? Tokens.color.textOnAccent : Tokens.color.textPrimary
                     }
 
                     Timer {
@@ -186,6 +184,10 @@ Item {
 
         FocusRing {
             shown: segments.activeFocus
+        }
+
+        HoverHandler {
+            cursorShape: segments.disabled ? Qt.ForbiddenCursor : Qt.PointingHandCursor
         }
     }
 

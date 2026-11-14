@@ -5,9 +5,9 @@ import QtQuick
 // A control of the app bar (navigation.md, "App bar"; rekta.css:802–813, :1336): a glyph and a word, never a glyph
 // alone, at least 48px square in every density, no frame; hover and press lay `hover` under it. A click gives no focus,
 // so the ring shows only for the keyboard. A control that cannot act stays focusable and is read with its reason; the
-// reason shows as its tooltip and moves into "more" with it, as Rekta has it in the bar (forms.md:304–313). A count
-// follows the word ("meldungen 3"); a new count peeks in as a live tile's news does (motion.md, "Live tile news";
-// rekta.js tileUpdate()): the old one leaves upwards over 0.6 × duration-moderate while the new one rises from below
+// reason shows as its tooltip (on touch when it is tapped) and moves into "more" with it, as Rekta has it in the
+// bar (forms.md:304–313). A count follows the word ("meldungen 3"); a new count peeks in as a live tile's news
+// does (motion.md, "Live tile news"; rekta.js tileUpdate()): the old one leaves upwards over 0.6 × duration-moderate while the new one rises from below
 // over 0.8 ×, after 0.2 ×.
 Item {
     id: control
@@ -273,11 +273,14 @@ Item {
             // A slow click is still a click.
             longPressThreshold: 0
 
-            onTapped: {
-                if (control.pressFoundOpen)
+            onTapped: eventPoint => {
+                if (control.pressFoundOpen) {
                     control.opens.open = false;
-                else
-                    control.click();
+                    return;
+                }
+                control.click();
+                if (control.disabled && eventPoint.device.type === PointerDevice.TouchScreen)
+                    Tips.show(box, control.disabledReason);
             }
             onPressedChanged: {
                 if (!pressed)
@@ -292,7 +295,9 @@ Item {
 
             cursorShape: control.disabled ? Qt.ForbiddenCursor : Qt.PointingHandCursor
 
-            // Only a mouse or pen hovers, so touch never brings the reason.
+            // Only a mouse or pen hovers (a finger would hide the reason as it lifts); touch brings the reason with a
+            // tap, which stays until the next press.
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
             onHoveredChanged: {
                 if (!control.disabled)
                     return;

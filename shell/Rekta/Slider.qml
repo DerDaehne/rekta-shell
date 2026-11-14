@@ -101,6 +101,10 @@ Item {
                 }
             }
 
+            HoverHandler {
+                cursorShape: slider.disabled ? Qt.ForbiddenCursor : Qt.PointingHandCursor
+            }
+
             MouseArea {
                 id: pointer
 

@@ -160,65 +160,91 @@ TestCase {
         compare(done.patterns, 2);
     }
 
-    function test_a_sparkline_is_a_line_2_wide_with_round_joins_in_a_200_by_28_box_scaled_to_its_width() {
+    function test_a_sparkline_is_a_line_2_wide_with_round_joins_on_the_screen_at_any_width_in_a_box_200_to_28() {
         const tile = createTemporaryObject(liveTile, testCase);
         const spark = part(tile, "spark");
         const line = part(spark, "line");
         compare(spark.width, Tokens.tileUnit - 2 * Geometry.tilePadding);
         near(spark.height, spark.width * 28 / 200, "height");
-        compare(line.strokeWidth, 2);
         compare(line.joinStyle, ShapePath.RoundJoin);
         compare(line.capStyle, ShapePath.FlatCap);
+        for (const width of [100, 200, 400]) {
+            spark.width = width;
+            compare(line.strokeWidth, 2, `${width}`);
+            compare(part(spark, "shape").scale, 1, `${width}: the shape is not scaled with the box`);
+            compare(part(spark, "shape").width, width);
+        }
     }
 
-    function test_its_points_sit_inside_the_box_inset_by_half_the_stroke() {
+    function test_its_points_sit_1px_inside_the_box_on_every_side_at_any_width() {
         const spark = part(createTemporaryObject(liveTile, testCase), "spark");
-        const points = spark.layout([2, 4, 6]);
-        compare(points.length, 3);
-        compare(points[0].x, 1);
-        compare(points[0].y, 27);
-        compare(points[1].x, 100);
-        compare(points[1].y, 14);
-        compare(points[2].x, 199);
-        compare(points[2].y, 1);
+        for (const width of [100, 200, 400]) {
+            spark.width = width;
+            spark.values = [2, 4, 6];
+            const height = width * 28 / 200;
+            const points = spark.drawnPoints;
+            compare(points.length, 3, `${width}`);
+            near(points[0].x, 1, `${width}: first, from the leading edge`);
+            near(points[0].y, height - 1, `${width}: the lowest, above the bottom`);
+            near(points[1].x, width / 2, `${width}: middle`);
+            near(points[1].y, height / 2, `${width}: middle`);
+            near(points[2].x, width - 1, `${width}: last, from the trailing edge`);
+            near(points[2].y, 1, `${width}: the highest, below the top`);
+        }
     }
 
-    function test_no_values_draw_nothing_but_keep_the_room_and_a_constant_series_lies_flat_along_the_bottom() {
+    function test_no_values_draw_nothing_but_keep_the_room_and_a_constant_series_lies_flat_1px_above_the_bottom() {
         const spark = part(createTemporaryObject(liveTile, testCase), "spark");
         spark.values = [];
         compare(spark.drawnPoints.length, 0);
         verify(spark.height > 0);
         for (const series of [[0, 0, 0], [5, 5], [7]]) {
-            const points = spark.layout(series);
+            spark.values = series;
+            const points = spark.drawnPoints;
             verify(points.length >= 2, `${series}`);
-            verify(points.every(p => p.y === 27), `${series}`);
-            compare(points[points.length - 1].x, 199, `${series}`);
+            verify(points.every(p => Math.abs(p.y - (spark.height - 1)) < 0.01), `${series}`);
+            near(points[0].x, 1, `${series}`);
+            near(points[points.length - 1].x, spark.width - 1, `${series}`);
         }
     }
 
-    function test_a_sparkline_draws_in_over_duration_long_only_while_its_place_arrives() {
+    function test_a_sparkline_draws_in_over_duration_long_uncovered_from_the_leading_edge_only_while_its_place_arrives() {
         const tile = createTemporaryObject(liveTile, testCase);
         const spark = part(tile, "spark");
         const drawIn = part(spark, "drawIn");
         const run = part(spark, "drawInRun");
+        const wipe = part(spark, "wipe");
+        const overhang = Geometry.sparkWipeOverhang;
         verify(!run.running);
         compare(drawIn.progress, 1);
+        compare(wipe.x, -overhang);
+        compare(wipe.width, spark.width + 2 * overhang, "whole, with the overhang all around");
 
         tile.arrival = "arriving";
         verify(run.running);
         compare(run.duration, Tokens.durationLong);
         compare(run.easing.bezierCurve, Tokens.easeIn);
+        seek(spark, "drawIn", "progress", 0);
+        compare(wipe.width, 0);
         seek(spark, "drawIn", "progress", 0.5);
-        verify(spark.drawnPoints.length > 1 && spark.drawnPoints.length < 6);
-        const end = spark.drawnPoints[spark.drawnPoints.length - 1];
-        verify(end.x > 1 && end.x < 199, `drawn up to ${end.x}`);
+        compare(wipe.x, -overhang, "it grows from the leading edge");
+        near(wipe.x + wipe.width, spark.width / 2, "the trailing half is still covered");
+        compare(wipe.height, spark.height + 2 * overhang);
+        compare(spark.drawnPoints.length, 6, "the line is whole, only uncovered");
 
         // The place turned in after all: the line keeps drawing where it is, it does not start again.
         tile.arrival = "turned";
         compare(drawIn.progress, 0.5);
         tile.arrival = "";
         compare(drawIn.progress, 1);
-        compare(spark.drawnPoints.length, 6);
+        compare(wipe.width, spark.width + 2 * overhang);
+    }
+
+    function test_a_sparkline_draws_in_to_the_end_when_the_animation_ends() {
+        const tile = createTemporaryObject(liveTile, testCase, { arrival: "arriving" });
+        const spark = part(tile, "spark");
+        tryCompare(part(spark, "drawInRun"), "running", false, Tokens.durationLong * 3);
+        compare(part(spark, "wipe").width, spark.width + 2 * Geometry.sparkWipeOverhang);
     }
 
     function test_a_sparkline_still_draws_in_after_a_turn() {
@@ -239,6 +265,8 @@ TestCase {
         const spark = part(createTemporaryObject(liveTile, testCase), "spark");
         const before = spark.layout(spark.values);
         const after = spark.layout([9, 6, 8, 4, 5, 3]);
+        const drawnBefore = spark.onScreen(before);
+        const drawnAfter = spark.onScreen(after);
         spark.values = [9, 6, 8, 4, 5, 3];
         const run = part(spark, "morphRun");
         verify(run.running);
@@ -246,7 +274,7 @@ TestCase {
         compare(run.easing.bezierCurve, Tokens.easeBase);
         seek(spark, "morph", "progress", 0.5);
         for (let i = 0; i < 6; i++)
-            near(spark.drawnPoints[i].y, (before[i].y + after[i].y) / 2, `point ${i}`);
+            near(spark.drawnPoints[i].y, (drawnBefore[i].y + drawnAfter[i].y) / 2, `point ${i}`);
 
         // From where the line is now, not from where it started.
         spark.values = [3, 5, 4, 8, 6, 9];

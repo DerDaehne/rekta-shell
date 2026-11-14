@@ -2,11 +2,10 @@ import QtQuick
 import QtQuick.Shapes
 
 // A sparkline (tiles.md, "Tile content patterns"; data.md, "Sparklines"; rekta.css:215–227): a trend at a glance, one
-// series, no axis. It is drawn in a 200 × 28 box scaled to its width, stroke and all, in the tile's text colour; a
-// finished (success) tile drops it, since stillness means done. It draws in when its place arrives; new values on as
-// many points move the line to them (motion.md, "Data morph"); while its live region is stale or offline it fades.
-// ponytail: the stroke scaling with the box and the dashed draw-in are Rekta 0.5.0's; 0.6.0 keeps the line 2px at any
-// width and wipes it in from the leading edge (rekta.css:219–223, :227).
+// series, no axis. It is drawn in a box 200 : 28 as wide as it is given, but its line stays 2px on the screen at any
+// width, in the tile's text colour; a finished (success) tile drops it, since stillness means done. It draws in when
+// its place arrives, uncovered from the leading edge; new values on as many points move the line to them (motion.md,
+// "Data morph"); while its live region is stale or offline it fades.
 Item {
     id: spark
 
@@ -21,42 +20,31 @@ Item {
     readonly property Tile tile: (parent?.parent ?? null) as Tile
     // How its place arrives, as Tile.arrival; in a tile, the tile's.
     property string arrival: tile ? tile.arrival : ""
-    readonly property var drawnPoints: prefix(between(morph.from, morph.to, morph.progress), drawIn.progress).map(p => Qt.point(p.x, p.y))
+    readonly property var drawnPoints: onScreen(between(morph.from, morph.to, morph.progress)).map(p => Qt.point(p.x, p.y))
 
-    // The points in box units, inset by half the stroke so a flat line is never cut off: no values draw nothing, a
-    // constant series (one value among them) lies flat along the bottom (data.md, "Sparklines").
+    // The points as shares of the area inside the box inset by half the stroke (x from the leading edge, y from the top):
+    // no values draw nothing, a constant series (one value among them) lies flat along the bottom (data.md, "Sparklines").
     function layout(series: list<real>): var {
         const readings = Array.from(series);
-        const inset = Geometry.sparkStroke / 2;
-        const across = Geometry.sparkBoxWidth - 2 * inset;
-        const bottom = Geometry.sparkBoxHeight - inset;
         if (readings.length === 1)
-            return [{ x: inset, y: bottom }, { x: inset + across, y: bottom }];
+            return [{ x: 0, y: 1 }, { x: 1, y: 1 }];
         const lo = Math.min(...readings);
         const span = Math.max(...readings) - lo;
-        const rise = v => span > 0 ? (v - lo) / span * (Geometry.sparkBoxHeight - 2 * inset) : 0;
-        return readings.map((v, i) => ({ x: inset + i * across / (readings.length - 1), y: bottom - rise(v) }));
+        const rise = v => span > 0 ? (v - lo) / span : 0;
+        return readings.map((v, i) => ({ x: i / (readings.length - 1), y: 1 - rise(v) }));
+    }
+
+    // The shares laid on the screen: 1px clear of the box on every side, whatever the width (data.md, "Clear of the
+    // hairline").
+    function onScreen(points: var): var {
+        const inset = Geometry.sparkStroke / 2;
+        return points.map(p => ({ x: inset + p.x * (width - 2 * inset), y: inset + p.y * (height - 2 * inset) }));
     }
 
     function between(from: var, to: var, progress: real): var {
         if (progress >= 1 || from.length !== to.length)
             return to;
         return to.map((p, i) => ({ x: from[i].x + (p.x - from[i].x) * progress, y: from[i].y + (p.y - from[i].y) * progress }));
-    }
-
-    // The first share of the line by its length: how far it has drawn in (`stroke-dashoffset` along pathLength 1).
-    function prefix(points: var, share: real): var {
-        if (share >= 1 || points.length < 2)
-            return share > 0 ? points : [];
-        const lengths = points.slice(1).map((p, i) => Math.hypot(p.x - points[i].x, p.y - points[i].y));
-        let left = share * lengths.reduce((sum, length) => sum + length, 0);
-        const drawn = [points[0]];
-        for (let i = 0; i < lengths.length && left > 0; i++) {
-            const k = Math.min(1, left / lengths[i]);
-            drawn.push({ x: points[i].x + (points[i + 1].x - points[i].x) * k, y: points[i].y + (points[i + 1].y - points[i].y) * k });
-            left -= lengths[i];
-        }
-        return drawn;
     }
 
     // As many points as before travel to their new places, eased from wherever the line is now; any other count is
@@ -156,23 +144,34 @@ Item {
         easing.bezierCurve: Tokens.easeIn
     }
 
-    Shape {
-        width: Geometry.sparkBoxWidth
-        height: Geometry.sparkBoxHeight
-        scale: spark.width / Geometry.sparkBoxWidth
-        transformOrigin: Item.TopLeft
-        preferredRendererType: Shape.CurveRenderer
+    // `clip-path: inset(-2px)` grows from the leading edge, 2px over all around (rekta.css:223, :227).
+    Item {
+        objectName: "wipe"
+        x: -Geometry.sparkWipeOverhang
+        y: -Geometry.sparkWipeOverhang
+        width: (spark.width + 2 * Geometry.sparkWipeOverhang) * drawIn.progress
+        height: spark.height + 2 * Geometry.sparkWipeOverhang
+        clip: true
 
-        ShapePath {
-            objectName: "line"
-            strokeColor: spark.ink
-            strokeWidth: Geometry.sparkStroke
-            fillColor: "transparent"
-            joinStyle: ShapePath.RoundJoin
-            capStyle: ShapePath.FlatCap
+        Shape {
+            objectName: "shape"
+            x: Geometry.sparkWipeOverhang
+            y: Geometry.sparkWipeOverhang
+            width: spark.width
+            height: spark.height
+            preferredRendererType: Shape.CurveRenderer
 
-            PathPolyline {
-                path: spark.drawnPoints
+            ShapePath {
+                objectName: "line"
+                strokeColor: spark.ink
+                strokeWidth: Geometry.sparkStroke
+                fillColor: "transparent"
+                joinStyle: ShapePath.RoundJoin
+                capStyle: ShapePath.FlatCap
+
+                PathPolyline {
+                    path: spark.drawnPoints
+                }
             }
         }
     }

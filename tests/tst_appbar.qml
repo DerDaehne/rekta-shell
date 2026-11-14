@@ -423,6 +423,30 @@ TestCase {
         compare(Tips.target, null, "a control that can act has no tip");
     }
 
+    function test_a_finger_tap_on_a_disabled_control_shows_its_reason_at_once_and_it_stays_until_the_next_press() {
+        const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 200, disabledReason: "comes with the palette" });
+        const box = findChild(control, "box");
+        touchEvent(box).press(0, box, 10, 10).commit();
+        compare(Tips.target, null, "not on the press");
+        touchEvent(box).release(0, box, 10, 10).commit();
+        compare(Tips.target, box, "at once on the tap");
+        compare(Tips.text, "comes with the palette");
+        wait(Tokens.durationTipDelay * 2);
+        compare(Tips.target, box, "it stands after the finger left");
+        touchEvent(box).press(0, box, 10, 10).commit();
+        compare(Tips.target, null, "the next press hides it");
+        touchEvent(box).release(0, box, 10, 10).commit();
+        compare(Tips.target, box, "and the next tap shows it again");
+    }
+
+    function test_a_finger_tap_on_a_control_that_can_act_shows_no_tip() {
+        const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 200 });
+        const box = findChild(control, "box");
+        touchEvent(box).press(0, box, 10, 10).commit();
+        touchEvent(box).release(0, box, 10, 10).commit();
+        compare(Tips.target, null);
+    }
+
     function test_a_press_anywhere_on_the_bar_hides_a_tip_and_reaches_what_it_lands_on() {
         makeScene({});
         const middle = named("middle");
