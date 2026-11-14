@@ -218,6 +218,19 @@ TestCase {
         compare(shownSpy.count, 0);
     }
 
+    function test_a_pointer_s_way_counts_on_the_screen_however_far_the_row_has_sunk_under_it() {
+        const pressed = row(1);
+        const at = pressed.mapToItem(testCase, pressed.width - 2, pressed.height / 2);
+        mousePress(testCase, at.x, at.y);
+        tryVerify(() => pressed.sink === 1, 5000, "it has sunk");
+        mouseMove(testCase, at.x + Geometry.pressSlopMouse, at.y);
+        verify(pressed.held, "the slop outwards is still a press");
+        mouseMove(testCase, at.x - Geometry.pressSlopMouse - 1, at.y);
+        verify(!pressed.held, "past the slop inwards it gives up");
+        mouseRelease(testCase, at.x - Geometry.pressSlopMouse - 1, at.y);
+        compare(shownSpy.count, 0);
+    }
+
     function test_hover_tints_a_row() {
         mouseMove(row(4), 50, 10);
         tryVerify(() => findChild(row(4), "tint").visible);

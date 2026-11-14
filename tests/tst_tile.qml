@@ -40,6 +40,15 @@ TestCase {
         }
     }
 
+    // Qt hands a finger's moves on with the next frame, so a check after a move waits until the press has seen it.
+    Component {
+        id: moveSpy
+
+        SignalSpy {
+            signalName: "positionChanged"
+        }
+    }
+
     Component {
         id: sheetComponent
 
@@ -376,20 +385,41 @@ TestCase {
     function test_a_finger_presses_after_tap_delay_and_gives_up_on_eight_pixels() {
         const tile = createTemporaryObject(tileComponent, testCase, { opens: true });
         const activations = createTemporaryObject(spy, testCase, { target: tile });
+        const moves = createTemporaryObject(moveSpy, testCase, { target: findChild(tile, "area") });
+        // In the window, as the tile shrinks and tilts under the finger once it sinks.
+        const at = tile.mapToItem(testCase, 40, 40);
         const touch = touchEvent(tile);
-        touch.press(0, tile, 40, 40).commit();
+        touch.press(0, testCase, at.x, at.y).commit();
         verify(!tile.pressed, "not before tap-delay");
         tryCompare(tile, "pressed", true, Tokens.durationTapDelay * 3);
-        touch.move(0, tile, 46, 40).commit();
+        touch.move(0, testCase, at.x + 6, at.y).commit();
+        tryCompare(moves, "count", 1);
         verify(tile.pressed, "6px is still a tap");
-        touch.move(0, tile, 49, 40).commit();
-        tryCompare(tile, "pressed", false, 500, "9px is the start of a scroll");
-        touch.release(0, tile, 49, 40).commit();
+        touch.move(0, testCase, at.x + 9, at.y).commit();
+        tryCompare(moves, "count", 2);
+        verify(!tile.pressed, "9px is the start of a scroll");
+        touch.release(0, testCase, at.x + 9, at.y).commit();
         compare(activations.count, 0);
         touch.press(0, tile, 40, 40).commit();
         touch.release(0, tile, 40, 40).commit();
         verify(tile.pressed, "a quick tap still sinks");
         compare(activations.count, 1);
+    }
+
+    function test_a_finger_s_way_counts_on_the_screen_however_far_the_tile_has_sunk_under_it() {
+        const tile = createTemporaryObject(tileComponent, testCase, { opens: true, columns: 4 });
+        const moves = createTemporaryObject(moveSpy, testCase, { target: findChild(tile, "area") });
+        const at = tile.mapToItem(testCase, 10, tile.height / 2);
+        const touch = touchEvent(tile);
+        touch.press(0, testCase, at.x, at.y).commit();
+        tryVerify(() => tile.sink === 1, 5000, "it has sunk");
+        touch.move(0, testCase, at.x - Geometry.pressSlopTouch, at.y).commit();
+        tryCompare(moves, "count", 1);
+        verify(tile.pressed, "the slop outwards is still a tap");
+        touch.move(0, testCase, at.x + Geometry.pressSlopTouch + 1, at.y).commit();
+        tryCompare(moves, "count", 2);
+        verify(!tile.pressed, "past the slop inwards it gives up");
+        touch.release(0, testCase, at.x + Geometry.pressSlopTouch + 1, at.y).commit();
     }
 
     Component {

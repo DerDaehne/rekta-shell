@@ -386,7 +386,11 @@ Item {
     MouseArea {
         id: area
 
+        objectName: "area"
         property point start
+        // Where it began in the window: the way a pointer has gone is counted on the screen, as rekta.js counts it in
+        // client coordinates (:331, :3175), never on the tile that shrinks and tilts under it as it sinks.
+        property point startInWindow
         property bool touch: false
         property bool moved: false
         // A long press opened the menu: its release does not activate.
@@ -396,6 +400,12 @@ Item {
             if (tile.turning)
                 return;
             press.start(Math.max(-1, Math.min(1, (start.x - Tokens.spaceM) / tile.width * 2 - 1)), Math.max(-1, Math.min(1, (start.y - Tokens.spaceM) / tile.height * 2 - 1)));
+        }
+
+        // To a millionth of a pixel: mapping back through the turn of the sunk tile adds float noise at the slop.
+        function wayTo(x: real, y: real): real {
+            const at = mapToItem(null, x, y);
+            return Math.round(Math.hypot(at.x - startInWindow.x, at.y - startInWindow.y) * 1e6) / 1e6;
         }
 
         anchors.fill: parent
@@ -415,6 +425,7 @@ Item {
                 return;
             }
             start = Qt.point(mouse.x, mouse.y);
+            startInWindow = mapToItem(null, mouse.x, mouse.y);
             touch = mouse.source !== Qt.MouseEventNotSynthesized;
             moved = false;
             swallow = false;
@@ -426,9 +437,10 @@ Item {
                 pressAtStart();
         }
         onPositionChanged: mouse => {
-            if (Math.hypot(mouse.x - start.x, mouse.y - start.y) > Geometry.longPressSlop)
+            const way = wayTo(mouse.x, mouse.y);
+            if (way > Geometry.longPressSlop)
                 longPress.stop();
-            if (moved || Math.hypot(mouse.x - start.x, mouse.y - start.y) <= (touch ? Geometry.pressSlopTouch : Geometry.pressSlopMouse))
+            if (moved || way <= (touch ? Geometry.pressSlopTouch : Geometry.pressSlopMouse))
                 return;
             // Dragging, or selecting, never activates.
             moved = true;

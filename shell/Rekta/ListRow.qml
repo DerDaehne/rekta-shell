@@ -201,6 +201,9 @@ Item {
         id: area
 
         property point start
+        // Where it began in the window: the way a pointer has gone is counted on the screen, as rekta.js counts it in
+        // client coordinates (:331), never on the row that shrinks and tilts under it as it sinks.
+        property point startInWindow
         property bool touch: false
         property bool moved: false
 
@@ -208,10 +211,17 @@ Item {
             row.press(Math.max(-1, Math.min(1, start.x / row.width * 2 - 1)), Math.max(-1, Math.min(1, start.y / row.height * 2 - 1)));
         }
 
+        // To a millionth of a pixel: mapping back through the turn of the sunk row adds float noise at the slop.
+        function wayTo(x: real, y: real): real {
+            const at = mapToItem(null, x, y);
+            return Math.round(Math.hypot(at.x - startInWindow.x, at.y - startInWindow.y) * 1e6) / 1e6;
+        }
+
         anchors.fill: parent
 
         onPressed: mouse => {
             start = Qt.point(mouse.x, mouse.y);
+            startInWindow = mapToItem(null, mouse.x, mouse.y);
             touch = mouse.source !== Qt.MouseEventNotSynthesized;
             moved = false;
             if (touch)
@@ -220,7 +230,7 @@ Item {
                 pressAtStart();
         }
         onPositionChanged: mouse => {
-            if (moved || Math.hypot(mouse.x - start.x, mouse.y - start.y) <= (touch ? Geometry.pressSlopTouch : Geometry.pressSlopMouse))
+            if (moved || wayTo(mouse.x, mouse.y) <= (touch ? Geometry.pressSlopTouch : Geometry.pressSlopMouse))
                 return;
             moved = true;
             tapDelay.stop();
