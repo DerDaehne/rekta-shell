@@ -1565,7 +1565,7 @@ TestCase {
         compare(tip.side, "above");
         compare(tip.y, Math.round(at.y - Tokens.tipGap - tip.height), "tip-gap above its control");
         verify(tip.x < at.x + box.width && tip.x + tip.width > at.x, "over it");
-        verify(tip.x >= Tokens.spaceS && tip.x + tip.width <= tip.parent.width - Tokens.spaceS, "within the panel");
+        compare(tip.x, Tokens.spaceM, "space-m from the panel's leading edge");
         verify(drawnAsInk(tip), "an ink strip");
         keyClick(Qt.Key_Space);
         verify(tip.visible);

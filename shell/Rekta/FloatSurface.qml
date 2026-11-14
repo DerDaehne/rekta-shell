@@ -2,8 +2,8 @@ import QtQuick
 
 // A surface that floats next to the control that opened it (states.md, "Floating surfaces"; rekta.css:1003–1011): bg, a
 // 1px text-contrast-medium edge, radius-s, no shadow. As wide as its widest row, from 12rem up to 24rem (less in a
-// narrow window); at most 24rem, 60% of the window or the window less space-m above and below
-// high (rekta.js:2024), scrolling the rest. It comes in with a fade and a 4px shift away from its control and leaves at
+// narrow window); at most 24rem, 60% of the window or the window less space-m above and below high
+// (rekta.js:2024), scrolling the rest. It comes in with a fade and a 4px shift away from its control and leaves at
 // once. The host floats it above the window (an overlay, or a popup of its own where it must reach past the window)
 // and places it with Placement.float, which also gives its side.
 Rectangle {

@@ -177,6 +177,15 @@ TestCase {
         compare(atFoot.y, Tokens.spaceM, "bottom edge, too tall for either side");
     }
 
+    function test_it_goes_below_when_it_fits_there_even_with_more_room_above() {
+        compare(Placement.float(Qt.rect(100, 400, 80, 32), Qt.size(200, 100), window), { x: 100, y: 436, side: "below" });
+    }
+
+    function test_too_tall_for_either_side_with_as_much_room_on_each_it_goes_below() {
+        // 264 below and 264 above.
+        compare(Placement.float(Qt.rect(100, 284, 80, 32), Qt.size(200, 300), window), { x: 100, y: 284, side: "below" });
+    }
+
     function test_it_goes_below_only_when_it_fits_there_with_space_m_to_spare() {
         // 228 below and 300 above, counted from space-m: 232 fits only above.
         compare(Placement.float(Qt.rect(100, 320, 80, 32), Qt.size(200, 232), window), { x: 100, y: 320 - Tokens.spaceXs - 232, side: "above" });
