@@ -80,8 +80,17 @@ private:
     void respondLater(const QJSValue &callback, const QString &error);
     void respond(const QJSValue &callback, const QString &error, const QVariantList &values);
 
+    struct Subscription {
+        QString service;
+        QString path;
+        QString interfaceName;
+        QString member;
+    };
+
     Bus m_bus = Session;
     QJSValue m_handler;
     const QString m_name;
     std::optional<QDBusConnection> m_connection;
+    QList<Subscription> m_subscriptions;
+    QStringList m_exportedPaths;
 };

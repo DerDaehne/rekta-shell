@@ -161,6 +161,13 @@ DBusConnection::~DBusConnection()
 {
     if (!m_connection)
         return;
+    // Until this object is unhooked, QtDBus hands it each incoming message with a reference to the connection. One
+    // handed over after the last reference is gone revives the connection for a moment, and it is then deleted twice.
+    for (const Subscription &subscription : std::as_const(m_subscriptions))
+        m_connection->disconnect(subscription.service, subscription.path, subscription.interfaceName, subscription.member,
+                                 this, SLOT(deliver(QDBusMessage)));
+    for (const QString &path : std::as_const(m_exportedPaths))
+        m_connection->unregisterObject(path);
     // The connection closes, and the bus hands its names on, once its last reference is gone.
     m_connection.reset();
     QDBusConnection::disconnectFromBus(m_name);
@@ -176,7 +183,10 @@ QDBusConnection DBusConnection::connection()
 
 bool DBusConnection::listen(const QString &interfaceName, const QString &member, const QString &service, const QString &path)
 {
-    return connection().connect(service, path, interfaceName, member, this, SLOT(deliver(QDBusMessage)));
+    if (!connection().connect(service, path, interfaceName, member, this, SLOT(deliver(QDBusMessage))))
+        return false;
+    m_subscriptions.append({service, path, interfaceName, member});
+    return true;
 }
 
 void DBusConnection::deliver(const QDBusMessage &message)
@@ -251,6 +261,7 @@ bool DBusConnection::own(const QString &name, const QString &path, const QString
         delete object;
         return false;
     }
+    m_exportedPaths.append(path);
     // In line behind the current owner and replaceable by the next one, so a reload hands the name on without a gap.
     const QDBusReply<QDBusConnectionInterface::RegisterServiceReply> reply = connection().interface()->registerService(
         name, QDBusConnectionInterface::QueueService, QDBusConnectionInterface::AllowReplacement);

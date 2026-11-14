@@ -437,6 +437,23 @@ TestCase {
         compare(heard.map(signal => signal.signature), ["", "u"]);
     }
 
+    // An instance gone in the middle of a flood: QtDBus must have stopped handing it messages before its connection goes.
+    property DBusConnection goingAway: null
+
+    function test_an_instance_that_goes_away_while_the_signals_it_hears_still_pour_in_leaves_the_process_running() {
+        for (let round = 0; round < 30; ++round) {
+            goingAway = connectionComponent.createObject(testCase);
+            let heard = 0;
+            goingAway.received.connect(() => ++heard);
+            verify(goingAway.listen("org.rekta.Events", "Flood"));
+            settle(goingAway);
+            counterpart.flood("/flood", "org.rekta.Events", "Flood", 2000);
+            tryVerify(() => heard > 0, 5000, `round ${round}`);
+            goingAway.destroy();
+            tryVerify(() => goingAway === null, 5000, `round ${round}`);
+        }
+    }
+
     function test_a_name_is_free_once_its_owner_is_gone() {
         const name = "org.rekta.Test.Gone";
         const only = ownWho(name, "only");
