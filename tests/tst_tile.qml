@@ -248,11 +248,11 @@ TestCase {
         const steps = Glide.record(tile, "sink");
         const pressed = Date.now();
         mousePress(tile, tile.width / 2, tile.height / 2);
-        tryCompare(tile, "sink", 1, Tokens.durationPress * 3);
+        tryVerify(() => tile.sink === 1, Tokens.durationPress * 3, "it has sunk");
         const sinking = steps.splice(0);
         const released = Date.now();
         mouseRelease(tile, tile.width / 2, tile.height / 2);
-        tryCompare(tile, "sink", 0, Tokens.durationShort * 3);
+        tryVerify(() => tile.sink === 0, Tokens.durationShort * 3, "it is back");
         const inStray = Glide.strayOf([{ steps: sinking, from: 0, to: 1 }], Tokens.durationPress, easeBase, pressed, ticks);
         verify(inStray < 0.06, `in over duration-press, off by ${inStray}`);
         const backStray = Glide.strayOf([{ steps, from: 1, to: 0 }], Tokens.durationShort, easeBase, released, ticks);

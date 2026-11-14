@@ -276,7 +276,7 @@ TestCase {
         pull(0, rowHeight() + 1);
         compare(row("mail").offset, rowHeight() + 1, "the pointer, at once");
         verify(kalender.offset > -rowHeight(), "making room takes its time");
-        tryCompare(kalender, "offset", -rowHeight(), Tokens.durationShort * 4);
+        tryVerify(() => kalender.offset === -rowHeight(), Tokens.durationShort * 4, "it has made room");
         const stray = Glide.strayOf([room], Tokens.durationShort, easeBase, since, ticks);
         verify(stray < 0.06, `it makes room over duration-short, off by ${stray}`);
         compare(row("dateien").offset, 0, "rows beyond the place stay");
