@@ -22,6 +22,8 @@ Item {
     readonly property string spoken: `${word} ${valueText}`
     // From the first key until the hold after the last one has passed; set by `press()` and the hold alone.
     property bool shown: false
+    // False while the display alone speaks in its place: under a full-screen window, even while the bar slides away.
+    property bool speaks: true
     // Where the flip stands, 0 to 1, linear in time: the leaving part turns over the first half, the arriving one over
     // the second.
     property real phase: 1
@@ -42,9 +44,8 @@ Item {
         hold.restart();
     }
 
-    // Only a display in sight speaks: under a full-screen window the bar is gone and the display alone says it.
     function say(words: string) {
-        if (!shown || !(display.Window.window?.visible ?? false))
+        if (!shown || !speaks)
             return;
         display.Accessible.announce(words, Accessible.Polite);
         display.announced(words, Accessible.Polite);

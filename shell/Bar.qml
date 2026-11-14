@@ -118,6 +118,8 @@ PanelWindow {
             id: display
 
             replaces: clock
+            // The opposite of the display alone (ReadoutSurface), which speaks as soon as the bar starts to slide away.
+            speaks: !(panel.windows?.fullScreenOn(panel.modelData) ?? false)
             word: panel.readout.word
             level: panel.readout.level
             valueText: panel.readout.valueText

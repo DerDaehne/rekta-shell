@@ -352,6 +352,13 @@ TestCase {
         compare(saidWords(), ["lautstärke 86%"]);
     }
 
+    function test_a_display_that_leaves_speaking_to_the_display_alone_announces_nothing() {
+        display.speaks = false;
+        display.press();
+        display.say("lautstärke 86%");
+        compare(said.count, 0);
+    }
+
     function test_a_volume_key_then_a_microphone_key_announce_the_values_they_resulted_in_and_nothing_stale_or_mixed() {
         const readout = createTemporaryObject(readoutComponent, testCase);
         display.word = Qt.binding(() => readout.word);
