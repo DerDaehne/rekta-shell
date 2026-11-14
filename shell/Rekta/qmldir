@@ -65,6 +65,7 @@ Select 1.0 Select.qml
 Tooltip 1.0 Tooltip.qml
 OverflowTip 1.0 OverflowTip.qml
 PressHidesTips 1.0 PressHidesTips.qml
+PressOutside 1.0 PressOutside.qml
 singleton Turnstile 1.0 Turnstile.qml
 singleton FadeBack 1.0 FadeBack.qml
 Sparkline 1.0 Sparkline.qml

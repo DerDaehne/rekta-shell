@@ -287,6 +287,11 @@ PanelWindow {
             wanted: host.surface.open
         }
 
+        // A finger anywhere else in the shell reaches only this popup, which closes for it.
+        PressOutside {
+            onPressedOutside: host.surface.dismiss()
+        }
+
         Component.onCompleted: {
             surface.parent = contentItem;
             surface.x = 0;
