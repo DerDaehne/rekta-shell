@@ -184,7 +184,7 @@ function hits(apps, text, starts) {
 function appHits(apps, text, starts, units) {
     const found = hits(apps, text, starts);
     const typed = text.trim();
-    const tiles = found.filter(app => Rekta.Match.score(app.name, "", typed) >= 2).slice(0, Math.max(1, units - 1));
+    const tiles = found.filter(app => Rekta.Match.score(app.name, "", typed) >= Rekta.Match.wordStart).slice(0, Math.max(1, units - 1));
     return {
         tiles: tiles,
         rows: found.filter(app => !tiles.includes(app))
