@@ -9,8 +9,8 @@
 #    German comments or test names in code, local home paths, and author/committer addresses
 #    other than GitHub's noreply ones. Merge commits are skipped here: GitHub's test merge of a pull
 #    request carries the opener's address, and the ruleset on main allows no merges anyway.
-#    ponytail: only the current files and messages, not every intermediate commit's content —
-#    the private patterns of part 3 cover that if a reference must never reach the history.
+#    Board references and home paths are also looked for in what EVERY unpushed commit adds, so one that a commit
+#    brings and the next removes is found; home paths are looked for in binary files too.
 # 3) Privacy scan: patterns from the gitignored .privacy-patterns (case-insensitive) against
 #    - file names AND contents of the working tree (including the index),
 #    - file names AND contents of EVERY unpushed commit on its own (not just the net diff,
@@ -114,7 +114,42 @@ german_in_messages() {
 
 # Prints "<file>:<line>" for every local home path in tracked and untracked (not ignored) files.
 home_paths_in_files() {
-	{ git grep -n -I --untracked -E -e "$HOME_PATH" -- . || true; } | cut -d: -f1,2
+	{ git -c core.quotePath=false grep -n -a --untracked -E -e "$HOME_PATH" -- . || true; } | cut -d: -f1,2
+}
+
+# Prints the lines commit $1 adds to the files of the pathspecs after $2; $2 is --text to read binary files too,
+# "" to leave them out. Merge commits are not passed in: the commits they bring in are checked on their own.
+added_lines() {
+	local sha="$1" text="$2"
+	shift 2
+	git -c core.quotePath=false show --format= --unified=0 --no-color --no-ext-diff --no-textconv ${text:+"$text"} \
+		"$sha" -- "$@" | LC_ALL=C awk '/^diff /{ hunk = 0 } /^@@/{ hunk = 1; next } hunk && /^\+/{ print substr($0, 2) }'
+}
+
+# Prints the short sha of every unpushed commit that adds a board reference to a file.
+board_references_in_added_lines() {
+	local sha
+	for sha in $(git rev-list --no-merges origin/main..HEAD); do
+		if { # pipefail: no match in the last grep must not hide the earlier ones
+			added_lines "$sha" "" . | grep -aiE -e "$NOTE_SLUG" -e "$ADR_ID" -e "$COMMENT_ID"
+			added_lines "$sha" "" "${SLASH_CODE[@]}" | grep -aE -e "$TICKET_ID_IN_SLASH_CODE"
+			added_lines "$sha" "" "${HASH_CODE[@]}" | grep -aE -e "$TICKET_ID_IN_HASH_CODE"
+			added_lines "$sha" "" '*.md' ':!*CHANGELOG*' | grep -aE -e "$TICKET_ID"
+			true
+		} | grep -qa .; then
+			echo "${sha:0:7}"
+		fi
+	done
+}
+
+# Prints the short sha of every unpushed commit that adds a local home path to a file, binary ones included.
+home_paths_in_added_lines() {
+	local sha
+	for sha in $(git rev-list --no-merges origin/main..HEAD); do
+		if added_lines "$sha" --text . | grep -qaE "$HOME_PATH"; then
+			echo "${sha:0:7}"
+		fi
+	done
 }
 
 # Prints the short sha of every unpushed commit whose message contains a local home path.
@@ -159,21 +194,21 @@ if [ "${SCAN_SECRETS_SKIP_GITLEAKS:-}" = "1" ]; then
 	echo "== gitleaks: skipped (SCAN_SECRETS_SKIP_GITLEAKS=1) =="
 else
 	echo "== gitleaks: History =="
-	if ! run_gitleaks git --redact -v --no-banner .; then
+	if ! run_gitleaks git --verbose --redact --no-banner .; then
 		echo "$GITLEAKS_HINT" >&2
 		status=1
 	fi
 
 	echo
 	echo "== gitleaks: staged (before the commit) =="
-	if ! run_gitleaks git --staged --redact -v --no-banner .; then
+	if ! run_gitleaks git --staged --verbose --redact --no-banner .; then
 		echo "$GITLEAKS_HINT" >&2
 		status=1
 	fi
 
 	echo
 	echo "== gitleaks: unstaged changes to tracked files (before the commit) =="
-	if ! run_gitleaks git --pre-commit --redact -v --no-banner .; then
+	if ! run_gitleaks git --pre-commit --verbose --redact --no-banner .; then
 		echo "$GITLEAKS_HINT" >&2
 		status=1
 	fi
@@ -189,6 +224,8 @@ if git rev-parse --verify -q origin/main >/dev/null; then
 	report "Board reference in the message of commit" "$BOARD_HINT" "$(board_references_in_messages)" || conventions=1
 	report "German in the message of commit" "$MESSAGE_LANGUAGE_HINT" "$(german_in_messages)" || conventions=1
 	report "Local home path in the message of commit" "$HOME_PATH_HINT" "$(home_paths_in_messages)" || conventions=1
+	report "Board reference in the content of commit" "$BOARD_HINT" "$(board_references_in_added_lines)" || conventions=1
+	report "Local home path in the content of commit" "$HOME_PATH_HINT" "$(home_paths_in_added_lines)" || conventions=1
 	report "Non-noreply author or committer" "$IDENTITY_HINT" "$(foreign_identities)" || conventions=1
 else
 	echo "origin/main unknown (git fetch needed) — commit messages and identities not checked."

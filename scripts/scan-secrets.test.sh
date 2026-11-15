@@ -392,6 +392,80 @@ git -C "$work" add f.txt
 commit_as Neutral neutral@users.noreply.github.com "fix: read the config" -m "Seen in $home_path."
 check "home path: a local home path in a commit message" 1 "Local home path in the message of commit"
 
+# History: a reference that one commit adds and the next removes still reaches the history on push.
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+printf 'Clone it to %s first.\n' "$home_path" >"$work/doc.md"
+git -C "$work" add doc.md
+commit_as Neutral neutral@users.noreply.github.com "docs: add a doc"
+git -C "$work" rm -q doc.md
+commit_as Neutral neutral@users.noreply.github.com "docs: remove the doc"
+check "history: a home path added by one commit and removed by the next" 1 "Local home path in the content of commit"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+printf '// builds on %s\n' "$slug" >"$work/Bar.qml"
+git -C "$work" add Bar.qml
+commit_as Neutral neutral@users.noreply.github.com "feat: add a bar"
+git -C "$work" rm -q Bar.qml
+commit_as Neutral neutral@users.noreply.github.com "feat: remove the bar"
+check "history: a board reference added by one commit and removed by the next" 1 "Board reference in the content of commit"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+printf '// see %s\n' "$ticket" >"$work/Clock.qml"
+git -C "$work" add Clock.qml
+commit_as Neutral neutral@users.noreply.github.com "feat: add a clock"
+git -C "$work" rm -q Clock.qml
+commit_as Neutral neutral@users.noreply.github.com "feat: remove the clock"
+check "history: a ticket id in a comment added by one commit and removed by the next" 1 "Board reference in the content of commit"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+printf 'x\n' >"$work/a.txt"
+git -C "$work" add a.txt
+commit_as Neutral neutral@users.noreply.github.com "feat: add a"
+printf 'y %s z\n' "$home_path" >>"$work/a.txt"
+git -C "$work" -c user.name=Neutral -c user.email=neutral@users.noreply.github.com commit -q -a -m "fix: touch a"
+git -C "$work" -c user.name=Neutral -c user.email=neutral@users.noreply.github.com revert --no-edit HEAD >/dev/null
+check "history: a revert does not hide what the reverted commit added" 1 "Local home path in the content of commit"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+printf 'x\n' >"$work/a.txt"
+git -C "$work" add a.txt
+commit_as Neutral neutral@users.noreply.github.com "feat: add a"
+printf 'mentions %s here\n' "$slug" >>"$work/a.txt"
+git -C "$work" -c user.name=Neutral -c user.email=neutral@users.noreply.github.com commit -q -a -m "fix: touch a"
+git -C "$work" -c user.name=Neutral -c user.email=neutral@users.noreply.github.com revert --no-edit HEAD >/dev/null
+check "history: a board reference in a plain text file is found after a revert" 1 "Board reference in the content of commit"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+printf 'ok %s\000\001end\n' "$home_path" >"$work/probe.png"
+git -C "$work" add probe.png
+check "home path: a local home path in a binary file of the tree" 1 "Local home path in probe.png:1"
+git -C "$work" -c user.name=Neutral -c user.email=neutral@users.noreply.github.com commit -q -m "feat: add a picture"
+git -C "$work" rm -q probe.png
+git -C "$work" -c user.name=Neutral -c user.email=neutral@users.noreply.github.com commit -q -m "feat: remove the picture"
+check "home path: a binary file that a commit adds and the next removes" 1 "Local home path in the content of commit"
+
+reset_work
+printf 'Probe[Ü]bersicht\n' >"$work/.privacy-patterns"
+echo x >"$work/ProbeÜbersicht.md"
+git -C "$work" add ProbeÜbersicht.md
+commit_as Neutral neutral@users.noreply.github.com "feat: add an overview"
+git -C "$work" mv ProbeÜbersicht.md overview.md
+commit_as Neutral neutral@users.noreply.github.com "feat: rename the overview"
+check "pattern in a non-ASCII file name that a later commit renames" 1 "file name ProbeÜbersicht.md (commit"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+printf 'Settings live in ~/.config and [[note]].\n' >"$work/ok.md"
+git -C "$work" add ok.md
+commit_as Neutral neutral@users.noreply.github.com "docs: add ok ($ticket)"
+check "history: a clean commit with a ticket id in its subject passes" 0
+
 # Identities: author and committer must be noreply addresses.
 reset_work
 printf 'ProbeNoop\n' >"$work/.privacy-patterns"
