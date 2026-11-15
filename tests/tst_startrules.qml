@@ -133,6 +133,7 @@ TestCase {
             "/usr/share/applications/gnome-mines.desktop\0DBusActivatable=true",
             "/usr/share/applications/gnome/org.example.Sub.desktop\0DBusActivatable=true",
             "/usr/share/applications/org.example.2d.desktop\0DBusActivatable=true",
+            "/usr/share/applications/3d.example.Viewer.desktop\0DBusActivatable=true",
             "/usr/share/applications/org.example.c++.desktop\0DBusActivatable=true",
             "/usr/share/applications/org.example.a@b.desktop\0DBusActivatable=true",
             "/usr/share/applications/org.example.dot..desktop\0DBusActivatable=true",
@@ -151,6 +152,7 @@ TestCase {
         compare(busNameOf("org.example.Capital"), "", "true is written in lower case");
         compare(busNameOf("gnome-mines"), "", "a bus name has two elements at least");
         compare(busNameOf("org.example.2d"), "", "an element of a bus name does not begin with a digit");
+        compare(busNameOf("3d.example.Viewer"), "", "nor does the first");
         compare(busNameOf("org.example.c++"), "", "a bus name holds only letters, digits, _ and -");
         compare(busNameOf("org.example.a@b"), "");
         compare(busNameOf("org.example.dot."), "", "no element is empty");

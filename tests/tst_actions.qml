@@ -539,6 +539,14 @@ TestCase {
         compare(calls, []);
     }
 
+    function test_a_session_call_without_arguments_that_fails_is_logged_without_any() {
+        ignoreWarning(/^Launcher: session bus org\.freedesktop\.ScreenSaver \/ScreenSaver org\.freedesktop\.ScreenSaver\.GetActive: org\.freedesktop\.DBus\.Error\.ServiceUnknown: .+$/);
+        let answer = null;
+        shellLauncher.call(false, "org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", "GetActive", [], "", error => answer = error);
+        tryVerify(() => answer !== null);
+        verify(String(answer).startsWith("org.freedesktop.DBus.Error.ServiceUnknown"), answer);
+    }
+
     function test_version_is_one_and_can_only_be_read() {
         exportFor("rekta");
         compare(callShell("org.freedesktop.DBus.Properties", "Get", [iface, "Version"]), {
