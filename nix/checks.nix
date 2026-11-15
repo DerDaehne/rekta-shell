@@ -254,6 +254,17 @@ in
     touch $out
   '';
 
+  # Lint and tests stay green with a forgotten debug line; only `info`, `warn` and `error` are meant to reach the journal.
+  no-debug-logging = pkgs.runCommand "rekta-shell-no-debug-logging" { } ''
+    if grep -rnE --include='*.qml' --include='*.js' \
+      '\bconsole\.(log|debug|trace|dir|dirxml|table|time[A-Za-z]*|count[A-Za-z]*|assert)\b|(^|[^.A-Za-z0-9_])print\(' \
+      ${../shell} ${../settings} ${../lockscreen}; then
+      echo "debug output left in the code: use console.info, console.warn or console.error for output that is meant to stay" >&2
+      exit 1
+    fi
+    touch $out
+  '';
+
   # Window-level behaviour no unit test can instantiate: the open Start lies over the bar without moving it, and
   # a toast keeps its own surface on the overlay layer above the Start.
   start-covers-the-bar = pkgs.runCommand "rekta-shell-start-covers-the-bar" { } ''
