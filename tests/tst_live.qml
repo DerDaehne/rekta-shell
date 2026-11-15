@@ -820,9 +820,12 @@ TestCase {
         };
     }
 
+    // News takes its step among the sheet's other tiles (Greet) after the event loop has run, and a step restarts its
+    // motion; so each one takes its step before it is held at its moment.
     function peeking(phase) {
         return (tile, stat) => {
             tile.news("peek", () => stat.value = "1260");
+            wait(0);
             seek(tile, "peek", "phase", phase);
         };
     }
@@ -830,6 +833,7 @@ TestCase {
     function flipping(phase) {
         return tile => {
             tile.news("flip", () => tile.status = "error");
+            wait(0);
             seek(tile, "flip", "phase", phase);
         };
     }
