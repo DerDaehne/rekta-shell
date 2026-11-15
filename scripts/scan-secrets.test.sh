@@ -514,9 +514,43 @@ commit_as Neutral neutral@users.noreply.github.com "feat: add a"
 printf 'Seen in %s.\n' "$home_path" >"$work/b.txt"
 git -C "$work" add b.txt
 commit_as Neutral neutral@users.noreply.github.com "feat: add b with a home path"
-git -C "$work" rm -q b.txt
-commit_as Neutral neutral@users.noreply.github.com "feat: remove b"
-check "history: the newest commits of the range are checked, not only the older ones" 1 "Local home path in the content of commit"
+rm "$work/b.txt" # only the working tree forgets it; HEAD alone holds the path
+check "history: only HEAD adds it and the tree has dropped the file" 1 "Local home path in the content of commit"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+seq 1 6000 | sed "s/^/see $slug /" >"$work/many.txt"
+git -C "$work" add many.txt
+commit_as Neutral neutral@users.noreply.github.com "docs: add many references"
+git -C "$work" rm -q many.txt
+commit_as Neutral neutral@users.noreply.github.com "docs: remove them"
+check "history: more board references than a pipe buffer holds in one commit are found" 1 "Board reference in the content of commit"
+
+# A commit message longer than a pipe buffer: the hit comes first, 350 KB follow.
+long_message_commit() {
+	# long_message_commit <first line of the body> <pattern for .privacy-patterns>
+	reset_work
+	printf '%s\n' "$2" >"$work/.privacy-patterns"
+	echo x >"$work/f.txt"
+	git -C "$work" add f.txt
+	{ printf 'feat: add f\n\n%s\n' "$1"; seq 1 60000; } >"$tmp/message.txt"
+	git -C "$work" -c user.name=Neutral -c user.email=neutral@users.noreply.github.com commit -q -F "$tmp/message.txt"
+}
+
+long_message_commit "Follow-up of $ticket." ProbeNoop
+check "long message: a ticket id at its start is found" 1 "Board reference in the message of commit"
+
+long_message_commit "Documented in $slug." ProbeNoop
+check "long message: a note slug at its start is found" 1 "Board reference in the message of commit"
+
+long_message_commit "Seen in $home_path." ProbeNoop
+check "long message: a home path at its start is found" 1 "Local home path in the message of commit"
+
+long_message_commit "Das wird nicht gebraucht." ProbeNoop
+check "long message: German at its start is found" 1 "German in the message of commit"
+
+long_message_commit "ProbeLongMessage is here." 'Probe[L]ongMessage'
+check "long message: a private pattern at its start is found" 1 "commit message/author/committer"
 
 # Identities: author and committer must be noreply addresses.
 reset_work

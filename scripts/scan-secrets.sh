@@ -26,6 +26,8 @@
 #    Known limit: merge commits are not checked (diff-tree returns nothing for them without
 #    -m/--cc) — acceptable because the ruleset on main enforces a linear history, so merges
 #    never land there.
+# Never end a pipeline in grep -q under pipefail: it exits at the first hit, the producer dies of SIGPIPE and the hit is lost;
+# feed it a here-string instead.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -77,9 +79,9 @@ board_references_in_messages() {
 	local sha message
 	for sha in $(git rev-list --no-merges origin/main..HEAD); do
 		message="$(git log -1 --format='%s%n%b' "$sha" | sed -E '1s/ \(#[0-9]+\)$//')"
-		if printf '%s\n' "$message" | grep -qiE -e "$NOTE_SLUG" -e "$ADR_ID" -e "$COMMENT_ID"; then
+		if grep -qiE -e "$NOTE_SLUG" -e "$ADR_ID" -e "$COMMENT_ID" <<<"$message"; then
 			echo "${sha:0:7}"
-		elif ! git log -1 --format='%ae' "$sha" | grep -q '\[bot\]@' && printf '%s\n' "$message" | grep -qE "$TICKET_ID"; then
+		elif ! git log -1 --format='%ae' "$sha" | grep -q '\[bot\]@' && grep -qE "$TICKET_ID" <<<"$message"; then
 			echo "${sha:0:7}"
 		fi
 	done
@@ -152,7 +154,6 @@ home_paths_in_added_lines() {
 	done
 }
 
-# Never end a pipeline in grep -q under pipefail: it exits at the first hit, the producer dies of SIGPIPE and the hit is lost.
 # Prints the short sha of every unpushed commit whose message contains a local home path.
 home_paths_in_messages() {
 	local sha
@@ -317,7 +318,7 @@ else
 			done
 
 			meta="$(git log -1 --format='%an <%ae>%n%cn <%ce>%n%B' "$sha")"
-			if printf '%s\n' "$meta" | grep -qiE -- "$pattern" 2>/dev/null; then
+			if grep -qiE -- "$pattern" <<<"$meta" 2>/dev/null; then
 				echo "Match for pattern #$pattern_index in commit message/author/committer of ${sha:0:7} — $CONTENT_HINT" >&2
 				hit=1
 			fi
