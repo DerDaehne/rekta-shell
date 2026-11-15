@@ -27,7 +27,9 @@ jobs:
       # The binary instead of gitleaks/gitleaks-action: the official action checks a licence
       # server on every run. The pinned release binary with SHA256 check needs no external call
       # and is the same command as locally (scripts/scan-secrets.sh).
+      # Unpacked outside the checkout: the built-in scan reads untracked binaries for home paths too.
       - name: Install gitleaks (SHA256-checked)
+        working-directory: ${{ runner.temp }}
         run: |
           curl -fsSLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           echo "${GITLEAKS_SHA256}  gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | sha256sum -c -
