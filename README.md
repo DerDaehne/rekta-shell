@@ -1,18 +1,241 @@
 # rekta-shell
 
-A desktop shell for KDE Plasma 6 on Wayland, built with
-[Quickshell](https://quickshell.org) on KWin and designed strictly after
-[Rekta Design](https://github.com/DerDaehne/rekta-design).
+**A calm desktop for KDE Plasma 6, drawn strictly after [Rekta Design](https://rekta.design).**
 
-It runs as a session of its own, next to the regular Plasma session. KWin, the
-Plasma services and KDE apps stay; plasmashell is replaced by an app bar, a
-full-screen start with live tiles, a command palette, a side panel,
-notifications and a lock screen in Rekta's language.
+rekta-shell takes the place of Plasma's panel and launcher with something quieter: a
+Start that opens as a full-screen panorama of live tiles, a slim app bar, notifications
+that rise from behind it and sink back, a side panel for sound and connections, and a
+lock screen in the same language. Everything underneath stays KDE: KWin manages your
+windows, Plasma's services keep running, and your apps and settings work as before.
 
-**Status:** early beta. The session has the app bar with clock and calendar,
-the background, notifications, background apps ("im hintergrund"), the
-Start on Meta and Rekta's own lock screen. Still missing: the command palette,
-the side panel, the volume display and the clipboard history.
+It is for people who love what Plasma can do but want a desktop that steps out of the
+way. Straight lines and plain words instead of chrome, large and very readable type,
+colour only where something needs you, and motion that always shows where a thing
+comes from and where it goes. The shell aims to be as fast and fluid as possible with
+the smallest footprint it can manage: QML on [Quickshell](https://quickshell.org), a
+few small KWin effects, no extra daemons.
+
+rekta runs as a session of its own, next to Plasma. Pick it when you log in; Plasma
+stays exactly as it was.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/start-dark.webp">
+  <img src="docs/img/start-light.webp" alt="The Start: running windows, pinned live tiles and today's notifications side by side in one panorama">
+</picture>
+
+> **Beta.** rekta-shell is young and moves fast. It is good enough for a working day,
+> but expect rough edges and read [Status](#status) before you switch.
+
+## A look around
+
+<table>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/img/desktop-dark.webp">
+        <img src="docs/img/desktop-light.webp" alt="A window on the desktop, a notification standing above the app bar, the playing track at the bar's leading end">
+      </picture>
+      <br>The app bar, with a notification just risen from behind it.
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/img/all-apps-dark.webp">
+        <img src="docs/img/all-apps-light.webp" alt="All apps as tiles, A to Z, in sections by letter">
+      </picture>
+      <br>All apps, A to Z. Type a letter to jump.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/img/search-dark.webp">
+        <img src="docs/img/search-light.webp" alt="Search in the Start after typing one letter: matching apps as tiles, more apps, settings pages and commands as rows">
+      </picture>
+      <br>Start typing to search apps, windows, settings and commands.
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/img/lock-dark.webp">
+        <img src="docs/img/lock-light.webp" alt="The lock screen with a large clock, the password field, the count of new notifications and what is playing">
+      </picture>
+      <br>The lock screen.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/img/panel-dark.webp">
+        <img src="docs/img/panel-light.webp" alt="The side panel with sound output and input, volume and mute, and a row for each app that plays">
+      </picture>
+      <br>The side panel: sound, with a row for each app that plays.
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/img/notifications-dark.webp">
+        <img src="docs/img/notifications-light.webp" alt="The notification centre listing five notifications by time">
+      </picture>
+      <br>The notification centre.
+    </td>
+  </tr>
+</table>
+
+Light or dark follows your system; these pictures follow your browser.
+
+## What it does
+
+The shell speaks German for now, in Rekta's lower case; the words in quotes below are
+what you see on screen.
+
+### The Start
+
+- **Opens on Meta**, or with a swipe up from the bottom edge of a touch screen, or three
+  fingers up on a touchpad. Your windows step back, and the Start folds in from the
+  title down; it follows your finger when you swipe.
+- **One panorama, scrolled sideways:** running windows, pinned apps, "heute" (what is
+  playing and the newest notifications) and "zuletzt" (files you opened lately). A strip
+  at the top shows where you are and takes you there.
+- **Live tiles.** Pinned apps come in four sizes and show what is new: the count of
+  unseen notifications, and on a wide tile the track a player is playing. News peeks in,
+  the way Rekta's tiles tell it.
+- **Pin, size and unpin** from a tile's menu (right click, long press or the Menu key), or
+  in the settings app; every change can be undone.
+- **"alle apps":** every app as a tile, A to Z, in sections by letter. Type a letter to
+  jump there.
+- **Search by typing.** Apps whose name matches become tiles, the best one wide; more
+  matches, open windows, system settings pages and the shell's own commands follow as
+  rows. A calculation shows its result; when nothing matches, the search offers to ask
+  the web.
+
+### The app bar
+
+- A slim bar along the bottom edge with the clock and the date; a press shows the month,
+  with week numbers.
+- **Status words appear only when something differs** from the usual: muted, do not
+  disturb, a microphone in use, a screen being shared. The last two stand in the error
+  colour, because they concern your privacy.
+- The middle shows what is playing. Volume, microphone, brightness and keyboard-layout
+  keys turn the clock into a level for a moment.
+- **"im hintergrund"** holds the apps that live in the tray, with their menus.
+
+### Notifications
+
+- A notification rises from behind the bar, waits, and goes back behind it into the
+  count. Act on it, dismiss it, or reach it with Meta+Shift+N.
+- The centre ("meldungen", Meta+N) lists them by time. Swipe one away or press its ×;
+  "rückgängig" (undo) brings it back.
+- **Do not disturb** for as long as you want, for an hour or until tomorrow; the bar
+  counts down.
+- Banners for states that need you, such as a disk running full.
+
+### The side panel
+
+- "steuerung" opens with Meta+A, a swipe in from the right edge, or three fingers left on
+  a touchpad.
+- Sound output and input with volume and mute, and a row for each app that plays.
+- Wi-Fi networks and Bluetooth devices in place, with a sheet for a network's password.
+- What is playing, with its controls; quick switches for dark mode, do not disturb, Wi-Fi
+  and Bluetooth; density and the power profile.
+
+### Lock screen and session
+
+- Rekta's own lock screen, shown by Plasma's screen locker in the rekta session only: a
+  large clock, the count of new notifications, what is playing, and "benutzer wechseln"
+  (switch user) beside unlock.
+- Ctrl+Alt+Delete opens the session bar: lock, switch user, log out, restart, shut down.
+  Logging out, restarting and shutting down wait five seconds, so you can still change
+  your mind.
+
+### Motion with meaning
+
+- Every movement follows Rekta's motion rules: places turn in and out like pages, the
+  Start folds in row by row, new rows arrive and old ones leave, tiles peek when their
+  news changes, and virtual desktops turn like a turnstile.
+- Small KWin effects carry the motion that belongs to the windows: they step back behind
+  the Start, turn with the desktops, and a held Meta key is noticed.
+- KDE's animation speed is respected: set it to instant, and everything is immediate.
+
+### Keyboard, touch and touchpad
+
+- Everything works from the keyboard. Hold Meta, or press `?`, to see the key map.
+- Touch: swipe up from the bottom edge for the Start and draw it down to close it; swipe
+  in from the right edge for the side panel; long-press for a tile's menu.
+- Touchpad: three fingers up and down for the Start, left and right for the side panel.
+- Controls carry names for screen readers, and a key that changes a level announces the
+  new value.
+
+### Make it yours
+
+- "rekta einstellungen", the settings app: more contrast, less transparency, the tile
+  echo on the background, what Escape does in the search, the pinned apps and whether
+  "zuletzt" shows.
+- More contrast makes every text pair 7:1 and the glass opaque; less transparency turns
+  the glass solid and blurs nothing behind it.
+- Your system's configuration sets the defaults; each user's own settings file wins over
+  them, and the shell follows changes while it runs.
+
+### Actions over D-Bus
+
+The shell lists what it can do on the session bus as `rekta.Actions1`: its own commands
+(dark mode, do not disturb, the key map, mute, volume, the session actions) and the
+desktop actions of installed apps, such as a browser's "new private window". `ListActions`
+returns them with names and icons, `Invoke` runs one. Logging out, restarting, shutting
+down and switching user only open the session bar, focused on that action; they never
+act on their own.
+
+```sh
+busctl --user call rekta.Actions /rekta/Actions rekta.Actions1 ListActions
+```
+
+## Try it
+
+**For a first look, without installing anything** (Nix with flakes, inside a Wayland
+desktop): run the shell in a KWin of its own, in a window on your desktop. It builds the
+shell first, then starts with its own home directory and session bus and leaves your
+desktop alone.
+
+```sh
+nix run github:DerDaehne/rekta-shell#nested -- --window
+```
+
+It is a look, not a session: none of your apps are there, the Start stands open while no
+window is, and Meta stays with your own desktop. The app bar and the side panel answer
+the pointer.
+
+**On NixOS** with Plasma 6: add the flake, import `nixosModules.default` and set
+`programs.rekta-shell.enable = true;`. Your display manager then offers "rekta" beside
+"Plasma". See [Installation on NixOS](#installation-on-nixos).
+
+**On Fedora** with Plasma 6.8: install the RPM with Quickshell from its COPR. See
+[Installation on Fedora](#installation-on-fedora).
+
+## Status
+
+rekta-shell is a beta: it is meant to carry a working day on Plasma 6.8, but it is
+young. What to expect:
+
+- **German only.** The shell's words are German, in Rekta's lower case; there are no
+  translations yet.
+- **Plasma 6.8 and Quickshell 0.3.** The KWin effects are built for one exact KWin
+  release; the Fedora package pins it.
+- **Not there yet:** a clipboard history, desktop widgets and icons on the desktop (by
+  design, there is no file desktop), and a Rekta login screen; your display manager's
+  greeter stays as it is.
+- **Density** follows the pointer: until the shell detects touch screens, pick
+  "bequem" (comfortable) in the side panel on a touch device.
+- Things will change between versions, including settings.
+
+Problems and ideas are welcome as
+[issues](https://github.com/DerDaehne/rekta-shell/issues).
+
+## Rekta Design
+
+rekta-shell is one implementation of [Rekta Design](https://rekta.design), a design
+language for desktop shells and their apps: tiles, panoramas, words before icons,
+straight edges and motion with meaning. Its specification and tokens live at
+[github.com/DerDaehne/rekta-design](https://github.com/DerDaehne/rekta-design). The
+shell takes every colour, size, duration and curve from Rekta's tokens at a pinned
+release, and it differs on purpose in only a few places, such as its typeface,
+[Atkinson Hyperlegible Next](https://www.brailleinstitute.org/freefont/).
 
 ## Installation on NixOS
 
@@ -63,13 +286,23 @@ overlay, or set `inputs.rekta-shell.inputs.nixpkgs.follows = "nixpkgs"`, so the
 shell is built against your own nixpkgs; `packages.<system>` alone uses this
 flake's own nixpkgs pin.
 
-`programs.rekta-shell.background` picks the background: `"rekta"` (the
-default, Rekta's tile echo) or `"solid"` (the plain ground colour).
+Both modules take the same options, all under `programs.rekta-shell`:
+
+| Option | Values | Default |
+| --- | --- | --- |
+| `background` | `"rekta"` (Rekta's tile echo in a corner) or `"solid"` (the plain ground colour) | `"rekta"` |
+| `contrast` | `"more"` (every text pair 7:1, opaque glass, framed status tiles) or `"normal"` | follow the system |
+| `transparency` | `"reduce"` (glass turns solid, nothing behind it blurs) or `"normal"` | `"normal"` |
+| `density` | `"comfortable"` or `"compact"` | compact for a fine pointer |
+| `searchEscape` | `"close"` (clear the search and close the Start) or `"back"` (clear it and go back) | `"close"` |
+| `showRecent` | `false` hides "zuletzt" and reads nothing of what was opened | shown |
+| `installFont` | `false` when your configuration provides Atkinson Hyperlegible Next itself | `true` |
 
 The module's options are the shell's defaults. Each user can set their own in
 `~/.config/rekta-shell/settings.json`, which wins over them and takes effect
 while the shell runs, for example `{ "version": 1, "background": "solid" }`.
-The shell only reads that file; nothing in the Nix configuration writes it.
+The settings app ("rekta einstellungen") writes that file; nothing in the Nix
+configuration does.
 
 ## Using rekta as a second session on NixOS
 
@@ -129,8 +362,9 @@ Plasma 6.8 or newer, and Quickshell 0.3, which Fedora does not package yet.
    sudo dnf install ./rekta-shell-<version>.fc45.x86_64.rpm
    ```
 
-   To try the state of `main` before a release, download the workflow artifact
-   instead (it expires after 30 days):
+   Until the first release is tagged, and to try the state of `main` between
+   releases, download the workflow artifact of a build of `main` instead (it
+   expires after 30 days):
 
    ```sh
    gh run download <run-id> -n rekta-shell-<version>-fc45-<sha7>
@@ -200,7 +434,7 @@ leaves them out. GNOME itself stays unchanged. What you notice when you switch:
 
 ## A link for "problem melden"
 
-The session banner ("sitzung") can offer "problem melden", which opens a web
+The session bar (Ctrl+Alt+Delete) can offer "problem melden", which opens a web
 page of your choice, such as your issue board, in the browser. It shows only
 while `~/.config/rekta-shell/report.json` holds an `http` or `https` link:
 
@@ -212,6 +446,29 @@ The shell follows the file while it runs; delete it and the action goes. Keep
 the link in this file rather than in your Nix configuration, which would copy
 it into the world-readable Nix store. The shell itself sends nothing: no logs,
 no credentials.
+
+## Building and developing
+
+rekta-shell is a Nix flake around one CMake project: the QML shell and its library
+`Rekta` (in `shell/`), a small D-Bus module in C++ (`plugins/dbus/`), the KWin effects
+(`kwin/`), the lock screen package (`lockscreen/`) and the session files (`session/`).
+Rekta Design is a flake input pinned to one release; `shell/Rekta/Tokens.qml` and the
+icons are generated from it.
+
+```sh
+nix flake check          # build, lint (warnings fail), token drift, QML tests, modules, formatting
+nix develop              # qs, qmllint, qmlformat, node, gitleaks, nixfmt, rekta-qmllint
+nix build                # result/bin/rekta-shell
+nix run .#nested         # the shell in a KWin of its own (headless; --window to watch), reloads on every change
+nix run .#nested-shot -- shot.png   # a screenshot of that nested desktop
+nix run .#vm             # a throwaway NixOS VM with Plasma 6 and the rekta session
+nix run .#tokens         # regenerate the tokens and icons from the pinned Rekta Design
+nix build .#contact-sheets -L       # the QML tests once more, keeping their pictures
+```
+
+The nested session starts from an empty environment with its own home, runtime
+directory and session bus, so nothing in it reaches your desktop's settings or
+services. Run the shell there, or in the VM, rather than in your own session.
 
 ## Contributing
 
