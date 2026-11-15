@@ -597,7 +597,7 @@ FocusScope {
         searching = false;
         placeGivenWay = false;
         query = "";
-        hitsFollow.stop();
+        hitsFollow.waitsFor = "";
         showSearchView(false);
         found.clear();
         rowGroups = [];
@@ -607,17 +607,22 @@ FocusScope {
     // A key that acts on the hits finds them made: those still to follow what was typed, then a change still waiting.
     function makeHits() {
         if (hitsFollow.running) {
-            hitsFollow.stop();
+            hitsFollow.waitsFor = "";
             followHits();
         }
         presence.finish();
     }
 
-    // What was typed stands in the next frame; what it finds follows from the frame after (hitsFollow), so no work for
-    // the hits holds a letter up: the hits may follow a short pause (collections.md:35), the text in the field never.
+    function askHits() {
+        hitsFollow.waitsFor = "frame";
+        Window.window?.update();
+    }
+
+    // What was typed stands in the next frame; what it finds follows once that frame has been taken (hitsFollow), so no
+    // work for the hits holds a letter up: the hits may follow a short pause (collections.md:35), the text in the field never.
     function followQuery() {
         if (searching && query !== "")
-            hitsFollow.start();
+            askHits();
         else
             refresh();
     }
@@ -632,7 +637,7 @@ FocusScope {
         } else if (query === "" && searching) {
             hideSearch();
         } else if (searching) {
-            hitsFollow.stop();
+            hitsFollow.waitsFor = "";
             followHits();
         }
     }
@@ -687,7 +692,7 @@ FocusScope {
         searching = true;
         presence.complete();
         showTitle(true);
-        hitsFollow.start();
+        askHits();
     }
 
     // The place's parts leave and the hits arrive below the title.
@@ -708,7 +713,7 @@ FocusScope {
     // A line that had the keys hands them back to the field. Erased before the place gave way, the place stands as it was.
     function hideSearch() {
         searching = false;
-        hitsFollow.stop();
+        hitsFollow.waitsFor = "";
         const typing = line.activeFocus;
         const back = () => {
             showSearchView(false);
@@ -1522,14 +1527,30 @@ FocusScope {
         }
     }
 
-    // Qt's threaded render loop advances animations once it has taken a frame's items, so the first tick comes after the
-    // frame that shows what was typed.
-    FrameAnimation {
+    // The hits wait for the frame that shows what was typed: for it to begin, then for Qt to have taken its items, which
+    // it says from its render thread once done. A frame already on its way when the key came began before, so it does
+    // not count. An animation's tick would not do: with several windows shown, Qt advances animations on a timer, not
+    // after a frame.
+    Connections {
         id: hitsFollow
 
+        // "frame" until that frame begins, "sync" until its items are taken, "" while the hits wait for nothing.
+        property string waitsFor: ""
+        readonly property bool running: waitsFor !== ""
+
         objectName: "hitsFollow"
-        onTriggered: {
-            stop();
+        target: start.Window.window
+        enabled: running
+
+        function onAfterAnimating() {
+            if (waitsFor === "frame")
+                waitsFor = "sync";
+        }
+
+        function onAfterSynchronizing() {
+            if (waitsFor !== "sync")
+                return;
+            waitsFor = "";
             start.followHits();
         }
     }
