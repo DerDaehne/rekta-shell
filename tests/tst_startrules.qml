@@ -127,6 +127,8 @@ TestCase {
             "/usr/share/applications/org.gnome.TextEditor.desktop\0Type=Application",
             "/usr/share/applications/org.gnome.TextEditor.desktop\0DBusActivatable = true ",
             "/usr/share/applications/org.gnome.font-viewer.desktop\0DBusActivatable=true",
+            "/usr/share/applications/io.github.some_user.App2.desktop\0DBusActivatable=true",
+            "/usr/share/applications/-x._y.-z.desktop\0DBusActivatable=true",
             "/usr/share/applications/org.example.Off.desktop\0DBusActivatable=false",
             "/usr/share/applications/org.example.Yes.desktop\0DBusActivatable=yes",
             "/usr/share/applications/org.example.Capital.desktop\0DBusActivatable=True",
@@ -144,6 +146,8 @@ TestCase {
         compare(files["org.example.Off"].DBusActivatable, false);
         compare(busNameOf("org.gnome.TextEditor"), "org.gnome.TextEditor", "space around the value does not count");
         compare(busNameOf("org.gnome.font-viewer"), "org.gnome.font-viewer", "a dash is allowed in a bus name");
+        compare(busNameOf("io.github.some_user.App2"), "io.github.some_user.App2", "so are a digit and _ inside an element");
+        compare(busNameOf("-x._y.-z"), "-x._y.-z", "an element, the first too, may begin with - or _");
         compare(busNameOf("gnome-org.example.Sub"), "org.example.Sub", "a file in a subdirectory: its name, not its desktop file ID");
         compare(Rules.applicationPath(busNameOf("gnome-org.example.Sub")), "/org/example/Sub");
         compare(busNameOf("org.gnome.Nautilus"), "", "the user's own copy without the key wins");

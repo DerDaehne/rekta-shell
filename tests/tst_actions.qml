@@ -171,7 +171,9 @@ TestCase {
     // Two apps that run over D-Bus (DBusActivatable): Text Editor's action has an Exec, Fonts' has none; Fonts' file lies
     // in a subdirectory, so its desktop file ID is not its bus name.
     function dbusEntries(): var {
-        return [desktopEntry("org.gnome.TextEditor", "Text Editor", "org.gnome.TextEditor", [desktopAction("new-window", "New Window", "", ["gnome-text-editor", "--new-window"])]), desktopEntry("gnome-org.gnome.font-viewer", "Fonts", "org.gnome.font-viewer", [desktopAction("install-font", "Install Font", "font-x-generic", [])])];
+        const textEditor = desktopEntry("org.gnome.TextEditor", "Text Editor", "org.gnome.TextEditor", [desktopAction("new-window", "New Window", "", ["gnome-text-editor", "--new-window"])]);
+        const fonts = desktopEntry("gnome-org.gnome.font-viewer", "Fonts", "org.gnome.font-viewer", [desktopAction("install-font", "Install Font", "font-x-generic", [])]);
+        return [textEditor, fonts];
     }
 
     // The apps as the Start lists them under KDE (Apps.read), with only what the registry reads of them.
@@ -484,7 +486,15 @@ TestCase {
     function test_an_app_that_runs_over_dbus_lists_each_named_action_also_one_without_exec() {
         apps = listedApps([...desktopEntries(), ...dbusEntries()]);
         exportFor("rekta");
-        compare(listActions().map(entry => entry[0]).filter(id => id.startsWith("desktop/")), ["desktop/org.kde.dolphin/home", "desktop/firefox/new-window", "desktop/firefox/new-private-window", "desktop/gnome-org.gnome.font-viewer/install-font", "desktop/org.example.notes/new-note", "desktop/org.gnome.TextEditor/new-window"], "Dolphin's action without Exec stays out, as Dolphin does not run over D-Bus");
+        const listed = [
+            "desktop/org.kde.dolphin/home",
+            "desktop/firefox/new-window",
+            "desktop/firefox/new-private-window",
+            "desktop/gnome-org.gnome.font-viewer/install-font",
+            "desktop/org.example.notes/new-note",
+            "desktop/org.gnome.TextEditor/new-window"
+        ];
+        compare(listActions().map(entry => entry[0]).filter(id => id.startsWith("desktop/")), listed, "Dolphin's action without Exec stays out, as Dolphin does not run over D-Bus");
         compare(action("desktop/gnome-org.gnome.font-viewer/install-font"), {
             title: "Install Font",
             keywords: ["Fonts"],
@@ -502,7 +512,11 @@ TestCase {
         verify(counterpart.takeName("org.gnome.TextEditor"));
         counterpart.answerAt("/org/gnome/font_viewer", []);
         counterpart.answerAt("/org/gnome/TextEditor", []);
-        for (const [id, path, actionId] of [["desktop/gnome-org.gnome.font-viewer/install-font", "/org/gnome/font_viewer", "install-font"], ["desktop/org.gnome.TextEditor/new-window", "/org/gnome/TextEditor", "new-window"]]) {
+        const invoked = [
+            ["desktop/gnome-org.gnome.font-viewer/install-font", "/org/gnome/font_viewer", "install-font"],
+            ["desktop/org.gnome.TextEditor/new-window", "/org/gnome/TextEditor", "new-window"]
+        ];
+        for (const [id, path, actionId] of invoked) {
             compare(invoke(id, {}), {
                 signature: "a{sv}",
                 values: [{}],
