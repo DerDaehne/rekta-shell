@@ -25,9 +25,10 @@ FocusScope {
     property string key
     property string text
     // Semibold above the text. Title and text each keep to Geometry.toastMaxLines and end in an ellipsis (rekta.css
-    // :1196); the reader still gets all of it (states.md:89–91). The title's cut, and the text's cut without a title, are
-    // ahead of the pinned docs, which tie the cut to the title (:1195, behaviour.md:678–679): Rekta has since decided that
-    // a foreign notification's toast always keeps to a known height. Any other toast's text stands whole.
+    // :1196); the reader still gets all of it (states.md:89–91). The title's cut is ahead of the pinned stylesheet, which
+    // lets it run on (:1195); the text's cut without a title is ahead of the pinned docs, which tie it to the title
+    // (states.md:91, behaviour.md:678–679). Rekta has since decided that a foreign notification's toast always keeps to a
+    // known height. Any other toast's text stands whole.
     property string title
     // The word of a neutral tag at the end of the text, before the action (`.rk-tag` without a status). It stands last
     // but is said first, so that a reader hears it before the text it qualifies.
