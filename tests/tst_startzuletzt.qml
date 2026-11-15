@@ -357,18 +357,25 @@ TestCase {
         compare(inPlace(), ["d.pdf", "c.pdf", "b.pdf", "a.pdf"]);
     }
 
-    function test_a_new_row_slides_in_over_duration_short() {
+    function test_a_new_row_waits_unseen_until_the_rows_below_have_made_room_then_slides_in_over_duration_short() {
         const ticks = Glide.ticks(testCase);
         three();
         openNow();
-        const since = Date.now();
+        const c = rows()[0];
+        const glides = Glide.record(c, "y");
         use("d.pdf", 0);
         const d = rows()[0];
+        compare(d.summary, "d.pdf");
         const fades = Glide.record(d, "opacity");
         const falls = Glide.record(d, "y");
-        tryVerify(() => fades.length > 0 && d.opacity === 1, Tokens.durationShort * 4, "it has arrived");
-        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: d.y - Geometry.rowEnterShift, to: d.y }], Tokens.durationShort, easeIn, since, ticks);
-        verify(stray < 0.06, `it slides in from above and fades up together over duration-short, off by ${stray}`);
+        tryVerify(() => glides.length > 0, 1000, "c.pdf makes room");
+        compare(d.opacity, 0, "unseen while it waits");
+        compare(d.y, -Geometry.rowEnterShift, "at its start, just above its place");
+        tryVerify(() => c.y === d.height && d.opacity === 1 && d.y === 0, Tokens.durationModerate * 4, "all at rest");
+        const landed = glides[glides.length - 1];
+        verify(fades.every(step => step.value === 0 || Glide.tickOf(step, ticks) >= Glide.tickOf(landed, ticks)), "never seen while c.pdf glides");
+        const stray = Glide.strayAfter(landed, [{ steps: fades, from: 0, to: 1 }, { steps: falls, from: -Geometry.rowEnterShift, to: 0 }], Tokens.durationShort, easeIn, ticks);
+        verify(stray < 0.06, `then it slides in from above and fades up together over duration-short, off by ${stray}`);
     }
 
     function test_under_reduced_motion_a_new_file_stands_at_once() {

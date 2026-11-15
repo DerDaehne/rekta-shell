@@ -60,6 +60,20 @@ function strayOf(runs, duration, curve, since, ticks) {
     return best;
 }
 
+// How far runs that wait for a glide stray, as strayOf measures them, `landed` being the glide's last step. Waiting on
+// the same clock, they began between the glide's last two ticks; a step taken in its last would make strayOf count them
+// from a tick earlier, so those are left out.
+function strayAfter(landed, runs, duration, curve, ticks) {
+    const landedIn = tickOf(landed, ticks);
+    const later = runs.map(run => ({ steps: run.steps.filter(step => tickOf(step, ticks) > landedIn), from: run.from, to: run.to }));
+    return strayOf(later, duration, curve, ticks[landedIn - 1].at, ticks);
+}
+
+// The tick a step was taken in, as its index in `ticks`: what one frame shows, whatever moved first within it.
+function tickOf(step, ticks) {
+    return ticks.filter(tick => tick.order < step.order).length - 1;
+}
+
 // The step at the timer's time of the tick it was taken in, or of the last tick before a step taken between ticks.
 function onTheClock(step, ticks) {
     const sooner = ticks.filter(tick => tick.order < step.order);

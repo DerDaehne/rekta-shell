@@ -428,18 +428,25 @@ TestCase {
         tryVerify(() => rows().length === 3, Tokens.durationShort * 4, "then it has gone");
     }
 
-    function test_a_new_row_slides_in_from_above_over_duration_short() {
+    function test_a_new_row_waits_unseen_until_the_rows_below_have_made_room_then_slides_in_from_above_over_duration_short() {
         const ticks = Glide.ticks(testCase);
         three();
         openNow();
-        const since = Date.now();
+        const cleo = rows()[0];
+        const glides = Glide.record(cleo, "y");
         notify({ summary: "dora" });
         const dora = rows()[0];
+        compare(dora.summary, "dora");
         const fades = Glide.record(dora, "opacity");
         const falls = Glide.record(dora, "y");
-        tryVerify(() => fades.length > 0 && dora.opacity === 1, Tokens.durationShort * 4, "it has arrived");
-        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: dora.y - Geometry.rowEnterShift, to: dora.y }], Tokens.durationShort, easeIn, since, ticks);
-        verify(stray < 0.06, `it slides in from above and fades up together over duration-short, off by ${stray}`);
+        tryVerify(() => glides.length > 0, 1000, "cleo makes room");
+        compare(dora.opacity, 0, "unseen while it waits");
+        compare(dora.y, -Geometry.rowEnterShift, "at its start, just above its place");
+        tryVerify(() => cleo.y === dora.height && dora.opacity === 1 && dora.y === 0, Tokens.durationModerate * 4, "all at rest");
+        const landed = glides[glides.length - 1];
+        verify(fades.every(step => step.value === 0 || Glide.tickOf(step, ticks) >= Glide.tickOf(landed, ticks)), "never seen while cleo glides");
+        const stray = Glide.strayAfter(landed, [{ steps: fades, from: 0, to: 1 }, { steps: falls, from: -Geometry.rowEnterShift, to: 0 }], Tokens.durationShort, easeIn, ticks);
+        verify(stray < 0.06, `then it slides in from above and fades up together over duration-short, off by ${stray}`);
     }
 
     function test_under_the_pointer_heute_holds_still_until_let_go() {

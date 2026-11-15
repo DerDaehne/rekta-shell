@@ -140,6 +140,43 @@ TestCase {
         }
     }
 
+    // Rows 30 high in a column, as the lists have them: "first" and "last" stand, others come where they are inserted.
+    Component {
+        id: arrivalComponent
+
+        Column {
+            function insert(at: int, name: string) {
+                names.insert(at, {
+                    name: name
+                });
+            }
+
+            add: RowArrival {}
+            move: RowsMakeRoom {}
+
+            Repeater {
+                model: ListModel {
+                    id: names
+
+                    ListElement {
+                        name: "first"
+                    }
+                    ListElement {
+                        name: "last"
+                    }
+                }
+
+                Rectangle {
+                    required property string name
+
+                    objectName: name
+                    width: 50
+                    height: 30
+                }
+            }
+        }
+    }
+
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         Prefs.motion = "off";
@@ -694,21 +731,118 @@ TestCase {
         compare(row.opacity, 1);
     }
 
-    function test_a_row_that_comes_back_slides_in_from_above_and_fades_up() {
+    function test_a_row_that_comes_back_waits_unseen_until_the_rows_after_it_have_made_room_then_slides_in_from_above_and_fades_up() {
         const ticks = Glide.ticks(testCase);
         three();
         openOnMessages();
         keyClick(Qt.Key_Delete);
+        waitForItemPolished(findChild(messages, "rows"));
         Prefs.motion = "on";
-        const since = Date.now();
+        const ben = rows()[0];
+        compare(ben.y, 0, "the gap has closed");
+        const glides = Glide.record(ben, "y");
         toaster.open.press();
         const cleo = rows()[0];
+        compare(cleo.summary, "cleo");
         const fades = Glide.record(cleo, "opacity");
         const falls = Glide.record(cleo, "y");
-        tryVerify(() => fades.length > 0 && cleo.opacity === 1, Tokens.durationShort * 4, "it has arrived");
-        const stray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }, { steps: falls, from: cleo.y - Geometry.rowEnterShift, to: cleo.y }], Tokens.durationShort, easeIn, since, ticks);
-        verify(stray < 0.06, `it slides in from above and fades up together over duration-short, off by ${stray}`);
-        compare(cleo.y, 0);
+        tryVerify(() => glides.length > 0, 1000, "ben makes room");
+        compare(cleo.opacity, 0, "unseen while it waits");
+        compare(cleo.y, -Geometry.rowEnterShift, "at its start, just above its place");
+        tryVerify(() => ben.y === cleo.height && cleo.opacity === 1 && cleo.y === 0, Tokens.durationModerate * 4, "all at rest");
+        const landed = glides[glides.length - 1];
+        verify(fades.every(step => step.value === 0 || Glide.tickOf(step, ticks) >= Glide.tickOf(landed, ticks)), "never seen while ben glides");
+        const stray = Glide.strayAfter(landed, [{ steps: fades, from: 0, to: 1 }, { steps: falls, from: -Geometry.rowEnterShift, to: 0 }], Tokens.durationShort, easeIn, ticks);
+        verify(stray < 0.06, `then it slides in from above and fades up together over duration-short, off by ${stray}`);
+    }
+
+    // A row named `name` comes at `at` of a bare column; its opacity and y are recorded, and the y of the row `below`.
+    function arrive(column: var, at: int, name: string, below: string): var {
+        const glides = Glide.record(findChild(column, below), "y");
+        column.insert(at, name);
+        const row = findChild(column, name);
+        return {
+            row: row,
+            fades: Glide.record(row, "opacity"),
+            falls: Glide.record(row, "y"),
+            glides: glides
+        };
+    }
+
+    function test_a_row_that_comes_before_one_that_stays_waits_unseen_at_its_start_until_it_has_made_room_then_arrives() {
+        const ticks = Glide.ticks(testCase);
+        Prefs.motion = "on";
+        const column = createTemporaryObject(arrivalComponent, testCase);
+        const last = findChild(column, "last");
+        const between = arrive(column, 1, "between", "last");
+        tryVerify(() => between.glides.length > 0, 1000, "the row after it makes room");
+        compare(between.row.opacity, 0, "unseen while it waits");
+        compare(between.row.y, 30 - Geometry.rowEnterShift, "at its start, just above its place");
+        tryVerify(() => last.y === 60 && between.row.opacity === 1 && between.row.y === 30, Tokens.durationModerate * 4, "all at rest");
+        const landed = between.glides[between.glides.length - 1];
+        verify(between.fades.every(step => step.value === 0 || Glide.tickOf(step, ticks) >= Glide.tickOf(landed, ticks)), "never seen while the row after it glides");
+        const stray = Glide.strayAfter(landed, [{ steps: between.fades, from: 0, to: 1 }, { steps: between.falls, from: 30 - Geometry.rowEnterShift, to: 30 }], Tokens.durationShort, easeIn, ticks);
+        verify(stray < 0.06, `then it comes from above with a fade along ease-in over duration-short, off by ${stray}`);
+    }
+
+    function test_a_row_that_comes_at_the_end_arrives_at_once() {
+        const ticks = Glide.ticks(testCase);
+        Prefs.motion = "on";
+        const column = createTemporaryObject(arrivalComponent, testCase);
+        const since = Date.now();
+        const end = arrive(column, 2, "end", "last");
+        tryVerify(() => end.row.opacity === 1 && end.row.y === 60, Tokens.durationShort * 4, "it has arrived");
+        compare(end.glides, [], "nothing made room");
+        const stray = Glide.strayOf([{ steps: end.fades, from: 0, to: 1 }, { steps: end.falls, from: 60 - Geometry.rowEnterShift, to: 60 }], Tokens.durationShort, easeIn, since, ticks);
+        verify(stray < 0.06, `it comes at once, from above with a fade, off by ${stray}`);
+    }
+
+    function test_rows_that_come_together_at_the_end_arrive_at_once() {
+        const ticks = Glide.ticks(testCase);
+        Prefs.motion = "on";
+        const column = createTemporaryObject(arrivalComponent, testCase);
+        const since = Date.now();
+        const end = arrive(column, 2, "end", "last");
+        const afterEnd = arrive(column, 3, "after end", "last");
+        tryVerify(() => end.row.opacity === 1 && afterEnd.row.opacity === 1 && afterEnd.row.y === 90, Tokens.durationShort * 4, "both have arrived");
+        const stray = Glide.strayOf([{ steps: end.fades, from: 0, to: 1 }, { steps: afterEnd.fades, from: 0, to: 1 }], Tokens.durationShort, easeIn, since, ticks);
+        verify(stray < 0.06, `neither waits, as the row after the first comes too: off by ${stray}`);
+    }
+
+    function test_a_row_waiting_for_room_glides_on_whole_as_a_newer_one_comes_before_it_which_waits_in_turn() {
+        const ticks = Glide.ticks(testCase);
+        Prefs.motion = "on";
+        const column = createTemporaryObject(arrivalComponent, testCase);
+        const last = findChild(column, "last");
+        const between = arrive(column, 1, "between", "last");
+        tryVerify(() => last.y > 45, 1000, "the row after it is on its way");
+        compare(between.row.opacity, 0, "still waiting");
+        const glides = [Glide.record(last, "y"), Glide.record(between.row, "y")];
+        const top = arrive(column, 0, "top", "first");
+        tryVerify(() => between.row.y === 60 && between.row.opacity === 1 && last.y === 90 && top.row.opacity === 1 && top.row.y === 0, Tokens.durationModerate * 4, "all at rest");
+        const topShows = Glide.tickOf(top.fades.find(step => step.value > 0), ticks);
+        verify(between.fades.some(step => step.value > 0 && Glide.tickOf(step, ticks) < topShows), "the one that waited shows as it glides");
+        const landedIn = Math.max(...[top.glides, ...glides].map(run => Glide.tickOf(run[run.length - 1], ticks)));
+        verify(top.fades.every(step => step.value === 0 || Glide.tickOf(step, ticks) >= landedIn), "the newer one is never seen while the rows after it glide");
+    }
+
+    function test_in_a_hidden_column_a_row_that_comes_before_another_stands_at_once() {
+        Prefs.motion = "on";
+        const column = createTemporaryObject(arrivalComponent, testCase, { visible: false });
+        column.insert(1, "between");
+        waitForItemPolished(column);
+        compare(findChild(column, "between").opacity, 1);
+        compare(findChild(column, "between").y, 30);
+        compare(findChild(column, "last").y, 60);
+    }
+
+    function test_under_reduced_motion_a_row_that_comes_before_another_stands_at_once() {
+        const column = createTemporaryObject(arrivalComponent, testCase);
+        column.insert(1, "between");
+        waitForItemPolished(column);
+        compare(findChild(column, "between").opacity, 1);
+        compare(findChild(column, "between").y, 30);
+        compare(findChild(column, "last").y, 60);
     }
 
     function test_under_reduced_motion_rows_go_at_once_and_the_undo_window_stays() {
