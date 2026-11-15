@@ -466,6 +466,58 @@ git -C "$work" add ok.md
 commit_as Neutral neutral@users.noreply.github.com "docs: add ok ($ticket)"
 check "history: a clean commit with a ticket id in its subject passes" 0
 
+# Each file kind has its own ticket-id rule; one commit adds the id and the next removes the file.
+added_then_removed() {
+	# added_then_removed <file> <content>
+	reset_work
+	printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+	printf '%s\n' "$2" >"$work/$1"
+	git -C "$work" add "$1"
+	commit_as Neutral neutral@users.noreply.github.com "feat: add $1"
+	git -C "$work" rm -q "$1"
+	commit_as Neutral neutral@users.noreply.github.com "feat: remove $1"
+}
+
+added_then_removed run.sh "echo hi # fixes $ticket"
+check "history: a ticket id in a shell comment added by one commit and removed by the next" 1 "Board reference in the content of commit"
+
+added_then_removed module.nix "{ } # fixes $ticket"
+check "history: a ticket id in a Nix comment added by one commit and removed by the next" 1 "Board reference in the content of commit"
+
+added_then_removed guide.md "See $ticket for details."
+check "history: a ticket id in markdown added by one commit and removed by the next" 1 "Board reference in the content of commit"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+{ printf 'Clone it to %s first.\n' "$home_path"; seq 1 20000; } >"$work/big.md"
+git -C "$work" add big.md
+commit_as Neutral neutral@users.noreply.github.com "docs: add a big file"
+git -C "$work" rm -q big.md
+commit_as Neutral neutral@users.noreply.github.com "docs: remove the big file"
+check "history: a home path followed by more than a pipe buffer in one commit is found" 1 "Local home path in the content of commit"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+printf 'ok\211%s\000end\n' "$home_path" >"$work/probe.png"
+git -C "$work" add probe.png
+LC_ALL=C.UTF-8 check "home path: a byte that is no UTF-8 right before the path, in the tree" 1 "Local home path in probe.png:1"
+commit_as Neutral neutral@users.noreply.github.com "feat: add a picture"
+git -C "$work" rm -q probe.png
+commit_as Neutral neutral@users.noreply.github.com "feat: remove the picture"
+LC_ALL=C.UTF-8 check "home path: a byte that is no UTF-8 right before the path, added then removed" 1 "Local home path in the content of commit"
+
+reset_work
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+printf 'x\n' >"$work/a.txt"
+git -C "$work" add a.txt
+commit_as Neutral neutral@users.noreply.github.com "feat: add a"
+printf 'Seen in %s.\n' "$home_path" >"$work/b.txt"
+git -C "$work" add b.txt
+commit_as Neutral neutral@users.noreply.github.com "feat: add b with a home path"
+git -C "$work" rm -q b.txt
+commit_as Neutral neutral@users.noreply.github.com "feat: remove b"
+check "history: the newest commits of the range are checked, not only the older ones" 1 "Local home path in the content of commit"
+
 # Identities: author and committer must be noreply addresses.
 reset_work
 printf 'ProbeNoop\n' >"$work/.privacy-patterns"

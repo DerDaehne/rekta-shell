@@ -106,7 +106,7 @@ german_in_messages() {
 	local sha
 	for sha in $(git rev-list --no-merges origin/main..HEAD); do
 		git log -1 --format='%ae' "$sha" | grep -q '\[bot\]@' && continue
-		if git log -1 --format='%s%n%b' "$sha" | strip_quotes | grep -qE "$GERMAN"; then
+		if git log -1 --format='%s%n%b' "$sha" | strip_quotes | grep -E "$GERMAN" >/dev/null; then
 			echo "${sha:0:7}"
 		fi
 	done
@@ -114,7 +114,7 @@ german_in_messages() {
 
 # Prints "<file>:<line>" for every local home path in tracked and untracked (not ignored) files.
 home_paths_in_files() {
-	{ git -c core.quotePath=false grep -n -a --untracked -E -e "$HOME_PATH" -- . || true; } | cut -d: -f1,2
+	{ LC_ALL=C git -c core.quotePath=false grep -n -a --untracked -E -e "$HOME_PATH" -- . || true; } | cut -d: -f1,2
 }
 
 # Prints the lines commit $1 adds to the files of the pathspecs after $2; $2 is --text to read binary files too,
@@ -131,12 +131,12 @@ board_references_in_added_lines() {
 	local sha
 	for sha in $(git rev-list --no-merges origin/main..HEAD); do
 		if { # pipefail: no match in the last grep must not hide the earlier ones
-			added_lines "$sha" "" . | grep -aiE -e "$NOTE_SLUG" -e "$ADR_ID" -e "$COMMENT_ID"
-			added_lines "$sha" "" "${SLASH_CODE[@]}" | grep -aE -e "$TICKET_ID_IN_SLASH_CODE"
-			added_lines "$sha" "" "${HASH_CODE[@]}" | grep -aE -e "$TICKET_ID_IN_HASH_CODE"
-			added_lines "$sha" "" '*.md' ':!*CHANGELOG*' | grep -aE -e "$TICKET_ID"
+			added_lines "$sha" "" . | LC_ALL=C grep -aiE -e "$NOTE_SLUG" -e "$ADR_ID" -e "$COMMENT_ID"
+			added_lines "$sha" "" "${SLASH_CODE[@]}" | LC_ALL=C grep -aE -e "$TICKET_ID_IN_SLASH_CODE"
+			added_lines "$sha" "" "${HASH_CODE[@]}" | LC_ALL=C grep -aE -e "$TICKET_ID_IN_HASH_CODE"
+			added_lines "$sha" "" '*.md' ':!*CHANGELOG*' | LC_ALL=C grep -aE -e "$TICKET_ID"
 			true
-		} | grep -qa .; then
+		} | LC_ALL=C grep -a . >/dev/null; then
 			echo "${sha:0:7}"
 		fi
 	done
@@ -146,17 +146,18 @@ board_references_in_added_lines() {
 home_paths_in_added_lines() {
 	local sha
 	for sha in $(git rev-list --no-merges origin/main..HEAD); do
-		if added_lines "$sha" --text . | grep -qaE "$HOME_PATH"; then
+		if added_lines "$sha" --text . | LC_ALL=C grep -aE "$HOME_PATH" >/dev/null; then
 			echo "${sha:0:7}"
 		fi
 	done
 }
 
+# Never end a pipeline in grep -q under pipefail: it exits at the first hit, the producer dies of SIGPIPE and the hit is lost.
 # Prints the short sha of every unpushed commit whose message contains a local home path.
 home_paths_in_messages() {
 	local sha
 	for sha in $(git rev-list --no-merges origin/main..HEAD); do
-		if git log -1 --format='%B' "$sha" | grep -qE "$HOME_PATH"; then
+		if git log -1 --format='%B' "$sha" | grep -E "$HOME_PATH" >/dev/null; then
 			echo "${sha:0:7}"
 		fi
 	done
@@ -228,7 +229,7 @@ if git rev-parse --verify -q origin/main >/dev/null; then
 	report "Local home path in the content of commit" "$HOME_PATH_HINT" "$(home_paths_in_added_lines)" || conventions=1
 	report "Non-noreply author or committer" "$IDENTITY_HINT" "$(foreign_identities)" || conventions=1
 else
-	echo "origin/main unknown (git fetch needed) — commit messages and identities not checked."
+	echo "origin/main unknown (git fetch needed) — commit messages, contents and identities not checked."
 fi
 if [ "$conventions" -eq 0 ]; then
 	echo "Built-in checks: no matches."
