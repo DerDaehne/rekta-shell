@@ -299,7 +299,7 @@ PanelWindow {
         }
 
         function pressReason(at: point): string {
-            return surface.pressReason(at, Qt.point(place.x, place.y), windowRect(barWindow.contentItem), windowRect(opener));
+            return surface.pressReason(at, Qt.point(place.x, place.y), windowRect(opener.Window.window.contentItem), windowRect(opener));
         }
 
         onVisibleChanged: {
