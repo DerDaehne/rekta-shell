@@ -1392,8 +1392,8 @@ FocusScope {
         return true;
     }
 
-    // PageUp and PageDown scroll a stacked place from anywhere, as they scroll a page wherever the focus is; a place that
-    // gives way to a search no more.
+    // PageUp and PageDown scroll a stacked place from anywhere, as they scroll a page wherever the focus is, but not one
+    // that gives way to a search.
     function pagesThePlace(event: KeyEvent): bool {
         return !searching && placePanorama.visible && placePanorama.pageKey(event, false);
     }
