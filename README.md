@@ -362,8 +362,10 @@ Plasma 6.8 or newer, and Quickshell 0.3, which Fedora does not package yet.
 
    ```sh
    sha256sum -c --ignore-missing SHA256SUMS
-   sudo dnf install ./rekta-shell-<version>.fc45.x86_64.rpm
+   sudo dnf install ./rekta-shell-*.fc45.x86_64.rpm
    ```
+
+   The RPM is not signed, so `dnf` does not verify it; the checksum is the check.
 
    Until the first release is tagged, and to try the state of `main` between
    releases, download the workflow artifact of a build of `main` instead (it
@@ -371,12 +373,14 @@ Plasma 6.8 or newer, and Quickshell 0.3, which Fedora does not package yet.
    `gh auth login`; it works from any directory:
 
    ```sh
-   gh run list -R DerDaehne/rekta-shell -w rpm -b main -L 1   # the run id is the second to last column
+   gh run list -R DerDaehne/rekta-shell -w rpm -b main -L 1 --json databaseId -q '.[0].databaseId'   # the run id
    gh run view <run-id> -R DerDaehne/rekta-shell              # lists the artifact: rekta-shell-<version>-fc45-<sha7>
    gh run download <run-id> -R DerDaehne/rekta-shell -n rekta-shell-<version>-fc45-<sha7>
+   sudo dnf install ./rekta-shell-*.fc45.x86_64.rpm
    ```
 
-   The RPM is not signed, so `dnf` does not verify it; the checksum is the check.
+   The artifact holds the RPM and the source RPM but no `SHA256SUMS`; it comes from the
+   project's own build of that commit.
 
 4. Log out and pick "rekta" in the login manager's session list: the gear icon
    in GDM, the session selector in the Plasma Login Manager or SDDM. To go back,
