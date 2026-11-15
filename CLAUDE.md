@@ -24,6 +24,16 @@ working information (board, knowledge base, local environment). It is gitignored
   implementation of it.
 - Deliberate deviations from Rekta only with an ADR (example: the typeface).
 
+## Second top goal: fast, fluid, small footprint (binding)
+
+- rekta runs as fast and as fluidly as possible, with the smallest possible
+  footprint, and loads the system as little as possible.
+- Input is never held up: what the user types or presses shows in the next
+  frame; motion, searches and model updates follow it, never block it.
+- Work on the GUI thread per event stays small; no idle polling or redraws
+  while nothing changes. A change must not raise idle CPU or memory: measure
+  before and after.
+
 ## Never touch the running system (binding)
 
 The maintainer's machine must stay usable at all times. The flake is imported
