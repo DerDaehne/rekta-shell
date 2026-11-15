@@ -70,11 +70,11 @@ function applicationPath(name) {
 }
 
 // The desktop actions of an entry ([Desktop Action] groups) as the action registry lists them, in the words the app
-// gives them and found by the app's name too. An app that runs over D-Bus under `busName` runs each of them there,
+// gives them and found by the app's name too. An app that runs over D-Bus under `appBusName` runs each of them there,
 // Exec or not, as the spec has a launcher do; any other app ("") starts one as it starts itself, so one without an
 // Exec is left out. One without a name is left out too: the spec requires it.
-function desktopActions(entry, busName, launcher) {
-    const runnable = action => action.name !== "" && (busName !== "" || action.command.length > 0);
+function desktopActions(entry, appBusName, launcher) {
+    const runnable = action => action.name !== "" && (appBusName !== "" || action.command.length > 0);
     return Array.from(entry.actions).filter(runnable).map(action => ({
         id: `desktop/${entry.id}/${action.id}`,
         text: action.name,
@@ -82,7 +82,7 @@ function desktopActions(entry, busName, launcher) {
         app: entry.id,
         appName: entry.name,
         icon: action.icon || entry.icon,
-        run: busName !== "" ? () => launcher.activateAction(busName, action.id) : () => launcher.launchAction(entry, action)
+        run: appBusName !== "" ? () => launcher.activateAction(appBusName, action.id) : () => launcher.launchAction(entry, action)
     }));
 }
 
