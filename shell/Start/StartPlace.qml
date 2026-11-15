@@ -26,6 +26,13 @@ FocusScope {
     property var windows: []
     // The window that had the keyboard when the Start opened; it gets it back unless a press chose where to go.
     property var returnTo: null
+    // A window has the keyboard: KWin reports one active.
+    property bool windowHasKeyboard: false
+    // KWin has given the Start the keyboard since it set out to open. A window it activates before is passing through:
+    // a surface over the Start that goes as the Start opens hands the keyboard to the last window first.
+    property bool hadKeyboard: false
+    // The open Start's surface has the keyboard.
+    readonly property bool hasKeyboard: wanted && Window.active
     // The pinned apps: {id, name, icon, columns, rows, index, launch()}, `index` counting in start.json's list.
     property var pinned: []
     // The pinned apps as "angeheftet" shows them: `pinned` once its change has been made.
@@ -187,6 +194,7 @@ FocusScope {
         quietly(() => turner.finish());
         endSearch();
         returnTo = windows.find(window => window.active) ?? null;
+        hadKeyboard = false;
         panorama.goTo(0, false, true);
         appsPanorama.goTo(0, false, true);
         phase = how;
@@ -1309,6 +1317,20 @@ FocusScope {
     onFocusItemChanged: reveal(focusItem)
     onPinnedChanged: followPinned()
     onWantedChanged: menu.close(false)
+    onHasKeyboardChanged: {
+        if (hasKeyboard)
+            hadKeyboard = true;
+    }
+    // A window took the keyboard from the open Start, one that came or one brought forward from elsewhere: the Start
+    // turns out forward, as after a choice in it, and the window keeps the keyboard.
+    // ponytail: Rekta has no rule for a place called up whose focus another program takes; forward until it gives one.
+    onWindowHasKeyboardChanged: {
+        if (windowHasKeyboard && hadKeyboard)
+            leave({
+                back: false,
+                pressed: null
+            });
+    }
     onWidthChanged: {
         menu.close(false);
         standWithFinger();

@@ -101,6 +101,19 @@ TestCase {
         }
     }
 
+    // A surface of the shell's own that takes the keyboard from the Start's; not the test's transient, which would
+    // count the test's window active along with it.
+    Component {
+        id: otherSurface
+
+        Window {
+            transientParent: null
+            width: 100
+            height: 100
+            visible: true
+        }
+    }
+
     SignalSpy {
         id: closedSpy
 
@@ -342,6 +355,56 @@ TestCase {
         tryVerify(() => closedSpy.count === 1, 3000);
         verify(!start.shown);
         verify(!findChild(start, "glass").visible);
+    }
+
+    // KWin takes the keyboard from the docs as the Start opens, then gives it to a window that came while it stood.
+    function test_a_window_that_takes_the_keyboard_from_the_open_start_turns_it_out_forward_and_keeps_the_keyboard() {
+        start.windows = windowsWithTheDocsActive();
+        start.windowHasKeyboard = true;
+        openNow();
+        start.windowHasKeyboard = false;
+        Prefs.motion = "on";
+        start.windows = [...start.windows, fakeWindow("dolphin", 40)];
+        start.windowHasKeyboard = true;
+        verify(!start.wanted);
+        verify(turner.running);
+        verify(!turner.back);
+        compare(turner.pressedTile, null);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(calls, [], "the docs, which had the keyboard as the Start opened, do not take it back");
+    }
+
+    function test_the_window_that_has_the_keyboard_as_the_start_opens_leaves_it_open() {
+        start.windows = windowsWithTheDocsActive();
+        start.windowHasKeyboard = true;
+        openNow();
+        compare(start.phase, "open");
+    }
+
+    // The side panel has the keyboard as the Start opens and goes at once; KWin hands the keyboard to the last window
+    // before the Start takes it. The Start had the keyboard the time before.
+    function test_a_window_kwin_activates_before_the_start_had_the_keyboard_leaves_it_open() {
+        openNow();
+        keyClick(Qt.Key_Escape);
+        compare(start.phase, "closed");
+        const panel = createTemporaryObject(otherSurface, testCase);
+        tryVerify(() => !start.Window.active, 2000);
+        start.windowHasKeyboard = false;
+        openNow();
+        start.windowHasKeyboard = true;
+        compare(start.phase, "open");
+        panel.visible = false;
+        start.Window.window.requestActivate();
+        tryVerify(() => start.Window.active, 2000);
+        start.windowHasKeyboard = false;
+        start.windowHasKeyboard = true;
+        verify(!start.wanted, "a window that takes the keyboard after that one still sends it out");
+    }
+
+    function test_a_window_that_takes_the_keyboard_while_the_start_is_closed_leaves_it_closed() {
+        start.windowHasKeyboard = true;
+        compare(start.phase, "closed");
+        compare(closedSpy.count, 0);
     }
 
     // Opaque, with no turn's rotation left on it.

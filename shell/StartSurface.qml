@@ -131,6 +131,7 @@ PanelWindow {
         anchors.fill: parent
         anchors.topMargin: surface.topInset
         windows: Array.from(surface.windows.all)
+        windowHasKeyboard: surface.windows.active !== null
         pinned: surface.pinnedApps(Array.from(DesktopEntries.applications.values), surface.listedPins)
         pinFile: startFile
         toaster: surface.toaster
