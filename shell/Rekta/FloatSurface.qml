@@ -39,12 +39,28 @@ Rectangle {
     // sees it open and closes it rather than opening it again (rekta.js:2066–2067, a click on the trigger never counts
     // as a click outside), and the end of a popup's grab lets the release reach that control.
     function dismiss(reason: string) {
-        Qt.callLater(() => {
-            if (!surface.open)
-                return;
-            surface.closeReason = reason;
-            surface.open = false;
-        });
+        Qt.callLater(() => surface.closeAs(reason));
+    }
+
+    // Closes it for a reason only while it is open, so a closer that comes late leaves no reason behind.
+    function closeAs(reason: string) {
+        if (!open)
+            return;
+        closeReason = reason;
+        open = false;
+    }
+
+    function within(box: rect, at: point): bool {
+        return at.x >= box.x && at.y >= box.y && at.x < box.x + box.width && at.y < box.y + box.height;
+    }
+
+    // A press the open popup was handed, at `at` in the popup's window, which stands at `origin` in the host window: on the
+    // host's own opener it is a second press, elsewhere on the host a press on it, anywhere else a press outside.
+    function pressReason(at: point, origin: point, host: rect, opener: rect): string {
+        const inHost = Qt.point(origin.x + at.x, origin.y + at.y);
+        if (within(opener, inHost))
+            return "second-press";
+        return within(host, inHost) ? "press-on-bar" : "press-outside";
     }
 
     // The compositor or Qt closed the popup that holds this surface. Qt closes its popups when the program loses the
@@ -53,13 +69,17 @@ Rectangle {
         dismiss(appActive ? "popup-done" : "keyboard-lost");
     }
 
+    // The one journal line of a close; none for a surface without a name.
+    function closeLine(reason: string, sinceOpen: int): string {
+        return traced ? `rekta-float: surface=${traced} reason=${reason} ms=${sinceOpen}` : "";
+    }
+
     function reportClose() {
         const sinceOpen = Date.now() - openedAt;
-        if (traced)
-            console.info(`rekta-float: surface=${traced} reason=${closeReason} ms=${sinceOpen}`);
-        const reason = closeReason;
-        closeReason = "other";
-        closedFor(reason, sinceOpen);
+        const line = closeLine(closeReason, sinceOpen);
+        if (line)
+            console.info(line);
+        closedFor(closeReason, sinceOpen);
     }
 
     // Its size with its rows laid out now, not at the next frame, so a host can place it as it opens.
@@ -90,6 +110,7 @@ Rectangle {
         entry = 1;
         if (open) {
             openedAt = Date.now();
+            closeReason = "other";
             KeyLayers.opened(surface);
             comingIn.start();
         } else {

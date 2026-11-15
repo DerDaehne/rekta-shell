@@ -208,6 +208,7 @@ PanelWindow {
 
         barWindow: panel
         surface: bar.menu
+        opener: bar.more
         place: bar.menuPlace
     }
 
@@ -218,6 +219,7 @@ PanelWindow {
 
         barWindow: panel
         surface: background.menu
+        opener: background.overflowed ? bar.more : background
         place: bar.floatPlace(background.overflowed ? bar.more : background, Qt.size(background.menu.width, background.menu.height))
     }
 
@@ -228,6 +230,7 @@ PanelWindow {
 
         barWindow: panel
         surface: clock.calendar
+        opener: clock
         place: bar.floatPlace(clock, Qt.size(clock.calendar.width, clock.calendar.height), "centre")
     }
 
@@ -276,6 +279,8 @@ PanelWindow {
 
         required property QtObject barWindow
         required property FloatSurface surface
+        // The bar's control that opens it: a press on it is told from one elsewhere on the bar.
+        required property Item opener
         // From AppBar.floatPlace: where it goes in the bar's window, and on which side of its control.
         required property var place
 
@@ -287,6 +292,15 @@ PanelWindow {
         visible: remap.mapped
         grabFocus: true
         color: "transparent"
+
+        function windowRect(item: Item): rect {
+            const at = item.mapToItem(null, 0, 0);
+            return Qt.rect(at.x, at.y, item.width, item.height);
+        }
+
+        function pressReason(at: point): string {
+            return surface.pressReason(at, Qt.point(place.x, place.y), windowRect(barWindow.contentItem), windowRect(opener));
+        }
 
         onVisibleChanged: {
             if (!visible && !remap.remapping)
@@ -302,7 +316,7 @@ PanelWindow {
 
         // A finger anywhere else in the shell reaches only this popup, which closes for it.
         PressOutside {
-            onPressedOutside: host.surface.dismiss("press-outside")
+            onPressedOutside: at => host.surface.dismiss(host.pressReason(at))
         }
 
         Component.onCompleted: {

@@ -10,7 +10,8 @@ MouseArea {
     // Qt hands an item only points within its bounds, so it reaches past the window as far as the desktop spans.
     readonly property real reach: Screen.desktopAvailableWidth + Screen.desktopAvailableHeight
 
-    signal pressedOutside
+    // `at` is where it landed, in this window.
+    signal pressedOutside(point at)
 
     x: -reach
     y: -reach
@@ -21,6 +22,6 @@ MouseArea {
         mouse.accepted = false;
         const inWindow = mapToItem(null, mouse.x, mouse.y);
         if (inWindow.x < 0 || inWindow.y < 0 || inWindow.x >= Window.width || inWindow.y >= Window.height)
-            pressedOutside();
+            pressedOutside(Qt.point(inWindow.x, inWindow.y));
     }
 }

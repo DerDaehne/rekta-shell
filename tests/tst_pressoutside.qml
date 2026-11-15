@@ -71,6 +71,14 @@ TestCase {
         compare(spy.count, 1);
     }
 
+    function test_a_press_outside_says_where_it_landed_in_the_popups_window() {
+        const { popup, spy } = openPopup();
+        mousePress(popup.content, -60, -50);
+        compare(spy.count, 1);
+        compare(spy.signalArguments[0][0], Qt.point(-60, -50));
+        mouseRelease(popup.content, -60, -50);
+    }
+
     function test_a_finger_far_from_the_popup_counts_too() {
         const { spy } = openPopup();
         touchEvent(bar).press(0, bar, 395, 295).commit().release(0, bar, 395, 295).commit();

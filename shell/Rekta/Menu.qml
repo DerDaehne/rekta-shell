@@ -141,7 +141,8 @@ FloatSurface {
             back();
             return;
         }
-        closeReason = "escape";
+        if (open)
+            closeReason = "escape";
         close(true);
     }
 

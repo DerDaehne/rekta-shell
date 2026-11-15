@@ -290,8 +290,7 @@ Item {
 
             onTapped: eventPoint => {
                 if (control.pressFoundOpen) {
-                    control.opens.closeReason = "second-press";
-                    control.opens.open = false;
+                    control.opens.closeAs("second-press");
                     return;
                 }
                 control.click();

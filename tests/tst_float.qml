@@ -357,6 +357,17 @@ TestCase {
         }
     }
 
+    // Runs after every call queued before it.
+    Component {
+        id: laterComponent
+
+        QtObject {
+            property bool ran: false
+
+            Component.onCompleted: Qt.callLater(() => ran = true)
+        }
+    }
+
     function closeReasonsOf(surface: FloatSurface): var {
         const seen = [];
         surface.closedFor.connect((reason, sinceOpen) => seen.push({ reason, sinceOpen }));
@@ -399,8 +410,11 @@ TestCase {
         surface.popupClosed(true);
         surface.dismiss("press-on-bar");
         tryVerify(() => !surface.open);
-        wait(50);
-        compare(seen.map(close => close.reason).join(), "press-outside");
+        const later = createTemporaryObject(laterComponent, testCase);
+        tryVerify(() => later.ran);
+        surface.open = true;
+        surface.open = false;
+        compare(seen.map(close => close.reason).join(), "press-outside,other");
     }
 
     function test_a_dismiss_of_a_surface_that_is_already_closed_writes_nothing() {
@@ -408,8 +422,12 @@ TestCase {
         const seen = closeReasonsOf(surface);
         surface.dismiss("press-outside");
         surface.popupClosed(false);
-        wait(50);
+        const later = createTemporaryObject(laterComponent, testCase);
+        tryVerify(() => later.ran);
         compare(seen.length, 0);
+        surface.open = true;
+        surface.open = false;
+        compare(seen.map(close => close.reason).join(), "other");
     }
 
     function test_a_surface_reports_the_time_since_it_opened() {
@@ -420,5 +438,38 @@ TestCase {
         surface.open = false;
         compare(seen.length, 1);
         verify(seen[0].sinceOpen >= 100 && seen[0].sinceOpen < 1000, seen[0].sinceOpen + " ms");
+    }
+
+    function test_the_journal_line_names_the_surface_the_reason_and_the_time() {
+        const surface = createTemporaryObject(surfaceComponent, testCase, { traced: "background" });
+        compare(surface.closeLine("escape", 1970), "rekta-float: surface=background reason=escape ms=1970");
+    }
+
+    function test_a_surface_without_a_name_writes_no_journal_line() {
+        const surface = createTemporaryObject(surfaceComponent, testCase);
+        compare(surface.closeLine("escape", 5), "");
+    }
+
+    function test_a_press_the_popup_was_handed_is_told_by_where_it_lands_on_the_host_window() {
+        const surface = createTemporaryObject(surfaceComponent, testCase);
+        const bar = Qt.rect(0, 500, 1000, 40);
+        const opener = Qt.rect(800, 500, 100, 40);
+        const origin = Qt.point(700, 100);
+        compare(surface.pressReason(Qt.point(150, 420), origin, bar, opener), "second-press", "on the opener");
+        compare(surface.pressReason(Qt.point(-600, 420), origin, bar, opener), "press-on-bar", "on the bar, not the opener");
+        compare(surface.pressReason(Qt.point(10, 10), origin, bar, opener), "press-outside", "above the bar");
+        compare(surface.pressReason(Qt.point(300, 420), origin, bar, opener), "press-outside", "past the bar's trailing edge");
+    }
+
+    function test_a_late_second_press_leaves_no_reason_for_the_next_close() {
+        const surface = createTemporaryObject(surfaceComponent, testCase);
+        const seen = closeReasonsOf(surface);
+        surface.open = true;
+        surface.dismiss("press-outside");
+        tryVerify(() => !surface.open);
+        surface.closeAs("second-press");
+        surface.open = true;
+        surface.open = false;
+        compare(seen.map(close => close.reason).join(), "press-outside,other");
     }
 }

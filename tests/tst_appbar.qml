@@ -780,6 +780,22 @@ TestCase {
         compare(seen.join(), "second-press,escape,press-on-bar");
     }
 
+    function test_a_press_on_more_after_the_popup_closed_the_menu_leaves_no_reason_for_the_next_close() {
+        makeScene({ barWidth: 760 });
+        const menu = bar.menu;
+        const seen = [];
+        menu.closedFor.connect(reason => seen.push(reason));
+        mouseClick(bar.more, 10, 10);
+        menu.dismiss("press-outside");
+        mousePress(bar.more, 10, 10);
+        tryVerify(() => !menu.open);
+        mouseRelease(bar.more, 10, 10);
+        mouseClick(bar.more, 10, 10);
+        verify(menu.open);
+        menu.open = false;
+        compare(seen.join(), "press-outside,other");
+    }
+
     function test_a_press_on_another_control_while_the_menu_of_more_is_open_closes_the_menu_and_presses_that_control() {
         makeScene({ barWidth: 760 });
         const back = named("back");
