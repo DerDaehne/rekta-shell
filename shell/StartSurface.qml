@@ -107,7 +107,7 @@ PanelWindow {
     // and while no screen is left.
     visible: primaryScreen !== null && (place.shown || !windows.fullScreenOn(primaryScreen))
     mask: Region {
-        item: place.shown ? place : null
+        item: place.takesInput ? place : null
     }
     WlrLayershell.namespace: "rekta-start"
     // A place lies below the toasts (Rekta's layers), so the Start keeps to the top layer: on one layer KWin raises the

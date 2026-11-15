@@ -1042,6 +1042,29 @@ TestCase {
         tryVerify(() => closedSpy.count === 1, 3000);
     }
 
+    function test_the_start_takes_input_from_opening_until_it_starts_to_leave() {
+        Prefs.motion = "on";
+        verify(!start.takesInput, "not while closed");
+        start.open();
+        verify(start.takesInput, "while it opens");
+        tryVerify(() => start.phase === "open", 3000);
+        verify(start.takesInput);
+        keyClick(Qt.Key_Escape);
+        compare(start.phase, "closing");
+        verify(!start.takesInput, "from the moment it leaves, until it has gone");
+        tryVerify(() => closedSpy.count === 1, 3000);
+        verify(!start.takesInput);
+    }
+
+    function test_opening_again_while_closing_takes_input_again() {
+        Prefs.motion = "on";
+        openNow();
+        keyClick(Qt.Key_Escape);
+        verify(!start.takesInput);
+        start.open();
+        verify(start.takesInput);
+    }
+
     function test_opening_again_while_closing_ends_the_close_and_comes_back() {
         Prefs.motion = "on";
         openNow();

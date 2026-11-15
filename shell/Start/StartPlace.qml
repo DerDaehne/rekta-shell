@@ -86,6 +86,8 @@ FocusScope {
     readonly property bool shown: phase !== "closed"
     // From open() to close(): the Start is open or on its way.
     readonly property bool wanted: phase === "opening" || phase === "open"
+    // A place that is leaving takes no more input: presses reach the app bar or the window below (rekta.css:1172, :1284).
+    readonly property bool takesInput: shown && phase !== "closing" && phase !== "returning"
     // A finger has taken the closing along: the Start keeps the keyboard and its focus, but takes no keys or presses.
     readonly property bool fingerCloses: phase === "followingOut" || phase === "returningIn"
     // From open() to the hand-over, when the glass starts to go. KWin's fade-back steps the windows back when the
