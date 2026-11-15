@@ -4,6 +4,7 @@ import QtQuick
 import QtTest
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -306,6 +307,45 @@ TestCase {
         compare(run.duration, Tokens.durationModerate, "the peek itself keeps its time");
         compare(findChild(control, "peek").phase, 0, "the old count stands while it waits");
         compare(findChild(control, "ghost").opacity, 1);
+    }
+
+    // In the shell a frame can come between the change and its step, and Qt restarts a running group for a changed
+    // pause only before its first tick.
+    function test_a_count_s_peek_that_has_moved_a_tick_when_its_step_comes_stands_again_and_runs_its_whole_time_after_the_step() {
+        Prefs.motion = "on";
+        const ticks = Glide.ticks(testCase);
+        const control = createTemporaryObject(buttonComponent, testCase, { count: 3 });
+        waitForRendering(control);
+        control.count = 4;
+        tryVerify(() => findChild(control, "peek").phase > 0, 500, "a tick moved it");
+        const phases = Glide.record(findChild(control, "peek"), "phase");
+        const since = Date.now();
+        control.waitFor(Tokens.durationGreet);
+        compare(findChild(control, "peek").phase, 0, "the old count stands again");
+        compare(findChild(control, "ghost").opacity, 1);
+        compare(findChild(control, "count").opacity, 0);
+        tryVerify(() => !findChild(control, "peekRun").running, Tokens.durationModerate * 3);
+        // Still for its step, then linear over duration-moderate.
+        const whole = Tokens.durationGreet + Tokens.durationModerate;
+        const heldThenLinear = { valueForProgress: share => Math.max(0, (share * whole - Tokens.durationGreet) / Tokens.durationModerate) };
+        const stray = Glide.strayOf([{ steps: phases, from: 0, to: 1 }], whole, heldThenLinear, since, ticks);
+        verify(stray < 0.06, `held for its step, then its whole time, off by ${stray}`);
+    }
+
+    function test_changed_again_after_it_waited_last_time_a_count_s_peek_starts_with_no_wait_of_its_own() {
+        Prefs.motion = "on";
+        const tile = createTemporaryQmlObject(`import QtQuick
+            import Rekta
+            Tile { x: 100; y: 100; Stat { objectName: "stat"; value: "3"; label: "unread" } }`, testCase);
+        const control = createTemporaryObject(buttonComponent, testCase, { count: 3, y: 600 });
+        waitForRendering(control);
+        control.count = 4;
+        tile.news("peek", () => findChild(tile, "stat").value = "4");
+        tryCompare(control, "peekWait", Tokens.durationGreet);
+        tryVerify(() => !findChild(control, "peekRun").running, Tokens.durationModerate * 3);
+        control.count = 5;
+        compare(control.peekWait, 0, "the change itself waits nothing");
+        compare(findChild(control, "peekRun").animations[0].duration, 0, "no pause of the last time before its motion");
     }
 
     // Holds the way the face of `control` has begun, away or back, and sets it `share` of the way along its time.

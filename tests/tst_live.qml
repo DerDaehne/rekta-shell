@@ -166,6 +166,12 @@ TestCase {
         verify(Math.abs(actual - expected) < 0.01, `${what}: ${actual}, expected ${expected}`);
     }
 
+    // A motion's way from the telling: still for `hold` ms, then linear over duration-moderate.
+    function heldThenLinear(hold) {
+        const whole = hold + Tokens.durationModerate;
+        return { whole, valueForProgress: share => Math.max(0, (share * whole - hold) / Tokens.durationModerate) };
+    }
+
     function test_a_sparkline_takes_the_tiles_text_colour_on_every_status_but_success() {
         Prefs.theme = "dark";
         for (const status of ["", "info", "warning", "error"]) {
@@ -642,11 +648,49 @@ TestCase {
         tellAll(tiles);
         tryCompare(part(tiles[2], "news"), "wait", 2 * Tokens.durationGreet);
         tryCompare(part(tiles[2], "news"), "peeking", false, Tokens.durationModerate * 3);
-        // Its way from the telling: still for its wait, then the peek's own linear phase.
-        const whole = 2 * Tokens.durationGreet + Tokens.durationModerate;
-        const heldThenLinear = { valueForProgress: share => Math.max(0, (share * whole - 2 * Tokens.durationGreet) / Tokens.durationModerate) };
-        const stray = Glide.strayOf([{ steps: phases, from: 0, to: 1 }], whole, heldThenLinear, since, ticks);
+        const curve = heldThenLinear(2 * Tokens.durationGreet);
+        const stray = Glide.strayOf([{ steps: phases, from: 0, to: 1 }], curve.whole, curve, since, ticks);
         verify(stray < 0.06, `the peek runs its whole time from its step on, off by ${stray}`);
+    }
+
+    // In the shell a frame can come between the telling and its step, and Qt restarts a running group for a changed
+    // pause only before its first tick.
+    function test_a_peek_that_has_moved_a_tick_when_its_step_comes_stands_again_and_runs_its_whole_time_after_the_step() {
+        const ticks = Glide.ticks(testCase);
+        const tile = createTemporaryObject(liveTile, testCase);
+        waitForRendering(tile);
+        const news = part(tile, "news");
+        tile.news("peek", () => part(tile, "stat").value = "413");
+        tryVerify(() => part(tile, "peek").phase > 0, 500, "a tick moved it");
+        const phases = Glide.record(part(tile, "peek"), "phase");
+        const since = Date.now();
+        news.waitFor(Tokens.durationGreet);
+        compare(part(tile, "peek").phase, 0, "the old number stands again");
+        compare(part(tile, "ghost").opacity, 1);
+        compare(part(tile, "incoming").opacity, 0);
+        tryCompare(news, "peeking", false, Tokens.durationModerate * 3);
+        const curve = heldThenLinear(Tokens.durationGreet);
+        const stray = Glide.strayOf([{ steps: phases, from: 0, to: 1 }], curve.whole, curve, since, ticks);
+        verify(stray < 0.06, `held for its step, then its whole time, off by ${stray}`);
+    }
+
+    function test_a_flip_that_has_turned_a_tick_when_its_step_comes_stands_unturned_again_and_turns_its_whole_time_after_the_step() {
+        const ticks = Glide.ticks(testCase);
+        const tile = createTemporaryObject(liveTile, testCase, { status: "info" });
+        waitForRendering(tile);
+        const news = part(tile, "news");
+        tile.news("flip", () => tile.status = "error");
+        tryVerify(() => part(tile, "flip").phase > 0, 500, "a tick turned it");
+        const phases = Glide.record(part(tile, "flip"), "phase");
+        const since = Date.now();
+        news.waitFor(Tokens.durationGreet);
+        compare(part(tile, "flip").phase, 0, "unturned again");
+        compare(news.flipAngle, 0);
+        tryVerify(() => !part(tile, "flipRun").running, Tokens.durationModerate * 3);
+        compare(tile.status, "error");
+        const curve = heldThenLinear(Tokens.durationGreet);
+        const stray = Glide.strayOf([{ steps: phases, from: 0, to: 1 }], curve.whole, curve, since, ticks);
+        verify(stray < 0.06, `held for its step, then its whole time, off by ${stray}`);
     }
 
     function test_told_alone_after_it_waited_last_time_a_tile_s_peek_starts_at_once() {
@@ -688,9 +732,9 @@ TestCase {
         tryCompare(part(second, "news"), "wait", Tokens.durationGreet);
         Greet.now = () => 1000 + 3 * Tokens.durationGreet;
         tellAll([second]);
-        wait(0);
-        compare(part(second, "news").wait, 0);
-        compare(part(second, "peekRun").animations[0].duration, 0, "no pause before the motion");
+        compare(part(second, "peekRun").animations[0].duration, 0, "the telling starts with no pause of the last time");
+        tryVerify(() => toldHere() === 3, 500, "it counts in the run");
+        compare(part(second, "news").wait, 0, "its step has passed");
     }
 
     function test_while_it_waits_a_peek_shows_the_old_number_standing_and_a_flip_stands_unturned_changing_only_after() {

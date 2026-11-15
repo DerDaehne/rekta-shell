@@ -134,7 +134,6 @@ Item {
             return;
         }
         peekWait = 0;
-        peek.phase = 0;
         peekRun.restart();
         Greet.join(control);
     }

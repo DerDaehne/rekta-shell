@@ -123,7 +123,6 @@ Item {
             return;
         peek.to = part.mapToItem(news, 0, 0);
         peek.target = part;
-        peek.phase = 0;
         peekRun.restart();
         Greet.join(news);
     }
