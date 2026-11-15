@@ -511,14 +511,24 @@ TestCase {
         compare(findChild(toast, "open").Accessible.name, `${title}. ${long}`);
     }
 
-    // The docs bind the cut to a title (states.md:91, behaviour.md:678–679); rekta.js cuts beside an icon too.
-    function test_without_a_title_the_text_has_no_limit_and_no_heading_even_beside_an_icon() {
+    function test_a_notification_without_a_title_ends_its_text_after_two_lines_and_all_of_it_is_still_read() {
         const long = "a long message body that says what happened in many words, and then some more words, so that it needs a third line to be said, and a fourth line besides, because a message may run on and on and on until nobody reads it to the end";
-        const toast = toaster.show(long, { icon: testCase.appIcon });
+        toaster.width = 360;
+        const toast = toaster.show(long, { icon: testCase.appIcon, notification: true });
+        const message = findChild(toast, "message");
         verify(!findChild(toast, "title").visible);
-        verify(findChild(toast, "message").lineCount > 2);
-        verify(!findChild(toast, "message").truncated);
+        compare(message.lineCount, 2);
+        verify(message.truncated, "the third line ends in an ellipsis");
+        compare(message.text, long, "the cut is only visual");
         compare(toast.Accessible.name, long);
+        compare(toast.announcement, long);
+    }
+
+    function test_a_toast_of_the_product_s_own_without_a_title_keeps_its_whole_text_even_beside_an_icon() {
+        const long = "a long message body that says what happened in many words, and then some more words, so that it needs a third line to be said, and a fourth line besides, because a message may run on and on and on until nobody reads it to the end";
+        const message = findChild(toaster.show(long, { icon: testCase.appIcon }), "message");
+        verify(message.lineCount > 2);
+        verify(!message.truncated);
     }
 
     function test_an_undo_toast_announces_its_window_after_the_whole_text() {
