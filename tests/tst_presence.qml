@@ -167,6 +167,44 @@ TestCase {
         compare(between.opacity, 1);
     }
 
+    function test_a_row_waiting_for_room_waits_for_a_glide_a_newer_change_redirects_midway_until_it_lands() {
+        const between = named("between");
+        const row = named("row");
+        comeBetween();
+        const first = motionOf(row);
+        tryVerify(() => first.progress > 0.3, Tokens.durationModerate, "the row is on its way");
+        presence.change([], [row], () => row.y = 300, () => [], 0);
+        const redirected = motionOf(row);
+        verify(redirected !== first && !redirected.fades, "the row glides on to its new place");
+        compare(between.opacity, 0, "still unseen");
+        const glided = Glide.record(redirected, "progress");
+        const shows = Glide.record(between, "opacity");
+        tryVerify(() => !presence.running, Tokens.durationModerate * 4, "all at rest");
+        const landed = glided[glided.length - 1];
+        compare(landed.value, 1, "the redirected glide landed");
+        verify(shows.length > 0 && shows.every(step => step.order > landed.order), "it comes only once that glide has landed");
+        compare(between.opacity, 1);
+    }
+
+    function test_a_row_waiting_for_room_arrives_once_the_row_gliding_below_it_leaves_instead_and_is_gone() {
+        const between = named("between");
+        const row = named("row");
+        comeBetween();
+        const glide = motionOf(row);
+        tryVerify(() => glide.progress > 0.3, Tokens.durationModerate, "the row is on its way");
+        presence.change([row], [], () => row.visible = false, () => [], 0);
+        const leaving = motionOf(row);
+        verify(leaving.fades, "the row leaves");
+        const left = Glide.record(leaving, "progress");
+        const shows = Glide.record(between, "opacity");
+        tryVerify(() => !presence.running, Tokens.durationModerate * 4, "all at rest");
+        verify(left.length > 0, "the row left");
+        const gone = left[left.length - 1];
+        verify(shows.length > 0 && shows.every(step => step.order > gone.order), "unseen while the row leaves");
+        compare(between.opacity, 1);
+        compare(between.transform.length, 0, "it let go");
+    }
+
     function test_a_row_that_comes_at_the_end_with_nothing_gliding_arrives_at_once() {
         presence.change([], [named("tile"), named("other")], apply, () => [named("row")], 1);
         verify(presence.moving.every(motion => motion.fades), "the others stay where they are");
