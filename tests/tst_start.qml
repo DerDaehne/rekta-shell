@@ -2193,6 +2193,28 @@ TestCase {
         verify(tiles.every(tile => tile.opacity === 1));
     }
 
+    function test_enter_right_after_a_letter_presses_the_best_hit_its_hits_not_yet_followed() {
+        openWithApps();
+        keyClick("k");
+        verify(named("hitsFollow").running);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Kate"]);
+    }
+
+    function test_a_letter_erased_before_its_hits_followed_brings_the_pivot_back_at_once_and_the_place_never_moved() {
+        Prefs.motion = "on";
+        openWithApps();
+        keyClick("k");
+        verify(named("hitsFollow").running);
+        keyClick(Qt.Key_Backspace);
+        compare(start.query, "");
+        verify(named("pivot").visible);
+        verify(!named("searchTitle").visible);
+        verify(!named("hitsFollow").running);
+        verify(!named("presence").running, "nothing leaves or comes");
+        verify(searchField().inputFocus, "the line hands the keys to the field");
+    }
+
     function test_typing_on_the_hits_that_no_longer_match_leave_and_the_rest_close_up() {
         Prefs.motion = "on";
         openWithApps();
