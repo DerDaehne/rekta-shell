@@ -7,6 +7,7 @@ import Notices
 import Panel
 import Rekta
 import "ContactSheets.js" as ContactSheets
+import "Glide.js" as Glide
 
 TestCase {
     id: testCase
@@ -2072,7 +2073,7 @@ TestCase {
         verify(findChild(streamRows()[2], "streamVolume").activeFocus, "Shift+Tab back");
     }
 
-    function test_a_stream_that_comes_is_appended_and_arrives_from_above_with_a_fade_while_the_rows_below_make_room() {
+    function test_a_stream_that_comes_is_appended_and_once_the_rows_below_have_made_room_arrives_from_above_with_a_fade() {
         giveSound(controls);
         const streams = giveStreams(controls);
         showSettled(0);
@@ -2093,7 +2094,12 @@ TestCase {
         verify(making, "the input's row glides down");
         compare(making.from.y, -(rows[3].height + Tokens.spaceM), "from where it stood, the new row and its space higher");
         compare(making.duration, Tokens.durationModerate);
+        compare(rows[3].opacity, 0, "unseen while they make room");
+        const glided = presence.moving.filter(motion => !motion.fades).map(glide => Glide.record(glide, "progress"));
+        const shows = Glide.record(rows[3], "opacity");
         tryVerify(() => !presence.running, Tokens.durationModerate * 4);
+        const landed = Math.max(...glided.map(steps => steps[steps.length - 1].order));
+        verify(shows.length > 0 && shows.every(step => step.order > landed), "it fades in only once every row below has glided to its place");
         compare(rows[3].opacity, 1, "whole once it rests");
     }
 

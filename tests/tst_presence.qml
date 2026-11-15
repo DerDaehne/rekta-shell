@@ -17,6 +17,7 @@ TestCase {
     property var presence
     property var box
     property int applied: 0
+    readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
 
     Component {
         id: presenceComponent
@@ -49,6 +50,15 @@ TestCase {
                 color: "steelblue"
             }
 
+            Rectangle {
+                objectName: "between"
+                y: 200
+                width: 300
+                height: 40
+                color: "orange"
+                visible: false
+            }
+
             Tile {
                 objectName: "other"
                 x: 200
@@ -77,6 +87,14 @@ TestCase {
 
     function apply() {
         applied++;
+    }
+
+    // A row comes in the place of "row", which makes room below it.
+    function comeBetween() {
+        presence.change([], [named("row")], () => {
+            named("between").visible = true;
+            named("row").y = 240;
+        }, () => [named("between")], 1);
     }
 
     function test_those_that_go_leave_first_a_tile_shrinking_a_row_drifting_to_its_trailing_edge() {
@@ -110,6 +128,56 @@ TestCase {
         compare(row.duration, Tokens.durationShort);
         compare(named("tile").opacity, 0, "unseen as it starts");
         tryVerify(() => presence.moving.length === 0, 1000);
+    }
+
+    function test_a_row_that_comes_between_others_waits_unseen_until_those_after_it_have_glided_then_arrives_from_above() {
+        const ticks = Glide.ticks(testCase);
+        const between = named("between");
+        comeBetween();
+        const glide = motionOf(named("row"));
+        const coming = motionOf(between);
+        verify(glide !== undefined && !glide.fades, "the row after it glides down");
+        compare(glide.from.y, -40);
+        verify(coming !== undefined, "it is to arrive");
+        compare(between.opacity, 0, "unseen while it waits");
+        const glided = Glide.record(glide, "progress");
+        const shows = Glide.record(between, "opacity");
+        const falls = Glide.record(coming.shift, "y");
+        tryVerify(() => !presence.running, Tokens.durationModerate * 4, "all at rest");
+        const landed = glided[glided.length - 1];
+        compare(landed.value, 1, "the row glided to its place");
+        verify(shows.length > 0 && shows.every(step => step.order > landed.order), "never seen while the row glides");
+        const stray = Glide.strayOf([{ steps: shows, from: 0, to: 1 }, { steps: falls, from: -Geometry.arriveShift, to: 0 }], Tokens.durationShort, easeIn, landed.at, ticks);
+        verify(stray < 0.06, `then it comes from above with a fade along ease-in over duration-short, off by ${stray}`);
+        compare(between.opacity, 1);
+    }
+
+    function test_a_row_waiting_for_room_waits_through_a_newer_change_until_nothing_glides_any_more() {
+        const between = named("between");
+        comeBetween();
+        presence.change([], [named("other")], () => named("other").x = 400, () => [], 0);
+        const glides = presence.moving.filter(motion => !motion.fades);
+        compare(glides.length, 2, "the row and the tile glide");
+        const glided = glides.map(glide => Glide.record(glide, "progress"));
+        const shows = Glide.record(between, "opacity");
+        compare(between.opacity, 0, "still unseen");
+        tryVerify(() => !presence.running, Tokens.durationModerate * 4, "all at rest");
+        const landed = Math.max(...glided.map(steps => steps[steps.length - 1].order));
+        verify(shows.length > 0 && shows.every(step => step.order > landed), "it comes once both have landed");
+        compare(between.opacity, 1);
+    }
+
+    function test_a_row_that_comes_at_the_end_with_nothing_gliding_arrives_at_once() {
+        presence.change([], [named("tile"), named("other")], apply, () => [named("row")], 1);
+        verify(presence.moving.every(motion => motion.fades), "the others stay where they are");
+        verify(motionOf(named("row")).run.running, "it arrives as the change is made");
+    }
+
+    function test_a_tile_that_comes_arrives_at_once_while_the_others_glide() {
+        const other = named("other");
+        presence.change([], [other], () => other.x = 400, () => [named("tile")], 1);
+        verify(!motionOf(other).fades, "the other tile glides");
+        verify(motionOf(named("tile")).run.running, "the tile arrives meanwhile");
     }
 
     function test_an_item_lets_go_as_it_lands_its_own_opacity_and_transform_back() {
@@ -186,6 +254,14 @@ TestCase {
         compare(named("row").opacity, 1);
     }
 
+    function test_under_reduced_motion_a_row_between_others_shows_at_once() {
+        Prefs.motion = "off";
+        comeBetween();
+        verify(!presence.running);
+        compare(named("between").opacity, 1);
+        compare(named("row").mapToItem(null, 0, 0).y, 240);
+    }
+
     function test_a_change_without_motion_lands_what_still_moves_from_before() {
         presence.change([], [], apply, () => [named("tile")], 1);
         verify(presence.running);
@@ -210,5 +286,13 @@ TestCase {
         compare(applied, 1);
         verify(!presence.running);
         compare(named("row").opacity, 1);
+    }
+
+    function test_complete_shows_a_row_still_waiting_for_room_at_rest() {
+        comeBetween();
+        presence.complete();
+        verify(!presence.running);
+        compare(named("between").opacity, 1);
+        compare(named("between").transform.length, 0);
     }
 }

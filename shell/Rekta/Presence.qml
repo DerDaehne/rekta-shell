@@ -5,10 +5,11 @@ import QtQuick
 // Things coming and going in a list or a grid (motion.md, "Arriving, leaving" and "Reordering"; rekta.js presence(),
 // enter(), leave(), :4078–4128). Those that go leave first; then the change is made, the ones that stay glide from where
 // they were to where they are now, and those that come arrive. A tile leaves shrinking to 90% and arrives rising from
-// 96%; anything else moves as a row, leaving towards its trailing edge and arriving from just above. A tile that changed
-// size scales from its old size while its content shows again over the last 45% (motion.md, "Resize and re-flow";
-// rekta.js reflow(), :4058–4078). A newer change
-// makes the one still waiting at once; more than sixty changes, or no motion, apply at once.
+// 96% while the others glide; anything else moves as a row, leaving towards its trailing edge and arriving from just
+// above. A row that comes waits unseen until nothing glides any more, the mirror of leaving, as a bar control waits for
+// its neighbours to make room, so nothing lies over anything. A tile that changed size scales from its old size while
+// its content shows again over the last 45% (motion.md, "Resize and re-flow"; rekta.js reflow(), :4058–4078). A newer
+// change makes the one still waiting at once; more than sixty changes, or no motion, apply at once.
 QtObject {
     id: presence
 
@@ -33,7 +34,7 @@ QtObject {
     // One item moving between two poses ({x, y, scale, sx, sy, opacity}: the shift, the scale about its centre and the
     // stretch from its top leading corner on top of where it rests) through Qt's own curve. One that leaves holds its end
     // until the change is made; the others let go as they land. A resized tile holds its content hidden until
-    // resizeContentFrom of the time has passed, then fades it in evenly.
+    // resizeContentFrom of the time has passed, then fades it in evenly. One that waits stands at its start until go().
     property Component motion: Component {
         QtObject {
             id: motion
@@ -44,6 +45,7 @@ QtObject {
             required property int duration
             required property var curve
             required property bool holds
+            required property bool waits
             readonly property bool fades: from.opacity !== to.opacity
             readonly property bool resized: from.sx !== to.sx || from.sy !== to.sy
             property real progress: 0
@@ -94,7 +96,7 @@ QtObject {
             property ParallelAnimation run: ParallelAnimation {
                 onFinished: {
                     if (!motion.holds)
-                        presence.release(motion);
+                        presence.land(motion);
                 }
 
                 NumberAnimation {
@@ -116,6 +118,11 @@ QtObject {
             }
             readonly property list<QtObject> transforms: [size, stretch, shift]
 
+            function go() {
+                waits = false;
+                run.start();
+            }
+
             function letGo() {
                 run.stop();
                 holding = false;
@@ -126,7 +133,8 @@ QtObject {
             // Scaled first, then shifted, as CSS reads `translate() scale()`.
             Component.onCompleted: {
                 item.transform = Array.from(item.transform).concat(transforms);
-                run.start();
+                if (!waits)
+                    run.start();
             }
         }
     }
@@ -154,7 +162,8 @@ QtObject {
             settle();
     }
 
-    // Makes the waiting change at once, without motion, as a newer one comes; what already arrives or glides goes on.
+    // Makes the waiting change at once, without motion, as a newer one comes; what already arrives, glides or waits for
+    // room goes on.
     function finish() {
         afterLeaving.stop();
         const change = waiting;
@@ -183,20 +192,28 @@ QtObject {
             return;
         change.staying.forEach((item, index) => glide(item, before[index]));
         arrived.forEach(arrive);
+        arriveIfRoom();
+    }
+
+    // The rows waiting for room arrive once nothing glides any more, of this change or an earlier one.
+    function arriveIfRoom() {
+        if (moving.every(running => running.fades))
+            moving.filter(running => running.waits).forEach(running => running.go());
     }
 
     function isTile(item: Item): bool {
         return (item as Tile) !== null;
     }
 
-    function start(item: Item, from: var, to: var, duration: int, curve: var, holds: bool) {
+    function start(item: Item, from: var, to: var, duration: int, curve: var, holds: bool, waits: bool) {
         moving = [...moving, motion.createObject(presence, {
                 item: item,
                 from: from,
                 to: to,
                 duration: duration,
                 curve: curve,
-                holds: holds
+                holds: holds,
+                waits: waits
             })];
     }
 
@@ -211,7 +228,7 @@ QtObject {
         };
         start(item, rest, Object.assign({}, rest, gone, {
             opacity: 0
-        }), Geometry.leaveShare * Tokens.durationShort, Tokens.easeOut, true);
+        }), Geometry.leaveShare * Tokens.durationShort, Tokens.easeOut, true, false);
     }
 
     function arrive(item: Item) {
@@ -221,7 +238,7 @@ QtObject {
             scale: tile ? Geometry.arriveTileScale : 1,
             opacity: 0
         });
-        start(item, from, rest, tile ? Tokens.durationModerate : Tokens.durationShort, Tokens.easeIn, false);
+        start(item, from, rest, tile ? Tokens.durationModerate : Tokens.durationShort, Tokens.easeIn, false, !tile);
     }
 
     // From where it showed before the change to where it rests now (FLIP); a glide still running gives way. A tile also
@@ -239,7 +256,12 @@ QtObject {
             y: was.y - now.y,
             sx: resized ? sx : 1,
             sy: resized ? sy : 1
-        }), rest, Tokens.durationModerate, Tokens.easeBase, false);
+        }), rest, Tokens.durationModerate, Tokens.easeBase, false, false);
+    }
+
+    function land(running: var) {
+        release(running);
+        arriveIfRoom();
     }
 
     function release(running: var) {
