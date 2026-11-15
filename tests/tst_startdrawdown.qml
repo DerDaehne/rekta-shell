@@ -379,8 +379,8 @@ TestCase {
     function test_nothing_closes_while_text_in_the_search_line_is_selected() {
         keyClick(Qt.Key_K);
         tryCompare(start, "searching", true);
+        named("typed").focus = false;
         named("typed").selectAll();
-        start.forceActiveFocus();
         verify(!named("typed").activeFocus);
         compare(named("typed").selectedText, "k");
         drawnTo(0.7).letGo();

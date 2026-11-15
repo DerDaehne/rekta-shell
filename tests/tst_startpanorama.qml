@@ -1032,7 +1032,8 @@ TestCase {
         verify(named("sectionStrip").visible);
         keyClick(Qt.Key_K);
         verify(start.searching);
-        tryVerify(() => named("searchTitle").visible);
+        verify(named("searchTitle").visible);
+        tryVerify(() => named("results").visible);
         verify(!named("sectionStrip").visible);
         verify(!named("panorama").visible);
         verify(!named("startPlace").visible);

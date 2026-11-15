@@ -170,6 +170,7 @@ TestCase {
         Prefs.motion = "off";
         for (const letter of text)
             keyClick(letter);
+        tryVerify(() => !named("hitsFollow").running);
         Prefs.motion = "system";
         waitForRendering(start);
     }

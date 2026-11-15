@@ -472,7 +472,7 @@ TestCase {
         compare(named("pivot").currentIndex, 0);
         keyClick("o");
         compare(start.query, "o");
-        verify(named("results").visible);
+        tryVerify(() => named("results").visible);
     }
 
     // The wheel and the swipe (layout.md:52–81)
@@ -744,6 +744,7 @@ TestCase {
         openOnAllApps(desktopApps, 1920, 1080);
         const at = standOnFifthSection();
         start.query = "o";
+        tryVerify(() => !named("hitsFollow").running);
         verify(named("results").visible);
         verify(!named("appsPanorama").visible);
         start.query = "";

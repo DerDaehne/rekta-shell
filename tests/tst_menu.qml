@@ -568,6 +568,32 @@ TestCase {
         }
     }
 
+    Component {
+        id: statingColumnComponent
+
+        Column {
+            property bool menuHasIcons: false
+            property bool menuHasCheckWithIcon: false
+
+            width: 300
+
+            MenuItem { objectName: "plain"; text: "quit" }
+            MenuItem { objectName: "pictured"; text: "open"; icon: testCase.picture }
+        }
+    }
+
+    function test_a_column_that_says_for_all_its_rows_what_lines_up_their_texts_is_followed_and_no_row_reads_the_others() {
+        const column = createTemporaryObject(statingColumnComponent, testCase);
+        const label = name => findChild(findChild(column, name), "label");
+        compare(label("plain").x, Tokens.spaceM, "no icon room, though a row beside it has an icon");
+        column.menuHasIcons = true;
+        compare(label("plain").x, Tokens.spaceM + Geometry.iconSize + Tokens.spaceS);
+        column.menuHasCheckWithIcon = true;
+        const edge = Tokens.spaceM + Geometry.menuCheck + Tokens.spaceS + Geometry.iconSize + Tokens.spaceS;
+        compare(label("plain").x, edge, "the box's room too");
+        compare(label("pictured").x, edge);
+    }
+
     function test_a_hidden_box_with_an_icon_leaves_no_room_behind() {
         const boxed = createTemporaryObject(boxWithIconComponent, testCase);
         boxed.open = true;

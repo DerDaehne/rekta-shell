@@ -378,6 +378,7 @@ TestCase {
         Prefs.motion = "off";
         for (const character of "elisa")
             keyClick(character);
+        tryVerify(() => !findChild(start, "hitsFollow").running);
         Prefs.motion = "system";
         waitForRendering(start);
         const best = start.hitTiles()[0];

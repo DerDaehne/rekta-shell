@@ -1475,14 +1475,20 @@ TestCase {
         openNow();
     }
 
-    // Types without motion, so the search stands at once.
+    // Types without motion, so the search stands as soon as its hits have followed.
     function typeNow(text: string) {
         const motion = Prefs.motion;
         Prefs.motion = "off";
         for (const character of text)
             keyClick(character);
+        hitsFollowed();
         Prefs.motion = motion;
         waitForRendering(start);
+    }
+
+    // The hits follow what was typed from the frame after the one that shows it.
+    function hitsFollowed() {
+        tryVerify(() => !named("hitsFollow").running, 1000);
     }
 
     function hitNames(): var {
@@ -1654,12 +1660,15 @@ TestCase {
         compare(hitNames(), ["Konsole"]);
         Prefs.motion = "off";
         keyClick(Qt.Key_Backspace);
+        hitsFollowed();
         compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
         keyClick(Qt.Key_Space);
         compare(start.query, "k ");
+        hitsFollowed();
         compare(hitNames(), ["Kate", "Konsole", "KWrite"], "space around the text does not count");
         keyClick(Qt.Key_5);
         compare(start.query, "k 5");
+        hitsFollowed();
         compare(hitNames(), []);
     }
 
@@ -1895,6 +1904,7 @@ TestCase {
         Prefs.motion = "off";
         for (const goBack of [() => keyClick(Qt.Key_Back), () => keyClick(Qt.Key_Left, Qt.AltModifier), () => mouseClick(start, start.width - 50, 50, Qt.BackButton)]) {
             keyClick("k");
+            hitsFollowed();
             goBack();
             compare(start.query, "");
             verify(named("pivot").visible);
@@ -1919,6 +1929,7 @@ TestCase {
         Prefs.motion = "off";
         for (const character of text)
             keyClick(character);
+        hitsFollowed();
         return named("typed");
     }
 
@@ -2100,7 +2111,7 @@ TestCase {
         compare(start.phase, "open");
         verify(start.holdsKeyboard, "the windows stay back");
         const earliestLanding = named("waitForWindows").interval + Geometry.startTempo * Tokens.heftMin * Tokens.durationModerate;
-        tryVerify(() => named("searchTitle").visible, earliestLanding);
+        tryVerify(() => named("results").visible, earliestLanding);
         compare(named("typed").text, "k");
         compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
     }
@@ -2112,14 +2123,18 @@ TestCase {
         tryVerify(() => turner.running, 2000);
         turner.paused = true;
         turner.elapsed = 1;
-        const parts = [named("pivot"), ...tilesIn("pinned")];
+        const tiles = tilesIn("pinned");
+        const parts = [named("pivot"), ...tiles];
         keyClick("k");
         turner.paused = false;
         verify(!turner.running);
         compare(start.phase, "open");
         verify(parts.every(part => Array.from(part.transform).every(transform => (transform as Rotation) === null)), "turned all the way in");
-        compare(motionsOf(parts).length, parts.length, "and leave from there");
-        tryVerify(() => named("searchTitle").visible, 1000, "the paused turn would never have landed");
+        compare(named("typed").text, "k");
+        compare(shownOpacity(named("typed")), 1, "the title stands at once");
+        hitsFollowed();
+        compare(motionsOf(tiles).length, tiles.length, "and the tiles leave from there");
+        tryVerify(() => named("results").visible, 1000, "the paused turn would never have landed");
         compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
     }
 
@@ -2141,22 +2156,39 @@ TestCase {
         compare(calls, ["launch Konsole", "launch Kate"], "enter presses the first hit");
     }
 
-    function test_the_place_s_parts_leave_then_the_title_and_the_hits_arrive() {
+    // The opacity an item shows with: its own times that of every item around it, none if one is hidden.
+    function shownOpacity(item: Item): real {
+        let opacity = 1;
+        for (let at = item; at; at = at.parent)
+            opacity *= at.visible ? at.opacity : 0;
+        return opacity;
+    }
+
+    function test_a_letter_stands_in_the_title_at_once_and_from_the_next_frame_the_place_s_parts_leave_then_the_hits_arrive() {
         Prefs.motion = "on";
         openWithApps();
         const presence = named("presence");
         const pinned = tilesIn("pinned");
         keyClick("k");
-        verify(named("pivot").visible, "the place leaves first");
-        const leaving = motionsOf([named("pivot"), ...pinned]);
-        compare(leaving.length, pinned.length + 1);
+        compare(named("typed").text, "k");
+        compare(shownOpacity(named("typed")), 1, "whole, with no motion of its own");
+        compare(shownOpacity(named("suche")), 1);
+        verify(named("typed").activeFocus);
+        verify(!named("pivot").visible, "the title stands where the pivot stood");
+        verify(named("hitsFollow").running, "nothing for the hits holds up the frame that shows the letter");
+        verify(!presence.running);
+        compare(start.hitTiles().length, 0);
+        hitsFollowed();
+        verify(named("startPlace").visible, "the place leaves");
+        const leaving = motionsOf(pinned);
+        compare(leaving.length, pinned.length);
         verify(leaving.every(motion => motion.duration === Geometry.leaveShare * Tokens.durationShort && motion.to.opacity === 0));
-        tryVerify(() => named("searchTitle").visible, 1000);
+        compare(motionsOf([named("typed"), named("suche"), named("searchTitle")]).length, 0);
+        tryVerify(() => named("results").visible, 1000);
         const tiles = start.hitTiles();
-        const arriving = motionsOf([named("typed"), ...tiles]);
-        compare(arriving.length, tiles.length + 1);
+        compare(motionsOf(tiles).length, tiles.length);
         verify(motionsOf(tiles).every(motion => motion.from.scale === Geometry.arriveTileScale && motion.duration === Tokens.durationModerate));
-        compare(motionsOf([named("typed")])[0].from.y, -Geometry.arriveShift, "a line of text arrives as a row");
+        compare(motionsOf([named("typed"), named("suche")]).length, 0, "the title stays as it stands");
         tryVerify(() => !presence.running, 1000);
         verify(tiles.every(tile => tile.opacity === 1));
     }
@@ -2167,6 +2199,7 @@ TestCase {
         typeNow("k");
         const [kate, konsole, kwrite] = start.hitTiles();
         keyClick("w");
+        hitsFollowed();
         compare(motionsOf([kate, konsole]).length, 2);
         verify(motionsOf([kate, konsole]).every(motion => motion.to.scale === Geometry.leaveTileScale));
         tryVerify(() => motionsOf([kwrite]).length === 1, 1000);
@@ -2212,16 +2245,31 @@ TestCase {
         start.apps = Array.from({ length: 61 }, (_, i) => installedApp(`app ${i}`));
         openNow();
         keyClick("a");
+        hitsFollowed();
         verify(!named("presence").running);
         verify(named("results").visible);
         compare(start.hitTiles().length, 5);
         compare(rowTexts("apps").length, 56);
     }
 
+    // Each row reading them from all the others would read the whole group again whenever a row comes or goes.
+    function test_a_search_group_reads_once_for_all_its_rows_what_lines_up_their_texts() {
+        start.apps = Array.from({ length: 61 }, (_, i) => installedApp(`app ${i}`));
+        openNow();
+        keyClick("a");
+        hitsFollowed();
+        const rows = start.searchRows().filter(row => row.parent.objectName === "apps");
+        compare(rows.length, 56);
+        const group = rows[0].parent;
+        verify(rows.every(row => row.column === group));
+        compare([group.menuHasIcons, group.menuHasCheckWithIcon], [rows.some(row => row.hasIcon), false]);
+    }
+
     function test_under_reduced_motion_the_search_comes_and_goes_at_once() {
         openWithApps();
         Prefs.motion = "off";
         keyClick("k");
+        hitsFollowed();
         verify(named("results").visible);
         verify(!named("presence").running);
         verify(start.hitTiles().every(tile => tile.opacity === 1));
@@ -3371,13 +3419,15 @@ TestCase {
         openWithApps();
         mouseClick(searchField());
         keyClick("f");
-        tryVerify(() => named("searchTitle").visible);
+        verify(named("searchTitle").visible);
         compare(named("typed").text, "f");
         compare(searchField().text, "", "the field holds nothing itself");
-        verify(!named("startPlace").visible);
         verify(named("typed").activeFocus);
+        hitsFollowed();
+        verify(!named("startPlace").visible);
         keyClick("i");
         compare(start.query, "fi");
+        hitsFollowed();
         compare(hitNames(), ["Filelight", "Firefox"]);
     }
 
@@ -3482,16 +3532,17 @@ TestCase {
         }
     }
 
-    function test_in_motion_the_field_keeps_the_focus_while_the_place_leaves_and_hands_it_to_the_line() {
+    function test_in_motion_the_line_takes_the_keys_from_the_field_at_once_while_the_place_leaves() {
         openWithApps();
         Prefs.motion = "on";
         mouseClick(searchField());
         keyClick("f");
-        verify(named("startPlace").visible && !named("searchTitle").visible, "the place is still on its way out");
-        verify(searchField().inputFocus);
+        verify(named("startPlace").visible && named("searchTitle").visible, "the place is still on its way out");
+        verify(named("typed").activeFocus);
+        verify(!searchField().inputFocus);
         keyClick("i");
-        tryVerify(() => named("typed").activeFocus);
         compare(start.query, "fi");
+        compare(searchField().text, "");
         keyClick(Qt.Key_Backspace);
         keyClick(Qt.Key_Backspace);
         tryVerify(() => searchField().inputFocus);

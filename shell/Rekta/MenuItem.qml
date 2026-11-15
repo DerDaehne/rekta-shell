@@ -52,11 +52,14 @@ Item {
         return !isBack && ((checkable && !checkInIconSlot) || menuHasCheckWithIcon) ? Geometry.menuCheck + Tokens.spaceS : 0;
     }
     readonly property bool hasIcon: !isBack && (icon.toString() !== "" || glyph !== "")
-    readonly property var menuRows: Array.from(parent?.children ?? []).filter(row => row.visible || !item.visible)
-    readonly property bool menuHasIcons: menuRows.some(row => row.hasIcon === true)
+    // The column the row stands in. One that holds many rows says for all of them whether a row has an icon and whether
+    // one has a box and an icon (`menuHasIcons`, `menuHasCheckWithIcon`): each row reading them from all the others
+    // would read the whole list again whenever a row comes or goes.
+    readonly property var column: parent
+    readonly property bool menuHasIcons: column?.menuHasIcons ?? menuRows().some(row => row.hasIcon === true)
     // A row with a box and an icon has the box first (states.md:138–141); every row keeps the box's room, so all texts
     // start at one edge.
-    readonly property bool menuHasCheckWithIcon: menuRows.some(row => row.hasIcon === true && row.checkable === true)
+    readonly property bool menuHasCheckWithIcon: column?.menuHasCheckWithIcon ?? menuRows().some(row => row.hasIcon === true && row.checkable === true)
     // Otherwise, in a menu with icons, a row without one has its box where the icons stand, so every text starts at one
     // edge.
     readonly property bool checkInIconSlot: checkable && menuHasIcons && !hasIcon && !menuHasCheckWithIcon
@@ -85,6 +88,10 @@ Item {
     Accessible.checked: checked
     // aria-selected: the option the keys are on, while the focus stays in the field (rekta.js:4318).
     Accessible.selected: active
+
+    function menuRows(): var {
+        return Array.from(parent?.children ?? []).filter(row => row.visible || !item.visible);
+    }
 
     // Focus the keyboard gives shows the whole of a cut label at once; focus a pointer gave does not (`:focus-visible`,
     // rekta.js:3081).

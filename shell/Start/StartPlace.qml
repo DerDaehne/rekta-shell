@@ -133,6 +133,8 @@ FocusScope {
     property alias query: line.text
     // The search shows, or is on its way, in place of the pivot and the places.
     property bool searching: false
+    // The place has begun to give way to the search's hits.
+    property bool placeGivenWay: false
     // What the search shows as rows below the tiles: [{name, rows: [{text, lead, icon, glyph, key, run, best}]}]
     // (Rules.rowGroups).
     property var rowGroups: []
@@ -593,11 +595,31 @@ FocusScope {
     function endSearch() {
         presence.complete();
         searching = false;
+        placeGivenWay = false;
         query = "";
+        hitsFollow.stop();
         showSearchView(false);
         found.clear();
         rowGroups = [];
         waysOut = [];
+    }
+
+    // A key that acts on the hits finds them made: those still to follow what was typed, then a change still waiting.
+    function makeHits() {
+        if (hitsFollow.running) {
+            hitsFollow.stop();
+            followHits();
+        }
+        presence.finish();
+    }
+
+    // What was typed stands in the next frame; what it finds follows from the frame after (hitsFollow), so no work for
+    // the hits holds a letter up: the hits may follow a short pause (collections.md:35), the text in the field never.
+    function followQuery() {
+        if (searching && query !== "")
+            hitsFollow.start();
+        else
+            refresh();
     }
 
     // The search is a view of the place, not a place (collections.md, "Search and filters"): it comes and goes without a
@@ -605,20 +627,39 @@ FocusScope {
     function refresh() {
         if (turning)
             return;
-        if (query !== "" && !searching)
+        if (query !== "" && !searching) {
             showSearch();
-        else if (query === "" && searching)
+        } else if (query === "" && searching) {
             hideSearch();
-        else if (searching)
-            filter();
+        } else if (searching) {
+            hitsFollow.stop();
+            followHits();
+        }
     }
 
-    // The search's line has the keys while it shows.
+    function followHits() {
+        if (!searching || turning)
+            return;
+        if (placeGivenWay)
+            filter();
+        else
+            giveWayToHits();
+    }
+
     function showSearchView(shown: bool) {
+        showTitle(shown);
+        showResults(shown);
+    }
+
+    // The search's title stands where the pivot stood, and its line has the keys while it shows.
+    function showTitle(shown: bool) {
         pivot.visible = !shown;
         searchTitle.visible = shown;
-        results.visible = shown;
         line.focus = shown;
+    }
+
+    function showResults(shown: bool) {
+        results.visible = shown;
         if (shown) {
             startPlace.visible = false;
             appsPlace.visible = false;
@@ -633,42 +674,56 @@ FocusScope {
     }
 
     // What the Start shows changes: the parts in view go, and those in view after `apply` come. The parts are taken
-    // with nothing moving: a fading item draws through a layer whose source Qt puts beside it, and that is no part. The
-    // search field keeps the focus until the search's line takes it, so an on-screen keyboard stays up.
+    // with nothing moving: a fading item draws through a layer whose source Qt puts beside it, and that is no part.
     function swap(apply: var, arriving: int) {
         presence.complete();
-        const inField = searchField.inputFocus;
         forgetTileFocus();
-        if (inField)
-            searchField.focusInput();
         presence.change(partsIn(body), [], apply, () => partsIn(body), arriving);
     }
 
+    // What was typed stands at once in place of the pivot, as a field's text does (navigation.md:498–513), and its line
+    // takes the keys from the search field, so an on-screen keyboard stays up.
     function showSearch() {
         searching = true;
+        presence.complete();
+        showTitle(true);
+        hitsFollow.start();
+    }
+
+    // The place's parts leave and the hits arrive below the title.
+    function giveWayToHits() {
+        placeGivenWay = true;
         const matched = matching();
         const shown = matched.tiles;
         const rows = matchingRows(matched);
-        swap(() => {
-            showSearchView(true);
+        const going = partsIn(body).filter(part => !isIn(part, searchTitle));
+        presence.change(going, [], () => {
+            showResults(true);
             showHits(shown, rows);
-        }, shown.length + countRows(rows));
+        }, () => partsIn(results), shown.length + countRows(rows));
     }
 
     // ponytail: the parts the place brings back are counted only once it shows, so past sixty the hits still leave in
     // motion before the place stands at once; count them beforehand if that shows.
-    // A line that had the keys hands them back to the field.
+    // A line that had the keys hands them back to the field. Erased before the place gave way, the place stands as it was.
     function hideSearch() {
         searching = false;
+        hitsFollow.stop();
         const typing = line.activeFocus;
-        swap(() => {
+        const back = () => {
             showSearchView(false);
             if (typing)
                 searchField.focusInput();
             found.clear();
             rowGroups = [];
             waysOut = [];
-        }, 0);
+        };
+        if (!placeGivenWay) {
+            back();
+            return;
+        }
+        placeGivenWay = false;
+        swap(back, 0);
     }
 
     // The apps that match what was typed, as tiles and rows (Rules.appHits), read here and not bound: a binding on
@@ -918,7 +973,7 @@ FocusScope {
 
     // Enter without a tile or row in focus acts on the best hit: the first tile, pressed in its centre, else the first row.
     function pressFirstHit() {
-        presence.finish();
+        makeHits();
         (hitTiles()[0] ?? searchRows()[0])?.activated();
     }
 
@@ -1214,7 +1269,7 @@ FocusScope {
     // A key that acts on the hits makes their change first.
     function arrow(direction: string) {
         bringPlaceIn();
-        presence.finish();
+        makeHits();
         moveFocus(direction);
     }
 
@@ -1328,7 +1383,7 @@ FocusScope {
             eraseBack();
         else if (event.key in directions)
             arrow(directions[event.key]);
-        else if (isEnter(event) && searching)
+        else if (isEnter(event) && query !== "")
             pressFirstHit();
         else if (event.key === Qt.Key_Delete)
             unpinFocused();
@@ -1337,9 +1392,10 @@ FocusScope {
         return true;
     }
 
-    // PageUp and PageDown scroll a stacked place from anywhere, as they scroll a page wherever the focus is.
+    // PageUp and PageDown scroll a stacked place from anywhere, as they scroll a page wherever the focus is; a place that
+    // gives way to a search no more.
     function pagesThePlace(event: KeyEvent): bool {
-        return placePanorama.visible && placePanorama.pageKey(event, false);
+        return !searching && placePanorama.visible && placePanorama.pageKey(event, false);
     }
 
     // A key for the tiles finds the chosen place in view: the parts waiting for the windows turn in now, and a place
@@ -1390,7 +1446,7 @@ FocusScope {
         standWithFinger();
     }
     Component.onCompleted: showPins(pinned)
-    onQueryChanged: refresh()
+    onQueryChanged: followQuery()
     onSearchUnitsChanged: refresh()
     onAppsChanged: {
         refresh();
@@ -1463,6 +1519,18 @@ FocusScope {
                 start.closingTick(time);
             else
                 start.fingerTick(time);
+        }
+    }
+
+    // Qt's threaded render loop advances animations once it has taken a frame's items, so the first tick comes after the
+    // frame that shows what was typed.
+    FrameAnimation {
+        id: hitsFollow
+
+        objectName: "hitsFollow"
+        onTriggered: {
+            stop();
+            start.followHits();
         }
     }
 
@@ -2096,6 +2164,9 @@ FocusScope {
                         id: group
 
                         required property var modelData
+                        // Read once here for all its rows (MenuItem.column).
+                        readonly property bool menuHasIcons: Array.from(children).some(row => row.hasIcon === true)
+                        readonly property bool menuHasCheckWithIcon: Array.from(children).some(row => row.hasIcon === true && row.checkable === true)
 
                         objectName: group.modelData.name
                         width: rowsColumn.width
