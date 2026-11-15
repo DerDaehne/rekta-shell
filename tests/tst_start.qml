@@ -401,10 +401,18 @@ TestCase {
         verify(!start.wanted, "a window that takes the keyboard after that one still sends it out");
     }
 
+    // Closed back, the Start hands the keyboard to the window that had it as it opened.
     function test_a_window_that_takes_the_keyboard_while_the_start_is_closed_leaves_it_closed() {
+        start.windows = windowsWithTheDocsActive();
+        start.windowHasKeyboard = true;
+        openNow();
+        start.windowHasKeyboard = false;
+        keyClick(Qt.Key_Escape);
+        compare(start.phase, "closed");
+        compare(calls, ["activate Rekta Design — docs"]);
         start.windowHasKeyboard = true;
         compare(start.phase, "closed");
-        compare(closedSpy.count, 0);
+        compare(closedSpy.count, 1);
     }
 
     // Opaque, with no turn's rotation left on it.
