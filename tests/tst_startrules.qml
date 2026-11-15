@@ -218,10 +218,10 @@ TestCase {
         };
     }
 
-    function test_only_apps_whose_name_matches_are_tiles_and_those_matching_by_generic_name_keyword_or_program_are_rows() {
+    function test_only_apps_whose_name_has_a_word_each_typed_word_starts_are_tiles_and_the_others_are_rows() {
         compare(shownAs("te", 6), {
-            tiles: ["Teams", "Telegram", "Texte", "Kate", "Dateien"],
-            rows: ["Kalender", "Konsole", "Okular"]
+            tiles: ["Teams", "Telegram", "Texte"],
+            rows: ["Kalender", "Kate", "Konsole", "Okular", "Dateien"]
         });
         compare(shownAs("dol", 6), { tiles: [], rows: ["Dateien"] }, "the program alone");
         compare(shownAs("web", 6), { tiles: [], rows: ["Firefox"] }, "a keyword alone");
@@ -229,9 +229,9 @@ TestCase {
     }
 
     function test_the_tiles_fill_one_row_beside_the_wide_best_hit_and_the_names_past_it_follow_as_rows() {
-        compare(shownAs("te", 4), {
-            tiles: ["Teams", "Telegram", "Texte"],
-            rows: ["Kalender", "Kate", "Konsole", "Okular", "Dateien"]
+        compare(shownAs("te", 3), {
+            tiles: ["Teams", "Telegram"],
+            rows: ["Texte", "Kalender", "Kate", "Konsole", "Okular", "Dateien"]
         });
         compare(shownAs("te", 2), {
             tiles: ["Teams"],
@@ -239,11 +239,47 @@ TestCase {
         });
     }
 
-    function test_an_app_started_more_often_comes_first_among_the_tiles_and_among_the_rows() {
-        compare(shownAs("te", 6, { konsole: 2, texte: 1 }), {
-            tiles: ["Texte", "Teams", "Telegram", "Kate", "Dateien"],
-            rows: ["Konsole", "Kalender", "Okular"]
+    function test_an_app_started_more_often_comes_first_among_the_tiles_and_among_the_rows_but_never_becomes_a_tile_by_it() {
+        compare(shownAs("te", 6, { dateien: 3, konsole: 2, texte: 1 }), {
+            tiles: ["Texte", "Teams", "Telegram"],
+            rows: ["Dateien", "Konsole", "Kalender", "Kate", "Okular"]
         });
+    }
+
+    // A–Z, apps with the generic names and keywords their desktop entries ship.
+    readonly property var entries: [
+        app("Emacs", "Text Editor", ["Text", "Editor"], "emacs"),
+        app("Kalender", "Kalender", ["calendar", "events"], "merkuro-calendar"),
+        app("Kate", "Advanced Text Editor", ["editor"], "kate"),
+        app("KInfoCenter", "Info Center", ["system", "information"], "kinfocenter"),
+        app("KWrite", "Text Editor", ["text", "editor"], "kwrite"),
+        app("LibreOffice Writer", "Word Processor", ["Text", "Letter", "Fax", "Document"], "libreoffice"),
+        app("Skanlite", "Image Scanning Application", ["scan", "scanner"], "skanlite"),
+        app("Skanpage", "Multi-page Scanning Application", ["scan", "scanner", "document"], "skanpage"),
+        app("Steam", "", ["games"], "steam"),
+        app("Sublime Text", "Text Editor", ["text", "editor"], "subl"),
+        app("Telegram", "Messenger", ["chat"], "telegram-desktop"),
+        app("Tellico", "Collection Manager", ["catalog", "collection"], "tellico")
+    ]
+
+    function entriesShownAs(text: string): var {
+        const found = Rules.appHits(entries, text, {}, 6);
+        return {
+            tiles: found.tiles.map(hit => hit.name),
+            rows: found.rows.map(hit => hit.name)
+        };
+    }
+
+    function test_a_later_word_of_the_name_makes_a_tile_and_a_name_holding_the_text_inside_a_word_is_a_row_after_the_keyword_rows() {
+        compare(entriesShownAs("te"), {
+            tiles: ["Telegram", "Tellico", "Sublime Text"],
+            rows: ["Emacs", "Kate", "KWrite", "LibreOffice Writer", "KInfoCenter", "Skanlite", "Steam"]
+        });
+    }
+
+    function test_letters_found_only_inside_a_name_make_no_tile() {
+        compare(entriesShownAs("ka"), { tiles: ["Kalender", "Kate"], rows: ["Skanlite", "Skanpage"] });
+        compare(entriesShownAs("kan"), { tiles: [], rows: ["Skanlite", "Skanpage"] });
     }
 
     function test_only_rekta_s_own_settings_carry_rekta_s_tune_icon() {
@@ -468,8 +504,10 @@ TestCase {
         compare(groups.map(group => group.name), ["apps", "fenster"]);
         compare(groups[0].rows.map(row => [row.text, row.icon, row.lead, row.best === true]), [
             ["Kalender", "icon of Kalender", "", false],
+            ["Kate", "icon of Kate", "", false],
             ["Konsole", "icon of Konsole", "", false],
-            ["Okular", "icon of Okular", "", false]
+            ["Okular", "icon of Okular", "", false],
+            ["Dateien", "icon of Dateien", "", false]
         ]);
         sources.apps = [Object.assign(app("KCalc", "Rechner", ["math"], "kcalc"), { icon: "", launch: noop })];
         compare(Rules.rowGroups(sources, "1+1", {}, true).map(group => group.name), ["rechnen", "apps"], "a calculation comes first");

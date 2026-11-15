@@ -177,13 +177,14 @@ function hits(apps, text, starts) {
     return ranked.map((app, at) => ({ app: app, at: at })).sort((a, b) => (startsOf(b.app) - startsOf(a.app)) || (a.at - b.at)).map(entry => entry.app);
 }
 
-// The hits as the search shows them: tiles for the apps whose name matches, as many as one row of `units` holds beside
-// the wide best hit, and rows for the rest, the apps that match only by their generic name, keywords or program and the
+// The hits as the search shows them: tiles for the apps whose name has a word each typed word starts (Rekta's filter,
+// navigation.md:300–301), as many as one row of `units` holds beside the wide best hit, and rows for the rest, the apps
+// that match only by their generic name, keywords or program or hold the text inside a word of their name, and the
 // names past that row, in the hits' order.
 function appHits(apps, text, starts, units) {
     const found = hits(apps, text, starts);
     const typed = text.trim();
-    const tiles = found.filter(app => Rekta.Match.score(app.name, "", typed) > 0).slice(0, Math.max(1, units - 1));
+    const tiles = found.filter(app => Rekta.Match.score(app.name, "", typed) >= 2).slice(0, Math.max(1, units - 1));
     return {
         tiles: tiles,
         rows: found.filter(app => !tiles.includes(app))

@@ -1829,7 +1829,7 @@ TestCase {
         const line = openSearchFor("ons");
         keyClick(Qt.Key_Home);
         keyClick(Qt.Key_Down);
-        verify(start.hitTiles()[0].activeFocus);
+        verify(start.searchRows()[0].activeFocus, "the row of a name holding the text");
         keyClick("k");
         compare(start.query, "kons");
         verify(line.activeFocus);
@@ -2514,12 +2514,12 @@ TestCase {
         openNow();
     }
 
-    function test_only_apps_whose_name_matches_are_tiles_and_the_others_are_rows_in_apps_before_fenster() {
+    function test_only_apps_with_a_word_of_their_name_the_text_starts_are_tiles_and_the_others_are_rows_in_apps_before_fenster() {
         openOnADesktop();
         typeNow("te");
-        compare(hitNames(), ["Teams", "Telegram", "Texte", "Kate", "Dateien"]);
+        compare(hitNames(), ["Teams", "Telegram", "Texte"]);
         compare(groupNames(), ["apps", "fenster"]);
-        compare(rowTexts("apps"), ["Kalender", "Konsole", "Okular", "rekta einstellungen"]);
+        compare(rowTexts("apps"), ["Kalender", "Kate", "Konsole", "Okular", "Dateien", "rekta einstellungen"]);
         compare(rowTexts("fenster"), ["notiz.md", "Karten"]);
         const rows = start.searchRows().filter(row => row.parent.objectName === "apps");
         for (const row of rows.slice(0, 3)) {
@@ -2531,18 +2531,19 @@ TestCase {
         const tiles = start.hitTiles();
         const content = named("results").contentItem;
         compare(heading.mapToItem(content, 0, 0).y, tiles[0].mapToItem(content, 0, tiles[0].height).y + Tokens.spaceL, "space-l below the tiles");
-        verify(findChild(findChild(named("rows"), "fenster"), "heading").mapToItem(rows[3], 0, 0).y >= rows[3].height, "fenster below the apps");
+        verify(findChild(findChild(named("rows"), "fenster"), "heading").mapToItem(rows[5], 0, 0).y >= rows[5].height, "fenster below the apps");
     }
 
     function test_the_tiles_stand_in_one_row_and_the_names_past_it_go_on_as_rows() {
         testCase.width = 900;
         openOnADesktop();
+        start.apps = [...start.apps, searchableApp("TextMaker", "Word Processor", ["document"])];
         compare(start.searchUnits, 4);
         typeNow("te");
         compare(hitNames(), ["Teams", "Telegram", "Texte"]);
         compare(start.hitTiles().map(tile => tile.y), [0, 0, 0]);
         compare(start.hitTiles().map(tile => tile.columns), [2, 1, 1]);
-        compare(rowTexts("apps"), ["Kalender", "Kate", "Konsole", "Okular", "Dateien", "rekta einstellungen"]);
+        compare(rowTexts("apps"), ["TextMaker", "Kalender", "Kate", "Konsole", "Okular", "Dateien", "rekta einstellungen"]);
     }
 
     function test_a_window_titled_as_its_app_shows_the_name_once_and_another_shows_its_app_before_the_title() {
@@ -2588,7 +2589,7 @@ TestCase {
         typeNow("te");
         const tiles = start.hitTiles();
         const rows = start.searchRows();
-        compare(rows.map(row => row.text), ["Kalender", "Konsole", "Okular", "rekta einstellungen", "notiz.md", "Karten"]);
+        compare(rows.map(row => row.text), ["Kalender", "Kate", "Konsole", "Okular", "Dateien", "rekta einstellungen", "notiz.md", "Karten"]);
         keyClick(Qt.Key_Down);
         verify(tiles[0].activeFocus);
         for (const row of rows) {
@@ -2596,8 +2597,8 @@ TestCase {
             verify(row.activeFocus, row.text);
         }
         keyClick(Qt.Key_Down);
-        verify(rows[5].activeFocus, "the last row stays");
-        for (let at = 4; at >= 0; at--) {
+        verify(rows[7].activeFocus, "the last row stays");
+        for (let at = 6; at >= 0; at--) {
             keyClick(Qt.Key_Up);
             verify(rows[at].activeFocus, rows[at].text);
         }
@@ -2629,6 +2630,20 @@ TestCase {
         verify(start.searchRows()[0].best);
         keyClick(Qt.Key_Return);
         compare(calls, ["launch Kalender"]);
+    }
+
+    function test_a_text_found_only_inside_names_gives_no_tile_and_the_first_app_row_is_the_best_hit_with_enter() {
+        openOnADesktop();
+        typeNow("ate");
+        compare(hitNames(), []);
+        compare(groupNames(), ["apps"]);
+        compare(rowTexts("apps"), ["Dateien", "Kate"]);
+        const rows = start.searchRows();
+        verify(rows[0].best);
+        verify(findChild(rows[0], "enterKey").visible);
+        verify(!rows[1].best);
+        keyClick(Qt.Key_Return);
+        compare(calls, ["launch Dateien"]);
     }
 
     function test_the_best_row_is_the_first_of_the_first_group_that_has_one() {
