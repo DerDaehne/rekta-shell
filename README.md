@@ -113,7 +113,7 @@ what you see on screen.
 - **Status words appear only when something differs** from the usual: muted, do not
   disturb, a microphone in use, a screen being shared. The last two stand in the error
   colour, because they concern your privacy.
-- The middle shows what is playing. Volume, microphone, brightness and keyboard-layout
+- The bar's leading end shows what is playing. Volume, microphone, brightness and keyboard-layout
   keys turn the clock into a level for a moment.
 - **"im hintergrund"** holds the apps that live in the tray, with their menus.
 
@@ -152,7 +152,7 @@ what you see on screen.
   news changes, and virtual desktops turn like a turnstile.
 - Small KWin effects carry the motion that belongs to the windows: they step back behind
   the Start, turn with the desktops, and a held Meta key is noticed.
-- KDE's animation speed is respected: set it to instant, and everything is immediate.
+- Set KDE's animation speed to instant, and everything is immediate; other speeds do not change the shell's motion.
 
 ### Keyboard, touch and touchpad
 
@@ -199,7 +199,8 @@ nix run github:DerDaehne/rekta-shell#nested -- --window
 
 It is a look, not a session: none of your apps are there, the Start stands open while no
 window is, and Meta stays with your own desktop. The app bar and the side panel answer
-the pointer.
+the pointer; the side panel shows your machine's real network and Bluetooth state but
+changes nothing.
 
 **On NixOS** with Plasma 6: add the flake, import `nixosModules.default` and set
 `programs.rekta-shell.enable = true;`. Your display manager then offers "rekta" beside
@@ -217,11 +218,10 @@ young. What to expect:
   translations yet.
 - **Plasma 6.8 and Quickshell 0.3.** The KWin effects are built for one exact KWin
   release; the Fedora package pins it.
-- **Not there yet:** a clipboard history, desktop widgets and icons on the desktop (by
-  design, there is no file desktop), and a Rekta login screen; your display manager's
+- **Not there yet:** a clipboard history, desktop widgets, icons on the desktop, and a Rekta login screen; your display manager's
   greeter stays as it is.
-- **Density** follows the pointer: until the shell detects touch screens, pick
-  "bequem" (comfortable) in the side panel on a touch device.
+- **Density** is compact unless you choose otherwise: the shell does not detect touch
+  screens yet, so pick "bequem" (comfortable) in the side panel on a touch device.
 - Things will change between versions, including settings.
 
 Problems and ideas are welcome as
@@ -229,8 +229,8 @@ Problems and ideas are welcome as
 
 ## Rekta Design
 
-rekta-shell is one implementation of [Rekta Design](https://rekta.design), a design
-language for desktop shells and their apps: tiles, panoramas, words before icons,
+rekta-shell is one implementation of [Rekta Design](https://rekta.design), a platform-neutral
+design language for apps, desktop-first, on the web and native: tiles, panoramas, words before icons,
 straight edges and motion with meaning. Its specification and tokens live at
 [github.com/DerDaehne/rekta-design](https://github.com/DerDaehne/rekta-design). The
 shell takes every colour, size, duration and curve from Rekta's tokens at a pinned
@@ -272,8 +272,11 @@ as it is.
 
 The module builds the shell with your system's nixpkgs, so Quickshell shares
 Qt with your Plasma. `homeManagerModules.default` offers the same
-`programs.rekta-shell.enable` per user; it puts the `rekta-shell` command into
-the user's profile and will carry per-user settings. Importing the modules
+options per user and puts the `rekta-shell` and `rekta-settings` commands into the
+user's profile. The session itself runs the NixOS module's package, so it takes the
+NixOS module's options; the home-manager options only set the defaults of the commands
+in the profile, such as `rekta-settings`, so set the same values there if you want the
+settings app to show the same defaults. Importing the modules
 changes nothing until a configuration sets `programs.rekta-shell.enable`, which is
 off by default. Once enabled, `installFont` (default on) also installs the typeface
 Atkinson Hyperlegible Next; set it to `false` when your configuration provides the
@@ -286,14 +289,14 @@ overlay, or set `inputs.rekta-shell.inputs.nixpkgs.follows = "nixpkgs"`, so the
 shell is built against your own nixpkgs; `packages.<system>` alone uses this
 flake's own nixpkgs pin.
 
-Both modules take the same options, all under `programs.rekta-shell`:
+Both modules offer the same options, all under `programs.rekta-shell`:
 
 | Option | Values | Default |
 | --- | --- | --- |
 | `background` | `"rekta"` (Rekta's tile echo in a corner) or `"solid"` (the plain ground colour) | `"rekta"` |
 | `contrast` | `"more"` (every text pair 7:1, opaque glass, framed status tiles) or `"normal"` | follow the system |
 | `transparency` | `"reduce"` (glass turns solid, nothing behind it blurs) or `"normal"` | `"normal"` |
-| `density` | `"comfortable"` or `"compact"` | compact for a fine pointer |
+| `density` | `"comfortable"` or `"compact"` | compact |
 | `searchEscape` | `"close"` (clear the search and close the Start) or `"back"` (clear it and go back) | `"close"` |
 | `showRecent` | `false` hides "zuletzt" and reads nothing of what was opened | shown |
 | `installFont` | `false` when your configuration provides Atkinson Hyperlegible Next itself | `true` |
@@ -364,10 +367,13 @@ Plasma 6.8 or newer, and Quickshell 0.3, which Fedora does not package yet.
 
    Until the first release is tagged, and to try the state of `main` between
    releases, download the workflow artifact of a build of `main` instead (it
-   expires after 30 days):
+   expires after 30 days). This needs the GitHub CLI, signed in once with
+   `gh auth login`; it works from any directory:
 
    ```sh
-   gh run download <run-id> -n rekta-shell-<version>-fc45-<sha7>
+   gh run list -R DerDaehne/rekta-shell -w rpm -b main -L 1   # the run id is the second to last column
+   gh run view <run-id> -R DerDaehne/rekta-shell              # lists the artifact: rekta-shell-<version>-fc45-<sha7>
+   gh run download <run-id> -R DerDaehne/rekta-shell -n rekta-shell-<version>-fc45-<sha7>
    ```
 
    The RPM is not signed, so `dnf` does not verify it; the checksum is the check.
