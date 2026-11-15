@@ -490,21 +490,24 @@ TestCase {
         compare(message.lineCount, 2);
     }
 
-    function test_a_long_title_wraps_over_as_many_lines_as_it_needs_and_is_never_cut() {
-        const title = "Mia Lindqvist, Jonas Berg, Lea Hoffmann and two others in the planning group for the Thursday review";
+    function test_a_long_title_ends_after_two_lines_in_an_ellipsis_as_the_text_under_it_does_and_all_of_it_is_still_read() {
+        const title = "Mia Lindqvist, Jonas Berg, Lea Hoffmann, Noah Weber, Emma Schulz and four others in the planning group for the review of the release on Thursday afternoon";
         const long = "a long message body that says what happened in many words, and then some more words, so that it needs a third line to be said";
         toaster.width = 360;
-        const toast = toaster.show(long, { title, icon: testCase.appIcon });
+        const toast = toaster.show(long, { title, icon: testCase.appIcon, notification: true, open: { run: () => {} } });
         const heading = findChild(toast, "title");
         const message = findChild(toast, "message");
-        verify(heading.lineCount > 2, `${heading.lineCount} lines`);
-        verify(!heading.truncated);
-        compare(heading.text, title);
+        compare(heading.lineCount, 2);
+        verify(heading.truncated, "the title's third line ends in an ellipsis");
+        compare(heading.elide, Text.ElideRight);
+        compare(heading.text, title, "the cut is only visual");
         compare(message.lineCount, 2, "the text under it is still cut after two lines");
         verify(message.truncated);
         compare(message.y, heading.height, "the text starts under the title's last line");
         compare(toast.height, findChild(toast, "words").height);
         compare(toast.Accessible.name, `${title}. ${long}`);
+        compare(toast.announcement, `${title}. ${long}`);
+        compare(findChild(toast, "open").Accessible.name, `${title}. ${long}`);
     }
 
     // The docs bind the cut to a title (states.md:91, behaviour.md:678–679); rekta.js cuts beside an icon too.
@@ -1196,7 +1199,7 @@ TestCase {
             findChild(sheet, "error").show("could not save the schedule: the server is offline", { status: "error", act: { label: "retry", run: () => {} } });
             findChild(sheet, "focused").show("message archived", { undo: () => {} });
             findChild(findChild(sheet, "focused").open, "action").forceActiveFocus();
-            const titled = findChild(sheet, "titled").show("Can we move the call to Thursday afternoon? I have the whole morning booked and the afternoon is free, so any time after lunch works.", { title: "Mia Lindqvist and Jonas Berg in the planning group for the review on Thursday", icon: testCase.widePicture, open: { run: () => {} }, stays: true });
+            const titled = findChild(sheet, "titled").show("Can we move the call to Thursday afternoon? I have the whole morning booked and the afternoon is free, so any time after lunch works.", { title: "Mia Lindqvist, Jonas Berg, Lea Hoffmann and four others in the planning group for the review of the release on Thursday afternoon in the small room", icon: testCase.widePicture, open: { run: () => {} }, stays: true });
             findChild(sheet, "pressable").show("Backup finished", { title: "Backups", icon: testCase.appIcon, open: { run: () => {} }, act: { label: "show", run: () => {} } });
             findChild(findChild(sheet, "pressable").open, "open").forceActiveFocus(Qt.TabFocusReason);
             findChild(sheet, "neutral").set("offline", true, { since: false });

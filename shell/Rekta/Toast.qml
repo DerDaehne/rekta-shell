@@ -20,12 +20,12 @@ FocusScope {
     required property Toaster toaster
     property string key
     property string text
-    // Semibold above the text, on as many lines as it needs (rekta.css:1195); under it the text keeps to bodyMaxLines
-    // and ends in an ellipsis (:1196). The reader still gets all of it (states.md:89–91). Without a title the text is one
-    // uncut sentence, as in any toast (states.md:91, behaviour.md:678–679), though Rekta's script cuts it beside an icon
-    // (rekta.js:1532–1542); the docs are followed until Rekta settles which holds.
+    // Semibold above the text. Title and text each keep to Geometry.toastMaxLines and end in an ellipsis (rekta.css
+    // :1196); the reader still gets all of it (states.md:89–91). The title's cut is ahead of the pinned stylesheet, which
+    // lets it run on (:1195): Rekta has since given it the text's cut, so that a notification's toast keeps to a known
+    // height. Without a title the text is one uncut sentence, as in any toast (states.md:91, behaviour.md:678–679), though
+    // Rekta's script cuts it beside an icon (rekta.js:1532–1542); the docs are followed until Rekta settles which holds.
     property string title
-    readonly property int bodyMaxLines: 2
     // The word of a neutral tag at the end of the text, before the action (`.rk-tag` without a status). It stands last
     // but is said first, so that a reader hears it before the text it qualifies.
     property string tag
@@ -377,6 +377,8 @@ FocusScope {
             font.weight: Tokens.fontWeightSemibold
             color: toast.ink
             wrapMode: Text.Wrap
+            elide: Text.ElideRight
+            maximumLineCount: Geometry.toastMaxLines
             leftPadding: message.leftPadding
             rightPadding: message.rightPadding
             topPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxTop
@@ -395,7 +397,7 @@ FocusScope {
             color: toast.ink
             wrapMode: Text.Wrap
             elide: Text.ElideRight
-            maximumLineCount: heading.visible ? toast.bodyMaxLines : 2147483647
+            maximumLineCount: heading.visible ? Geometry.toastMaxLines : 2147483647
             // The icon field and the words are the text's row, space-s apart (rekta.css:1191).
             leftPadding: front.width > 0 ? Tokens.spaceS : Tokens.spaceM
             // A tag after the words stands the gap of the text's row away (rekta.css:1191).

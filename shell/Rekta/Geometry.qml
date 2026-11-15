@@ -233,6 +233,8 @@ QtObject {
     readonly property real toastRise: 12
     // A notification's toast leaves over `calc(0.6 * var(--rk-duration-short))` (rekta.css:1201)
     readonly property real toastEdgeOutShare: 0.6
+    // A notification's text under its title: `.rk-toast-text { line-clamp: 2 }` (rekta.css:1196)
+    readonly property int toastMaxLines: 2
     // The action's divider: `border-left: 1px solid color-mix(in srgb, currentColor 20%, transparent)` (rekta.css:1213)
     readonly property real toastDividerOpacity: 0.2
     // `.rk-toast-act:focus-visible { outline: 2px solid currentColor; outline-offset: -10px }` (rekta.css:1216)
