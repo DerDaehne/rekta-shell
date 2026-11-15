@@ -791,6 +791,18 @@ TestCase {
         verify(stray < 0.06, `then it comes from above with a fade along ease-in over duration-short, off by ${stray}`);
     }
 
+    function test_rows_that_come_together_before_one_that_stays_both_wait_unseen_until_it_has_made_room() {
+        const ticks = Glide.ticks(testCase);
+        Prefs.motion = "on";
+        const column = createTemporaryObject(arrivalComponent, testCase);
+        const lower = arrive(column, 0, "lower", "first");
+        const upper = arrive(column, 0, "upper", "first");
+        tryVerify(() => findChild(column, "first").y === 60 && upper.row.opacity === 1 && upper.row.y === 0 && lower.row.opacity === 1 && lower.row.y === 30, Tokens.durationModerate * 4, "all at rest");
+        verify(lower.glides.length > 0, "the row after them made room");
+        verify(unseenUntilLanded(upper, lower.glides, ticks), "the upper one is never seen while the row after both glides");
+        verify(unseenUntilLanded(lower, lower.glides, ticks), "nor is the lower one");
+    }
+
     function test_a_row_that_comes_at_the_end_arrives_at_once() {
         const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
