@@ -137,10 +137,12 @@ FloatSurface {
     }
 
     function goBackOrClose() {
-        if (back)
+        if (back) {
             back();
-        else
-            close(true);
+            return;
+        }
+        closeReason = "escape";
+        close(true);
     }
 
     // A letter jumps to the next item that starts with it, after the focused one and around.

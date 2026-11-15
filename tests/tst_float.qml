@@ -356,4 +356,69 @@ TestCase {
             }
         }
     }
+
+    function closeReasonsOf(surface: FloatSurface): var {
+        const seen = [];
+        surface.closedFor.connect((reason, sinceOpen) => seen.push({ reason, sinceOpen }));
+        return seen;
+    }
+
+    function test_a_surface_names_who_closed_it_once_per_close() {
+        const surface = createTemporaryObject(surfaceComponent, testCase);
+        const seen = closeReasonsOf(surface);
+        const closers = {
+            "press-outside": () => surface.dismiss("press-outside"),
+            "press-on-bar": () => surface.dismiss("press-on-bar"),
+            "popup-done": () => surface.popupClosed(true),
+            "keyboard-lost": () => surface.popupClosed(false)
+        };
+        for (const reason of Object.keys(closers)) {
+            surface.open = true;
+            closers[reason]();
+            tryVerify(() => !surface.open, 1000, reason);
+        }
+        compare(seen.map(close => close.reason).join(), "press-outside,press-on-bar,popup-done,keyboard-lost");
+    }
+
+    function test_a_surface_closed_by_code_says_other_and_forgets_the_reason_for_the_next_close() {
+        const surface = createTemporaryObject(surfaceComponent, testCase);
+        const seen = closeReasonsOf(surface);
+        surface.open = true;
+        surface.closeReason = "escape";
+        surface.open = false;
+        surface.open = true;
+        surface.open = false;
+        compare(seen.map(close => close.reason).join(), "escape,other");
+    }
+
+    function test_the_first_closer_in_a_turn_gives_the_reason_and_the_later_ones_add_no_line() {
+        const surface = createTemporaryObject(surfaceComponent, testCase);
+        const seen = closeReasonsOf(surface);
+        surface.open = true;
+        surface.dismiss("press-outside");
+        surface.popupClosed(true);
+        surface.dismiss("press-on-bar");
+        tryVerify(() => !surface.open);
+        wait(50);
+        compare(seen.map(close => close.reason).join(), "press-outside");
+    }
+
+    function test_a_dismiss_of_a_surface_that_is_already_closed_writes_nothing() {
+        const surface = createTemporaryObject(surfaceComponent, testCase);
+        const seen = closeReasonsOf(surface);
+        surface.dismiss("press-outside");
+        surface.popupClosed(false);
+        wait(50);
+        compare(seen.length, 0);
+    }
+
+    function test_a_surface_reports_the_time_since_it_opened() {
+        const surface = createTemporaryObject(surfaceComponent, testCase);
+        const seen = closeReasonsOf(surface);
+        surface.open = true;
+        wait(120);
+        surface.open = false;
+        compare(seen.length, 1);
+        verify(seen[0].sinceOpen >= 100 && seen[0].sinceOpen < 1000, seen[0].sinceOpen + " ms");
+    }
 }

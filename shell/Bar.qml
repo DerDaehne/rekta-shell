@@ -204,6 +204,8 @@ PanelWindow {
     FloatPopup {
         id: menuPopup
 
+        objectName: "more"
+
         barWindow: panel
         surface: bar.menu
         place: bar.menuPlace
@@ -212,6 +214,8 @@ PanelWindow {
     FloatPopup {
         id: backgroundPopup
 
+        objectName: "background"
+
         barWindow: panel
         surface: background.menu
         place: bar.floatPlace(background.overflowed ? bar.more : background, Qt.size(background.menu.width, background.menu.height))
@@ -219,6 +223,8 @@ PanelWindow {
 
     FloatPopup {
         id: calendarPopup
+
+        objectName: "calendar"
 
         barWindow: panel
         surface: clock.calendar
@@ -284,7 +290,7 @@ PanelWindow {
 
         onVisibleChanged: {
             if (!visible && !remap.remapping)
-                surface.dismiss();
+                surface.popupClosed(Application.state === Qt.ApplicationActive);
         }
 
         PopupRemap {
@@ -296,10 +302,11 @@ PanelWindow {
 
         // A finger anywhere else in the shell reaches only this popup, which closes for it.
         PressOutside {
-            onPressedOutside: host.surface.dismiss()
+            onPressedOutside: host.surface.dismiss("press-outside")
         }
 
         Component.onCompleted: {
+            surface.traced = objectName;
             surface.parent = contentItem;
             surface.x = 0;
             surface.y = 0;

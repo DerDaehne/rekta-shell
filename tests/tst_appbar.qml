@@ -754,14 +754,30 @@ TestCase {
             mouseClick(bar.more, 10, 10);
             verify(menu.open, order);
             if (order === "before the press")
-                menu.dismiss();
+                menu.popupClosed(true);
             mousePress(bar.more, 10, 10);
             if (order === "while it is held")
-                menu.dismiss();
+                menu.popupClosed(true);
             tryVerify(() => !menu.open, 1000, `dismissed ${order}: it closes`);
             mouseRelease(bar.more, 10, 10);
             verify(!menu.open, `dismissed ${order}: the release does not open it again`);
         }
+    }
+
+    function test_the_menu_of_more_names_each_way_it_was_closed() {
+        makeScene({ barWidth: 760 });
+        const menu = bar.menu;
+        const seen = [];
+        menu.closedFor.connect(reason => seen.push(reason));
+        mouseClick(bar.more, 10, 10);
+        mouseClick(bar.more, 10, 10);
+        mouseClick(bar.more, 10, 10);
+        keyClick(Qt.Key_Escape);
+        mouseClick(bar.more, 10, 10);
+        const spot = Qt.point(endOf(named("back")) + Tokens.spaceM, bar.height / 2);
+        mouseClick(bar, spot.x, spot.y);
+        tryVerify(() => seen.length === 3, 1000, seen.join());
+        compare(seen.join(), "second-press,escape,press-on-bar");
     }
 
     function test_a_press_on_another_control_while_the_menu_of_more_is_open_closes_the_menu_and_presses_that_control() {

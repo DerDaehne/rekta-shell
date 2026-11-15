@@ -222,14 +222,25 @@ TestCase {
             mouseClick(clock, 20, 20);
             verify(calendar.open, order);
             if (order === "before the press")
-                calendar.dismiss();
+                calendar.popupClosed(true);
             mousePress(clock, 20, 20);
             if (order === "while it is held")
-                calendar.dismiss();
+                calendar.popupClosed(true);
             tryVerify(() => !calendar.open, 1000, `dismissed ${order}: it closes`);
             mouseRelease(clock, 20, 20);
             verify(!calendar.open, `dismissed ${order}: the release does not open it again`);
         }
+    }
+
+    function test_the_month_names_each_way_it_was_closed() {
+        const calendar = clock.calendar;
+        const seen = [];
+        calendar.closedFor.connect(reason => seen.push(reason));
+        mouseClick(clock, 20, 20);
+        mouseClick(clock, 20, 20);
+        mouseClick(clock, 20, 20);
+        keyClick(Qt.Key_Escape);
+        compare(seen.join(), "second-press,escape");
     }
 
     function test_the_open_month_is_centred_over_the_clock_in_both_densities() {

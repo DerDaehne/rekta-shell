@@ -277,7 +277,7 @@ Rectangle {
         buttons().concat([centre]).forEach(control => {
             const surface = (control as AppBarButton)?.opens;
             if (surface?.open)
-                surface.dismiss();
+                surface.dismiss("press-on-bar");
         });
     }
 

@@ -10,6 +10,11 @@ Rectangle {
     id: surface
 
     property bool open: false
+    // Why it closes, set by whoever closes it; "other" for a choice, Tab or code. Named in the one line it writes.
+    property string closeReason: "other"
+    // Its name in that line; a surface without one writes none.
+    property string traced: ""
+    property double openedAt: 0
     // "below" or "above" its control, from Placement.float.
     property string side: "below"
     // The window it has to fit in.
@@ -33,8 +38,28 @@ Rectangle {
     // Closed by a press outside it. It goes once that press has reached what it landed on: its own control then still
     // sees it open and closes it rather than opening it again (rekta.js:2066–2067, a click on the trigger never counts
     // as a click outside), and the end of a popup's grab lets the release reach that control.
-    function dismiss() {
-        Qt.callLater(() => surface.open = false);
+    function dismiss(reason: string) {
+        Qt.callLater(() => {
+            if (!surface.open)
+                return;
+            surface.closeReason = reason;
+            surface.open = false;
+        });
+    }
+
+    // The compositor or Qt closed the popup that holds this surface. Qt closes its popups when the program loses the
+    // keyboard; the compositor does so for a change of the active window or a press in another program.
+    function popupClosed(appActive: bool) {
+        dismiss(appActive ? "popup-done" : "keyboard-lost");
+    }
+
+    function reportClose() {
+        const sinceOpen = Date.now() - openedAt;
+        if (traced)
+            console.info(`rekta-float: surface=${traced} reason=${closeReason} ms=${sinceOpen}`);
+        const reason = closeReason;
+        closeReason = "other";
+        closedFor(reason, sinceOpen);
     }
 
     // Its size with its rows laid out now, not at the next frame, so a host can place it as it opens.
@@ -57,14 +82,19 @@ Rectangle {
         y: surface.shift
     }
 
+    // Once per close: what closed it and how long after it opened.
+    signal closedFor(string reason, int sinceOpen)
+
     onOpenChanged: {
         comingIn.stop();
         entry = 1;
         if (open) {
+            openedAt = Date.now();
             KeyLayers.opened(surface);
             comingIn.start();
         } else {
             KeyLayers.closed(surface);
+            reportClose();
         }
     }
     Component.onDestruction: KeyLayers.closed(surface)

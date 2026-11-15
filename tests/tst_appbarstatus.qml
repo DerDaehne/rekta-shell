@@ -297,10 +297,10 @@ TestCase {
         for (const order of ["before the press", "while it is held"]) {
             menu.open = true;
             if (order === "before the press")
-                menu.dismiss();
+                menu.popupClosed(true);
             mousePress(word("screen"), 10, 10);
             if (order === "while it is held")
-                menu.dismiss();
+                menu.popupClosed(true);
             tryVerify(() => !menu.open, 1000, `dismissed ${order}: it closes`);
             mouseRelease(word("screen"), 10, 10);
             compare(spy.count, 0, `dismissed ${order}: the release does not open it again`);

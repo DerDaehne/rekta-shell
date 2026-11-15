@@ -29,6 +29,7 @@ AppBarButton {
     function closeCalendar(refocus: bool) {
         if (!surface.open)
             return;
+        surface.closeReason = refocus ? "escape" : "second-press";
         surface.open = false;
         if (refocus)
             clock.forceActiveFocus();
