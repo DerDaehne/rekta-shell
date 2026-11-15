@@ -25,6 +25,7 @@ TestCase {
     readonly property int meta: 0x10000000
     readonly property int ctrl: 0x04000000
     readonly property int alt: 0x08000000
+    readonly property int shift: 0x02000000
 
     Component {
         id: sceneComponent
@@ -89,6 +90,7 @@ TestCase {
             "rekta-shell/start": 0x01000022,
             "rekta-shell/controls": meta | 0x41,
             "rekta-shell/notifications": meta | 0x4e,
+            "rekta-shell/toast": shift | meta | 0x4e,
             "ksmserver/Lock Session": meta | 0x4c,
             "ksmserver/Log Out": ctrl | alt | 0x01000007
         };
@@ -107,8 +109,8 @@ TestCase {
 
     function test_the_list_reads_the_session_s_keys_from_kglobalaccel_and_writes_them_as_rekta_does() {
         map.readKeys();
-        compare(asks, 5, "one question per shortcut kglobalaccel holds");
-        compare(shownRows(), ["den start öffnen oder schließen: Super", "die steuerung öffnen: Super+A", "die meldungen öffnen: Super+N", "sperren: Super+L", "abmelden, neu starten oder ausschalten: Ctrl+Alt+Delete", "diese liste: ?", "zurück oder schließen, was offen ist: Esc", "rückgängig machen: Ctrl+Z"]);
+        compare(asks, 6, "one question per shortcut kglobalaccel holds");
+        compare(shownRows(), ["den start öffnen oder schließen: Super", "die steuerung öffnen: Super+A", "die meldungen öffnen: Super+N", "zur dringenden meldung gehen: Shift+Super+N", "sperren: Super+L", "abmelden, neu starten oder ausschalten: Ctrl+Alt+Delete", "diese liste: ?", "zurück oder schließen, was offen ist: Esc", "rückgängig machen: Ctrl+Z"]);
     }
 
     function test_a_key_the_user_changed_shows_as_changed_the_next_time_the_list_is_read() {
@@ -126,7 +128,7 @@ TestCase {
         });
         map.readKeys();
         verify(!map.rows.some(row => row.text === "die meldungen öffnen"));
-        compare(map.rows.length, 7);
+        compare(map.rows.length, 8);
     }
 
     function test_without_kglobalaccel_only_rekta_s_own_keys_are_listed() {

@@ -5,10 +5,11 @@ import QtQuick
 // trailing edge flush with that of the control that counts notifications, as Rekta's compact toast rises from the bar
 // (rekta.css:1407). A new toast replaces the one open and comes in once that one has gone; the same key with undo joins
 // the open toast instead and restarts its window. Escape inside a toast dismisses it (key layer 30); Ctrl+Z undoes while
-// an undo window is open, except in a text field (layer 25). It stays on the toast layer, below floating surfaces and
-// below sheets, which sit in the modal layer above everything (states.md, "Layers"; platforms.md, "Layer"). The host
-// puts it along the top of the app bar and gives it its width; it is as high as its toast needs. A deliberate deviation:
-// an undo toast shows no seconds figure, only the running-out line (see Toast.qml).
+// an undo window is open, except in a text field (layer 25). A host whose toasts never take the keyboard as they come
+// gives a key of its own that brings it to a toast that stays (reach()). It stays on the toast layer, below floating
+// surfaces and below sheets, which sit in the modal layer above everything (states.md, "Layers"; platforms.md, "Layer").
+// The host puts it along the top of the app bar and gives it its width; it is as high as its toast needs. A deliberate
+// deviation: an undo toast shows no seconds figure, only the running-out line (see Toast.qml).
 //
 // A notification's toast comes from its count: the count gives way (`countAway`), the toast comes in once the count is
 // turn-overlap through its way out (motion.md:14, the place change's hand-over; rekta.js:594), and the count comes back
@@ -31,6 +32,11 @@ Item {
     property Toast open: null
     // The word of the undo action; Ctrl+Z undoes a toast that carries it.
     property string undoWord: "undo"
+    // The name of the close button of a toast that stays.
+    property string dismissWord: "dismiss"
+    // The toast that stays and that reach() brought the keyboard to, until it goes: meanwhile the host's surface, which
+    // otherwise takes no keys, wants them.
+    property Toast reached: null
     // Wall-clock time in ms: undo windows run against it, so a late timer never stretches them. Tests set their own.
     property var clock: () => Date.now()
     // An undo window takes duration-toast in whole seconds (rekta.js toaster(), `tokenWindow`).
@@ -98,10 +104,22 @@ Item {
         open?.leave(false, "dismissed");
     }
 
+    // A key of the host's brings the keyboard to the toast that stands, so that Escape and Tab reach it there; a toast
+    // with a window, or none, is left alone. Returns whether there was one.
+    function reach(): bool {
+        if (!open?.stays || open.waiting)
+            return false;
+        reached = open;
+        open.takeFocus();
+        return true;
+    }
+
     // A toast has begun to leave.
     function letGo(toast: Toast) {
         if (open === toast)
             open = null;
+        if (reached === toast)
+            reached = null;
         leaving++;
     }
 

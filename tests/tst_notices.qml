@@ -413,13 +413,47 @@ TestCase {
         compare(toaster.open.actionLabel, "", "only default: no act");
     }
 
-    function test_escape_or_a_dismissed_toast_dismisses_its_notification_whatever_timeout_its_app_gives() {
+    function test_a_dismissed_toast_leaves_its_notification_open_and_unseen_in_the_list_whatever_timeout_its_app_gives() {
         for (const expireTimeout of [-1, 0]) {
-            const fake = notify({ expireTimeout });
+            const fake = notify({ summary: `timeout ${expireTimeout}`, expireTimeout }, [["default", "open"], ["accept", "annehmen"]]);
             toaster.dismiss();
-            compare(fake.closedWith, NoticeBoard.Dismissed, `timeout ${expireTimeout}`);
-            compare(board.rows.length, 0, `timeout ${expireTimeout}`);
+            compare(calls, [], `${fake.summary}: the app hears nothing`);
+            compare(board.rows[0].notification, fake, `${fake.summary}: still open`);
+            verify(board.rows[0].unseen, fake.summary);
+            compare(board.actionsOf(board.rows[0]), [{ identifier: "accept", text: "annehmen" }], `${fake.summary}: its actions stay`);
         }
+        compare(board.unseen, 2);
+    }
+
+    function test_a_toast_dismissed_while_the_list_is_in_sight_leaves_its_row_seen() {
+        board.listInSight = true;
+        notify({});
+        toaster.dismiss();
+        compare(board.rows.length, 1);
+        compare(board.unseen, 0);
+    }
+
+    function test_a_transient_notification_whose_toast_is_dismissed_closes_as_dismissed() {
+        const fake = notify({ summary: "transient", transient: true });
+        toaster.dismiss();
+        compare(fake.closedWith, NoticeBoard.Dismissed);
+        compare(board.rows.length, 0);
+    }
+
+    function test_the_close_button_sends_a_critical_toast_away_without_its_default_action_and_the_next_one_toasts_again() {
+        notify({ summary: "backup", body: "the disk is full", urgency: NoticeBoard.Critical }, [["default", "open"], ["retry", "wiederholen"]]);
+        const toast = toaster.open;
+        toaster.dismissWord = "entfernen";
+        const close = findChild(toast, "close");
+        compare(close.Accessible.name, "entfernen");
+        mouseClick(close);
+        compare(toaster.open, null, "it has gone");
+        compare(calls, [], "neither the default action nor retry ran, nothing closed it");
+        compare(wanted.count, 0, "its app stays where it is");
+        compare(rowNames(), ["backup"]);
+        compare(board.unseen, 1);
+        notify({ summary: "ben" });
+        compare(toaster.open?.title, "ben", "nothing stands in its way any more");
     }
 
     function test_a_notification_its_app_closes_leaves_its_toast_and_the_list() {

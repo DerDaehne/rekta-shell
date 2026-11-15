@@ -5,7 +5,7 @@ import State
 // Where the notifications the server receives go: the list of the notification centre, newest first, and a toast as
 // each arrives, which takes the place of the toast open (live.md:83–85; behaviour.md `toaster()`). No toast waits for
 // another, so none follows one that has gone. A toast runs duration-toast, whatever timeout its app gives; a critical
-// one stays until it is pressed, and what arrives meanwhile, a critical one too, goes into the list only
+// one stays until it is pressed or sent away, and what arrives meanwhile, a critical one too, goes into the list only
 // (live.md:86–88). A low one goes to the list only, open and without a toast (live.md:86), and is never unseen; a
 // transient one toasts but stays out of the list, as Plasma's defaults have it. While `quiet` only critical ones toast;
 // the others go into the list unseen, and none follows as a toast later. A toast that ran out unseen stays in the list
@@ -236,22 +236,22 @@ QtObject {
         notification.dismiss();
     }
 
-    // A pressed text or action has done its work by the time its toast ends; a dismissed one closes, and a run-out one
-    // expires unless its app says it never does. The list keeps one whose toast another replaced open, as it does one
-    // collected quietly.
+    // A pressed text or action has done its work by the time its toast ends, and a run-out one expires unless its app
+    // says it never does. Sending a toast away takes only the toast: the list keeps its notification open and unseen, as
+    // it does one whose toast another replaced or one collected quietly (live.md:83–84); one the list never holds closes.
     function ended(record: var, reason: string) {
         if (showing === record)
             showing = null;
         const notification = record.notification;
         if (!notification)
             return;
-        if (reason === "replaced" || (reason === "expired" && notification.expireTimeout === 0)) {
+        if (reason === "dismissed" && !listed(notification)) {
+            notification.dismiss();
+        } else if (["replaced", "dismissed"].includes(reason) || (reason === "expired" && notification.expireTimeout === 0)) {
             collect(record);
         } else if (reason === "expired") {
             record.unseen = !listInSight;
             notification.expire();
-        } else if (reason === "dismissed") {
-            notification.dismiss();
         }
     }
 

@@ -12,7 +12,7 @@ TestCase {
     visible: true
     when: windowShown
     width: 800
-    height: 760
+    height: 840
 
     // A 40px app icon: a blue rounded square with a white dot.
     readonly property string appIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAHlBMVEX///86dvBEffF4ofW5zvrs8v7///9Be/GcuvdVifLlkWmGAAAAAXRSTlMAQObYZgAAAI1JREFUOMu11UkOgCAQRFGaocH7X9iFMaKW5DvV+sWANEUIS+wyoY8NA9lGzaCk0AxKCg3mOYwpFy85xTGszde0OoCT95ku4d7tZQ+rH1M1bCfYJIx+TlQwCZgUzAJmBYuARUFXefVFvEa8a/wf8cnws8bTw+eRTzi/M39c17dVcaekvu9HXs287NHzMQN/Vg0WT30WoAAAAABJRU5ErkJggg=="
@@ -138,6 +138,7 @@ TestCase {
         Prefs.theme = "system";
         Prefs.density = "auto";
         Tokens.moreContrast = false;
+        Prefs.systemHasTouch = false;
     }
 
     function ending(label) {
@@ -708,6 +709,163 @@ TestCase {
         compare(testCase.ends, ["first replaced"]);
     }
 
+    // A toast that stands has no window: notifications, as the shell shows a critical one.
+    function standing(options) {
+        return toaster.show("the disk is full", Object.assign({ title: "backup", stays: true, open: { run: () => testCase.ends.push("opened") }, act: { label: "retry", run: () => testCase.ends.push("retried") }, onEnd: ending("toast") }, options));
+    }
+
+    function test_a_toast_that_stays_ends_in_a_quiet_close_button_after_its_action_as_high_as_the_toast() {
+        const toast = standing({});
+        const close = findChild(toast, "close");
+        const action = findChild(toast, "action");
+        verify(close.visible);
+        compare(close.x + close.width, toast.width, "last, at the toast's trailing end");
+        compare(action.x + action.width, close.x, "right after the action");
+        compare(close.y, 0);
+        compare(close.height, toast.height);
+        compare(close.width, Tokens.controlHeight, "an icon button is square at control-height");
+        const glyph = findChild(close, "glyph");
+        compare(glyph.name, "close");
+        compare(glyph.size, Geometry.iconSize);
+        compare(glyph.color, toast.ink, "in the toast's ink, as the action's word");
+        compare(glyph.x, Math.round((close.width - glyph.width) / 2), "centred on whole pixels");
+        compare(glyph.y, Math.round((close.height - glyph.height) / 2));
+        compare(findChild(close, "divider"), null, "only the action has a divider");
+        compare(close.Accessible.role, Accessible.Button);
+        compare(close.Accessible.name, "dismiss");
+        const words = findChild(toast, "words");
+        compare(words.x + words.width + action.width + close.width, toast.width, "the words give it room");
+    }
+
+    function test_the_close_button_is_named_by_the_host_s_word_and_never_below_the_touch_target_on_a_touch_system() {
+        toaster.dismissWord = "entfernen";
+        // Compact, where the control height lies below the touch target.
+        Prefs.density = "compact";
+        Prefs.systemHasTouch = true;
+        const close = findChild(standing({}), "close");
+        compare(close.Accessible.name, "entfernen");
+        verify(Tokens.controlHeight < Tokens.touchTarget);
+        compare(close.width, Tokens.touchTarget);
+        Prefs.systemHasTouch = false;
+        compare(close.width, Tokens.controlHeight);
+    }
+
+    function test_a_toast_with_a_window_has_no_close_button_and_its_action_stays_last() {
+        for (const options of [{ act: { label: "reply", run: () => {} } }, { undo: undoing("delete") }, { open: { run: () => {} } }]) {
+            const toast = toaster.show("see you soon", options);
+            tryCompare(toast, "waiting", false);
+            const close = findChild(toast, "close");
+            verify(!close.visible, JSON.stringify(Object.keys(options)));
+            compare(close.width, 0);
+            verify(!close.activeFocusOnTab, "nothing to tab to");
+            const action = findChild(toast, "action");
+            compare(action.x + action.width, toast.width);
+            toaster.dismiss();
+        }
+    }
+
+    function test_the_close_button_sends_a_standing_toast_away_as_dismissed_and_runs_nothing() {
+        const toast = standing({});
+        mouseClick(findChild(toast, "close"));
+        compare(testCase.ends, ["toast dismissed"], "neither its text nor its action ran");
+        compare(toaster.open, null);
+    }
+
+    function test_after_the_action_tab_reaches_the_close_button_and_space_or_enter_press_it_once() {
+        for (const key of [Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter]) {
+            testCase.ends = [];
+            const toast = standing({});
+            verify(findChild(toast, "action").nextItemInFocusChain(true) === findChild(toast, "close"));
+            findChild(toast, "close").forceActiveFocus(Qt.TabFocusReason);
+            keyPress(key);
+            keyRelease(key);
+            compare(testCase.ends, ["toast dismissed"], `key ${key}`);
+            toaster.leaving = 0;
+        }
+    }
+
+    function test_the_close_button_tints_on_hover_and_rings_on_focus_where_the_action_does() {
+        const toast = standing({});
+        const close = findChild(toast, "close");
+        const tint = findChild(close, "press");
+        compare(tint.opacity, 0);
+        mouseMove(close, close.width / 2, close.height / 2);
+        tryCompare(tint, "opacity", 1, 1000);
+        compare(tint.color, Tokens.color.hover);
+        compare(tint.topRightRadius, Tokens.radiusS, "it rounds with the toast's trailing end");
+        compare(findChild(findChild(toast, "action"), "press").topRightRadius, 0, "the action before it no longer does");
+        close.forceActiveFocus(Qt.TabFocusReason);
+        const ring = Array.from(close.children).find(child => child instanceof FocusRing);
+        verify(ring.visible);
+        compare(ring.x + ring.border.width, Geometry.toastFocusInset, "its inner edge lies where the action's does");
+        compare(ring.border.color, toast.ink);
+    }
+
+    function test_a_standing_toast_on_its_way_out_takes_no_click_on_its_close_button() {
+        Prefs.motion = "on";
+        const toast = standing({});
+        tryCompare(toast, "phase", 1, 1000);
+        toaster.dismiss();
+        mouseClick(findChild(toast, "close"));
+        compare(testCase.ends, ["toast dismissed"]);
+    }
+
+    function test_reaching_a_standing_toast_focuses_its_text_and_holds_the_keys_until_escape_sends_it_away() {
+        const toast = standing({});
+        verify(toaster.reach());
+        compare(toaster.reached, toast);
+        verify(findChild(toast, "open").activeFocus, "its first control");
+        keyClick(Qt.Key_Tab);
+        verify(findChild(toast, "action").activeFocus);
+        keyClick(Qt.Key_Tab);
+        verify(findChild(toast, "close").activeFocus);
+        keyClick(Qt.Key_Escape);
+        compare(testCase.ends, ["toast dismissed"]);
+        compare(toaster.reached, null, "the keys go back");
+    }
+
+    function test_reaching_a_standing_toast_without_a_pressable_text_focuses_its_action_or_its_close_button() {
+        let toast = standing({ open: null });
+        verify(toaster.reach());
+        verify(findChild(toast, "action").activeFocus);
+        toaster.dismiss();
+        toaster.leaving = 0;
+        toast = standing({ open: null, act: null });
+        verify(toaster.reach());
+        verify(findChild(toast, "close").activeFocus);
+    }
+
+    function test_reaching_finds_nothing_without_a_standing_toast() {
+        verify(!toaster.reach(), "none open");
+        toaster.show("saved", { act: { label: "show", run: () => {} } });
+        verify(!toaster.reach(), "one with a window");
+        compare(toaster.reached, null);
+        Prefs.motion = "on";
+        const waiting = standing({});
+        verify(waiting.waiting);
+        verify(!toaster.reach(), "one still waiting to come in");
+        compare(toaster.reached, null);
+    }
+
+    function test_the_keys_go_back_whatever_ends_a_reached_toast() {
+        const ways = { "its action": ["toast acted", "retried"], "its text": ["toast acted", "opened"], "a toast replacing it": ["toast replaced"] };
+        for (const end of Object.keys(ways)) {
+            testCase.ends = [];
+            standing({});
+            toaster.reach();
+            if (end === "its action")
+                keyClick(Qt.Key_Tab);
+            if (end === "a toast replacing it")
+                toaster.show("saved", {});
+            else
+                keyClick(Qt.Key_Return);
+            compare(testCase.ends, ways[end]);
+            compare(toaster.reached, null, end);
+            toaster.dismiss();
+            toaster.leaving = 0;
+        }
+    }
+
     // A toast at a fraction of a pixel is drawn blurred; pixel tests put it on the grid.
     function onWholePixels(toast) {
         toaster.width = toast.width + 200;
@@ -1202,6 +1360,7 @@ TestCase {
             const titled = findChild(sheet, "titled").show("Can we move the call to Thursday afternoon? I have the whole morning booked and the afternoon is free, so any time after lunch works.", { title: "Mia Lindqvist, Jonas Berg, Lea Hoffmann and four others in the planning group for the review of the release on Thursday afternoon in the small room", icon: testCase.widePicture, open: { run: () => {} }, stays: true });
             findChild(sheet, "pressable").show("Backup finished", { title: "Backups", icon: testCase.appIcon, open: { run: () => {} }, act: { label: "show", run: () => {} } });
             findChild(findChild(sheet, "pressable").open, "open").forceActiveFocus(Qt.TabFocusReason);
+            findChild(sheet, "standing").show("the disk is full", { title: "backup", tag: "urgent", icon: testCase.appIcon, stays: true, open: { run: () => {} }, act: { label: "retry", run: () => {} } });
             findChild(sheet, "neutral").set("offline", true, { since: false });
             const fiveAfterTwo = new Date();
             fiveAfterTwo.setHours(14, 5, 0, 0);
@@ -1209,8 +1368,13 @@ TestCase {
             findChild(sheet, "alert").set("halted", true, { since: false });
             tryCompare(findChild(plain, "appIcon"), "status", Image.Ready);
             tryCompare(findChild(titled, "appIcon"), "status", Image.Ready);
+            tryCompare(findChild(findChild(sheet, "standing").open, "appIcon"), "status", Image.Ready);
             waitForRendering(sheet);
             grabImage(sheet).save(`toast-sheet-${theme}.png`);
+            // Focus is one at a time: the close button's ring on a second sheet.
+            findChild(findChild(sheet, "standing").open, "close").forceActiveFocus(Qt.TabFocusReason);
+            waitForRendering(sheet);
+            grabImage(sheet).save(`toast-close-sheet-${theme}.png`);
             compare(plain.entry, 1, theme);
             sheet.destroy();
         }
@@ -1221,7 +1385,7 @@ TestCase {
 
         Rectangle {
             width: 800
-            height: 760
+            height: 840
             color: Tokens.color.bg
 
             Column {
@@ -1260,6 +1424,12 @@ TestCase {
 
                 Toaster {
                     objectName: "pressable"
+                    width: parent.width
+                    clock: () => testCase.time
+                }
+
+                Toaster {
+                    objectName: "standing"
                     width: parent.width
                     clock: () => testCase.time
                 }

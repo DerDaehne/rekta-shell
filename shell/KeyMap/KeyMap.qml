@@ -30,6 +30,11 @@ Sheet {
             action: "notifications"
         },
         {
+            text: "zur dringenden meldung gehen",
+            component: "rekta-shell",
+            action: "toast"
+        },
+        {
             text: "sperren",
             component: "ksmserver",
             action: "Lock Session"

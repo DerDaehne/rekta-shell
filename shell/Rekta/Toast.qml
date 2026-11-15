@@ -14,6 +14,10 @@ import "Status.js" as Status
 // sender's icon or its own picture at the start, and a text that is a button. A deliberate deviation: the title is the
 // one the notification brings, so the sender's name stands in the title or the text only where the program put it there,
 // where Rekta has it there always (states.md:97–98).
+//
+// A toast that stays has no window, so it ends in a quiet icon button that sends it away and runs nothing, after its
+// action, as high as the toast and tinted and ringed as the action is. Rekta 0.6.0 has no such button
+// (rekta.css:1164–1236); this follows the rule Rekta has settled for its next release.
 FocusScope {
     id: toast
 
@@ -34,7 +38,7 @@ FocusScope {
     // a notification's default action or, a deliberate deviation, bringing its app forward. Without it the text is only
     // text, as in a toast of the product's own.
     property var open: null
-    // The toast has no window and no countdown line; it ends by a press, its action, Escape or dismiss().
+    // The toast has no window and no countdown line; it ends by a press, its action, its close button, Escape or dismiss().
     property bool stays: false
     // info | success | warning | error, or "" for the ink strip; a success says it without a status (states.md).
     property string status
@@ -69,6 +73,8 @@ FocusScope {
     readonly property color ink: status !== "" ? Tokens.color.textPrimary : Tokens.color.bg
     readonly property color ground: Status.tileFill(status, Tokens.color, Tokens.color.textPrimary)
     readonly property string actionLabel: undoAction ? action : act?.label ?? ""
+    // The action and the close button, at the trailing end.
+    readonly property real trailingWidth: actionBox.width + closeBox.width
     readonly property string spoken: [tag, title, text].filter(part => part !== "").join(". ")
     // An undo toast says how long its window is.
     readonly property string announcement: undoAction ? `${spoken}, ${seconds} ${seconds === 1 ? "second" : "seconds"} to ${action}` : spoken
@@ -220,6 +226,15 @@ FocusScope {
         open.run();
     }
 
+    function dismiss() {
+        leave(false, "dismissed");
+    }
+
+    // The keyboard comes to it at its first control.
+    function takeFocus() {
+        [openBox, actionBox, closeBox].find(control => control.visible)?.forceActiveFocus(Qt.TabFocusReason);
+    }
+
     // Enter and Space press once; a held key does not repeat the press.
     function activateOnKey(event, press: var) {
         if (![Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
@@ -243,7 +258,7 @@ FocusScope {
     x: toaster.hangsFromTop ? (toaster.width - width) / 2 : Math.max(Tokens.spaceM, Math.min(toaster.trailingEdge, toaster.width - Tokens.spaceM) - width)
     y: toaster.hangsFromTop ? Tokens.spaceM - below * travel : toaster.height - Tokens.spaceS - height + below * travel
     opacity: notification ? 1 : entry
-    width: Math.min(Geometry.toastMaxWidth, toaster.width - 2 * Tokens.spaceM, front.width + words.implicitWidth + tagBox.width + actionBox.width)
+    width: Math.min(Geometry.toastMaxWidth, toaster.width - 2 * Tokens.spaceM, front.width + words.implicitWidth + tagBox.width + trailingWidth)
     height: Math.max(Tokens.controlHeight + Tokens.spaceXs, words.height)
     visible: !waiting
     Accessible.role: status === "error" ? Accessible.AlertMessage : Accessible.Notification
@@ -343,7 +358,7 @@ FocusScope {
         objectName: "words"
         x: front.width
         anchors.verticalCenter: parent.verticalCenter
-        width: toast.width - front.width - tagBox.width - actionBox.width
+        width: toast.width - front.width - tagBox.width - toast.trailingWidth
         // From unwrapped copies: a wrapped Text's implicitWidth follows its width, which follows the toast's.
         implicitWidth: Math.max(heading.visible ? naturalWidth(heading, headingLine) : 0, naturalWidth(message, messageLine))
         height: message.y + message.height
@@ -411,7 +426,7 @@ FocusScope {
     Item {
         id: tagBox
 
-        x: toast.width - actionBox.width - width
+        x: toast.width - toast.trailingWidth - width
         width: toast.tag !== "" ? tagFace.implicitWidth + Tokens.spaceM : 0
         height: toast.height
         visible: width > 0
@@ -440,7 +455,7 @@ FocusScope {
         id: openBox
 
         objectName: "open"
-        width: toast.width - actionBox.width
+        width: toast.width - toast.trailingWidth
         height: toast.height
         visible: toast.open !== null
         activeFocusOnTab: visible
@@ -477,28 +492,60 @@ FocusScope {
         }
     }
 
-    Item {
-        id: actionBox
+    // A control at the toast's trailing end: hover and press lay `hover` over it, up to the toast's rounded end when it
+    // is last, and its focus ring sits 10px inside (rekta.css:1215–1216, :1343).
+    component EndControl: Item {
+        id: control
 
-        objectName: "action"
-        x: toast.width - width
-        width: toast.actionLabel !== "" ? Math.max(Tokens.controlHeight, label.implicitWidth + 2 * Tokens.spaceM) : 0
-        height: toast.height
+        required property color ink
+        property bool last: true
+
+        signal activated
+
         visible: width > 0
         activeFocusOnTab: visible
         Accessible.role: Accessible.Button
-        Accessible.name: toast.actionLabel
-        Accessible.onPressAction: toast.press()
 
-        Keys.onPressed: event => toast.activateOnKey(event, toast.press)
-
-        // Hover and press lay `hover` over it (rekta.css:1215, :1343), up to the toast's rounded end.
         Tint {
             objectName: "press"
-            topRightRadius: Tokens.radiusS
-            bottomRightRadius: Tokens.radiusS
-            lit: actionHover.hovered || actionTap.pressed
+            topRightRadius: control.last ? Tokens.radiusS : 0
+            bottomRightRadius: control.last ? Tokens.radiusS : 0
+            lit: endHover.hovered || endTap.pressed
         }
+
+        FocusRing {
+            onFill: true
+            ink: control.ink
+            offset: -Geometry.toastFocusInset
+        }
+
+        TapHandler {
+            id: endTap
+
+            longPressThreshold: 0
+            onTapped: control.activated()
+        }
+
+        HoverHandler {
+            id: endHover
+
+            cursorShape: Qt.PointingHandCursor
+        }
+    }
+
+    EndControl {
+        id: actionBox
+
+        objectName: "action"
+        x: toast.width - closeBox.width - width
+        width: toast.actionLabel !== "" ? Math.max(Tokens.controlHeight, label.implicitWidth + 2 * Tokens.spaceM) : 0
+        height: toast.height
+        ink: toast.ink
+        last: !closeBox.visible
+        Accessible.name: toast.actionLabel
+        Accessible.onPressAction: toast.press()
+        Keys.onPressed: event => toast.activateOnKey(event, toast.press)
+        onActivated: toast.press()
 
         Rectangle {
             objectName: "divider"
@@ -522,24 +569,28 @@ FocusScope {
                 color: toast.ink
             }
         }
+    }
 
-        FocusRing {
-            onFill: true
-            ink: toast.ink
-            offset: -Geometry.toastFocusInset
-        }
+    // Square at control-height, never below the touch target on a touch system, its glyph 20px (forms.md:283–289).
+    EndControl {
+        id: closeBox
 
-        TapHandler {
-            id: actionTap
+        objectName: "close"
+        x: toast.width - width
+        width: toast.stays ? Math.max(Tokens.controlHeight, Prefs.systemHasTouch ? Tokens.touchTarget : 0) : 0
+        height: toast.height
+        ink: toast.ink
+        Accessible.name: toast.toaster.dismissWord
+        Accessible.onPressAction: toast.dismiss()
+        Keys.onPressed: event => toast.activateOnKey(event, toast.dismiss)
+        onActivated: toast.dismiss()
 
-            longPressThreshold: 0
-            onTapped: toast.press()
-        }
-
-        HoverHandler {
-            id: actionHover
-
-            cursorShape: Qt.PointingHandCursor
+        Icon {
+            objectName: "glyph"
+            anchors.centerIn: parent
+            name: "close"
+            size: Geometry.iconSize
+            color: toast.ink
         }
     }
 
