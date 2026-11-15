@@ -37,20 +37,8 @@ Transition {
         PauseAnimation {
             duration: arrival.wait
         }
-        ParallelAnimation {
-            NumberAnimation {
-                property: "y"
-                duration: arrival.duration
-                easing.type: Easing.Bezier
-                easing.bezierCurve: Tokens.easeIn
-            }
-            NumberAnimation {
-                property: "opacity"
-                to: 1
-                duration: arrival.duration
-                easing.type: Easing.Bezier
-                easing.bezierCurve: Tokens.easeIn
-            }
+        RowSlidesIn {
+            duration: arrival.duration
         }
     }
 }

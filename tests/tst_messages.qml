@@ -725,6 +725,7 @@ TestCase {
         const since = Date.now();
         column.gone = false;
         tryVerify(() => moved.length > 0 && !column.move.running, Tokens.durationModerate * 4, "it has made room");
+        verify(faded.some(step => step.value > 0.2 && step.value < 1), "it fades up on its way, not only at its end");
         const stray = Glide.strayOf([{ steps: moved, from: 100, to: 0 }, { steps: faded, from: 0.2, to: 1 }], Tokens.durationModerate, easeBase, since, ticks);
         verify(stray < 0.06, `it follows ease-base over duration-moderate, moving and fading together, off by ${stray}`);
         compare(row.y, 0);
@@ -769,6 +770,12 @@ TestCase {
         };
     }
 
+    // Whether a row arrive() recorded showed in no tick before the one the `glide` it waits for landed in.
+    function unseenUntilLanded(arrival: var, glide: var, ticks: var): bool {
+        const landedIn = Glide.tickOf(glide[glide.length - 1], ticks);
+        return arrival.fades.every(step => step.value === 0 || Glide.tickOf(step, ticks) >= landedIn);
+    }
+
     function test_a_row_that_comes_before_one_that_stays_waits_unseen_at_its_start_until_it_has_made_room_then_arrives() {
         const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
@@ -779,9 +786,8 @@ TestCase {
         compare(between.row.opacity, 0, "unseen while it waits");
         compare(between.row.y, 30 - Geometry.rowEnterShift, "at its start, just above its place");
         tryVerify(() => last.y === 60 && between.row.opacity === 1 && between.row.y === 30, Tokens.durationModerate * 4, "all at rest");
-        const landed = between.glides[between.glides.length - 1];
-        verify(between.fades.every(step => step.value === 0 || Glide.tickOf(step, ticks) >= Glide.tickOf(landed, ticks)), "never seen while the row after it glides");
-        const stray = Glide.strayAfter(landed, [{ steps: between.fades, from: 0, to: 1 }, { steps: between.falls, from: 30 - Geometry.rowEnterShift, to: 30 }], Tokens.durationShort, easeIn, ticks);
+        verify(unseenUntilLanded(between, between.glides, ticks), "never seen while the row after it glides");
+        const stray = Glide.strayAfter(between.glides[between.glides.length - 1], [{ steps: between.fades, from: 0, to: 1 }, { steps: between.falls, from: 30 - Geometry.rowEnterShift, to: 30 }], Tokens.durationShort, easeIn, ticks);
         verify(stray < 0.06, `then it comes from above with a fade along ease-in over duration-short, off by ${stray}`);
     }
 
@@ -809,21 +815,21 @@ TestCase {
         verify(stray < 0.06, `neither waits, as the row after the first comes too: off by ${stray}`);
     }
 
-    function test_a_row_waiting_for_room_glides_on_whole_as_a_newer_one_comes_before_it_which_waits_in_turn() {
+    function test_a_row_waiting_for_room_glides_on_unseen_as_a_newer_one_comes_before_it_and_both_arrive_once_the_rows_after_them_have_landed() {
         const ticks = Glide.ticks(testCase);
         Prefs.motion = "on";
         const column = createTemporaryObject(arrivalComponent, testCase);
         const last = findChild(column, "last");
         const between = arrive(column, 1, "between", "last");
-        tryVerify(() => last.y > 45, 1000, "the row after it is on its way");
+        // Early in the glide, where the row after it still lies most in the waiting one's new place.
+        tryVerify(() => between.glides.length > 0, 1000, "the row after it has set off");
         compare(between.row.opacity, 0, "still waiting");
-        const glides = [Glide.record(last, "y"), Glide.record(between.row, "y")];
         const top = arrive(column, 0, "top", "first");
         tryVerify(() => between.row.y === 60 && between.row.opacity === 1 && last.y === 90 && top.row.opacity === 1 && top.row.y === 0, Tokens.durationModerate * 4, "all at rest");
-        const topShows = Glide.tickOf(top.fades.find(step => step.value > 0), ticks);
-        verify(between.fades.some(step => step.value > 0 && Glide.tickOf(step, ticks) < topShows), "the one that waited shows as it glides");
-        const landedIn = Math.max(...[top.glides, ...glides].map(run => Glide.tickOf(run[run.length - 1], ticks)));
-        verify(top.fades.every(step => step.value === 0 || Glide.tickOf(step, ticks) >= landedIn), "the newer one is never seen while the rows after it glide");
+        verify(unseenUntilLanded(between, between.glides, ticks), "the one that waited is never seen while the row after it glides");
+        verify(unseenUntilLanded(top, top.glides, ticks), "nor is the newer one while the rows after it glide");
+        const stray = Glide.strayAfter(between.glides[between.glides.length - 1], [{ steps: between.fades, from: 0, to: 1 }, { steps: between.falls, from: 60 - Geometry.rowEnterShift, to: 60 }], Tokens.durationShort, easeIn, ticks);
+        verify(stray < 0.06, `then the one that waited comes from above with a fade along ease-in over duration-short, off by ${stray}`);
     }
 
     function test_in_a_hidden_column_a_row_that_comes_before_another_stands_at_once() {
@@ -834,6 +840,22 @@ TestCase {
         compare(findChild(column, "between").opacity, 1);
         compare(findChild(column, "between").y, 30);
         compare(findChild(column, "last").y, 60);
+    }
+
+    function test_a_row_waiting_for_room_in_a_column_hidden_meanwhile_stands_at_once_as_a_newer_one_comes_before_it() {
+        Prefs.motion = "on";
+        const column = createTemporaryObject(arrivalComponent, testCase);
+        column.insert(1, "between");
+        waitForItemPolished(column);
+        const between = findChild(column, "between");
+        compare(between.opacity, 0, "waiting");
+        column.visible = false;
+        column.insert(0, "top");
+        waitForItemPolished(column);
+        compare(between.opacity, 1);
+        compare(between.y, 60);
+        compare(findChild(column, "top").opacity, 1);
+        compare(findChild(column, "last").y, 90);
     }
 
     function test_under_reduced_motion_a_row_that_comes_before_another_stands_at_once() {
