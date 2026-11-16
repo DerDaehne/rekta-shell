@@ -132,6 +132,7 @@ Menu {
     // The secondary button opens the menu of the row under the pointer, whether or not its app has a window.
     TapHandler {
         acceptedButtons: Qt.RightButton
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
         longPressThreshold: 0
 
         onTapped: eventPoint => {

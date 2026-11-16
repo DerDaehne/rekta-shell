@@ -317,6 +317,16 @@ TestCase {
         }
     }
 
+    function test_a_finger_tap_on_an_app_with_a_menu_opens_exactly_one_level() {
+        const menu = open(threeApps());
+        const row = rowAt(menu, "Nextcloud");
+        const touch = touchEvent(row);
+        touch.press(0, row, row.width / 2, row.height / 2).commit();
+        touch.release(0, row, row.width / 2, row.height / 2).commit();
+        compare(rowNames(menu), ["zurück · Nextcloud", "Open folder", "Pause", "Devices"]);
+        compare(menu.levels.length, 1);
+    }
+
     function test_an_app_with_a_menu_ends_in_the_chevron_on_and_one_without_has_none() {
         const menu = open(threeApps());
         const onward = row => findChild(row, "onward");

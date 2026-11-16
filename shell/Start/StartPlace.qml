@@ -1356,10 +1356,10 @@ FocusScope {
             event.accepted = true;
     }
 
-    // The mouse's back button.
+    // The mouse's back button; Qt on Wayland reports every wl_pointer event, the mouse's too, as a TouchPad, never a finger.
     TapHandler {
         acceptedButtons: Qt.BackButton
-        acceptedDevices: PointerDevice.Mouse
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
         onTapped: start.back()
     }
 
