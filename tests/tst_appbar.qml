@@ -884,6 +884,22 @@ TestCase {
         verify(!named("in the background").opens.open);
     }
 
+    function test_a_press_on_more_closes_what_a_control_left_in_the_bar_opened_and_opens_its_menu() {
+        makeScene({ barWidth: 790 });
+        settle();
+        const background = named("in the background");
+        verify(bar.more.visible, "more shows");
+        verify(!background.overflowed, "the background control stays in the bar");
+        const seen = [];
+        background.opens.closedFor.connect(reason => seen.push(reason));
+        background.click();
+        verify(background.opens.open);
+        mouseClick(bar.more, 10, 10);
+        tryVerify(() => !background.opens.open, 1000, "it closes");
+        verify(bar.menu.open, "the menu of more opens");
+        compare(seen.join(), "press-on-bar");
+    }
+
     function test_the_middle_cuts_its_words_before_any_control_moves() {
         makeScene({ viewportHeight: 400 });
         const middle = named("middle");
