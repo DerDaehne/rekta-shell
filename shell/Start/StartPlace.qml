@@ -208,8 +208,9 @@ FocusScope {
 
     // The open Start asks for the keyboard again, after a surface over it went. KWin keeps no dock in its focus chain:
     // it hands the keyboard to the last window first, which is passing through, as when the Start opens.
-    // ponytail: a key typed in the few ms until KWin hands the keyboard back reaches that window; have the fade-back
-    // hand it to the open Start at once, should that show.
+    // ponytail: a key typed in the 30–120 ms (measured nested) until KWin hands the keyboard back reaches that window;
+    // should that show, have the fade-back activate the open Start at once when KWin activates a window right after a
+    // surface over it went.
     function asksForKeyboardAgain() {
         hadKeyboard = hasKeyboard;
     }
