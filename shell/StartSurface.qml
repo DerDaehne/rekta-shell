@@ -60,8 +60,10 @@ PanelWindow {
     // Asks for the keyboard anew, one commit without it and one with it, while the Start is open. KWin's fade-back holds
     // the windows through the first, as it would at a hand-over, and the next one keeps them back.
     function takeKeyboardBack() {
-        if (place.wanted)
-            askingAgain = true;
+        if (!place.wanted)
+            return;
+        place.asksForKeyboardAgain();
+        askingAgain = true;
     }
 
     // An app started from elsewhere, such as the session banner, comes to the front: the Start turns out forward, as

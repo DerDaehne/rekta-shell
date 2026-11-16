@@ -254,7 +254,8 @@ ShellRoot {
         onCleanUp: notifications.board.cleanUp()
     }
 
-    // `?` in the side panel: the panel goes, as for the session banner, and the key map takes the keyboard.
+    // `?` in the side panel: the panel goes, as for the session banner, and the key map takes the keyboard. The open
+    // Start asks for it again once the key map goes.
     KeyMapSurface {
         id: shortcutList
 
@@ -264,6 +265,10 @@ ShellRoot {
         onAsked: {
             sidePanel.close();
             shortcutList.show();
+        }
+        onVisibleChanged: {
+            if (!visible)
+                start.takeKeyboardBack();
         }
     }
 

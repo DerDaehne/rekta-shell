@@ -206,6 +206,14 @@ FocusScope {
         body.visible = false;
     }
 
+    // The open Start asks for the keyboard again, after a surface over it went. KWin keeps no dock in its focus chain:
+    // it hands the keyboard to the last window first, which is passing through, as when the Start opens.
+    // ponytail: a key typed in the few ms until KWin hands the keyboard back reaches that window; have the fade-back
+    // hand it to the open Start at once, should that show.
+    function asksForKeyboardAgain() {
+        hadKeyboard = hasKeyboard;
+    }
+
     // A finger `distance` px up from where it set down on the screen's bottom edge.
     // ponytail: Rekta has no rule for a place that follows a finger; the way is half the screen's height and the finger
     // decides at half of it, as a dragged row does (motion.md:25). Take Rekta's rule once it gives one.
