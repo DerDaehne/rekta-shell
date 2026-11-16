@@ -30,6 +30,8 @@ Item {
     readonly property bool statusFill: status !== ""
     // A place turn keeps the tile that opened the next place pressed until it turns away (rekta.js turn.leave()).
     property bool kept: false
+    // Whether the pointer was over the tile when its press was kept: it keeps the tint while the place leaves (rekta.js:589).
+    property bool hoverKept: false
     // It has a context menu (collections.md, "Context menus"): a right click, a long press on touch and Shift+F10 or the
     // context-menu key ask for it through menuAsked, and none of them presses the tile.
     property bool hasMenu: false
@@ -77,6 +79,7 @@ Item {
     function keepPressed(): real {
         if (!press.held)
             press.start(0, 0);
+        hoverKept = hover.hovered;
         kept = true;
         return Math.max(0, Tokens.durationPress - (Date.now() - press.since));
     }
@@ -187,7 +190,7 @@ Item {
             objectName: "tint"
             anchors.fill: parent
             radius: parent.radius
-            visible: tile.opens && hover.hovered
+            visible: tile.opens && (hover.hovered || (kept && hoverKept))
             color: Tokens.color.hover
         }
 

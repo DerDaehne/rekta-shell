@@ -82,6 +82,14 @@ TestCase {
                         text: "eight pipelines, two of them need you"
                     }
                 }
+                MouseArea {
+                    objectName: "otherButtons"
+                    x: 500
+                    y: 300
+                    width: 60
+                    height: 60
+                    acceptedButtons: Qt.RightButton | Qt.MiddleButton
+                }
                 Tile {
                     objectName: "away"
                     x: 4000
@@ -552,21 +560,21 @@ TestCase {
     }
 
     // A click on the middle of the item, counted by its own signal.
-    function clicksOn(item: Item, signalName: string): int {
+    function clicksOn(item: Item, signalName: string, button: int): int {
         pressSpy.target = item;
         pressSpy.signalName = signalName;
         pressSpy.clear();
-        mouseClick(item);
+        mouseClick(item, item.width / 2, item.height / 2, button);
         return pressSpy.count;
     }
 
     function test_a_part_of_the_place_leaving_takes_no_press_from_the_turn_s_first_moment_to_its_end() {
         turnToSecond();
         turner.elapsed = 30;
-        compare(clicksOn(named("tile0"), "activated"), 0, "a part that has started");
-        compare(clicksOn(named("tile7"), "activated"), 0, "a part that waits for its start");
+        compare(clicksOn(named("tile0"), "activated", Qt.LeftButton), 0, "a part that has started");
+        compare(clicksOn(named("tile7"), "activated", Qt.LeftButton), 0, "a part that waits for its start");
         turner.elapsed = turner.handOverAt - 1;
-        compare(clicksOn(named("tile0"), "activated"), 0, "just before the hand-over");
+        compare(clicksOn(named("tile0"), "activated", Qt.LeftButton), 0, "just before the hand-over");
     }
 
     function test_going_back_the_place_leaving_takes_no_press_either() {
@@ -577,8 +585,8 @@ TestCase {
         });
         turner.paused = true;
         turner.elapsed = 30;
-        compare(clicksOn(named("rerun"), "clicked"), 0);
-        compare(clicksOn(named("summary"), "activated"), 0);
+        compare(clicksOn(named("rerun"), "clicked", Qt.LeftButton), 0);
+        compare(clicksOn(named("summary"), "activated", Qt.LeftButton), 0);
     }
 
     function test_a_finger_tap_on_a_button_of_the_place_leaving_presses_nothing() {
@@ -601,13 +609,45 @@ TestCase {
         compare(pressSpy.count, 0);
     }
 
+    function test_the_right_and_the_middle_button_press_nothing_in_the_place_leaving_either() {
+        turnToSecond();
+        turner.elapsed = 30;
+        const area = named("otherButtons");
+        compare(clicksOn(area, "pressed", Qt.RightButton), 0);
+        compare(clicksOn(area, "pressed", Qt.MiddleButton), 0);
+        turner.drop();
+        compare(clicksOn(area, "pressed", Qt.RightButton), 1, "a place at rest takes them");
+        compare(clicksOn(area, "pressed", Qt.MiddleButton), 1);
+    }
+
+    function test_a_part_of_the_place_leaving_is_not_hovered_but_the_pressed_tile_keeps_its_tint() {
+        const tile = named("tile0");
+        mouseMove(tile, tile.width / 2, tile.height / 2);
+        verify(tile.hovered, "at rest");
+        const pressed = named("tile1");
+        mouseMove(pressed, pressed.width / 2, pressed.height / 2);
+        verify(pressed.hovered);
+        turner.go(first, second, {
+            pressed: pressed
+        });
+        turner.paused = true;
+        turner.elapsed = 30;
+        mouseMove(named("tile2"), 10, 10);
+        mouseMove(tile, tile.width / 2, tile.height / 2);
+        verify(!tile.hovered, "a part leaving");
+        verify(!findChild(tile, "tint").visible);
+        mouseMove(pressed, pressed.width / 2, pressed.height / 2);
+        verify(!pressed.hovered);
+        verify(findChild(pressed, "tint").visible, "the pressed tile keeps its tint");
+    }
+
     function test_a_part_of_the_place_arriving_takes_a_press_at_once() {
         turnToSecond();
         turner.elapsed = turner.handOverAt;
         verify(second.visible);
-        compare(clicksOn(named("rerun"), "clicked"), 1, "before its own turn has started");
+        compare(clicksOn(named("rerun"), "clicked", Qt.LeftButton), 1, "before its own turn has started");
         turner.elapsed = turner.handOverAt + 30;
-        compare(clicksOn(named("summary"), "activated"), 1);
+        compare(clicksOn(named("summary"), "activated", Qt.LeftButton), 1);
     }
 
     function test_a_place_dropped_or_landed_takes_presses_again() {
@@ -615,14 +655,14 @@ TestCase {
         turner.elapsed = 30;
         turner.paused = false;
         turner.drop();
-        compare(clicksOn(named("tile0"), "activated"), 1, "dropped at rest");
+        compare(clicksOn(named("tile0"), "activated", Qt.LeftButton), 1, "dropped at rest");
         turner.go(first, second);
         turner.finish();
         turner.go(second, first, {
             back: true
         });
         turner.finish();
-        compare(clicksOn(named("tile1"), "activated"), 1, "landed");
+        compare(clicksOn(named("tile1"), "activated", Qt.LeftButton), 1, "landed");
     }
 
     function test_a_turn_runs_on_its_own_clock_and_lands() {
