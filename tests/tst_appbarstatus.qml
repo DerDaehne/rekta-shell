@@ -329,7 +329,7 @@ TestCase {
         scene.shown = [];
         verify(word("muted").visible, "it stays while it fades");
         tryCompare(word("muted"), "visible", false);
-        compare(scene.status.present, false);
+        tryCompare(scene.status, "present", false);
         tryCompare(middle(), "x", scene.bar.padding);
     }
 

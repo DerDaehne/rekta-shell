@@ -337,8 +337,8 @@ TestCase {
         verify(run.running);
         compare(tile.opacity, 0);
         near(tile.mapToItem(testCase, 0, 0).y - tile.y, Tokens.arriveDistance, "it starts arrive-distance below");
-        tryCompare(buildIn, "rise", 1, Tokens.durationLong * 3);
-        tryCompare(buildIn, "fade", 1, Tokens.durationLong * 3);
+        tryVerify(() => buildIn.rise === 1, Tokens.durationLong * 3, "the rise ends exactly on 1");
+        tryVerify(() => buildIn.fade === 1, Tokens.durationLong * 3, "the fade ends exactly on 1");
         const riseStray = Glide.strayOf([{ steps: rises, from: 0, to: 1 }], Tokens.durationLong, landing, since, ticks);
         verify(riseStray < 0.06, `the rise follows ease-landing over duration-long, off by ${riseStray}`);
         const fadeStray = Glide.strayOf([{ steps: fades, from: 0, to: 1 }], Tokens.durationShort, landing, since, ticks);

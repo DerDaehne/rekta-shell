@@ -46,7 +46,7 @@ TestCase {
         const steps = Glide.record(moving, "x");
         const since = Date.now();
         moving.x = 100;
-        tryCompare(moving, "x", 100, testCase.duration * 4);
+        tryVerify(() => moving.x === 100, testCase.duration * 4, "it ends exactly on 100");
         verify(stalled, "the step past 90 was stamped late");
         const stray = Glide.strayOf([{ steps, from: 0, to: 100 }], testCase.duration, testCase.curve, since, ticks);
         verify(stray < 0.06, `it still follows the curve over its duration: off by ${stray}`);
