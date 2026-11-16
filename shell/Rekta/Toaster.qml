@@ -56,6 +56,9 @@ Item {
     readonly property int countGoes: Math.round(Tokens.turnOverlap * Geometry.peekOutShare * Tokens.durationModerate)
     property var removeKeyLayers: []
 
+    // The toast the key reached has begun to leave, `reason` as its onEnd hears it: the host hands the keyboard on.
+    signal keysGoBack(string reason)
+
     function now(): double {
         return clock();
     }
@@ -114,13 +117,15 @@ Item {
         return true;
     }
 
-    // A toast has begun to leave.
-    function letGo(toast: Toast) {
+    // A toast has begun to leave, `reason` as its onEnd hears it.
+    function letGo(toast: Toast, reason: string) {
         if (open === toast)
             open = null;
-        if (reached === toast)
-            reached = null;
         leaving++;
+        if (reached !== toast)
+            return;
+        reached = null;
+        keysGoBack(reason);
     }
 
     // A toast that began to leave over `way` ms has ended, and its end may have shown the next toast. A notification's

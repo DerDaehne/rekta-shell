@@ -277,4 +277,17 @@ ShellRoot {
 
         primaryScreen: primary.screen
     }
+
+    // A toast the key brought the keyboard to goes. After its action the Start turns out forward, as after a choice in
+    // it, so that a window the action brings keeps the keyboard; else the open Start asks for the keyboard again.
+    Connections {
+        target: toasts.toaster
+
+        function onKeysGoBack(reason: string) {
+            if (reason === "acted")
+                start.stepAside();
+            else
+                start.takeKeyboardBack();
+        }
+    }
 }

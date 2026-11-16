@@ -13,9 +13,9 @@ import "services"
 // comes while a sheet holds the keyboard stays below it. A toast starts its way below the surface's edge, which hides it there. It takes
 // input only over the open toast, and the keyboard only once the session's key has brought it to a toast that stays: KWin
 // activates a layer surface as soon as it wants keys, and hands the keyboard on to the next window once the surface goes.
-// ponytail: a toast that replaces the one the key reached keeps the keyboard until it goes too; give it back to the window
-// that had it, as the Start does, should that show. Not the namespace "notification": KWin would slide that in with
-// an effect of its own.
+// ponytail: a toast that replaces the one the key reached keeps the keyboard until it goes too, unless the open Start asks
+// for it again; give it back to the window that had it, should that show. Not the namespace "notification": KWin would
+// slide that in with an effect of its own.
 PanelWindow {
     id: host
 

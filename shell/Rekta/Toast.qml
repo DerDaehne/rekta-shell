@@ -117,7 +117,8 @@ FocusScope {
         const goingDown = notification ? gliding : sinking;
         const way = waiting ? 0 : goingDown.duration;
         rising.stop();
-        toaster.letGo(toast);
+        const ending = doUndo && undoAction ? "undone" : reason;
+        toaster.letGo(toast, ending);
         if (waiting)
             goAway();
         else
@@ -125,7 +126,7 @@ FocusScope {
         if (doUndo && undoAction)
             undoAction();
         if (endHandler)
-            endHandler(doUndo && undoAction ? "undone" : reason);
+            endHandler(ending);
         toaster.handCountBack(toast, way);
         if (hadFocus)
             from?.forceActiveFocus();
