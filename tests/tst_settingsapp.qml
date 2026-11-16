@@ -213,6 +213,14 @@ TestCase {
         compare(pivot().currentIndex, 0);
     }
 
+    function test_a_finger_tap_does_not_go_back() {
+        pivot().select(1);
+        const touch = touchEvent(view);
+        touch.press(0, view, view.width - 50, 50).commit();
+        touch.release(0, view, view.width - 50, 50).commit();
+        compare(pivot().currentIndex, 1);
+    }
+
     function test_back_at_the_top_place_does_nothing_and_does_not_close() {
         keyClick(Qt.Key_Escape);
         keyClick(Qt.Key_Left, Qt.AltModifier);

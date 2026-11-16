@@ -1093,6 +1093,15 @@ TestCase {
         verify(!start.wanted);
     }
 
+    function test_a_finger_tap_does_not_go_back_from_alle_apps_and_leaves_the_start_open() {
+        openOnAllApps(appNames(3));
+        const touch = touchEvent(start);
+        touch.press(0, start, start.width - 50, 50).commit();
+        touch.release(0, start, start.width - 50, 50).commit();
+        verify(start.wanted, "a tap does not close the Start");
+        compare(named("pivot").currentIndex, 1);
+    }
+
     function test_arrows_move_the_focus_through_the_tiles_and_the_ring_shows_only_then() {
         openNow();
         const running = tilesIn("running");

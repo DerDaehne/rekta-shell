@@ -1359,6 +1359,7 @@ FocusScope {
     // The mouse's back button.
     TapHandler {
         acceptedButtons: Qt.BackButton
+        acceptedDevices: PointerDevice.Mouse
         onTapped: start.back()
     }
 
