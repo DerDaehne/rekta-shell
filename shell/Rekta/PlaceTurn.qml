@@ -153,6 +153,24 @@ QtObject {
         }
     }
 
+    // Over the place leaving, from the turn's start to its hand-over: its parts take no pointer press, as rekta.css gives
+    // them `pointer-events: none` (:1284), the parts not yet started too. A handler that grabs on press stops the press
+    // for touch and mouse alike; keys, the wheel and the mouse's back and forward buttons pass.
+    property Component pressBlocker: Component {
+        Item {
+            property bool turnsWhole: false
+
+            anchors.fill: parent
+            z: 1e6
+
+            TapHandler {
+                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                gesturePolicy: TapHandler.ReleaseWithinBounds
+            }
+        }
+    }
+    property Item blocker: null
+
     signal landed
 
     // Turns from one place to the next; either may be null (nothing to leave, nothing to arrive at). `options.back`
@@ -210,6 +228,8 @@ QtObject {
             pressedTile = pressed;
             turns.push(Turnstile.pressedTurn(pressedPart, tempo * Tokens.durationShort, turns, pressed.keepPressed(), edge));
         }
+        if (leavingPlace)
+            blocker = pressBlocker.createObject(leavingPlace);
         leavingTurns = turns;
         arrivingTurns = [];
         handOverAt = Turnstile.nextPlaceAt(turns);
@@ -279,6 +299,10 @@ QtObject {
     }
 
     function letAllGo() {
+        if (blocker)
+            blocker.visible = false;
+        blocker?.destroy();
+        blocker = null;
         for (const part of turning) {
             part.letGo();
             part.destroy();

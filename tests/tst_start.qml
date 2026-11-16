@@ -665,6 +665,32 @@ TestCase {
         tryVerify(() => named("apps").visible && !named("startPlace").visible, 3000);
     }
 
+    function test_a_pinned_tile_of_the_place_turning_out_to_alle_apps_takes_no_press() {
+        Prefs.motion = "on";
+        openNow();
+        tryVerify(() => !start.turning, 3000);
+        keyClick(Qt.Key_Right);
+        verify(turner.running);
+        turner.paused = true;
+        turner.elapsed = 30;
+        mouseClick(tilesIn("pinned")[1]);
+        compare(calls, []);
+        verify(start.wanted);
+    }
+
+    function test_an_app_tile_of_alle_apps_turning_out_to_the_start_takes_no_press() {
+        Prefs.motion = "on";
+        openOnAllApps(["Kate", "Konsole"]);
+        const tile = letterTile(0);
+        keyClick(Qt.Key_Escape);
+        verify(turner.running);
+        turner.paused = true;
+        turner.elapsed = 30;
+        mouseClick(tile);
+        compare(calls, []);
+        verify(start.wanted);
+    }
+
     function test_the_right_arrow_goes_to_alle_apps_and_back_returns() {
         openNow();
         keyClick(Qt.Key_Right);
