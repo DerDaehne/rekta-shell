@@ -7,8 +7,7 @@ import "services"
 
 // The key readout alone, where the bar that carries it is out of sight under a full-screen window: along the bottom
 // edge of the primary screen, above that window, and mapped only while the display shows. It takes no input and no
-// keys, and no zone: not the namespace "dock" (KWin would give it a strut) and not "on-screen-display" (KWin's
-// fading popups would fade it in a second time).
+// keys, and no zone. Not the namespace "on-screen-display": KWin's fading popups would fade it in a second time.
 PanelWindow {
     id: host
 
