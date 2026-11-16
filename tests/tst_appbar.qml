@@ -885,8 +885,12 @@ TestCase {
     }
 
     function test_a_press_on_more_closes_what_a_control_left_in_the_bar_opened_and_opens_its_menu() {
-        makeScene({ barWidth: 790 });
-        settle();
+        makeScene({});
+        // The widest bar that needs "more": the typeface decides how wide that is, and only the last control has moved.
+        for (let width = 1200; !bar.more.visible; width -= 10) {
+            scene.barWidth = width;
+            settle();
+        }
         const background = named("in the background");
         verify(bar.more.visible, "more shows");
         verify(!background.overflowed, "the background control stays in the bar");
