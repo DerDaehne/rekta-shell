@@ -187,6 +187,12 @@ PanelWindow {
         })
     }
 
+    // On a desktop switch KWin activates a window there, which takes the keyboard from the open Start, or none, which
+    // would leave the Start without it.
+    TaskManager.VirtualDesktopInfo {
+        onCurrentDesktopChanged: surface.takeKeyboardBack()
+    }
+
     Usage {
         id: usage
     }
