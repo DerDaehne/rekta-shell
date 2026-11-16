@@ -2,6 +2,7 @@
   writeShellApplication,
   callPackage,
   coreutils,
+  jq,
   kdePackages,
   rekta-shell,
 }:
@@ -15,6 +16,7 @@ writeShellApplication {
   name = "rekta-qmllint";
   runtimeInputs = [
     coreutils
+    jq
     kdePackages.qtdeclarative
   ];
   text = ''
@@ -24,7 +26,11 @@ writeShellApplication {
       if [ -e "$arg" ]; then args+=("$(realpath "$arg")"); else args+=("$arg"); fi
     done
     # Quickshell's type descriptions mark its windows (PanelWindow and friends) as uncreatable, although QML creates them.
-    exec qmllint --max-warnings 0 --uncreatable-type disable \
+    # qmllint's text mode drops some warnings and still exits 255; its JSON report has them all.
+    report=$(mktemp)
+    trap 'rm -f "$report"' EXIT
+    status=0
+    qmllint --json "$report" --max-warnings 0 --uncreatable-type disable \
       -I ${kdePackages.qtdeclarative}/lib/qt-6/qml \
       -I ${rekta-shell.quickshell}/lib/qt-6/qml \
       -I ${rekta-shell}/lib/qt-6/qml \
@@ -33,6 +39,8 @@ writeShellApplication {
       -I ${kdePackages.kpipewire}/lib/qt-6/qml \
       -I ${kdePackages.kscreenlocker}/lib/qt-6/qml \
       -I ${kdePackages.kirigami.unwrapped}/lib/qt-6/qml \
-      "''${args[@]}"
+      "''${args[@]}" >/dev/null || status=$?
+    jq -r '.files[] | .filename as $file | .warnings[]? | "\($file):\(.line):\(.column): \(.type): \(.message) [\(.id)]"' "$report" >&2
+    exit "$status"
   '';
 }

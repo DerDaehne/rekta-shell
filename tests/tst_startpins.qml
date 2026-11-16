@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import Rekta
-import Settings
 import Start
 import "ContactSheets.js" as ContactSheets
 
