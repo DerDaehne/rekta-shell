@@ -843,7 +843,7 @@ TestCase {
 
     // The list of a control that moved into "more" stands at "more"; the compositor may dismiss its popup before the press
     // reaches the bar or while it is held, as for the menu itself.
-    function checkPressOnMoreClosesWhatItsMovedControlOpened(press: var, release: var) {
+    function checkPressOnMoreClosesWhatItsMovedControlOpened(press: var, release: var): var {
         makeScene({ barWidth: 360 });
         const moved = named("in the background");
         verify(moved.overflowed, "it moved into more");
