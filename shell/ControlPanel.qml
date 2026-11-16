@@ -213,36 +213,19 @@ PanelWindow {
     // three fingers swiping left or right on the touchpad; outside the rekta session nothing answers.
     DBusConnection {
         id: kwin
-    }
 
-    DBus.SignalWatcher {
-        service: "org.kde.KWin"
-        path: "/RektaFadeBack"
-        iface: "org.rekta.FadeBack"
+        readonly property var handlers: ({
+            edgeFingerMoved: distance => surface.drawIn(distance / panel.panelWidth),
+            edgeFingerLetGo: () => panel.letGoIn(),
+            touchpadLeft: progress => surface.drawIn(progress),
+            touchpadLeftLetGo: () => panel.letGoIn(),
+            touchpadRight: progress => panel.drawOut(progress),
+            touchpadRightLetGo: () => panel.letGoOut(),
+        })
 
-        function dbusedgeFingerMoved(distance: real) {
-            surface.drawIn(distance / panel.panelWidth);
-        }
-
-        function dbusedgeFingerLetGo() {
-            panel.letGoIn();
-        }
-
-        function dbustouchpadLeft(progress: real) {
-            surface.drawIn(progress);
-        }
-
-        function dbustouchpadLeftLetGo() {
-            panel.letGoIn();
-        }
-
-        function dbustouchpadRight(progress: real) {
-            panel.drawOut(progress);
-        }
-
-        function dbustouchpadRightLetGo() {
-            panel.letGoOut();
-        }
+        // Only these members are subscribed, so KWin's other signals never wake the shell.
+        Component.onCompleted: Object.keys(handlers).forEach(member => listen("org.rekta.FadeBack", member, "org.kde.KWin", "/RektaFadeBack"))
+        onReceived: (sender, path, interfaceName, member, args) => handlers[member](...args)
     }
 
     PwObjectTracker {

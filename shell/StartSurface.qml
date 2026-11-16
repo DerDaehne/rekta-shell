@@ -6,7 +6,6 @@ import Quickshell.Io
 import Quickshell.Wayland
 import org.kde.pipewire as PipeWire
 import org.kde.taskmanager as TaskManager
-import org.kde.plasma.workspace.dbus as DBus
 import RektaShell.DBus
 import Settings
 import Start
@@ -175,36 +174,19 @@ PanelWindow {
     // and three fingers swiping up or down on the touchpad; outside the rekta session nothing answers.
     DBusConnection {
         id: kwin
-    }
 
-    DBus.SignalWatcher {
-        service: "org.kde.KWin"
-        path: "/RektaFadeBack"
-        iface: "org.rekta.FadeBack"
+        readonly property var handlers: ({
+            fingerMoved: distance => place.followFinger(distance),
+            fingerLetGo: () => place.letFingerGo(),
+            touchpadUp: progress => place.followSwipe(progress),
+            touchpadUpLetGo: () => place.letFingerGo(),
+            touchpadDown: progress => place.followSwipeOut(progress),
+            touchpadDownLetGo: () => place.letFingerGoOut(),
+        })
 
-        function dbusfingerMoved(distance: real) {
-            place.followFinger(distance);
-        }
-
-        function dbusfingerLetGo() {
-            place.letFingerGo();
-        }
-
-        function dbustouchpadUp(progress: real) {
-            place.followSwipe(progress);
-        }
-
-        function dbustouchpadUpLetGo() {
-            place.letFingerGo();
-        }
-
-        function dbustouchpadDown(progress: real) {
-            place.followSwipeOut(progress);
-        }
-
-        function dbustouchpadDownLetGo() {
-            place.letFingerGoOut();
-        }
+        // Only these members are subscribed, so KWin's other signals never wake the shell.
+        Component.onCompleted: Object.keys(handlers).forEach(member => listen("org.rekta.FadeBack", member, "org.kde.KWin", "/RektaFadeBack"))
+        onReceived: (sender, path, interfaceName, member, args) => handlers[member](...args)
     }
 
     Usage {
