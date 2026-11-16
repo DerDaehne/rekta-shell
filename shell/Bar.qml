@@ -34,6 +34,9 @@ PanelWindow {
     required property Toasts toastHost
     readonly property Toaster toaster: toastHost.toaster
     required property bool startOpen
+    // The Start leaves with the keyboard. KWin closes every grabbing popup as it takes the keyboard from the Start, so a
+    // floating surface opened meanwhile waits for that, or it would flash and go.
+    required property bool startLeavesWithKeyboard
     // The splash has gone after login (SplashEnd.arrived).
     required property bool arrived
     readonly property bool showsReadout: modelData === primaryScreen
@@ -209,6 +212,7 @@ PanelWindow {
 
         barWindow: panel
         appBar: bar
+        held: panel.startLeavesWithKeyboard
         surface: bar.menu
         opener: bar.more
         place: bar.menuPlace
@@ -221,6 +225,7 @@ PanelWindow {
 
         barWindow: panel
         appBar: bar
+        held: panel.startLeavesWithKeyboard
         surface: background.menu
         opener: background.overflowed ? bar.more : background
         place: bar.floatPlace(background.overflowed ? bar.more : background, Qt.size(background.menu.width, background.menu.height))
@@ -233,6 +238,7 @@ PanelWindow {
 
         barWindow: panel
         appBar: bar
+        held: panel.startLeavesWithKeyboard
         surface: clock.calendar
         opener: clock
         align: "centre"
@@ -299,6 +305,8 @@ PanelWindow {
         // Where the popup stands in the bar's window, held while it is mapped.
         property rect span
         readonly property point origin: Qt.point(span.x, span.y)
+        // Opened while this holds, it waits unseen.
+        required property bool held
 
         // The linter cannot see PopupAnchor's members: Quickshell and its window module depend on each other.
         anchor.window: barWindow // qmllint disable missing-property
@@ -337,7 +345,7 @@ PanelWindow {
 
             surface: host.surface
             room: Qt.size(host.span.width, host.span.height)
-            wanted: host.surface.open
+            wanted: host.surface.showing
         }
 
         // A finger anywhere else in the shell reaches only this popup, which closes for it.
@@ -352,6 +360,7 @@ PanelWindow {
             surface.x = Qt.binding(() => host.place.x - host.span.x);
             surface.y = Qt.binding(() => host.place.y - host.span.y);
             surface.side = Qt.binding(() => host.place.side);
+            surface.held = Qt.binding(() => host.held);
         }
     }
 }

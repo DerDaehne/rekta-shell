@@ -95,6 +95,13 @@ FocusScope {
     // along with them. A finger taking the closing along keeps it. Read from the phase itself: `wanted` and
     // `fingerCloses` change one after the other, and the keyboard must not drop between them.
     readonly property bool holdsKeyboard: wanted || phase === "followingOut" || phase === "returningIn" || (phase === "closing" && !glassOut.running)
+    // A window was asked to take the keyboard back, and KWin has not yet taken it from the Start.
+    // ponytail: should KWin refuse that window, the app bar's popups wait until another one is activated or the Start
+    // opens again; bound it in time if that ever shows.
+    property bool handingBack: false
+    // Leaving, or handing the keyboard back, and its surface still has it. Once it has not, KWin has handed it on, and
+    // has closed every grabbing popup as it did. Without a window to hand it to, it is over once the Start has closed.
+    readonly property bool leavesWithKeyboard: Window.active && (phase === "closing" || handingBack)
     readonly property bool turning: turner.running || waitForWindows.running
     readonly property var running: Rules.recentFirst(windows)
     // The time of the last wheel event, to tell one gesture from the next.
@@ -197,6 +204,7 @@ FocusScope {
         endSearch();
         returnTo = windows.find(window => window.active) ?? null;
         hadKeyboard = false;
+        handingBack = false;
         panorama.goTo(0, false, true);
         appsPanorama.goTo(0, false, true);
         phase = how;
@@ -551,7 +559,11 @@ FocusScope {
     // ponytail: windows on other virtual desktops count too; the shell follows no virtual desktops yet.
     function giveKeyboardBack() {
         const shown = running.filter(window => !window.minimized);
-        (shown.includes(returnTo) ? returnTo : shown[0])?.activate();
+        const next = shown.includes(returnTo) ? returnTo : shown[0];
+        if (!next)
+            return;
+        handingBack = true;
+        next.activate();
     }
 
     function showPlace(index: int) {
@@ -1348,6 +1360,10 @@ FocusScope {
     onHasKeyboardChanged: {
         if (hasKeyboard)
             hadKeyboard = true;
+    }
+    Window.onActiveChanged: {
+        if (!Window.active)
+            handingBack = false;
     }
     // A window took the keyboard from the open Start, one that came or one brought forward from elsewhere: the Start
     // turns out forward, as after a choice in it, and the window keeps the keyboard.

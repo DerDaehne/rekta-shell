@@ -317,6 +317,23 @@ TestCase {
         compare(surface.opacity, 0.5);
     }
 
+    function test_a_surface_its_host_holds_stays_open_unseen_and_comes_in_once_let_go() {
+        Prefs.motion = "on";
+        const surface = createTemporaryObject(surfaceComponent, testCase, { held: true });
+        const seen = closeReasonsOf(surface);
+        const comingIn = findChild(surface, "comingIn");
+        surface.open = true;
+        verify(!surface.visible, "unseen while held");
+        verify(!comingIn.running);
+        surface.held = false;
+        verify(surface.visible);
+        verify(comingIn.running, "it comes in from the moment it shows");
+        compare(surface.opacity, 0);
+        tryVerify(() => !comingIn.running, Tokens.durationFloat * 4);
+        verify(surface.open);
+        compare(seen.length, 0, "waiting wrote no close");
+    }
+
     function test_a_surface_leaves_at_once() {
         Prefs.motion = "on";
         const surface = createTemporaryObject(surfaceComponent, testCase, { open: true });

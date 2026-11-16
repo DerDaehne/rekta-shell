@@ -879,6 +879,70 @@ TestCase {
         verify(!start.holdsKeyboard);
     }
 
+    // KWin closes every grabbing popup as it takes the keyboard from the Start: until then the app bar's wait.
+    function test_a_leaving_start_holds_the_bars_popups_until_kwin_has_taken_its_keyboard() {
+        Prefs.motion = "on";
+        start.windows = windowsWithTheDocsActive();
+        openNow();
+        tryVerify(() => start.Window.active, 2000);
+        verify(!start.leavesWithKeyboard, "not while it stands open");
+        keyClick(Qt.Key_Escape);
+        verify(start.leavesWithKeyboard, "from the moment it leaves");
+        turner.paused = true;
+        turner.elapsed = turner.handOverAt;
+        compare(calls, ["activate Rekta Design — docs"]);
+        verify(start.leavesWithKeyboard, "past the hand-over, until KWin acts on it");
+        const glassOut = findChild(start, "glassOut");
+        glassOut.stop();
+        createTemporaryObject(otherSurface, testCase);
+        tryVerify(() => !start.Window.active, 2000);
+        compare(start.phase, "closing");
+        verify(!start.leavesWithKeyboard, "the window has the keyboard");
+        glassOut.triggered();
+        start.Window.window.requestActivate();
+        tryVerify(() => start.Window.active, 2000);
+    }
+
+    // A busy shell may see its glass go before it learns that KWin gave the window the keyboard.
+    function test_a_start_that_asked_a_window_to_take_the_keyboard_holds_the_popups_past_its_close_until_kwin_has() {
+        Prefs.motion = "on";
+        start.windows = windowsWithTheDocsActive();
+        openNow();
+        tryVerify(() => start.Window.active, 2000);
+        keyClick(Qt.Key_Escape);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        compare(calls, ["activate Rekta Design — docs"]);
+        verify(start.leavesWithKeyboard, "closed, and KWin has not acted yet");
+        createTemporaryObject(otherSurface, testCase);
+        tryVerify(() => !start.Window.active, 2000);
+        verify(!start.leavesWithKeyboard);
+        start.Window.window.requestActivate();
+        tryVerify(() => start.Window.active, 2000);
+        verify(!start.leavesWithKeyboard, "that hand-back is over once KWin took the keyboard");
+    }
+
+    function test_a_start_that_opens_again_before_kwin_took_the_keyboard_holds_no_popups() {
+        start.windows = windowsWithTheDocsActive();
+        openNow();
+        tryVerify(() => start.Window.active, 2000);
+        keyClick(Qt.Key_Escape);
+        compare(start.phase, "closed");
+        verify(start.leavesWithKeyboard);
+        openNow();
+        verify(!start.leavesWithKeyboard);
+    }
+
+    function test_a_start_that_closes_with_the_keyboard_no_window_takes_holds_the_popups_no_longer() {
+        Prefs.motion = "on";
+        openNow();
+        tryVerify(() => start.Window.active, 2000);
+        keyClick(Qt.Key_Escape);
+        verify(start.leavesWithKeyboard);
+        tryVerify(() => closedSpy.count === 1, 3000);
+        verify(start.Window.active);
+        verify(!start.leavesWithKeyboard);
+    }
+
     function test_closed_before_its_parts_came_the_start_hands_over_at_once() {
         Prefs.motion = "on";
         start.open();

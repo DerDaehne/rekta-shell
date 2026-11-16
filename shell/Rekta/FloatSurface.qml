@@ -10,6 +10,9 @@ Rectangle {
     id: surface
 
     property bool open: false
+    // Its host cannot show it yet: it stays open and comes in once that ends.
+    property bool held: false
+    readonly property bool showing: open && !held
     // Why it closes, set by whoever closes it; "other" for a choice, Tab or code. Named in the one line it writes.
     property string closeReason: "other"
     // Its name in that line; a surface without one writes none.
@@ -91,7 +94,7 @@ Rectangle {
     // The minimum wins over the maximum, as min-width does over max-width.
     implicitWidth: Math.max(Geometry.floatMinWidth, Math.min(maxWidth, widestRow + 2 * border.width))
     implicitHeight: Math.min(maxHeight, column.implicitHeight + 2 * border.width)
-    visible: open
+    visible: showing
     z: Tokens.layerFloat
     opacity: entry
     color: Tokens.color.bg
@@ -105,14 +108,17 @@ Rectangle {
     // Once per close: what closed it and how long after it opened.
     signal closedFor(string reason, int sinceOpen)
 
-    onOpenChanged: {
+    onShowingChanged: {
         comingIn.stop();
         entry = 1;
+        if (showing)
+            comingIn.start();
+    }
+    onOpenChanged: {
         if (open) {
             openedAt = Date.now();
             closeReason = "other";
             KeyLayers.opened(surface);
-            comingIn.start();
         } else {
             KeyLayers.closed(surface);
             reportClose();

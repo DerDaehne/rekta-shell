@@ -37,6 +37,8 @@ PanelWindow {
     property bool showRecent: true
     // From the moment it opens until it starts to close.
     readonly property alias opened: place.wanted
+    // It leaves, and KWin has not yet taken the keyboard from it.
+    readonly property alias leavesWithKeyboard: place.leavesWithKeyboard
     // The window that had the keyboard as the Start opened is full screen: back the way it came, the Start hands it back.
     property bool handsToFullScreen: false
     // The shell's commands, see StartPlace.commands.

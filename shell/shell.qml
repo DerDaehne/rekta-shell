@@ -122,6 +122,7 @@ ShellRoot {
             arrived: splash.arrived
             toastHost: toasts
             startOpen: start.opened
+            startLeavesWithKeyboard: start.leavesWithKeyboard
         }
     }
 

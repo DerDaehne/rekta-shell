@@ -264,6 +264,21 @@ TestCase {
         keyClick({ "enter": Qt.Key_Return, "space": Qt.Key_Space, "right": Qt.Key_Right }[how]);
     }
 
+    // The bar's popup maps whatever the surface says it shows: the tray's menu says it as any floating surface does.
+    function test_the_menu_shows_only_while_open_and_held_by_its_host_it_waits_unseen() {
+        scene = createTemporaryObject(sceneComponent, testCase, { apps: threeApps() });
+        const menu = scene.control.menu;
+        verify(!menu.showing, "closed, it does not show");
+        menu.held = true;
+        menu.openAt(0);
+        verify(menu.open);
+        verify(!menu.showing, "held, it waits");
+        verify(!menu.visible);
+        menu.held = false;
+        verify(menu.showing);
+        verify(menu.visible);
+    }
+
     // The compositor dismisses the menu's popup on a press outside it, before that press reaches the bar or while it is held.
     function test_a_press_on_the_control_while_its_menu_is_open_closes_it_also_when_the_press_has_dismissed_the_popup() {
         const menu = open(threeApps());
