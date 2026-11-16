@@ -241,12 +241,21 @@ in
       echo "a surface of the shell is no dock to KWin" >&2
       exit 1
     fi
-    for file in $(grep -rlE --include='*.qml' 'PanelWindow \{' ${../shell}); do
-      if ! grep -qF 'WlrLayershell.namespace:' "$file"; then
-        echo "$(basename "$file") names no namespace, so it is no dock to KWin" >&2
-        exit 1
-      fi
-    done
+    # One namespace per surface in each file: a second surface in a file that names one would go without.
+    if ! find ${../shell} -name '*.qml' -exec awk '
+      { surfaces[FILENAME] += gsub(/PanelWindow[[:space:]]*\{/, "&") }
+      /WlrLayershell\.namespace:/ { names[FILENAME]++ }
+      END {
+        for (file in surfaces)
+          if (surfaces[file] != names[file]) {
+            print file " has " surfaces[file] " surfaces but " names[file] + 0 " namespaces"
+            failed = 1
+          }
+        exit failed
+      }' {} + >&2; then
+      echo "a surface of the shell names no namespace, so it is no dock to KWin" >&2
+      exit 1
+    fi
     touch $out
   '';
 
