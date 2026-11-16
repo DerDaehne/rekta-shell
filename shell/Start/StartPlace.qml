@@ -618,6 +618,13 @@ FocusScope {
         Window.window?.update();
     }
 
+    function followTakenFrame() {
+        if (hitsFollow.waitsFor !== "turn")
+            return;
+        hitsFollow.waitsFor = "";
+        followHits();
+    }
+
     // What was typed stands in the next frame; what it finds follows once that frame has been taken (hitsFollow), so no
     // work for the hits holds a letter up: the hits may follow a short pause (collections.md:35), the text in the field never.
     function followQuery() {
@@ -1534,7 +1541,8 @@ FocusScope {
     Connections {
         id: hitsFollow
 
-        // "frame" until that frame begins, "sync" until its items are taken, "" while the hits wait for nothing.
+        // "frame" until that frame begins, "sync" until its items are taken, "turn" until the event loop comes round,
+        // "" while the hits wait for nothing.
         property string waitsFor: ""
         readonly property bool running: waitsFor !== ""
 
@@ -1547,11 +1555,13 @@ FocusScope {
                 waitsFor = "sync";
         }
 
+        // A render loop on the GUI thread says so amid the frame, before drawing it: an item the hits take away then
+        // would be drawn without its window (a Shape's software node crashes on it). So the hits follow on the next turn.
         function onAfterSynchronizing() {
             if (waitsFor !== "sync")
                 return;
-            waitsFor = "";
-            start.followHits();
+            waitsFor = "turn";
+            Qt.callLater(start.followTakenFrame);
         }
     }
 

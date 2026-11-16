@@ -2228,6 +2228,26 @@ TestCase {
         verify(tiles.every(tile => tile.opacity === 1));
     }
 
+    // A render loop on the GUI thread says it has taken the frame before it draws it; the hits change nothing in between.
+    function test_the_hits_change_nothing_between_taking_the_frame_with_the_letter_and_drawing_it() {
+        openWithApps();
+        const window = start.Window.window;
+        const taken = [];
+        const noteTaken = () => taken.push({
+                waitsFor: named("hitsFollow").waitsFor,
+                results: named("results").visible
+            });
+        window.afterSynchronizing.connect(noteTaken);
+        keyClick("k");
+        hitsFollowed();
+        window.afterSynchronizing.disconnect(noteTaken);
+        verify(named("results").visible);
+        compare(taken.find(frame => frame.waitsFor !== "frame"), {
+            waitsFor: "turn",
+            results: false
+        });
+    }
+
     function test_enter_right_after_a_letter_presses_the_best_hit_its_hits_not_yet_followed() {
         openWithApps();
         holdHits();
