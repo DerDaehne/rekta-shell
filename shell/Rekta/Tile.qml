@@ -190,7 +190,7 @@ Item {
             objectName: "tint"
             anchors.fill: parent
             radius: parent.radius
-            visible: tile.opens && (hover.hovered || (kept && hoverKept))
+            visible: tile.opens && (hover.hovered || (tile.kept && tile.hoverKept))
             color: Tokens.color.hover
         }
 
