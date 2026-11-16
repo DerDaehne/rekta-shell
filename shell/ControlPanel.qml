@@ -9,7 +9,6 @@ import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import Quickshell.Wayland
 import org.kde.plasma.workspace.dbus as DBus
-import RektaShell.DBus
 import Notices
 import Settings
 import Panel
@@ -211,10 +210,10 @@ PanelWindow {
 
     // KWin's rekta-fadeback, which holds the right edge of the primary screen for a finger that draws the panel in, and
     // three fingers swiping left or right on the touchpad; outside the rekta session nothing answers.
-    DBusConnection {
+    FadeBackSignals {
         id: kwin
 
-        readonly property var handlers: ({
+        handlers: ({
             edgeFingerMoved: distance => surface.drawIn(distance / panel.panelWidth),
             edgeFingerLetGo: () => panel.letGoIn(),
             touchpadLeft: progress => surface.drawIn(progress),
@@ -222,10 +221,6 @@ PanelWindow {
             touchpadRight: progress => panel.drawOut(progress),
             touchpadRightLetGo: () => panel.letGoOut(),
         })
-
-        // Only these members are subscribed, so KWin's other signals never wake the shell.
-        Component.onCompleted: Object.keys(handlers).forEach(member => listen("org.rekta.FadeBack", member, "org.kde.KWin", "/RektaFadeBack"))
-        onReceived: (sender, path, interfaceName, member, args) => handlers[member](...args)
     }
 
     PwObjectTracker {
