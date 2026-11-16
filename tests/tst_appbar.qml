@@ -48,7 +48,19 @@ TestCase {
                 AppBarMiddle { objectName: "middle"; parts: ["konsole", "~/projects: build the shell and its tests"] }
                 Rectangle { id: centreSlot; objectName: "centre"; visible: scene.withCentre; implicitWidth: 80; width: implicitWidth; height: 48; color: "transparent" }
                 AppBarButton { objectName: "pause"; icon: "pause"; text: "pause"; priority: 2 }
-                AppBarButton { objectName: "in the background"; icon: "window"; text: "in the background"; priority: 0; present: scene.backgroundShown }
+                AppBarButton {
+                    id: backgroundButton
+
+                    objectName: "in the background"
+                    icon: "window"
+                    text: "in the background"
+                    priority: 0
+                    present: scene.backgroundShown
+                    opens: backgroundSurface
+                    onClicked: backgroundSurface.open = !backgroundSurface.open
+
+                    FloatSurface { id: backgroundSurface; objectName: "background surface" }
+                }
                 AppBarButton { objectName: "messages"; icon: "bell"; text: "messages"; priority: 1; disabledReason: "comes with the panel" }
                 AppBarButton { objectName: "theme"; icon: "theme"; text: "theme and colours"; priority: 1 }
                 AppBarButton { objectName: "controls"; icon: "tune"; text: "controls"; priority: 0 }
@@ -827,6 +839,49 @@ TestCase {
         verify(opener.opens.open);
         mouseClick(bar, spot.x, spot.y);
         tryVerify(() => !opener.opens.open, 1000, "it closes");
+    }
+
+    // The list of a control that moved into "more" stands at "more"; the compositor may dismiss its popup before the press
+    // reaches the bar or while it is held, as for the menu itself.
+    function checkPressOnMoreClosesWhatItsMovedControlOpened(press: var, release: var) {
+        makeScene({ barWidth: 360 });
+        const moved = named("in the background");
+        verify(moved.overflowed, "it moved into more");
+        const surface = moved.opens;
+        const seen = [];
+        surface.closedFor.connect(reason => seen.push(reason));
+        for (const order of ["plain", "before the press", "while it is held"]) {
+            moved.click();
+            verify(surface.open, order);
+            if (order === "before the press")
+                surface.popupClosed(true);
+            press(bar.more);
+            if (order === "while it is held")
+                surface.popupClosed(true);
+            release(bar.more);
+            tryVerify(() => !surface.open, 1000, `${order}: it closes`);
+            verify(!bar.menu.open, `${order}: the press and its release open no menu`);
+        }
+        return seen;
+    }
+
+    function test_a_mouse_press_on_more_closes_the_list_a_moved_control_opened_and_opens_no_menu() {
+        const seen = checkPressOnMoreClosesWhatItsMovedControlOpened(
+            item => mousePress(item, 10, 10), item => mouseRelease(item, 10, 10));
+        compare(seen.join(), "second-press,second-press,second-press");
+    }
+
+    function test_a_finger_press_on_more_closes_the_list_a_moved_control_opened_and_opens_no_menu() {
+        const seen = checkPressOnMoreClosesWhatItsMovedControlOpened(
+            item => touchEvent(item).press(0, item, 10, 10).commit(), item => touchEvent(item).release(0, item, 10, 10).commit());
+        compare(seen.length, 3, "each close names one reason");
+    }
+
+    function test_a_press_on_more_with_nothing_open_still_opens_its_menu() {
+        makeScene({ barWidth: 360 });
+        mouseClick(bar.more, 10, 10);
+        verify(bar.menu.open);
+        verify(!named("in the background").opens.open);
     }
 
     function test_the_middle_cuts_its_words_before_any_control_moves() {

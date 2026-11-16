@@ -43,6 +43,9 @@ Item {
     property bool away: false
     // The floating surface the control opens, if any. A press that finds it open only closes it.
     property FloatSurface opens: null
+    // The surfaces of the controls moved into this one ("more"); they open at it, so a press on it closes them too.
+    property var opensForMoved: []
+    readonly property var surfaces: [opens].concat(opensForMoved).filter(surface => surface)
     property bool pressFoundOpen: false
     readonly property bool showing: wanted && !held
     // While it fades out it stays where it was, and the bar closes the gap after it (motion.md, "Arriving, leaving").
@@ -290,7 +293,7 @@ Item {
 
             onTapped: eventPoint => {
                 if (control.pressFoundOpen) {
-                    control.opens.closeAs("second-press");
+                    control.surfaces.forEach(surface => surface.closeAs("second-press"));
                     return;
                 }
                 control.click();
@@ -300,7 +303,7 @@ Item {
             onPressedChanged: {
                 if (!pressed)
                     return;
-                control.pressFoundOpen = control.opens?.open ?? false;
+                control.pressFoundOpen = control.surfaces.some(surface => surface.open);
                 Tips.hide();
             }
         }

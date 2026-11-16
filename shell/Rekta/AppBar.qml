@@ -379,6 +379,7 @@ Rectangle {
         text: "mehr"
         overflowed: true
         opens: moreMenu
+        opensForMoved: bar.plan.moved.map(control => control.opens)
 
         onClicked: {
             if (moreMenu.open)
