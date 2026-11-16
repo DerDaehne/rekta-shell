@@ -276,6 +276,19 @@ TestCase {
         compare(lastToldWindows()[0], 0);
     }
 
+    function test_a_finger_drawing_the_start_down_keeps_its_input_until_the_closing_runs_on_by_itself() {
+        const finger = drawnTo(0.25);
+        compare(start.phase, "followingOut");
+        verify(start.takesInput, "while the finger holds the closing");
+        finger.letGo();
+        compare(start.phase, "returningIn");
+        verify(start.takesInput, "the Start comes back and keeps its input");
+        tryCompare(start, "phase", "open", 2000);
+        drawnTo(0.5).letGo();
+        compare(start.phase, "closing");
+        verify(!start.takesInput, "a closing that runs on takes no input");
+    }
+
     function test_the_finger_decides_at_half_its_way() {
         drawnTo(0.49).letGo();
         compare(start.phase, "returningIn");

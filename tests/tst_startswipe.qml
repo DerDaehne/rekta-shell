@@ -212,6 +212,16 @@ TestCase {
         verify(start.holdsKeyboard);
     }
 
+    function test_a_finger_opening_the_start_gives_it_input_until_it_lets_go_short_of_half_and_the_start_runs_back() {
+        start.followFinger(wholeWay * 0.4);
+        compare(start.phase, "following");
+        verify(start.takesInput, "while the finger opens it");
+        start.letFingerGo();
+        compare(start.phase, "returning");
+        verify(!start.takesInput, "a place that runs back takes no input");
+        tryCompare(start, "phase", "closed", 2000);
+    }
+
     function test_let_go_short_of_half_its_way_the_opening_runs_back_to_nothing_and_the_window_keeps_the_keyboard() {
         start.followFinger(wholeWay * 0.4);
         const from = start.openingAt;
