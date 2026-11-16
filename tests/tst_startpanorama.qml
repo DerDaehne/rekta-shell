@@ -1007,10 +1007,13 @@ TestCase {
         compare(strip.currentIndex, 0, "the key's scroll ends the jump's hold on the mark");
     }
 
-    function test_compact_page_down_in_the_search_leaves_the_hidden_place_at_its_top() {
+    function test_compact_page_down_in_the_search_leaves_the_place_giving_way_at_its_top() {
         openCompactWithTwoWindows();
+        // The frame the hits wait for held back, as a busy machine may: PageDown comes while the place still shows.
+        named("hitsFollow").target = null;
         keyClick(Qt.Key_K);
         verify(start.searching);
+        verify(named("startPlace").visible);
         keyClick(Qt.Key_PageDown);
         compare(named("panorama").scroller.contentY, 0);
     }

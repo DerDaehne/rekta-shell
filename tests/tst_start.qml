@@ -1491,12 +1491,45 @@ TestCase {
         tryVerify(() => !named("hitsFollow").running, 1000);
     }
 
+    // Holds back the frame the hits wait for, as a busy machine may, so the next key comes before they follow.
+    function holdHits() {
+        named("hitsFollow").target = null;
+    }
+
+    function letHitsFollow() {
+        const window = start.Window.window;
+        named("hitsFollow").target = window;
+        window.update();
+        hitsFollowed();
+    }
+
     function hitNames(): var {
         return start.hitTiles().map(tile => findChild(tile, "name").text);
     }
 
     function motionsOf(items: var): var {
         return named("presence").moving.filter(motion => items.includes(motion.item));
+    }
+
+    // Notes each motion the Presence starts from now on as it starts, so one that has landed before the test looks still
+    // counts.
+    function noteMotions(): var {
+        const presence = named("presence");
+        const noted = [];
+        presence.movingChanged.connect(() => presence.moving.filter(motion => !noted.some(seen => seen.motion === motion)).forEach(motion => noted.push({
+                        motion: motion,
+                        item: motion.item,
+                        from: motion.from,
+                        to: motion.to,
+                        duration: motion.duration,
+                        curve: motion.curve,
+                        shown: motion.item?.visible ?? false
+                    })));
+        return noted;
+    }
+
+    function notedMotionsOf(noted: var, items: var): var {
+        return noted.filter(motion => items.includes(motion.item));
     }
 
     function test_a_letter_shows_what_was_typed_as_the_title_with_suche_beside_it_where_the_pivot_stood() {
@@ -2125,6 +2158,7 @@ TestCase {
         turner.elapsed = 1;
         const tiles = tilesIn("pinned");
         const parts = [named("pivot"), ...tiles];
+        const motions = noteMotions();
         keyClick("k");
         turner.paused = false;
         verify(!turner.running);
@@ -2133,7 +2167,7 @@ TestCase {
         compare(named("typed").text, "k");
         compare(shownOpacity(named("typed")), 1, "the title stands at once");
         hitsFollowed();
-        compare(motionsOf(tiles).length, tiles.length, "and the tiles leave from there");
+        compare(notedMotionsOf(motions, tiles).length, tiles.length, "and the tiles leave from there");
         tryVerify(() => named("results").visible, 1000, "the paused turn would never have landed");
         compare(hitNames(), ["Kate", "Konsole", "KWrite"]);
     }
@@ -2169,6 +2203,7 @@ TestCase {
         openWithApps();
         const presence = named("presence");
         const pinned = tilesIn("pinned");
+        holdHits();
         keyClick("k");
         compare(named("typed").text, "k");
         compare(shownOpacity(named("typed")), 1, "whole, with no motion of its own");
@@ -2178,23 +2213,24 @@ TestCase {
         verify(named("hitsFollow").running, "nothing for the hits holds up the frame that shows the letter");
         verify(!presence.running);
         compare(start.hitTiles().length, 0);
-        hitsFollowed();
-        verify(named("startPlace").visible, "the place leaves");
-        const leaving = motionsOf(pinned);
+        const motions = noteMotions();
+        letHitsFollow();
+        const leaving = notedMotionsOf(motions, pinned);
         compare(leaving.length, pinned.length);
+        verify(leaving.every(motion => motion.shown), "the place leaves in view");
         verify(leaving.every(motion => motion.duration === Geometry.leaveShare * Tokens.durationShort && motion.to.opacity === 0));
-        compare(motionsOf([named("typed"), named("suche"), named("searchTitle")]).length, 0);
         tryVerify(() => named("results").visible, 1000);
         const tiles = start.hitTiles();
-        compare(motionsOf(tiles).length, tiles.length);
-        verify(motionsOf(tiles).every(motion => motion.from.scale === Geometry.arriveTileScale && motion.duration === Tokens.durationModerate));
-        compare(motionsOf([named("typed"), named("suche")]).length, 0, "the title stays as it stands");
+        compare(notedMotionsOf(motions, tiles).length, tiles.length);
+        verify(notedMotionsOf(motions, tiles).every(motion => motion.from.scale === Geometry.arriveTileScale && motion.duration === Tokens.durationModerate));
         tryVerify(() => !presence.running, 1000);
+        compare(notedMotionsOf(motions, [named("typed"), named("suche"), named("searchTitle")]).length, 0, "the title stays as it stands");
         verify(tiles.every(tile => tile.opacity === 1));
     }
 
     function test_enter_right_after_a_letter_presses_the_best_hit_its_hits_not_yet_followed() {
         openWithApps();
+        holdHits();
         keyClick("k");
         verify(named("hitsFollow").running);
         keyClick(Qt.Key_Return);
@@ -2204,6 +2240,7 @@ TestCase {
     function test_a_letter_erased_before_its_hits_followed_brings_the_pivot_back_at_once_and_the_place_never_moved() {
         Prefs.motion = "on";
         openWithApps();
+        holdHits();
         keyClick("k");
         verify(named("hitsFollow").running);
         keyClick(Qt.Key_Backspace);
@@ -2220,12 +2257,13 @@ TestCase {
         openWithApps();
         typeNow("k");
         const [kate, konsole, kwrite] = start.hitTiles();
+        const motions = noteMotions();
         keyClick("w");
         hitsFollowed();
-        compare(motionsOf([kate, konsole]).length, 2);
-        verify(motionsOf([kate, konsole]).every(motion => motion.to.scale === Geometry.leaveTileScale));
-        tryVerify(() => motionsOf([kwrite]).length === 1, 1000);
-        const glide = motionsOf([kwrite])[0];
+        compare(notedMotionsOf(motions, [kate, konsole]).length, 2);
+        verify(notedMotionsOf(motions, [kate, konsole]).every(motion => motion.to.scale === Geometry.leaveTileScale));
+        tryVerify(() => notedMotionsOf(motions, [kwrite]).length === 1, 1000);
+        const glide = notedMotionsOf(motions, [kwrite])[0];
         compare(glide.from.x, 3 * (Tokens.tileUnit + Tokens.spaceS));
         compare(glide.duration, Tokens.durationModerate);
         compare(glide.curve, Tokens.easeBase);
