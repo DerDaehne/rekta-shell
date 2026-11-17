@@ -12,6 +12,8 @@ TestCase {
 
     // What the handlers were called with, as "member(values)".
     property var ran: []
+    // How many signals reached the connection, handled or not.
+    property int received: 0
 
     readonly property var handlers: ({
             fingerMoved: distance => testCase.ran.push(`fingerMoved(${distance})`),
@@ -44,6 +46,8 @@ TestCase {
 
     function listening() {
         const bus = createTemporaryObject(signalsComponent, testCase);
+        received = 0;
+        bus.received.connect(() => testCase.received++);
         // A round trip on the new connection: its subscriptions have reached the bus.
         let settled = false;
         bus.call("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetId", [], "", () => settled = true);
@@ -71,6 +75,8 @@ TestCase {
         emit("fingerLetGo");
         tryVerify(() => ran.length > 0);
         compare(ran, ["fingerLetGo()"]);
+        // Only the one signal was delivered; the others were never subscribed to.
+        compare(received, 1);
     }
 
     function test_signals_of_another_interface_or_path_reach_no_handler() {
@@ -80,5 +86,6 @@ TestCase {
         emit("fingerMoved", [1.0]);
         tryVerify(() => ran.length > 0);
         compare(ran, ["fingerMoved(1)"]);
+        compare(received, 1);
     }
 }

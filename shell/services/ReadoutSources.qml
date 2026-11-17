@@ -4,7 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
-import org.kde.plasma.workspace.dbus as DBus
+import RektaShell.DBus
 import org.kde.plasma.workspace.keyboardlayout
 import Readout
 
@@ -35,18 +35,10 @@ Scope {
         micMuted: sources.source?.audio?.muted ?? false
     }
 
-    DBus.SignalWatcher {
-        service: "org.kde.kglobalaccel"
-        path: "/component/kmix"
-        iface: "org.kde.kglobalaccel.Component"
-
-        function dbusglobalShortcutPressed(component: string, action: string, timestamp: real) {
-            model.shortcutPressed(component, action);
-        }
-
-        // kglobalaccel tells the release too; without a handler the watcher warns.
-        function dbusglobalShortcutReleased(component: string, action: string, timestamp: real) {
-        }
+    // Only the press: kglobalaccel also tells repeats and releases, which the shell never acts on.
+    DBusConnection {
+        Component.onCompleted: listen("org.kde.kglobalaccel.Component", "globalShortcutPressed", "org.kde.kglobalaccel", "/component/kmix")
+        onReceived: (sender, path, interfaceName, member, args) => model.shortcutPressed(args[0], args[1])
     }
 
     // ponytail: only the user's plasmaparc, its first entry, without system-wide defaults or `[$i]` locks; read
