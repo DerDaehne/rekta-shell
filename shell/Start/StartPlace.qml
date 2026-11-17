@@ -971,6 +971,8 @@ FocusScope {
         if (front.length < fronts)
             ends.forEach(moveSectionToEnd);
         keepInView(kept);
+        // A kept tile moves with its section, and its open menu would stand beside it.
+        menuTileMoved();
     }
 
     function dropSection(section: var) {

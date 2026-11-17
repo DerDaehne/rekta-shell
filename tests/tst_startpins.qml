@@ -427,6 +427,23 @@ TestCase {
         verify(menu.open);
     }
 
+    // At 1600 by 900 "a–b" parts into "a" two units wide for the new apps and pushes "k–o", tiles and all, aside.
+    function test_the_menu_on_an_alle_apps_tile_closes_when_an_earlier_section_pushes_its_tile_aside() {
+        const names = ["Ark", "Audacity", "Blender", "Dolphin", "Elisa", "Kate", "Konsole", "Okular", "Spectacle", "Systemeinstellungen", "Thunderbird", "VLC", "Wireshark"];
+        const items = names.map(name => installedApp(`org.example.${name}`, name));
+        start.apps = items;
+        openNow();
+        goToAllApps();
+        const okular = letterTile("Okular");
+        const at = okular.mapToItem(start, 0, 0).x;
+        rightClick(okular, 30, 40);
+        verify(menu.open);
+        start.apps = [installedApp("org.example.Akregator", "Akregator"), installedApp("org.example.Amarok", "Amarok"), ...items];
+        verify(letterTile("Okular") === okular, "its section keeps its tiles");
+        verify(okular.mapToItem(start, 0, 0).x - at > Geometry.contextMenuScrollSlop, "the tile has moved");
+        verify(!menu.open, "the menu no longer stands by its tile");
+    }
+
     // Items
 
     function test_an_app_not_pinned_offers_anheften_without_sizes() {
