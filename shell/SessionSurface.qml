@@ -17,7 +17,7 @@ import "services"
 // move (a tiling script pushes it into the area beside the app bar); of the special types, dock is the one KWin's own
 // effects leave alone (fading popups fade splash and on-screen-display surfaces, sliding notifications slide
 // notification ones). Written "DOCK": KWin ignores the case as it types a surface, and its fade-back knows this one, apart
-// from the app bar's "dock" and the key map's "Dock", by the case alone. That effect fades the surface as the banner
+// from the app bar's "docK" and the key map's "Dock", by the case alone. That effect fades the surface as the banner
 // tells it, and KWin's blur with it; outside the rekta session nothing answers.
 // ponytail: a new layer surface takes some 60ms to its first frame, so the first frames of the way in may not show;
 // keep the surface mapped, as the Start does, should that show.

@@ -60,8 +60,9 @@ PanelWindow {
     // new layer surface takes some 60ms to its first frame, which the slide in would lose.
     visible: !away || bar.sliding || !arrived
     // A dock to KWin: a namespace it does not know makes a normal window, which tiling scripts move into the work area,
-    // out of the zone the surface keeps clear itself.
-    WlrLayershell.namespace: "dock"
+    // out of the zone the surface keeps clear itself. KWin reads the namespace lowercased; the fade-back knows the shell,
+    // and so its popups, by this spelling.
+    WlrLayershell.namespace: "docK"
     // Above the full-screen window while it slides away.
     WlrLayershell.layer: away ? WlrLayer.Overlay : WlrLayer.Top
     // A deliberate deviation: KWin blurs at the strength of its blur effect, as ext-background-effect has no radius for

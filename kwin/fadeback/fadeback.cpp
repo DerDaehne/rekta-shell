@@ -4,6 +4,7 @@
 #include "effect/effect.h"
 #include "effect/effecthandler.h"
 #include "effect/effectwindow.h"
+#include "wayland/clientconnection.h"
 #include "wayland/layershell_v1.h"
 #include "wayland/surface.h"
 #include "wayland_server.h"
@@ -123,6 +124,9 @@ struct Splash {
 // KWin hands the keyboard of the active window that goes to the next window in its focus chain, which holds no dock:
 // a layer surface going over the open Start would hand it to an app. While the Start asks for the keyboard, the effect
 // hands it to the Start instead, as KWin tells effects of a window closing before it looks for the next one.
+//
+// The shell's popups come with their own fade and go at once, as Rekta's floating surfaces do: the effect holds each
+// from KWin's other effects, which would fade it in and out once more.
 class FadeBackEffect : public Effect
 {
     Q_OBJECT
@@ -186,6 +190,7 @@ private:
     bool moving() const;
     void holdSplash(EffectWindow *w);
     void keepKeyboardOnStart(EffectWindow *w);
+    void holdShellPopup(EffectWindow *w);
     void fadeSplash(std::chrono::nanoseconds presentation);
     bool fading() const;
     void holdEdges();
@@ -206,6 +211,8 @@ private:
     // Each a spelling of "dock" of its own: KWin types the shell's surfaces by the namespace lowercased.
     Retreat m_start{"dOck", "progress"};
     Retreat m_leave{"doCk", "leaveProgress"};
+    // The shell's client, known by the app bar's surface, which it makes as it starts.
+    QPointer<ClientConnection> m_shell;
     Look m_onPrimary;
     Look m_elsewhere;
     Splash m_splash;
@@ -236,6 +243,7 @@ FadeBackEffect::FadeBackEffect()
             this, &FadeBackEffect::watch);
     connect(effects, &EffectsHandler::windowClosed, this, &FadeBackEffect::holdSplash);
     connect(effects, &EffectsHandler::windowClosed, this, &FadeBackEffect::keepKeyboardOnStart);
+    connect(effects, &EffectsHandler::windowAdded, this, &FadeBackEffect::holdShellPopup);
     takeEdge(m_bottomEdge, &FadeBackEffect::fingerLetGo);
     takeEdge(m_rightEdge, &FadeBackEffect::edgeFingerLetGo);
     // ponytail: KWin owns every press in the outer 8 px of an edge it holds, so while the panel is away a finger there
@@ -266,6 +274,9 @@ void FadeBackEffect::watch(LayerSurfaceV1Interface *layer)
         if (layer->scope() == QLatin1StringView(retreat->scope)) {
             follow(*retreat, layer);
         }
+    }
+    if (layer->scope() == QLatin1StringView("docK")) {
+        m_shell = layer->surface()->client();
     }
     // KWin has made the surface's window by now, before its first frame; Qt makes a new surface for each showing.
     m_layers.insert(layer->scope(), layer);
@@ -473,6 +484,19 @@ void FadeBackEffect::keepKeyboardOnStart(EffectWindow *w)
     const bool overStart = start && closing != start && closing->inherits("KWin::LayerShellV1Window");
     if (overStart && closing == workspace()->activeWindow()) {
         workspace()->requestFocus(start);
+    }
+}
+
+// fadingpopups, glide, fade and scale animate no window another effect holds, and drop an animation they have begun
+// once another takes it. Held as it comes, the popup needs no finding as it closes.
+void FadeBackEffect::holdShellPopup(EffectWindow *w)
+{
+    const SurfaceInterface *surface = w->window()->surface();
+    if (!w->isPopupWindow() || !m_shell || !surface || surface->client() != m_shell) {
+        return;
+    }
+    for (const DataRole role : {WindowAddedGrabRole, WindowClosedGrabRole}) {
+        w->setData(role, QVariant::fromValue(static_cast<void *>(this)));
     }
 }
 
