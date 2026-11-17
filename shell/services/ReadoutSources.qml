@@ -12,8 +12,6 @@ import Readout
 // kglobalaccel's component "kmix" with the most they raise a volume to from the user's plasmaparc, the brightness keys
 // from powerdevil and the layout from KWin. The shell registers none of these keys; kded6 and powerdevil act on them,
 // and this only listens. The side panel shares the bound devices and the displays.
-// ponytail: the kmix keys go through plasma-workspace's DBus module, whose fixed names and paths suffice; move them to the
-// shell's own DBus module (as the displays do) once that is worth the change.
 Scope {
     id: sources
 

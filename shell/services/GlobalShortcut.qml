@@ -6,9 +6,10 @@ import RektaShell.DBus
 // A global shortcut of the shell in KWin's kglobalaccel, component "rekta-shell". KWin holds the keys from the first
 // registration until KWin itself ends, so they survive reloads and restarts of the shell. System Settings lists the
 // shortcut and may give it other keys; those then win over the defaults given here.
-// ponytail: through plasma-workspace's DBus module, which reaches kglobalaccel's fixed name and path; move it to the
-// shell's own DBus module once there is one. setShortcut(asaiu) is deprecated since KF 5.90, and its successor
-// setShortcutKeys takes a(ai), which that module cannot send: the own module needs a(ai) once setShortcut goes.
+// ponytail: only the calls (doRegister, setShortcut) go through plasma-workspace's DBus module, which reaches
+// kglobalaccel's fixed name and path; the press comes in through the shell's own module. setShortcut(asaiu) is
+// deprecated since KF 5.90, and its successor setShortcutKeys takes a(ai), which that module cannot send: the own
+// module needs a(ai) once setShortcut goes.
 Scope {
     id: shortcut
 
