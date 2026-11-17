@@ -119,6 +119,10 @@ struct Splash {
 // A finger swiping in from the right edge of the primary screen, and three fingers swiping left on the touchpad, draw
 // the side panel in; three fingers swiping right draw it out. The shell tells the effect whether the panel shows: the
 // right edge is held only while it does not, so a finger on the open panel's own edge reaches the panel.
+//
+// KWin hands the keyboard of the active window that goes to the next window in its focus chain, which holds no dock:
+// a layer surface going over the open Start would hand it to an app. While the Start asks for the keyboard, the effect
+// hands it to the Start instead, as KWin tells effects of a window closing before it looks for the next one.
 class FadeBackEffect : public Effect
 {
     Q_OBJECT
@@ -181,6 +185,7 @@ private:
     bool stepsBack(const EffectWindow *w) const;
     bool moving() const;
     void holdSplash(EffectWindow *w);
+    void keepKeyboardOnStart(EffectWindow *w);
     void fadeSplash(std::chrono::nanoseconds presentation);
     bool fading() const;
     void holdEdges();
@@ -230,6 +235,7 @@ FadeBackEffect::FadeBackEffect()
     connect(waylandServer()->findChild<LayerShellV1Interface *>(), &LayerShellV1Interface::surfaceCreated,
             this, &FadeBackEffect::watch);
     connect(effects, &EffectsHandler::windowClosed, this, &FadeBackEffect::holdSplash);
+    connect(effects, &EffectsHandler::windowClosed, this, &FadeBackEffect::keepKeyboardOnStart);
     takeEdge(m_bottomEdge, &FadeBackEffect::fingerLetGo);
     takeEdge(m_rightEdge, &FadeBackEffect::edgeFingerLetGo);
     // ponytail: KWin owns every press in the outer 8 px of an edge it holds, so while the panel is away a finger there
@@ -456,6 +462,18 @@ void FadeBackEffect::holdSplash(EffectWindow *w)
     // wrapped program under Nix does not have.
     w->setData(WindowClosedGrabRole, QVariant::fromValue(static_cast<void *>(this)));
     effects->addRepaintFull();
+}
+
+// KWin moves the keyboard on only from the active window that goes (Workspace::activateNextWindow): once the Start is
+// active, it stays there.
+void FadeBackEffect::keepKeyboardOnStart(EffectWindow *w)
+{
+    Window *closing = w->window();
+    Window *start = m_start.keyboard && m_start.surface ? waylandServer()->findWindow(m_start.surface->surface()) : nullptr;
+    const bool overStart = start && closing != start && closing->inherits("KWin::LayerShellV1Window");
+    if (overStart && closing == workspace()->activeWindow()) {
+        workspace()->requestFocus(start);
+    }
 }
 
 // Timed as the windows are, from the frame it starts to fade in; every screen's splash fades alike.

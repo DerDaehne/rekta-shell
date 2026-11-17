@@ -401,32 +401,6 @@ TestCase {
         verify(!start.wanted, "a window that takes the keyboard after that one still sends it out");
     }
 
-    // The key map over the open Start goes; KWin, which keeps no dock in its focus chain, hands the keyboard to the last
-    // window before the Start, asking again, takes it back.
-    function test_a_window_kwin_activates_after_the_start_asked_for_the_keyboard_again_leaves_it_open() {
-        openNow();
-        tryVerify(() => start.Window.active, 2000);
-        const keyMap = createTemporaryObject(otherSurface, testCase);
-        tryVerify(() => !start.Window.active, 2000);
-        start.asksForKeyboardAgain();
-        start.windowHasKeyboard = true;
-        compare(start.phase, "open");
-        keyMap.visible = false;
-        start.windowHasKeyboard = false;
-        start.Window.window.requestActivate();
-        tryVerify(() => start.Window.active, 2000);
-        start.windowHasKeyboard = true;
-        verify(!start.wanted, "a window that takes the keyboard after the Start has it again still sends it out");
-    }
-
-    function test_a_window_that_takes_the_keyboard_after_the_start_asked_again_while_it_had_it_turns_it_out() {
-        openNow();
-        tryVerify(() => start.Window.active, 2000);
-        start.asksForKeyboardAgain();
-        start.windowHasKeyboard = true;
-        verify(!start.wanted);
-    }
-
     // Closed back, the Start hands the keyboard to the window that had it as it opened.
     function test_a_window_that_takes_the_keyboard_while_the_start_is_closed_leaves_it_closed() {
         start.windows = windowsWithTheDocsActive();

@@ -254,8 +254,7 @@ ShellRoot {
         onCleanUp: notifications.board.cleanUp()
     }
 
-    // `?` in the side panel: the panel goes, as for the session banner, and the key map takes the keyboard. The open
-    // Start asks for it again once the key map goes.
+    // `?` in the side panel: the panel goes, as for the session banner, and the key map takes the keyboard.
     KeyMapSurface {
         id: shortcutList
 
@@ -266,10 +265,6 @@ ShellRoot {
             sidePanel.close();
             shortcutList.show();
         }
-        onVisibleChanged: {
-            if (!visible)
-                start.takeKeyboardBack();
-        }
     }
 
     Toasts {
@@ -278,15 +273,14 @@ ShellRoot {
         primaryScreen: primary.screen
     }
 
-    // A toast the key brought the keyboard to goes. After its action the Start turns out forward, as after a choice in
-    // it, so that a window the action brings keeps the keyboard; else the open Start asks for the keyboard again.
+    // A toast the key brought the keyboard to goes: the open Start asks for the keyboard again, as the toasts' surface
+    // may stay mapped for another toast. Not after its action: asking would take the keyboard from a window the action
+    // brings.
     Connections {
         target: toasts.toaster
 
         function onKeysGoBack(reason: string) {
-            if (reason === "acted")
-                start.stepAside();
-            else
+            if (reason !== "acted")
                 start.takeKeyboardBack();
         }
     }
