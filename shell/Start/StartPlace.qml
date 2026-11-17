@@ -952,24 +952,48 @@ FocusScope {
         return letterSections.findIndex(part => index < part.first + part.count);
     }
 
-    // "alle apps" files the apps anew under their sections when the apps change or the rows a section holds do. The app
-    // in focus, else the first of the section being read, stays in view.
+    // "alle apps" files the apps anew under their sections when the apps change or the rows a section holds do. A section
+    // keeps its tiles while it holds the same apps, before a change in its place and after one at the end. The app in
+    // focus, else the first of the section being read, stays in view.
     function regroup() {
         const kept = keptApp();
-        for (const section of [...appsPanorama.sectionParent.children]) {
-            // Out of the panorama at once: destroy() takes it only later.
-            section.parent = null;
-            section.destroy();
-        }
         const listed = apps ?? [];
+        const old = [...appsPanorama.sectionParent.children];
         letterSections = Rules.letterSections(listed.map(app => app.name), letterRows);
-        for (const part of letterSections) {
-            letterSection.createObject(appsPanorama.sectionParent, {
-                part: part,
-                partApps: listed.slice(part.first, part.first + part.count)
-            });
-        }
+        const parts = letterSections.map(part => listed.slice(part.first, part.first + part.count));
+        const tail = Rules.sameTail(old.map(section => section.partApps), parts);
+        const front = old.slice(0, old.length - tail);
+        const ends = old.slice(old.length - tail);
+        const fronts = parts.length - tail;
+        front.slice(fronts).forEach(dropSection);
+        letterSections.forEach((part, k) => fillSection(k < fronts ? front[k] : ends[k - fronts], part, parts[k]));
+        // A new section comes last, and QML moves one only by taking it out and putting it back.
+        if (front.length < fronts)
+            ends.forEach(moveSectionToEnd);
         keepInView(kept);
+    }
+
+    function dropSection(section: var) {
+        // Out of the panorama at once: destroy() takes it only later.
+        section.parent = null;
+        section.destroy();
+    }
+
+    // By way of another item in the same window, so that Qt keeps what the tiles draw with (QQuickItem::setParentItem).
+    function moveSectionToEnd(section: var) {
+        section.parent = appsPlace;
+        section.parent = appsPanorama.sectionParent;
+    }
+
+    // Shows `part` with its apps in `section`, or in a new one without; its tiles stay while its apps do. The apps go in
+    // after createObject(), which would copy the list and its items, so that no later list could be the same.
+    function fillSection(section: var, part: var, partApps: var) {
+        const shown = section ?? letterSection.createObject(appsPanorama.sectionParent, {
+            part: part
+        });
+        shown.part = part;
+        if (!Rules.sameItems(shown.partApps, partApps))
+            shown.partApps = partApps;
     }
 
     // The app that stays in view when "alle apps" regroups: {id, focused}, or null without one.
@@ -1763,8 +1787,8 @@ FocusScope {
         // panorama holds, at most six; short neighbouring letters share one section ("a–c"), a letter with more apps
         // splits into near equal parts (Rules.letterSections). Its tiles are one unit, row by row, and the sections have
         // the start place's spaces and headings.
-        // ponytail: a tile for every app, made anew whenever the apps or the rows change; a view that makes only the
-        // tiles in sight if hundreds of apps make the Start slow.
+        // ponytail: a tile for every app, made anew only where a section's apps change; a view that makes only the tiles
+        // in sight if hundreds of apps make the Start slow.
         Item {
             id: appsPlace
 
@@ -1852,7 +1876,7 @@ FocusScope {
 
                     // {title, first, count, units} and its apps.
                     required property var part
-                    required property var partApps
+                    property var partApps: []
 
                     function tiles(): var {
                         return letterGrid.children.filter(item => (item as Tile) !== null);

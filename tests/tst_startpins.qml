@@ -399,12 +399,14 @@ TestCase {
         verify(!menu.open, "resized: its sizes are no longer true");
     }
 
+    // With Kalender, Kate stands in a section "k" of its own; without it, "d–k" takes Kate and that section goes.
     function test_the_menu_on_an_alle_apps_tile_closes_cleanly_when_new_apps_refile_its_section() {
+        start.apps = [installed[0], installedApp("org.kde.kalendar", "Kalender"), ...installed.slice(1)];
         openNow();
         goToAllApps();
         rightClick(letterTile("Kate"), 30, 40);
         verify(menu.open);
-        start.apps = [...installed, installedApp("org.kde.okular", "Okular")];
+        start.apps = installed;
         tryVerify(() => !menu.open, 1000, "its tile has gone");
         rightClick(letterTile("Kate"), 30, 40);
         let section = letterTile("Kate").parent;
@@ -412,6 +414,17 @@ TestCase {
             section = section.parent;
         section.contentY += Geometry.contextMenuScrollSlop + 1;
         verify(!menu.open, "the new menu follows its own tile and closes once it moves");
+    }
+
+    function test_the_menu_on_an_alle_apps_tile_stays_open_when_an_app_arrives_in_another_section() {
+        openNow();
+        goToAllApps();
+        const kate = letterTile("Kate");
+        rightClick(kate, 30, 40);
+        verify(menu.open);
+        start.apps = [...installed.slice(0, 3), installedApp("org.kde.okular", "Okular"), installed[3]];
+        verify(letterTile("Kate") === kate, "Kate's section holds the same apps");
+        verify(menu.open);
     }
 
     // Items

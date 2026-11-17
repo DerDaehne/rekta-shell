@@ -780,6 +780,60 @@ TestCase {
         verify(start.letterTiles().every(tile => !tile.activeFocus));
     }
 
+    // The apps as Apps hands them over after a change: the items of the apps from before, and `name`'s new one in its
+    // place A–Z.
+    function withApp(name: string): var {
+        return [...start.apps, installedApp(name)].sort((one, other) => one.name.toLowerCase().localeCompare(other.name.toLowerCase()));
+    }
+
+    function verifyFiled(names: var) {
+        compare(start.letterTiles().map(tile => tile.name), names, "every app once, A–Z");
+        compare(sections().map(section => section.title), start.letterSections.map(part => part.title));
+        compare(sections().map(section => section.tiles().map(tile => tile.name)), start.letterSections.map(part => names.slice(part.first, part.first + part.count)));
+        compare(named("appsStrip").titles, sections().map(section => section.title));
+    }
+
+    // Every section that holds the same apps as one of `before` (each a section's tiles) still has those tiles; all but
+    // `changed` sections do.
+    function verifyTilesKept(before: var, changed: int) {
+        const names = tiles => tiles.map(tile => tile.name).join();
+        const kept = sections().filter(section => before.some(tiles => names(tiles) === names(section.tiles())));
+        compare(kept.length, sections().length - changed);
+        for (const section of kept) {
+            const was = before.find(tiles => names(tiles) === names(section.tiles()));
+            verify(section.tiles().every((tile, k) => tile === was[k]), `${section.title} keeps its tiles`);
+        }
+    }
+
+    function test_an_app_installed_makes_only_the_sections_it_changes_anew_and_the_others_keep_their_tiles() {
+        openOnAllApps(desktopApps, 1920, 1080);
+        const before = sections().map(section => section.tiles());
+        start.apps = withApp("Gnome Boxes");
+        verifyFiled(start.apps.map(app => app.name));
+        compare(sections().map(section => section.title), ["a–b", "c", "d", "e", "f", "g–h", "i", "ka–km", "ko–kw", "l–p", "q", "s", "t–w", "x–z"], "g–i parts in two");
+        verifyTilesKept(before, 2);
+    }
+
+    function test_an_app_that_regroups_the_first_sections_leaves_the_others_their_tiles() {
+        openOnAllApps(desktopApps, 1920, 1080);
+        const before = sections().map(section => section.tiles());
+        start.apps = withApp("0 A.D.");
+        verifyFiled(start.apps.map(app => app.name));
+        compare(sections().map(section => section.title).slice(0, 2), ["#–a", "b–c"], "a–b and c regroup");
+        compare(sections().length, before.length);
+        verifyTilesKept(before, 2);
+    }
+
+    function test_an_app_under_a_new_letter_or_one_removed_files_every_app_anew_in_order() {
+        openOnAllApps(desktopApps, 1920, 1080);
+        start.apps = withApp("Rhythmbox");
+        verifyFiled(start.apps.map(app => app.name));
+        verify(start.letterSections.some(part => part.title.includes("r")));
+        start.apps = start.apps.filter(app => !["Rhythmbox", "Xournal++", "Yakuake", "Zeal", "Zettlr"].includes(app.name));
+        verifyFiled(desktopApps.slice(0, -4));
+        verify(start.letterSections.every(part => !/[x-z]/.test(part.title)), "no section past w");
+    }
+
     // Compact
 
     function test_compact_each_letter_is_one_section_unsplit_stacked_its_tiles_stretched_and_the_wheel_is_not_redirected() {

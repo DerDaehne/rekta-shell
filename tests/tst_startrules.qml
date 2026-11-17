@@ -201,6 +201,15 @@ TestCase {
         verify(!Rules.sameItems(null, []), "no list");
     }
 
+    function test_the_same_tail_counts_the_lists_from_the_end_that_hold_the_same_items() {
+        const [a, b, c, d] = ["a", "b", "c", "d"].map(name => fakeEntry(name, name));
+        compare(Rules.sameTail([[a], [b], [c, d]], [[a, b], [c, d]]), 1);
+        compare(Rules.sameTail([[a], [b], [c]], [[a], [b], [c]]), 3);
+        compare(Rules.sameTail([[b], [c]], [[a], [b], [c]]), 2, "one more at the front");
+        compare(Rules.sameTail([[a], [b], [c]], [[a], [b], [d]]), 0, "the last one changed");
+        compare(Rules.sameTail([], [[a]]), 0);
+    }
+
     function test_an_entry_read_alike_keeps_its_item_and_takes_the_new_one_s_functions() {
         const first = { id: "firefox", name: "Firefox", launch: () => "first", actions: [{ id: "new-window", run: () => "first" }] };
         const again = { id: "firefox", name: "Firefox", launch: () => "again", actions: [{ id: "new-window", run: () => "again" }] };

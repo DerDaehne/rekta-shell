@@ -207,6 +207,14 @@ function sameItems(list, other) {
     return Array.isArray(list) && Array.isArray(other) && list.length === other.length && list.every((item, k) => item === other[k]);
 }
 
+// How many of the last lists of `lists` hold the same items as the last ones of `others`, from the end.
+function sameTail(lists, others) {
+    let count = 0;
+    while (count < lists.length && count < others.length && sameItems(lists[lists.length - 1 - count], others[others.length - 1 - count]))
+        count++;
+    return count;
+}
+
 // The program an entry runs, by its name: "konsole" for "/usr/bin/konsole --new-tab".
 function programName(command) {
     return String(command[0] ?? "").split("/").pop();
