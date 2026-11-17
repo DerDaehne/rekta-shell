@@ -103,6 +103,10 @@ await $early settled true "a third writer reads the file"
 cmp -s "$work/own" "$file" || fail "a change before the file's first load leaves the file as it was"
 echo "PASS: a change before the file's first load is refused and leaves the file as it was"
 
+# The shell reads the file on its own schedule: wait until it shows the file before the followers are compared with it.
+own_list='[{"id":"helium","columns":2},{"id":"firefox"}]'
+await $shell list "$own_list" "the shell reads the file the followers start from"
+
 # Two quick changes replace the file twice in a row; the second may land while a reader still reads the first or
 # arms its watch anew. Many readers in one instance meet it at many such moments, round after round.
 REKTA_FOLLOWERS=30 quickshell --path "$here/startfile" > "$work/followers.log" 2>&1 &
