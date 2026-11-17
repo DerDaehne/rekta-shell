@@ -190,6 +190,30 @@ TestCase {
         verify(!Rules.shown(file, ["KDE", "GNOME"]));
     }
 
+    function test_lists_are_the_same_only_with_the_very_same_items_in_the_same_order() {
+        const kate = fakeEntry("org.kde.kate", "Kate");
+        const ark = fakeEntry("org.kde.ark", "Ark");
+        verify(Rules.sameItems([kate, ark], [kate, ark]));
+        verify(Rules.sameItems([], []));
+        verify(!Rules.sameItems([ark, kate], [kate, ark]), "another order");
+        verify(!Rules.sameItems([kate, ark], [kate, fakeEntry("org.kde.ark", "Ark")]), "an item alike, not the same");
+        verify(!Rules.sameItems([kate], [kate, ark]), "fewer items");
+        verify(!Rules.sameItems(null, []), "no list");
+    }
+
+    function test_an_entry_read_alike_keeps_its_item_and_takes_the_new_one_s_functions() {
+        const first = { id: "firefox", name: "Firefox", launch: () => "first", actions: [{ id: "new-window", run: () => "first" }] };
+        const again = { id: "firefox", name: "Firefox", launch: () => "again", actions: [{ id: "new-window", run: () => "again" }] };
+        const last = Rules.reread(undefined, first);
+        verify(last.item === first);
+        const kept = Rules.reread(last, again);
+        verify(kept === last && kept.item === first, "the same record and item");
+        compare(kept.item.launch(), "again");
+        compare(kept.item.actions[0].run(), "again");
+        const renamed = { id: "firefox", name: "Firefox Nightly", launch: () => "renamed", actions: [] };
+        verify(Rules.reread(kept, renamed).item === renamed, "new data, the new item");
+    }
+
     function test_apps_are_listed_a_to_z_whatever_the_case() {
         const entries = [fakeEntry("b", "Blender"), fakeEntry("k", "konsole"), fakeEntry("a", "ark"), fakeEntry("d", "Dolphin")];
         compare(Rules.listedApps(entries, {}, "KDE").map(app => app.name), ["ark", "Blender", "Dolphin", "konsole"]);

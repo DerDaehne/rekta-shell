@@ -178,6 +178,35 @@ function listedApps(entries, files, currentDesktop) {
     return entries.filter(entry => shown(files[entry.id] ?? {}, desktops)).sort(byName);
 }
 
+// What a read makes of a desktop entry, {item, json}: `item` as described, or the item of `last` (the last read's, or
+// undefined) when that holds the same data, with the new item's functions. Quickshell may hold a new object for the same
+// entry, as it makes one on every scan for an ID that two directories hold, and the new functions call that one.
+function reread(last, item) {
+    const json = JSON.stringify(item);
+    if (last === undefined || last.json !== json)
+        return {
+            item: item,
+            json: json
+        };
+    takeFunctions(last.item, item);
+    return last;
+}
+
+// Puts the functions of `from` in place of those of `into`, which holds the same data.
+function takeFunctions(into, from) {
+    for (const key of Object.keys(from)) {
+        if (typeof from[key] === "function")
+            into[key] = from[key];
+        else if (from[key] !== null && typeof from[key] === "object")
+            takeFunctions(into[key], from[key]);
+    }
+}
+
+// Whether two lists hold the same items in the same order; null is no list.
+function sameItems(list, other) {
+    return Array.isArray(list) && Array.isArray(other) && list.length === other.length && list.every((item, k) => item === other[k]);
+}
+
 // The program an entry runs, by its name: "konsole" for "/usr/bin/konsole --new-tab".
 function programName(command) {
     return String(command[0] ?? "").split("/").pop();
