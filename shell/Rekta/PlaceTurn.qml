@@ -162,8 +162,6 @@ QtObject {
     property Component pressBlocker: Component {
         Item {
             anchors.fill: parent
-            // Above the place's own raised children (a panorama's content lies at z 1).
-            z: 1e6
 
             TapHandler {
                 acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
