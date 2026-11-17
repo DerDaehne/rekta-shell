@@ -119,13 +119,14 @@ Item {
 
     // A toast has begun to leave, `reason` as its onEnd hears it.
     function letGo(toast: Toast, reason: string) {
+        const wasReached = reached === toast;
+        if (wasReached)
+            reached = null;
         if (open === toast)
             open = null;
         leaving++;
-        if (reached !== toast)
-            return;
-        reached = null;
-        keysGoBack(reason);
+        if (wasReached)
+            keysGoBack(reason);
     }
 
     // A toast that began to leave over `way` ms has ended, and its end may have shown the next toast. A notification's

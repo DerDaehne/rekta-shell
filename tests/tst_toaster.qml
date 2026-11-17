@@ -887,6 +887,19 @@ TestCase {
         }
     }
 
+    function test_a_reached_toast_no_longer_holds_the_keys_when_its_surface_maps_again_as_it_goes() {
+        const reachedAsLeavingRose = [];
+        const record = () => toaster.leaving > 0 && reachedAsLeavingRose.push(toaster.reached);
+        standing({});
+        toaster.reach();
+        toaster.leavingChanged.connect(record);
+        keyClick(Qt.Key_Escape);
+        toaster.leavingChanged.disconnect(record);
+        compare(reachedAsLeavingRose, [null]);
+        toaster.dismiss();
+        toaster.leaving = 0;
+    }
+
     function test_only_the_toast_the_key_reached_hands_the_keys_back_as_it_goes() {
         const back = createTemporaryObject(spyComponent, testCase, { target: toaster, signalName: "keysGoBack" });
         standing({});
