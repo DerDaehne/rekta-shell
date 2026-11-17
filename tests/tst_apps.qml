@@ -181,6 +181,50 @@ TestCase {
         compare(settingsSpy.count, 1);
     }
 
+    function test_an_entry_whose_one_field_changed_gets_a_new_item_with_it_data() {
+        return [
+            {
+                tag: "a desktop action more",
+                id: "firefox",
+                change: () => firefox.actions = [...firefox.actions, action("profile-manager", "Profile Manager")],
+                shown: item => item.actions.map(desktopAction => desktopAction.text),
+                expected: ["New Window", "New Private Window", "Profile Manager"]
+            },
+            {
+                tag: "keywords",
+                id: "org.kde.kate",
+                change: () => kate.keywords = ["kate", "tool", "editor"],
+                shown: item => item.keywords,
+                expected: ["kate", "tool", "editor"]
+            },
+            {
+                tag: "generic name",
+                id: "org.kde.kate",
+                change: () => kate.genericName = "Text Editor",
+                shown: item => item.genericName,
+                expected: "Text Editor"
+            },
+            {
+                tag: "program",
+                id: "org.kde.kate",
+                change: () => kate.command = ["/usr/bin/kwrite", "%U"],
+                shown: item => item.exec,
+                expected: "kwrite"
+            }
+        ];
+    }
+
+    function test_an_entry_whose_one_field_changed_gets_a_new_item_with_it(data) {
+        apps.read(files());
+        const before = apps.list.find(app => app.id === data.id);
+        data.change();
+        apps.read(files());
+        compare(listSpy.count, 2);
+        const item = apps.list.find(app => app.id === data.id);
+        verify(item !== before, "a new item");
+        compare(data.shown(item), data.expected);
+    }
+
     function test_an_app_installed_then_removed_changes_the_list_each_time_and_the_others_keep_their_items() {
         apps.read(files());
         const before = apps.list;
