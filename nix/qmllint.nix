@@ -20,6 +20,9 @@ writeShellApplication {
     kdePackages.qtdeclarative
   ];
   text = ''
+    for arg in "$@"; do
+      case "$arg" in -h | --help | --help-all | -v | --version) exec qmllint "$arg" ;; esac
+    done
     # qmllint misreads a module's own qmldir (its singletons) when given relative paths, so every path goes absolute.
     args=()
     for arg in "$@"; do
@@ -40,7 +43,9 @@ writeShellApplication {
       -I ${kdePackages.kscreenlocker}/lib/qt-6/qml \
       -I ${kdePackages.kirigami.unwrapped}/lib/qt-6/qml \
       "''${args[@]}" >/dev/null || status=$?
-    jq -r '.files[] | .filename as $file | .warnings[]? | "\($file):\(.line):\(.column): \(.type): \(.message) [\(.id)]"' "$report" >&2
+    jq -r '.files[] | (.filename // .module) as $file | .warnings[]? |
+      "\($file)\(if .line then ":\(.line):\(.column):" else ":" end) \(.type): \(.message) [\(.id)]",
+      (.suggestions[]? | "    \(.message)")' "$report" >&2
     exit "$status"
   '';
 }

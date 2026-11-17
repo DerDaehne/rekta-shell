@@ -292,6 +292,39 @@ in
     touch $out
   '';
 
+  # qmllint's JSON report carries the "Did you mean" lines and messages without a line; rekta-qmllint must print both.
+  qmllint-report = pkgs.runCommand "rekta-shell-qmllint-report" { LANG = "C.UTF-8"; } ''
+    lint=${pkgs.lib.getExe rekta-qmllint}
+    # Runs the wrapper with stderr in $1.log and fails unless it exits with $2.
+    expect_status() {
+      local log=$1 want=$2 got=0
+      shift 2
+      "$lint" "$@" > "$log.out" 2> "$log.log" || got=$?
+      [ "$got" = "$want" ] || { cat "$log.log"; echo "$*: exit $got, expected $want" >&2; exit 1; }
+    }
+    cat > typo.qml <<'QML'
+    import QtQuick
+    Item {
+        property int fooBar: 1
+        Component.onCompleted: console.log(fooBarr)
+    }
+    QML
+    cat > clean.qml <<'QML'
+    import QtQuick
+    Item {}
+    QML
+    expect_status typo 255 typo.qml
+    grep -qF 'Did you mean "fooBar"?' typo.log || { cat typo.log; echo "suggestion missing" >&2; exit 1; }
+    expect_status missing 255 missing.qml
+    grep -q '^missing.qml: warning: Failed to open' missing.log || { cat missing.log; echo "location-less message wrong" >&2; exit 1; }
+    expect_status clean 0 clean.qml
+    expect_status help 0 --help
+    grep -q '^Usage: qmllint' help.out
+    expect_status version 0 --version
+    grep -q 'qmllint' version.out
+    touch $out
+  '';
+
   tokens-drift =
     pkgs.runCommand "rekta-shell-tokens-drift" { nativeBuildInputs = [ pkgs.nodejs ]; }
       ''
