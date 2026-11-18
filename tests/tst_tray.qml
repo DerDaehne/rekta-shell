@@ -822,8 +822,12 @@ TestCase {
     Component {
         id: remapComponent
 
+        // A surface at 20,20 in a popup window of 300 × 300.
         PopupRemap {
+            room: Qt.size(300, 300)
             surface: Item {
+                x: 20
+                y: 20
                 width: 100
                 height: 100
             }
@@ -838,44 +842,56 @@ TestCase {
         }
     }
 
-    function test_a_popup_that_changes_size_while_mapped_is_unmapped_for_a_turn_and_mapped_again() {
+    // Waits for the remap's own look at the surface, which comes a turn later.
+    function afterTheNextTurn() {
+        let turned = false;
+        Qt.callLater(() => Qt.callLater(() => turned = true));
+        tryVerify(() => turned);
+    }
+
+    function test_a_popup_whose_surface_changes_size_and_place_within_its_window_stays_mapped() {
+        const remap = createTemporaryObject(remapComponent, testCase, { wanted: true });
+        const spy = createTemporaryObject(mapSpyComponent, testCase, { target: remap });
+        remap.surface.height = 280;
+        remap.surface.width = 40;
+        remap.surface.x = 260;
+        afterTheNextTurn();
+        compare(spy.count, 0);
+        verify(remap.mapped);
+    }
+
+    function test_a_popup_whose_surface_leaves_its_window_is_unmapped_for_a_turn_and_mapped_again() {
         const remap = createTemporaryObject(remapComponent, testCase, { wanted: true });
         const spy = createTemporaryObject(mapSpyComponent, testCase, { target: remap });
         verify(remap.mapped);
-        remap.surface.height = 160;
+        remap.surface.height = 281;
         tryCompare(spy, "count", 2, 5000, "unmapped, then mapped again");
         verify(remap.mapped);
         verify(!remap.remapping);
     }
 
-    function test_a_popup_that_changes_width_is_remapped_too() {
+    function test_a_surface_that_leaves_its_window_by_its_place_counts_too() {
         const remap = createTemporaryObject(remapComponent, testCase, { wanted: true });
         const spy = createTemporaryObject(mapSpyComponent, testCase, { target: remap });
-        remap.surface.width = 180;
-        tryCompare(spy, "count", 2);
+        remap.surface.x = -1;
+        tryCompare(spy, "count", 1);
     }
 
-    function test_a_popup_whose_surface_is_back_at_its_mapped_size_by_the_next_turn_stays_mapped() {
+    function test_a_surface_that_leaves_its_window_and_is_back_within_it_by_the_next_turn_keeps_the_popup_mapped() {
         const remap = createTemporaryObject(remapComponent, testCase, { wanted: true });
         const spy = createTemporaryObject(mapSpyComponent, testCase, { target: remap });
-        remap.surface.height = 160;
-        tryCompare(spy, "count", 2, 5000, "mapped anew at the new size");
-        spy.clear();
-        let turned = false;
-        remap.surface.width = 80;
+        remap.surface.width = 400;
         remap.surface.width = 100;
-        // Queued after the remap's own look at the size.
-        Qt.callLater(() => turned = true);
-        tryVerify(() => turned);
+        afterTheNextTurn();
         compare(spy.count, 0);
         verify(remap.mapped);
     }
 
-    function test_a_popup_that_is_not_wanted_stays_unmapped_when_its_surface_changes() {
+    function test_a_popup_that_is_not_wanted_stays_unmapped_when_its_surface_leaves_its_window() {
         const remap = createTemporaryObject(remapComponent, testCase, { wanted: false });
         const spy = createTemporaryObject(mapSpyComponent, testCase, { target: remap });
-        remap.surface.height = 160;
-        wait(100);
+        remap.surface.height = 400;
+        afterTheNextTurn();
         compare(spy.count, 0);
         verify(!remap.mapped);
     }

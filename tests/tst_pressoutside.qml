@@ -115,6 +115,29 @@ TestCase {
         compare(spy.count, 4);
     }
 
+    // A popup larger than what it shows, clear around it: a press on the clear part counts as one outside.
+    function test_with_bounds_a_press_in_the_window_but_outside_them_counts_as_outside_and_one_inside_them_does_not() {
+        const { popup, spy } = openPopup();
+        popup.content.anchors.fill = undefined;
+        popup.content.x = 10;
+        popup.content.y = 10;
+        popup.content.width = 20;
+        popup.content.height = 20;
+        popup.outside.bounds = popup.content;
+        const tap = (x, y) => touchEvent(bar).press(0, bar, x, y).commit().release(0, bar, x, y).commit();
+        tap(10, 10);
+        tap(29, 29);
+        compare(spy.count, 0);
+        tap(9, 20);
+        compare(spy.count, 1);
+        compare(spy.signalArguments[0][0], Qt.point(9, 20), "where it landed in the window, not in the bounds");
+        tap(20, 30);
+        compare(spy.count, 2);
+        mousePress(popup.content, 25, 5);
+        compare(spy.count, 3);
+        mouseRelease(popup.content, 25, 5);
+    }
+
     function test_a_press_inside_the_popup_is_no_press_outside() {
         const { popup, spy } = openPopup();
         touchEvent(popup.content).press(0, popup.content, 20, 20).commit().release(0, popup.content, 20, 20).commit();

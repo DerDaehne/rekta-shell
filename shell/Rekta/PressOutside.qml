@@ -1,12 +1,15 @@
 import QtQuick
 
-// Laid into a popup's window, it reports a press outside that window. Qt hands each touch on another window of the
-// program to the open popup first, and a Qt Quick window keeps every touch it is given, so while a popup is open a
-// finger never reaches the window it lands on; a pointer handler in the popup never sees a point outside its own
-// window either. It takes no press itself: a mouse press outside still reaches the window under it.
+// Laid into a popup's window, it reports a press outside `bounds`: the window, or the part of it that shows anything.
+// Qt hands each touch on another window of the program to the open popup first, and a Qt Quick window keeps every
+// touch it is given, so while a popup is open a finger never reaches the window it lands on; a pointer handler in the
+// popup never sees a point outside its own window either. It takes no press itself: a mouse press outside still reaches
+// the window under it.
 MouseArea {
     id: area
 
+    // What counts as inside; a point in the window but outside it counts as outside.
+    property Item bounds: null
     // Qt hands an item only points within its bounds, so it reaches past the window as far as the desktop spans.
     readonly property real reach: Screen.desktopAvailableWidth + Screen.desktopAvailableHeight
 
@@ -21,7 +24,9 @@ MouseArea {
     onPressed: mouse => {
         mouse.accepted = false;
         const inWindow = mapToItem(null, mouse.x, mouse.y);
-        if (inWindow.x < 0 || inWindow.y < 0 || inWindow.x >= Window.width || inWindow.y >= Window.height)
+        const inBounds = bounds ? mapToItem(bounds, mouse.x, mouse.y) : inWindow;
+        const size = bounds ? Qt.size(bounds.width, bounds.height) : Qt.size(Window.width, Window.height);
+        if (inBounds.x < 0 || inBounds.y < 0 || inBounds.x >= size.width || inBounds.y >= size.height)
             pressedOutside(Qt.point(inWindow.x, inWindow.y));
     }
 }

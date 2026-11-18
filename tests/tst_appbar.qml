@@ -758,6 +758,42 @@ TestCase {
         verify(!menu.open, "more closes it again");
     }
 
+    // The first size up to `largest` whose place beside `control` leaves `span`, as words; "" when none does.
+    function leavingSpan(control: Item, largest: size, align: string, span: rect): string {
+        for (let width = Geometry.floatMinWidth; width <= largest.width; width += 16) {
+            for (let height = 1; height <= largest.height; height += 32) {
+                const place = bar.floatPlace(control, Qt.size(width, height), align);
+                if (place.x < span.x || place.y < span.y || place.x + width > span.x + span.width || place.y + height > span.y + span.height)
+                    return `${width}×${height} at ${place.x},${place.y}`;
+            }
+        }
+        return "";
+    }
+
+    Component {
+        id: standInComponent
+
+        // A control anywhere along the bar.
+        Item {
+            width: 100
+            height: 48
+        }
+    }
+
+    function test_every_place_a_surface_up_to_the_largest_can_take_lies_within_its_float_span() {
+        makeScene({ withCentreOpener: true });
+        const largest = Qt.size(Geometry.floatMaxSize, Geometry.floatMaxSize);
+        const standIns = [];
+        for (let x = 0; x <= bar.width - 100; x += 50)
+            standIns.push(createTemporaryObject(standInComponent, testCase, { objectName: `stand-in at ${x}`, x }));
+        const cases = controls().concat(standIns).map(control => [control, "start"]).concat([[named("centre opener"), "centre"]], standIns.map(control => [control, "centre"]));
+        for (const [control, align] of cases) {
+            const span = bar.floatSpan(control, largest, align);
+            compare(leavingSpan(control, largest, align, span), "", `${control.objectName} ${align}: within ${span}`);
+            verify(span.width < 2 * largest.width, `${control.objectName}: narrower than two of the largest surface`);
+        }
+    }
+
     // The compositor dismisses the menu's popup on a press outside it, before that press reaches the bar or while it is held.
     function test_a_press_on_more_while_its_menu_is_open_closes_it_also_when_the_press_has_dismissed_the_popup() {
         makeScene({ barWidth: 760 });

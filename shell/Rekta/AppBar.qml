@@ -64,6 +64,24 @@ Rectangle {
         return { x: place.x, y: place.y - top, side: place.side };
     }
 
+    // The rect, in the bar's coordinates, that holds every place floatPlace gives a surface of `control` up to
+    // `largest`. Placement.float is monotonic in each size, so the extremes and the widest surface that still opens from
+    // the control's leading edge are enough.
+    function floatSpan(control: Item, largest: size, align = "start"): rect {
+        const fitting = Math.min(largest.width, area.width - Tokens.spaceM - control.x);
+        let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+        for (const width of [Math.min(Geometry.floatMinWidth, largest.width), Math.max(1, fitting), largest.width]) {
+            for (const height of [1, largest.height]) {
+                const place = floatPlace(control, Qt.size(width, height), align);
+                left = Math.min(left, place.x);
+                top = Math.min(top, place.y);
+                right = Math.max(right, place.x + width);
+                bottom = Math.max(bottom, place.y + height);
+            }
+        }
+        return Qt.rect(left, top, right - left, bottom - top);
+    }
+
     // Where the tooltip of one of the bar's controls goes, in the bar's coordinates (Placement.tip in `area`).
     function tipPlace(control: Item, size: size): var {
         return tipPlaceAt(control.mapToItem(bar, 0, 0), control, size);

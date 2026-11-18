@@ -208,6 +208,7 @@ PanelWindow {
         objectName: "more"
 
         barWindow: panel
+        appBar: bar
         surface: bar.menu
         opener: bar.more
         place: bar.menuPlace
@@ -219,6 +220,7 @@ PanelWindow {
         objectName: "background"
 
         barWindow: panel
+        appBar: bar
         surface: background.menu
         opener: background.overflowed ? bar.more : background
         place: bar.floatPlace(background.overflowed ? bar.more : background, Qt.size(background.menu.width, background.menu.height))
@@ -230,8 +232,10 @@ PanelWindow {
         objectName: "calendar"
 
         barWindow: panel
+        appBar: bar
         surface: clock.calendar
         opener: clock
+        align: "centre"
         place: bar.floatPlace(clock, Qt.size(clock.calendar.width, clock.calendar.height), "centre")
     }
 
@@ -243,9 +247,9 @@ PanelWindow {
         // the Quickshell window object), and where each popup stands in the bar's coordinates.
         readonly property var windows: [
             { window: panel.contentItem.Window.window, place: null },
-            { window: menuPopup.contentItem.Window.window, place: menuPopup.place },
-            { window: backgroundPopup.contentItem.Window.window, place: backgroundPopup.place },
-            { window: calendarPopup.contentItem.Window.window, place: calendarPopup.place }
+            { window: menuPopup.contentItem.Window.window, place: menuPopup.origin },
+            { window: backgroundPopup.contentItem.Window.window, place: backgroundPopup.origin },
+            { window: calendarPopup.contentItem.Window.window, place: calendarPopup.origin }
         ]
         readonly property var source: Tips.target ? bar.tipWindow(Tips.target, windows) : null
         readonly property var place: {
@@ -274,22 +278,36 @@ PanelWindow {
     }
 
     // A floating surface of the bar rises past the bar's own window, so it lives in a popup of its own, placed where the
-    // bar places it. The compositor closes it on a click in another program, the bar on a press in its own window.
+    // bar places it. The compositor closes it on a click in another program, the bar on a press in its own window. The
+    // popup spans every place the surface can take beside its control and keeps that while mapped (PopupRemap says
+    // why); the surface moves and changes size within it, and the rest of the popup is clear and lets every press
+    // through.
     component FloatPopup: PopupWindow {
         id: host
 
         required property QtObject barWindow
+        required property AppBar appBar
         required property FloatSurface surface
         // The bar's control that opens it: a press on it is told from one elsewhere on the bar.
         required property Item opener
         // From AppBar.floatPlace: where it goes in the bar's window, and on which side of its control.
         required property var place
+        // How the surface lines up with its control, as for AppBar.floatPlace.
+        property string align: "start"
+        // Every place the surface can take, at its largest or its size now if that is larger, in the bar's window.
+        readonly property rect reach: appBar.floatSpan(opener, Qt.size(Math.max(surface.width, Geometry.floatMinWidth, surface.maxWidth), Math.max(surface.height, surface.maxHeight)), align)
+        // Where the popup stands in the bar's window, held while it is mapped.
+        property rect span
+        readonly property point origin: Qt.point(span.x, span.y)
 
         // The linter cannot see PopupAnchor's members: Quickshell and its window module depend on each other.
         anchor.window: barWindow // qmllint disable missing-property
-        anchor.rect: Qt.rect(place.x, place.y, 1, 1) // qmllint disable missing-property
-        implicitWidth: surface.width
-        implicitHeight: surface.height
+        anchor.rect: Qt.rect(span.x, span.y, 1, 1) // qmllint disable missing-property
+        implicitWidth: span.width
+        implicitHeight: span.height
+        mask: Region {
+            item: host.surface
+        }
         visible: remap.mapped
         grabFocus: true
         color: "transparent"
@@ -300,7 +318,13 @@ PanelWindow {
         }
 
         function pressReason(at: point): string {
-            return surface.pressReason(at, Qt.point(place.x, place.y), windowRect(opener.Window.window.contentItem), windowRect(opener));
+            return surface.pressReason(at, origin, windowRect(opener.Window.window.contentItem), windowRect(opener));
+        }
+
+        Binding on span {
+            when: !remap.mapped
+            value: host.reach
+            restoreMode: Binding.RestoreNone
         }
 
         onVisibleChanged: {
@@ -312,19 +336,21 @@ PanelWindow {
             id: remap
 
             surface: host.surface
+            room: Qt.size(host.span.width, host.span.height)
             wanted: host.surface.open
         }
 
         // A finger anywhere else in the shell reaches only this popup, which closes for it.
         PressOutside {
+            bounds: host.surface
             onPressedOutside: at => host.surface.dismiss(host.pressReason(at))
         }
 
         Component.onCompleted: {
             surface.traced = objectName;
             surface.parent = contentItem;
-            surface.x = 0;
-            surface.y = 0;
+            surface.x = Qt.binding(() => host.place.x - host.span.x);
+            surface.y = Qt.binding(() => host.place.y - host.span.y);
             surface.side = Qt.binding(() => host.place.side);
         }
     }

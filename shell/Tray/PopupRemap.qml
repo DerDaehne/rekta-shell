@@ -1,48 +1,30 @@
 import QtQuick
 
-// Decides when a popup is mapped. A mapped popup that changes size keeps showing its old frame, scaled, until the next
-// key press, so a level of the tray menu with another size would stay unseen. Unmapped for one turn of the event loop and
-// mapped again it paints at the new size. Only a size it was not mapped at counts: each time it is mapped its rows turn
-// visible one after another, so a menu is as wide as the rows visible so far for a moment, and remapping for that would
-// never end.
+// Decides when a popup is mapped. A mapped popup must keep its size and place: for a change Qt asks the compositor to
+// reposition it and commits nothing until that request is answered, but Quickshell asks as well, KWin answers only the
+// last request, and the popup keeps its last frame, scaled. So its window spans every place its surface can take
+// beside its control (AppBar.floatSpan), and the surface moves and changes size within it. Only a surface that no
+// longer lies within the window unmaps the popup for one turn of the event loop, and it maps anew at the room it needs.
 QtObject {
     id: remap
 
-    // What the popup shows; its size is watched.
+    // What the popup shows, placed in its window.
     required property Item surface
+    // The size of the popup's window.
+    property size room
     // Whether the popup should be on screen.
     property bool wanted: false
     property bool remapping: false
     readonly property bool mapped: wanted && !remapping
-    // The surface's size when the popup was last mapped.
-    property size mappedSize
+    readonly property bool fits: surface.x >= 0 && surface.y >= 0 && surface.x + surface.width <= room.width && surface.y + surface.height <= room.height
 
-    onMappedChanged: {
-        if (mapped)
-            mappedSize = Qt.size(surface.width, surface.height);
-    }
-
-    // Later: a size can change while `mapped` is being evaluated, and setting `remapping` then loops.
-    function again() {
-        Qt.callLater(unmap);
-    }
+    // Later: the room can change while `mapped` is being evaluated, and setting `remapping` then loops.
+    onFitsChanged: Qt.callLater(unmap)
 
     function unmap() {
-        if (!wanted || remapping || (surface.width === mappedSize.width && surface.height === mappedSize.height))
+        if (!wanted || remapping || fits)
             return;
         remapping = true;
         Qt.callLater(() => remapping = false);
-    }
-
-    readonly property Connections resizes: Connections {
-        target: remap.surface
-
-        function onWidthChanged() {
-            remap.again();
-        }
-
-        function onHeightChanged() {
-            remap.again();
-        }
     }
 }
