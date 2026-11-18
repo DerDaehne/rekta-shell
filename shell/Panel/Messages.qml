@@ -212,11 +212,10 @@ Column {
             width: parent.width
             height: Tokens.controlHeight
 
-            Body {
+            Kicker {
                 objectName: "count"
                 anchors.verticalCenter: parent.verticalCenter
                 text: messages.board.rows.length === 1 ? "1 meldung" : `${messages.board.rows.length} meldungen`
-                color: Tokens.color.textContrastHigh
             }
         }
 

@@ -626,6 +626,10 @@ TestCase {
         const head = named("head");
         verify(head.visible);
         compare(head.height, Tokens.controlHeight);
+        const count = named("count");
+        compare(count.font.pixelSize, Tokens.fontSizeXs, "in the kicker's size");
+        compare(count.font.weight, Tokens.fontWeightSemibold);
+        compare(count.color, Tokens.color.textContrastHigh);
         compare(rows()[0].mapToItem(head, 0, 0).y, head.height + Tokens.spaceM, "the rows space-m below it");
         compare(findChild(head, "clear"), null, "nothing to press in it");
     }
