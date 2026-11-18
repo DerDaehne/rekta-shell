@@ -115,7 +115,7 @@ FocusScope {
     }
 
     function echoOn(): bool {
-        return settings.value("background") !== "solid";
+        return settings.value("background") === "rekta";
     }
 
     // Escape goes back only when nothing nearer wants it, not from a text field (navigation.md, "Places, history and

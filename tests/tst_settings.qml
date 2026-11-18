@@ -13,7 +13,7 @@ TestCase {
         id: layersComponent
 
         Layers {
-            readonly property bool solid: value("background") === "solid"
+            readonly property bool solid: value("background") !== "rekta"
         }
     }
 
@@ -39,29 +39,30 @@ TestCase {
     }
 
     function test_a_nix_default_replaces_the_shells_own_value() {
-        layers.defaultsText = '{"background":"solid"}';
-        compare(layers.value("background"), "solid");
-        compare(layers.preset("background"), "solid");
+        layers.defaultsText = '{"background":"rekta"}';
+        compare(layers.value("background"), "rekta");
+        compare(layers.preset("background"), "rekta");
         verify(!layers.differs("background"));
     }
 
     function test_the_users_value_wins_over_the_nix_default_and_differs_from_it() {
-        layers.defaultsText = '{"background":"solid"}';
-        layers.userText = '{"version":1,"background":"rekta"}';
-        compare(layers.value("background"), "rekta");
-        compare(layers.preset("background"), "solid");
+        layers.defaultsText = '{"background":"rekta"}';
+        layers.userText = '{"version":1,"background":"solid"}';
+        compare(layers.value("background"), "solid");
+        compare(layers.preset("background"), "rekta");
         verify(layers.differs("background"));
     }
 
     function test_a_user_value_equal_to_the_default_does_not_differ() {
-        layers.userText = '{"version":1,"background":"solid"}';
+        layers.defaultsText = '{"background":"rekta"}';
+        layers.userText = '{"version":1,"background":"rekta"}';
         verify(!layers.differs("background"));
     }
 
     function test_a_value_of_another_type_than_the_settings_own_is_not_taken() {
-        layers.defaultsText = '{"background":"solid"}';
+        layers.defaultsText = '{"background":"rekta"}';
         layers.userText = '{"version":1,"background":3}';
-        compare(layers.value("background"), "solid");
+        compare(layers.value("background"), "rekta");
         layers.defaultsText = '{"background":true}';
         compare(layers.value("background"), "solid");
     }
@@ -91,13 +92,13 @@ TestCase {
 
     function test_a_broken_user_file_leaves_the_defaults_and_is_never_written_over() {
         layers.writable = true;
-        layers.defaultsText = '{"background":"solid"}';
+        layers.defaultsText = '{"background":"rekta"}';
         for (const broken of ['{"background":"rekta"', '["rekta"]', '"rekta"', '{"version":"1","background":"rekta"}']) {
             ignoreWarning(/settings.json holds no JSON object/);
             layers.userText = broken;
             compare(layers.fault, "broken", broken);
-            compare(layers.value("background"), "solid", broken);
-            verify(!layers.set("background", "rekta"), broken);
+            compare(layers.value("background"), "rekta", broken);
+            verify(!layers.set("background", "solid"), broken);
             layers.userText = "";
         }
         compare(writes.count, 0);

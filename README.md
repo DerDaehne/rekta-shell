@@ -303,7 +303,7 @@ Both modules offer the same options, all under `programs.rekta-shell`:
 
 The module's options are the shell's defaults. Each user can set their own in
 `~/.config/rekta-shell/settings.json`, which wins over them and takes effect
-while the shell runs, for example `{ "version": 1, "background": "solid" }`.
+while the shell runs, for example `{ "version": 1, "background": "rekta" }`.
 The settings app ("rekta einstellungen") writes that file; nothing in the Nix
 configuration does.
 

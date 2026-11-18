@@ -31,7 +31,7 @@ PanelWindow {
 
     Backdrop {
         anchors.fill: parent
-        solid: panel.settings.value("background") === "solid"
+        solid: panel.settings.value("background") !== "rekta"
     }
 
     Connections {

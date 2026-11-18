@@ -72,7 +72,7 @@ TestCase {
             Backdrop {
                 id: ground
 
-                solid: shellSettings.value("background") === "solid"
+                solid: shellSettings.value("background") !== "rekta"
             }
 
             SettingsView {
@@ -475,11 +475,11 @@ TestCase {
             verify(!control(name).disabled, name);
     }
 
-    function test_the_tile_echo_shows_on_for_any_background_but_solid_as_the_shell_does() {
+    function test_the_tile_echo_shows_on_only_for_the_explicit_rekta_background_as_the_shell_does() {
         host.app.userText = '{"version":1,"background":"something else"}';
-        verify(control("echo").checked);
-        host.app.userText = '{"version":1,"background":"solid"}';
         verify(!control("echo").checked);
+        host.app.userText = '{"version":1,"background":"rekta"}';
+        verify(control("echo").checked);
     }
 
     function test_a_missing_file_keeps_the_defaults() {
