@@ -244,6 +244,37 @@ TestCase {
         compare(answer.values, args);
     }
 
+    function test_a_decoded_list_of_words_or_an_empty_list_goes_out_again_in_a_variant_as_it_came() {
+        const bus = connection();
+        const first = echo([["a", "b"], [], [], {
+                    words: ["c"],
+                    none: []
+                }], "asavasa{sv}", bus);
+        compare(first.error, null);
+        const [words, none, noWords, map] = first.values;
+        for (const value of [words, none, noWords, map.words, map.none]) {
+            const again = echo([{
+                        value
+                    }], "a{sv}", bus);
+            compare(again.error, null, JSON.stringify(value));
+            compare(again.values, [{
+                        value: Array.from(value)
+                    }]);
+        }
+        compare(counterpart.variantTypes, {
+            value: "QDBusArgument"
+        });
+        const wordsAgain = echo([{
+                    value: words
+                }], "a{sv}", bus);
+        compare(counterpart.variantTypes, {
+            value: "QStringList"
+        });
+        compare(wordsAgain.values, [{
+                    value: ["a", "b"]
+                }]);
+    }
+
     function test_a_missing_service_an_error_reply_and_a_wrong_signature_come_back_as_the_error() {
         const bus = connection();
         const missing = callThrough(bus, "org.rekta.Missing", "/", "org.rekta.Missing", "Anything", [], "");

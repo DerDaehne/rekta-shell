@@ -47,6 +47,10 @@ public:
     Q_INVOKABLE bool takeName(const QString &name);
     // Gives name up and drops what answerAt() or ignoreAt() put up.
     Q_INVOKABLE void releaseName(const QString &name);
+    // Gives name up and nothing else: what a provider put up stays and may still answer.
+    Q_INVOKABLE void leaveName(const QString &name);
+    // Takes org.rekta.Counterpart (what /echo answers at) from another counterpart in the process.
+    Q_INVOKABLE void claimEchoName();
     // Every call to path is recorded and answered with these values, typed as QtDBus types them.
     Q_INVOKABLE void answerAt(const QString &path, const QVariantList &values);
     // Every call to path is recorded and stays without an answer.
@@ -56,6 +60,9 @@ public:
     // replaces the actions. Every call is recorded.
     Q_INVOKABLE void provide(const QString &path, const QVariantList &actions);
     Q_INVOKABLE void failInvokes(bool fail);
+    // Holds the ListActions calls unanswered while true; answerHeldListings() answers them, with the actions then.
+    Q_INVOKABLE void holdListings(bool hold);
+    Q_INVOKABLE void answerHeldListings();
     // How many calls with that member arrived, at any path.
     Q_INVOKABLE int callsTo(const QString &member) const;
     Q_INVOKABLE void forgetCalls();
@@ -101,7 +108,6 @@ private:
     QVariantMap m_replyVariantTypes;
     QHash<QString, int> m_callCounts;
     Provider *m_provider = nullptr;
-    bool m_providing = false;
 };
 
 // A stand-in for powerdevil's org.kde.ScreenBrightness, written against QtDBus alone: while running it owns the name,

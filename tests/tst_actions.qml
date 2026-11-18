@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtTest
 import DBusCounterpart
+import RektaShell.DBus
 import Start
 import "../shell/services"
 
@@ -113,6 +114,19 @@ TestCase {
             sessionDesktop: "rekta"
             apps: testCase.apps
         }
+    }
+
+    // Another program on the bus, to own a name the first one has let go, and a client of the shell as other programs are.
+    Component {
+        id: counterpartComponent
+
+        Counterpart {}
+    }
+
+    Component {
+        id: clientComponent
+
+        DBusConnection {}
     }
 
     Component {
@@ -681,6 +695,277 @@ TestCase {
         const refused = invoke(`${probeId}wipe`, {});
         compare(refused.error, "org.freedesktop.DBus.Error.Failed");
         compare(counterpart.callsTo("Invoke"), 0);
+        stopProvider();
+    }
+
+    // Names the provider's rows: [{id, properties}] as counterpart.provide takes them.
+    function row(id: string, properties: var): var {
+        return {
+            id,
+            properties
+        };
+    }
+
+    function serve(actions: var) {
+        counterpart.provide(path, actions);
+        verify(counterpart.takeName(probeName));
+        tryVerify(() => counterpart.callsTo("ListActions") >= 1);
+        settle();
+    }
+
+    function test_the_test_bus_starts_the_probe_program_for_a_call_to_its_name() {
+        counterpart.claimEchoName();
+        counterpart.call(probeName, "/probe", "org.example.Probe", "Ping", []);
+        tryVerify(() => counterpart.callsTo("Activated") === 1, 20000);
+        // The pending start ends once something owns the name.
+        verify(counterpart.takeName(probeName));
+        counterpart.releaseName(probeName);
+    }
+
+    function test_a_provider_that_announces_a_change_and_quits_is_not_started_again_by_the_shell() {
+        counterpart.claimEchoName();
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        counterpart.emitSignal(path, iface, "ActionsChanged", []);
+        counterpart.releaseName(probeName);
+        counterpart.nameOwner("org.freedesktop.DBus");
+        settle();
+        tryVerify(() => providedIds().length === 0);
+        // Nothing to wait for: a start would come within the bus's round trips, long before this.
+        wait(1000);
+        compare(counterpart.callsTo("Activated"), 0);
+    }
+
+    // Makes the shell believe `believed` owns the probe's name while `actual` does, as it may for a moment after a change.
+    function misinformShell(believed: var, actual: var): var {
+        believed.provide(path, probeActions);
+        actual.provide(path, probeActions);
+        verify(actual.takeName(probeName));
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        tryVerify(() => providedIds().length === 2);
+        providers.owners = {
+            [probeName]: believed.uniqueName()
+        };
+        believed.forgetCalls();
+        actual.forgetCalls();
+        return providers;
+    }
+
+    function test_the_shell_reads_and_invokes_through_the_unique_name_of_the_owner_it_knows() {
+        const actual = createTemporaryObject(counterpartComponent, testCase);
+        misinformShell(counterpart, actual);
+        providers.read(probeName);
+        tryVerify(() => counterpart.callsTo("ListActions") === 1);
+        compare(invoke(`${probeId}open`, {}).error, "");
+        tryVerify(() => counterpart.callsTo("Invoke") === 1);
+        settle();
+        compare(actual.callsTo("ListActions") + actual.callsTo("Invoke"), 0, "the name's owner was not called");
+        actual.releaseName(probeName);
+        counterpart.releaseName(probeName);
+    }
+
+    function test_an_answer_of_an_owner_that_has_gone_since_is_dropped() {
+        const next = createTemporaryObject(counterpartComponent, testCase);
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        counterpart.provide(path, probeActions);
+        counterpart.holdListings(true);
+        verify(counterpart.takeName(probeName));
+        tryVerify(() => counterpart.callsTo("ListActions") === 1);
+        counterpart.leaveName(probeName);
+        next.provide(path, [probeActions[1]]);
+        verify(next.takeName(probeName));
+        tryVerify(() => providedIds().length === 1);
+        counterpart.answerHeldListings();
+        counterpart.nameOwner("org.freedesktop.DBus");
+        settle();
+        compare(providedIds(), [`${probeId}plain`], "the late answer of the first owner is not listed");
+        next.releaseName(probeName);
+        counterpart.holdListings(false);
+        counterpart.releaseName(probeName);
+    }
+
+    function test_an_icon_that_is_no_string_and_parameters_that_are_no_schema_are_not_exported() {
+        const schema = JSON.stringify({
+            type: "object"
+        });
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        serve([
+            row("list-icon", {
+                title: "List icon",
+                icon: ["a", "b"]
+            }),
+            row("number-icon", {
+                title: "Number icon",
+                icon: 5
+            }),
+            row("empty-icon", {
+                title: "Empty icon",
+                icon: ""
+            }),
+            row("list-schema", {
+                title: "List schema",
+                parameters: ["a"]
+            }),
+            row("number-schema", {
+                title: "Number schema",
+                parameters: 7
+            }),
+            row("text-schema", {
+                title: "Text schema",
+                parameters: "not json"
+            }),
+            row("array-schema", {
+                title: "Array schema",
+                parameters: "[1]"
+            }),
+            row("null-schema", {
+                title: "Null schema",
+                parameters: "null"
+            }),
+            row("good-schema", {
+                title: "Good schema",
+                parameters: schema
+            })
+        ]);
+        tryVerify(() => providedIds().length === 4);
+        compare(providedIds().map(id => id.slice(probeId.length)), ["list-icon", "number-icon", "empty-icon", "good-schema"]);
+        for (const id of ["list-icon", "number-icon", "empty-icon"])
+            compare(action(`${probeId}${id}`).icon, "prober", id);
+        compare(action(`${probeId}good-schema`).parameters, schema);
+        stopProvider();
+    }
+
+    function test_an_answer_or_keywords_that_only_claim_a_length_cost_the_shell_nothing() {
+        const started = Date.now();
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        counterpart.answerAt(path, [{
+                length: 30000000
+            }]);
+        verify(counterpart.takeName(probeName));
+        tryVerify(() => counterpart.callsTo("ListActions") === 1);
+        settle();
+        compare(providedIds(), []);
+        counterpart.releaseName(probeName);
+        counterpart.forgetCalls();
+        serve([
+            row("claims", {
+                title: "Claims",
+                keywords: {
+                    length: 30000000
+                }
+            })
+        ]);
+        tryVerify(() => providedIds().length === 1);
+        compare(counterpart.callsTo("ListActions"), 1);
+        compare(action(`${probeId}claims`).keywords, undefined);
+        stopProvider();
+        verify(Date.now() - started < 3000, "the shell did not work through the claimed length");
+    }
+
+    function test_a_provider_lists_at_most_256_actions_and_an_action_at_most_32_keywords() {
+        const many = Array.from({
+            length: 300
+        }, (_, k) => row(`a${k}`, {
+                title: `Action ${k}`
+            }));
+        const words = Array.from({
+            length: 40
+        }, (_, k) => `word${k}`);
+        many[0] = row("a0", {
+            title: "Action 0",
+            keywords: words
+        });
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        serve(many);
+        tryVerify(() => providedIds().length === 256);
+        compare(providedIds()[255], `${probeId}a255`);
+        compare(action(`${probeId}a0`).keywords, words.slice(0, 32));
+        stopProvider();
+    }
+
+    function test_an_action_that_says_it_is_destructive_in_any_way_but_false_or_not_at_all_is_not_listed() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        serve([
+            row("says-true", {
+                title: "True",
+                destructive: true
+            }),
+            row("says-text", {
+                title: "Text",
+                destructive: "true"
+            }),
+            row("says-false-text", {
+                title: "False as text",
+                destructive: "false"
+            }),
+            row("says-one", {
+                title: "One",
+                destructive: 1
+            }),
+            row("says-map", {
+                title: "Map",
+                destructive: {
+                    yes: true
+                }
+            }),
+            row("says-false", {
+                title: "False",
+                destructive: false
+            }),
+            row("says-zero", {
+                title: "Zero",
+                destructive: 0
+            }),
+            row("says-nothing", {
+                title: "Nothing"
+            })
+        ]);
+        tryVerify(() => providedIds().length === 3);
+        compare(providedIds().map(id => id.slice(probeId.length)), ["says-false", "says-zero", "says-nothing"]);
+        stopProvider();
+    }
+
+    function test_parameters_with_lists_of_words_and_empty_lists_reach_the_provider_as_they_were_sent() {
+        const client = createTemporaryObject(clientComponent, testCase);
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        const parameters = {
+            files: ["a", "b"],
+            none: [],
+            nested: {
+                list: ["c"],
+                empty: []
+            },
+            count: 3,
+            on: true
+        };
+        let answer = null;
+        client.call(service, path, iface, "Invoke", [`${probeId}open`, parameters], "sa{sv}", (error, values) => answer = {
+                error,
+                values
+            });
+        tryVerify(() => answer !== null);
+        compare(answer.error, null);
+        tryVerify(() => counterpart.callsTo("Invoke") === 1);
+        compare(counterpart.lastCall.args, ["open", parameters]);
         stopProvider();
     }
 

@@ -87,6 +87,13 @@ void beginArray(QDBusArgument &out, const QString &elementType)
     out.beginArray(placeholder);
 }
 
+// An empty list that came out of a JavaScript sequence is a null variant of a list type, not a missing value.
+bool isList(const QVariant &value)
+{
+    const int type = value.metaType().id();
+    return type == QMetaType::QVariantList || type == QMetaType::QStringList;
+}
+
 bool isWords(const QVariantList &list)
 {
     return !list.isEmpty() && std::all_of(list.cbegin(), list.cend(), [](const QVariant &element) {
@@ -95,6 +102,7 @@ bool isWords(const QVariantList &list)
 }
 
 // A JavaScript value in a variant has no signature to follow, so it goes out as the D-Bus type closest to its own.
+// A list of strings that came from D-Bus reaches here as a QStringList, an empty one too.
 // ponytail: whole numbers go out as i and others as d; a typed variant value once a callee needs u, x or t there.
 QString naturalType(const QVariant &value)
 {
@@ -107,6 +115,8 @@ QString naturalType(const QVariant &value)
         return u"d"_s;
     case QMetaType::QString:
         return u"s"_s;
+    case QMetaType::QStringList:
+        return u"as"_s;
     case QMetaType::QVariantList:
         return isWords(value.toList()) ? u"as"_s : u"av"_s;
     case QMetaType::QVariantMap:
@@ -124,7 +134,7 @@ public:
 
     void write(QDBusArgument &out, const QVariant &value, const QString &type)
     {
-        if (!value.isValid() || value.isNull())
+        if (!value.isValid() || (value.isNull() && !isList(value)))
             fail(u"a value for %1 is missing"_s.arg(type));
         if (type == u"v")
             writeVariant(out, value);

@@ -1,9 +1,9 @@
 #!/bin/sh
 # Runs the QML tests in the working directory, each file in a runner and on a bus of its own, at most six files at once.
 # Given test file names, it runs only those. The caller sets QML_IMPORT_PATH, QT_PLUGIN_PATH, FONTCONFIG_FILE,
-# QT_QUICK_BACKEND, HOME and LANG, and puts dbus-run-session on PATH; no other variable reaches the tests, so neither the
+# QT_QUICK_BACKEND, HOME and LANG, and puts dbus-run-session and dbus-send on PATH; no other variable reaches the tests, so neither the
 # desktop's bus, display nor QML modules can; they run offscreen and find no system bus. QMLTESTRUNNER names the runner
-# (default: qmltestrunner on PATH), DBUS_SESSION_CONFIG the config of the tests' private bus, TZDIR the zone files for the
+# (default: qmltestrunner on PATH), DBUS_SESSION_CONFIG the config each private bus is made from (default /usr/share/dbus-1/session.conf), TZDIR the zone files for the
 # clock test, NIX_BUILD_CORES the cores to use (default and 0: all). CONTACT_SHEETS=1 also renders the contact sheets
 # into the working directory; without it their tests skip.
 set -eu
@@ -12,6 +12,17 @@ shift
 # A file that has not ended after five minutes hangs: the slowest takes well under one.
 export root runner="${QMLTESTRUNNER:-qmltestrunner}" logs="$(mktemp -d)" limit=300 sheets="${CONTACT_SHEETS:+contact-sheets}"
 trap 'rm -rf "$logs"' EXIT
+
+# The bus of each file can start org.example.Prober, as it would an app with a .service file: the program calls
+# Activated at the counterpart, which tells a test that a call to that name started it.
+mkdir "$logs/services"
+cat > "$logs/services/org.example.Prober.service" <<SERVICE
+[D-BUS Service]
+Name=org.example.Prober
+Exec=$(command -v sh) -c "exec $(command -v dbus-send) --session --print-reply --dest=org.rekta.Counterpart /echo org.rekta.Echo.Activated >/dev/null"
+SERVICE
+sed "s|<standard_session_servicedirs */>|&<servicedir>$logs/services</servicedir>|" "${DBUS_SESSION_CONFIG:-/usr/share/dbus-1/session.conf}" > "$logs/session.conf"
+export conf="$logs/session.conf"
 cores=${NIX_BUILD_CORES:-0}
 [ "$cores" -gt 0 ] || cores=$(nproc)
 [ "$cores" -le 6 ] || cores=6
@@ -54,7 +65,7 @@ list_jobs "$@" | xargs -L 1 -P "$cores" sh -c '
 			${QML_IMPORT_PATH+"QML_IMPORT_PATH=$QML_IMPORT_PATH"} ${QT_PLUGIN_PATH+"QT_PLUGIN_PATH=$QT_PLUGIN_PATH"} \
 			${FONTCONFIG_FILE+"FONTCONFIG_FILE=$FONTCONFIG_FILE"} ${QT_QUICK_BACKEND+"QT_QUICK_BACKEND=$QT_QUICK_BACKEND"} \
 			QT_QPA_PLATFORM=offscreen DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent/system_bus_socket "$@" \
-			dbus-run-session ${DBUS_SESSION_CONFIG:+--config-file="$DBUS_SESSION_CONFIG"} -- timeout "$limit" \
+			dbus-run-session --config-file="$conf" -- timeout "$limit" \
 			"$runner" ${sheets:+-file-selector "$sheets"} -import "$root/shell" -import "$root/tests/stand-ins" \
 			-input "$root/tests/$file" \
 			> "$logs/$name.log" 2>&1 || status=$?

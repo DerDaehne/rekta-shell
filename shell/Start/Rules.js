@@ -86,20 +86,58 @@ function desktopActions(entry, appBusName, launcher) {
     }));
 }
 
-// The actions a running provider of rekta.Actions1 lists (`listed`: the rows of its ListActions, [id, properties]) as the
-// action registry has them, named for its app. A row without an id or a title is left out, and so is a destructive one:
+// What one provider may list: no program can make the shell work through more than this. A launcher's actions are a
+// handful to a few dozen; an app with more has the rest dropped. Both limits bound the export on every ActionsChanged.
+// ponytail: fixed limits; per-provider settings if a real app needs more.
+const maxProvidedActions = 256;
+const maxActionKeywords = 32;
+
+// At most `most` elements of a list that came over D-Bus; anything else, an object that only claims a length too, is none.
+function boundedList(value, most) {
+    return value instanceof Array ? Array.prototype.slice.call(value, 0, most) : [];
+}
+
+// The rows of a provider's ListActions answer: [id, properties] lists, at most maxProvidedActions of them.
+function providedRows(answer) {
+    return boundedList(answer, maxProvidedActions);
+}
+
+// Whether text is a JSON Schema as rekta.Actions1 has it: a JSON object.
+function isSchema(text) {
+    try {
+        const parsed = JSON.parse(text);
+        return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed);
+    } catch (error) {
+        return false;
+    }
+}
+
+// A row the registry may list: an id, a title, parameters that are no schema at all or one, and no claim to be destructive
+// (anything but a missing or false one counts as a claim).
+function usableRow(row) {
+    if (!(row instanceof Array) || typeof row[0] !== "string" || row[0] === "")
+        return false;
+    const properties = row[1];
+    if (typeof properties?.title !== "string" || properties.destructive)
+        return false;
+    const parameters = properties.parameters ?? "";
+    return typeof parameters === "string" && (parameters === "" || isSchema(parameters));
+}
+
+// The actions a running provider of rekta.Actions1 lists (`listed`: the rows of its ListActions) as the action registry
+// has them, named for its app. Every value is checked, as the registry exports them under the signatures it promises:
+// a row that fails is left out (usableRow), a wrong icon or keyword is dropped. A destructive row is left out because,
 // until the shell can ask first, an app's own may not run from outside. `invoke(id, parameters)` calls the provider's Invoke.
 function providedActions(app, listed, invoke) {
-    const usable = row => typeof row?.[0] === "string" && row[0] !== "" && typeof row[1]?.title === "string" && !row[1].destructive;
-    return listed.filter(usable).map(([id, properties]) => ({
+    return listed.filter(usableRow).map(([id, properties]) => ({
         id: `provider/${app.id}/${id}`,
         text: properties.title,
-        keywords: properties.keywords?.length > 0 && typeof properties.keywords !== "string" ? Array.from(properties.keywords, String) : [],
+        keywords: boundedList(properties.keywords, maxActionKeywords).filter(word => typeof word === "string"),
         parameters: properties.parameters ?? "",
         readOnly: properties.readOnly === true,
         app: app.id,
         appName: app.name,
-        icon: properties.icon || app.iconName,
+        icon: typeof properties.icon === "string" && properties.icon !== "" ? properties.icon : app.iconName,
         invokeWith: parameters => invoke(id, parameters)
     }));
 }

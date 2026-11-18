@@ -10,6 +10,7 @@
 #include <QUuid>
 
 #include <optional>
+#include <utility>
 
 using namespace Qt::StringLiterals;
 
@@ -219,15 +220,6 @@ bool Counterpart::takeName(const QString &name)
     return reply.isValid() && reply.value() == QDBusConnectionInterface::ServiceRegistered;
 }
 
-void Counterpart::releaseName(const QString &name)
-{
-    m_connection.interface()->unregisterService(name);
-    for (const QString &path : std::as_const(m_paths))
-        m_connection.unregisterObject(path);
-    m_paths.clear();
-    m_providing = false;
-}
-
 void Counterpart::answerAt(const QString &path, const QVariantList &values)
 {
     m_connection.registerVirtualObject(path, new Answer(this, values));
@@ -300,7 +292,9 @@ public:
     bool handleMessage(const QDBusMessage &message, const QDBusConnection &connection) override
     {
         m_counterpart->record(message);
-        if (message.member() == u"ListActions"_s)
+        if (message.member() == u"ListActions"_s && m_hold)
+            m_held.append(message);
+        else if (message.member() == u"ListActions"_s)
             connection.send(message.createReply(QVariant::fromValue(m_rows)));
         else if (m_failInvokes)
             connection.send(message.createErrorReply(u"org.rekta.Counterpart.Failed"_s, u"the provider failed"_s));
@@ -323,20 +317,43 @@ public:
         m_failInvokes = fail;
     }
 
+    // Answers the ListActions calls held back, with the actions as they are now.
+    void setHold(bool hold)
+    {
+        m_hold = hold;
+    }
+
+    void answerHeld(const QDBusConnection &connection)
+    {
+        for (const QDBusMessage &message : std::exchange(m_held, {}))
+            connection.send(message.createReply(QVariant::fromValue(m_rows)));
+    }
+
 private:
     Counterpart *m_counterpart;
     QList<ActionRow> m_rows;
     bool m_failInvokes = false;
+    bool m_hold = false;
+    QList<QDBusMessage> m_held;
 };
+
+void Counterpart::releaseName(const QString &name)
+{
+    m_connection.interface()->unregisterService(name);
+    for (const QString &path : std::as_const(m_paths))
+        m_connection.unregisterObject(path);
+    m_paths.clear();
+    // Only here is Provider complete, so only here does delete run its destructor.
+    delete m_provider;
+    m_provider = nullptr;
+}
 
 void Counterpart::provide(const QString &path, const QVariantList &actions)
 {
-    if (!m_provider)
+    if (!m_provider) {
         m_provider = new Provider(this);
-    if (!m_providing) {
         m_connection.registerVirtualObject(path, m_provider);
         m_paths.append(path);
-        m_providing = true;
     }
     m_provider->setActions(actions);
 }
@@ -525,4 +542,28 @@ void FakeScreenBrightness::changeRange(const QString &name, int max, int brightn
         }
     }
     announceSignal(u"BrightnessRangeChanged"_s, {name, max, brightness});
+}
+
+void Counterpart::holdListings(bool hold)
+{
+    if (m_provider)
+        m_provider->setHold(hold);
+}
+
+void Counterpart::answerHeldListings()
+{
+    if (m_provider)
+        m_provider->answerHeld(m_connection);
+}
+
+void Counterpart::leaveName(const QString &name)
+{
+    m_connection.interface()->unregisterService(name);
+}
+
+void Counterpart::claimEchoName()
+{
+    m_connection.interface()->registerService(u"org.rekta.Counterpart"_s,
+                                              QDBusConnectionInterface::ReplaceExistingService,
+                                              QDBusConnectionInterface::AllowReplacement);
 }

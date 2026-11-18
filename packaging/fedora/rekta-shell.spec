@@ -28,6 +28,7 @@ BuildRequires:  desktop-file-utils
 # The QML tests
 BuildRequires:  qt6-qtdeclarative-devel
 BuildRequires:  dbus-daemon
+BuildRequires:  dbus-tools
 BuildRequires:  atkinson-hyperlegible-next-fonts
 
 # Quickshell 0.3 comes from the COPR errornointernet/quickshell until Fedora has it

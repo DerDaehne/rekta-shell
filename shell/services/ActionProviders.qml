@@ -28,8 +28,15 @@ QtObject {
         onReceived: (sender, path, iface, member, args) => providers.heard(sender, member, args)
     }
 
+    // Calls go to the owner's unique name: a call to the well-known name would start the app from its service file if the
+    // owner has quit since the shell last heard.
     function invoke(id: string, action: string, parameters: var): var {
-        bus.call(id, path, interfaceName, "Invoke", [action, parameters], "sa{sv}", error => {
+        const owner = owners[id] ?? "";
+        if (owner === "") {
+            console.warn(`ActionProviders: ${id}: ${action}: no owner`);
+            return {};
+        }
+        bus.call(owner, path, interfaceName, "Invoke", [action, parameters], "sa{sv}", error => {
             if (error)
                 console.warn(`ActionProviders: ${id}: ${action}: ${error}`);
         });
@@ -41,9 +48,7 @@ QtObject {
             own(args[0], args[2]);
         if (member !== "ActionsChanged")
             return;
-        const id = Object.keys(owners).find(key => owners[key] === sender);
-        if (id !== undefined)
-            read(id);
+        Object.keys(owners).filter(key => owners[key] === sender).forEach(read);
     }
 
     function own(id: string, owner: string) {
@@ -71,13 +76,13 @@ QtObject {
     // An answer from an owner that has gone since is dropped.
     function read(id: string) {
         const owner = owners[id];
-        bus.call(id, path, interfaceName, "ListActions", [], "", (error, values) => {
+        bus.call(owner, path, interfaceName, "ListActions", [], "", (error, values) => {
             if (owners[id] !== owner)
                 return;
             if (error)
                 return console.warn(`ActionProviders: ${id}: ListActions: ${error}`);
             rows = Object.assign({}, rows, {
-                [id]: Array.from(values[0] ?? [])
+                [id]: Rules.providedRows(values[0])
             });
         });
     }
