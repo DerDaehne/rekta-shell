@@ -161,7 +161,8 @@ writeShellApplication {
     [ -n "''${LOCALE_ARCHIVE:-}" ] && session+=(LOCALE_ARCHIVE="$LOCALE_ARCHIVE")
 
     start_bus() {
-      env -i "''${session[@]}" dbus-daemon --config-file=${./nested-bus.xml} --fork --print-address=1 --print-pid=1
+      env -i "''${session[@]}" dbus-daemon --config-file=${./nested-bus.xml} --address="unix:dir=$home/runtime" \
+        --fork --print-address=1 --print-pid=1
     }
     mapfile -t bus < <(start_bus)
     bus_pid="''${bus[1]}"

@@ -3,6 +3,7 @@
 <!-- The nested session's session and system bus, without service activation: nothing it starts may reach the host. -->
 <busconfig>
   <type>session</type>
+  <!-- dbus-daemon needs one; nested.nix replaces it with the session's runtime directory. -->
   <listen>unix:tmpdir=/tmp</listen>
   <policy context="default">
     <allow send_destination="*" eavesdrop="true"/>

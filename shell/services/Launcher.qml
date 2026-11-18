@@ -5,9 +5,9 @@ import Start
 
 // Starts apps, each in a systemd scope of its own, so they outlive a restart of the shell, and runs the shell's
 // commands and calls on the session, such as locking it or logging out. Only the session's own shell does so
-// (REKTA_SHELL_LAUNCH=systemd, which the package's wrapper sets): anywhere else, in the nested session or under
-// `qs --path` on the desktop, a scope would land in the host's user manager and a lock would lock the host's session,
-// and on the desktop the system bus is the host's, so there it only logs what it would do.
+// (REKTA_SHELL_LAUNCH=systemd, which the package's wrapper sets). Anywhere else it only logs what it would do: under
+// `qs --path` on the desktop the scope, the lock and both buses would be the host's, and the nested session has no
+// user manager or logind for them.
 Scope {
     id: launcher
 
@@ -54,7 +54,7 @@ Scope {
     }
 
     // Asks the session bus a read-only question; done(values) follows its reply, and nothing follows an error. Where the
-    // shell does not act, the nested session, it asks nothing: that bus is the host's.
+    // shell does not act it asks nothing: under `qs --path` on the desktop that bus is the host's.
     function ask(service: string, path: string, iface: string, method: string, args: var, signature: string, done: var) {
         if (!starts)
             return;
