@@ -62,7 +62,7 @@ writeShellApplication {
   runtimeInputs = [ coreutils ];
   text = ''
     usage() {
-      echo "usage: rekta-nested [--window] [--outputs N] [--size WIDTHxHEIGHT] [--background rekta|solid] [--touch-edges]" >&2
+      echo "usage: rekta-nested [--window] [--outputs N] [--size WIDTHxHEIGHT] [--background solid|rekta] [--touch-edges]" >&2
       echo "  --touch-edges  let KWin take touch screen edges (it then also runs global shortcuts, on the session's own bus)" >&2
       exit 2
     }
@@ -70,7 +70,7 @@ writeShellApplication {
     window=false
     outputs=1
     size=1600x900
-    background=rekta
+    background=solid
     # Without global shortcuts KWin also installs no screen edge filter, so a finger at an edge never reaches an effect.
     global_shortcuts=(--no-global-shortcuts)
     while [ $# -gt 0 ]; do

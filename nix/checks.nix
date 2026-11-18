@@ -441,7 +441,7 @@ in
       toplevel [ plasma ] == toplevel [
         plasma
         module
-        { programs.rekta-shell.background = "solid"; }
+        { programs.rekta-shell.background = "rekta"; }
       ]
     ) "the background option changed a system that does not enable the module";
     assert lib.assertMsg (
@@ -504,8 +504,8 @@ in
           enabled.environment.etc."systemd/user".source
         }/$unit || { echo "the enabled module leaves $unit out of /etc/systemd/user" >&2; exit 1; }
       done
-      names_defaults ${enabled.programs.rekta-shell.package} rekta
-      names_defaults ${(withBackground "solid").programs.rekta-shell.package} solid
+      names_defaults ${enabled.programs.rekta-shell.package} solid
+      names_defaults ${(withBackground "rekta").programs.rekta-shell.package} rekta
       if grep -q density ${enabled.programs.rekta-shell.package}/share/rekta-shell/defaults.json; then
         echo "the module names a density without being asked to" >&2
         exit 1

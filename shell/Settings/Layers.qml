@@ -17,7 +17,7 @@ QtObject {
     readonly property int version: 1
     // Every setting there is, with the value it has without any configuration.
     readonly property var builtIn: ({
-            background: "rekta",
+            background: "solid",
             contrast: "system",
             density: "auto",
             searchEscape: "close",

@@ -13,8 +13,8 @@
         "rekta"
         "solid"
       ];
-      default = "rekta";
-      description = "What each monitor shows behind the windows: \"rekta\" is the colour bg with a faint print of tiles in the bottom right corner, \"solid\" the colour bg alone. It takes effect with the default package once the module is enabled, as the default that a \"background\" in the user's ~/.config/rekta-shell/settings.json overrides.";
+      default = "solid";
+      description = "What each monitor shows behind the windows: \"solid\" (the default) is the colour bg alone, \"rekta\" the colour bg with a faint print of tiles in the bottom right corner. It takes effect with the default package once the module is enabled, as the default that a \"background\" in the user's ~/.config/rekta-shell/settings.json overrides.";
     };
 
     contrast = lib.mkOption {

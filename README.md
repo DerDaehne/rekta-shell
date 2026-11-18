@@ -293,7 +293,7 @@ Both modules offer the same options, all under `programs.rekta-shell`:
 
 | Option | Values | Default |
 | --- | --- | --- |
-| `background` | `"rekta"` (Rekta's tile echo in a corner) or `"solid"` (the plain ground colour) | `"rekta"` |
+| `background` | `"rekta"` (Rekta's tile echo in a corner) or `"solid"` (the plain ground colour) | `"solid"` |
 | `contrast` | `"more"` (every text pair 7:1, opaque glass, framed status tiles) or `"normal"` | follow the system |
 | `transparency` | `"reduce"` (glass turns solid, nothing behind it blurs) or `"normal"` | `"normal"` |
 | `density` | `"comfortable"` or `"compact"` | compact |
@@ -396,8 +396,8 @@ until a rekta-shell RPM built against the new KWin is installed.
 ### Defaults, update, removal
 
 - **Defaults:** `/etc/rekta-shell/defaults.json` holds the system-wide defaults.
-  It is a JSON object with the keys `background` (`"rekta"` or `"solid"`) and
-  `density`, and ships as `{ "background": "rekta" }`. A user's own
+  It is a JSON object with the keys `background` (`"solid"` or `"rekta"`) and
+  `density`, and ships as `{ "background": "solid" }`. A user's own
   `~/.config/rekta-shell/settings.json` wins over it. The shell reads the
   defaults at start, so a change takes effect after
   `systemctl --user restart rekta-shell` or the next login. A changed file is

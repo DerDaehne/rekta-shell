@@ -295,8 +295,8 @@ TestCase {
         compare(control("searchEscape").currentText, "leert die suche und schließt den start");
     }
 
-    function test_the_aussehen_place_offers_the_tile_echo_as_a_toggle_that_is_on_by_default() {
-        verify(control("echo").checked);
+    function test_the_aussehen_place_offers_the_tile_echo_as_a_toggle_that_is_off_by_default() {
+        verify(!control("echo").checked);
         compare(control("echo").label, "kachel-echo");
     }
 
@@ -404,12 +404,13 @@ TestCase {
     }
 
     function test_the_tile_echo_toggles_the_background_and_the_shell_follows() {
-        control("echo").activate();
-        compare(written().background, "solid");
         verify(host.backdrop.solid);
         control("echo").activate();
         compare(written().background, "rekta");
         verify(!host.backdrop.solid);
+        control("echo").activate();
+        compare(written().background, "solid");
+        verify(host.backdrop.solid);
     }
 
     function test_the_start_place_offers_zuletzt_as_a_toggle_that_is_on_by_default_and_the_shell_follows_it() {
@@ -456,7 +457,7 @@ TestCase {
         control("echo").activate();
         compare(writes, 0);
         compare(host.app.userText, "{ not json");
-        verify(control("echo").checked);
+        verify(!control("echo").checked);
     }
 
     function test_a_newer_file_locks_the_fields_and_says_it_comes_from_a_newer_version() {
@@ -483,7 +484,7 @@ TestCase {
 
     function test_a_missing_file_keeps_the_defaults() {
         compare(host.app.userText, "");
-        verify(control("echo").checked);
+        verify(!control("echo").checked);
         compare(control("searchEscape").currentIndex, 0);
     }
 
@@ -492,7 +493,7 @@ TestCase {
         control("echo").activate();
         compare(written().accent, "ink");
         compare(written().startTempo, "rekta");
-        compare(written().background, "solid");
+        compare(written().background, "rekta");
     }
 
     function test_escape_in_a_text_field_does_not_go_back_but_outside_it_does() {

@@ -34,7 +34,7 @@ TestCase {
     }
 
     function test_without_any_file_a_setting_has_the_shells_own_value() {
-        compare(layers.value("background"), "rekta");
+        compare(layers.value("background"), "solid");
         verify(!layers.differs("background"));
     }
 
@@ -54,7 +54,7 @@ TestCase {
     }
 
     function test_a_user_value_equal_to_the_default_does_not_differ() {
-        layers.userText = '{"version":1,"background":"rekta"}';
+        layers.userText = '{"version":1,"background":"solid"}';
         verify(!layers.differs("background"));
     }
 
@@ -63,7 +63,14 @@ TestCase {
         layers.userText = '{"version":1,"background":3}';
         compare(layers.value("background"), "solid");
         layers.defaultsText = '{"background":true}';
+        compare(layers.value("background"), "solid");
+    }
+
+    function test_a_saved_echo_choice_stays_the_users_over_the_solid_default() {
+        layers.userText = '{"version":1,"background":"rekta"}';
         compare(layers.value("background"), "rekta");
+        verify(layers.differs("background"));
+        compare(layers.preset("background"), "solid");
     }
 
     function test_density_is_automatic_until_the_nix_default_or_the_user_sets_it() {
@@ -75,11 +82,11 @@ TestCase {
     }
 
     function test_a_changed_user_file_takes_effect_at_once() {
-        verify(!layers.solid);
-        layers.userText = '{"version":1,"background":"solid"}';
         verify(layers.solid);
-        layers.userText = "";
+        layers.userText = '{"version":1,"background":"rekta"}';
         verify(!layers.solid);
+        layers.userText = "";
+        verify(layers.solid);
     }
 
     function test_a_broken_user_file_leaves_the_defaults_and_is_never_written_over() {

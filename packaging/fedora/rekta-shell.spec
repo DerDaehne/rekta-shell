@@ -71,7 +71,7 @@ only in that session.
 %install
 %cmake_install
 install -d %{buildroot}%{_sysconfdir}/rekta-shell
-printf '{ "background": "rekta" }\n' > %{buildroot}%{_sysconfdir}/rekta-shell/defaults.json
+printf '{ "background": "solid" }\n' > %{buildroot}%{_sysconfdir}/rekta-shell/defaults.json
 
 %check
 # The session's KWin command is Plasma's, behind the wrapper that adds the rekta paths.
