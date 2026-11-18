@@ -1,3 +1,4 @@
 module Notices
 NoticeBoard 1.0 NoticeBoard.qml
+Lookup 1.0 Lookup.js
 Sound 1.0 Sound.js

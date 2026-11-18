@@ -466,6 +466,70 @@ TestCase {
         compare(toast.height, findChild(toast, "words").height);
     }
 
+    function test_a_toast_names_its_sender_in_a_small_line_above_the_title_and_says_it_first() {
+        const toast = toaster.show("Bring the second chapter.", { title: "Book club at seven", sender: "Calendar", icon: testCase.appIcon });
+        const sender = findChild(toast, "sender");
+        const heading = findChild(toast, "title");
+        compare(sender.text, "Calendar");
+        compare(sender.font.pixelSize, Tokens.fontSizeXxs);
+        compare(sender.font.weight, Tokens.fontWeightRegular);
+        compare(sender.y + sender.height, heading.y, "the title follows the line");
+        compare(findChild(toast, "message").y, heading.y + heading.height);
+        compare(toast.spoken, "Calendar. Book club at seven. Bring the second chapter.");
+        compare(toast.height, findChild(toast, "words").height);
+    }
+
+    function test_a_toast_without_a_sender_is_as_high_as_it_was_and_has_no_line() {
+        const plain = toaster.show("Bring the second chapter.", { title: "Book club at seven" });
+        const height = plain.height;
+        const sender = findChild(plain, "sender");
+        verify(!sender.visible);
+        compare(findChild(plain, "title").y, 0);
+        plain.leave(false, "dismissed");
+        const named = toaster.show("Bring the second chapter.", { title: "Book club at seven", sender: "Calendar" });
+        verify(named.height > height, "the line makes it taller");
+    }
+
+    function test_a_sender_without_a_title_stands_above_the_text() {
+        const toast = toaster.show("Bring the second chapter.", { sender: "Calendar" });
+        const sender = findChild(toast, "sender");
+        compare(findChild(toast, "message").y, sender.height);
+        compare(toast.spoken, "Calendar. Bring the second chapter.");
+    }
+
+    function test_a_long_sender_stays_on_one_line_ends_in_an_ellipsis_and_is_still_read() {
+        const name = "A calendar program with a very long name that goes on and on and on and on and on and on and on and on";
+        const toast = toaster.show("Bring the second chapter.", { title: "Book club at seven", sender: name });
+        const sender = findChild(toast, "sender");
+        compare(sender.lineCount, 1);
+        verify(sender.truncated);
+        compare(sender.elide, Text.ElideRight);
+        compare(toast.spoken.startsWith(name + ". "), true);
+    }
+
+    function test_the_sender_is_plain_text_on_one_line_whatever_it_holds() {
+        const toast = toaster.show("ok", { title: "Hi", sender: "<b>Cal</b>\nendar\nthird" });
+        const sender = findChild(toast, "sender");
+        compare(sender.textFormat, Text.PlainText);
+        compare(sender.lineCount, 1);
+        const one = toaster.show("ok", { title: "Hi", sender: "Calendar" });
+        compare(findChild(one, "sender").height, sender.height);
+    }
+
+    function test_the_sender_line_keeps_the_toast_s_top_padding_and_the_title_gives_its_own_up() {
+        const toast = toaster.show("ok", { title: "Hi", sender: "Calendar" });
+        const sender = findChild(toast, "sender");
+        compare(sender.topPadding, Tokens.spaceS + Tokens.spaceXs + sender.lineBoxTop);
+        compare(findChild(toast, "title").topPadding, findChild(toast, "title").lineBoxTop);
+    }
+
+    function test_a_sender_longer_than_the_words_widens_the_toast_to_hold_it() {
+        const toast = toaster.show("ok", { title: "Hi", sender: "A calendar program with a long name" });
+        const sender = findChild(toast, "sender");
+        verify(!sender.truncated, "it has the room");
+        verify(toast.width >= sender.implicitWidth);
+    }
+
     function test_the_whole_text_is_announced_and_named_even_where_it_is_cut() {
         const long = "a long message body that says what happened in many words, and then some more words, so that it needs a third line to be said, and a fourth line besides, because a message may run on and on and on until nobody reads it to the end";
         const toast = toaster.show(long, { title: "Mia" });

@@ -23,8 +23,8 @@ import QtQuick
 // from the control that counts it. Rekta's toast layer lies above the app bar (states.md:225–227), so its notification glides
 // over the bar; here the toasts' surface ends at the bar's top edge, and a notification comes from behind the bar.
 // A toast that has to leave while it still comes in goes from where it stands, where Rekta's jumps to its place first.
-// A notification's title is the one it brings, so its sender's name may be missing from the toast's words, where Rekta
-// always has it in the title or the text (states.md:97–98).
+// A notification's toast names its sender in a line of its own above the title, where Rekta has the name in the title or
+// the text (states.md:97–98).
 Item {
     id: toaster
 
@@ -65,11 +65,12 @@ Item {
 
     // Shows one toast and returns it. Options as rekta.js toaster.show(): key, undo (a function), from (the item focus
     // returns to), action ("undo", "redo" or another label), act ({ label, run }), status, windowMs, onEnd(reason); and
-    // icon, an image for the app the toast speaks for, at its front; title, open ({ run }, the text as a control) and
+    // icon, an image for the app the toast speaks for, at its front; title; sender, the name of the program a notification
+    // comes from, above the title; open ({ run }, the text as a control) and
     // stays (no window until it is dismissed); notification, a notification from another program, which its count gives
     // way to; tag, the word of a neutral tag at the end of the text.
     function show(text: string, options: var): Toast {
-        const o = Object.assign({ key: text, undo: null, from: null, action: undoWord, act: null, status: "", windowMs: 0, onEnd: null, icon: "", title: "", tag: "", open: null, stays: false, notification: false }, options);
+        const o = Object.assign({ key: text, undo: null, from: null, action: undoWord, act: null, status: "", windowMs: 0, onEnd: null, icon: "", title: "", sender: "", tag: "", open: null, stays: false, notification: false }, options);
         if (open && open.key === o.key && open.undoAction && o.undo) {
             open.update(text, o.undo, o.windowMs, o.onEnd);
             return open;
@@ -83,6 +84,7 @@ Item {
             status: o.status,
             icon: o.icon,
             title: o.title,
+            sender: o.sender,
             tag: o.tag,
             open: o.open,
             stays: o.stays,

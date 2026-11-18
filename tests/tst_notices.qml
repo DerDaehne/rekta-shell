@@ -58,6 +58,7 @@ TestCase {
                 objectName: "board"
                 toaster: region
                 iconUrl: name => name === "konsole" ? testCase.konsoleIcon : ""
+                senderOf: (desktopEntry, appName) => appName || (desktopEntry === "org.example.calendar" ? "Calendar" : "")
             }
         }
     }
@@ -190,11 +191,40 @@ TestCase {
         compare(board.rows[0].summary, "disk almost full", "the list row says it too");
     }
 
-    function test_the_toast_keeps_the_words_the_app_sends_and_does_not_add_the_app_s_name() {
+    function test_the_toast_and_the_row_name_the_app_that_sent_the_notification_and_the_words_stay_the_app_s() {
         notify({ appName: "Browser", summary: "Download finished", body: "report.pdf" });
+        compare(toaster.open.sender, "Browser");
         compare(toaster.open.title, "Download finished");
         compare(toaster.open.text, "report.pdf");
-        compare(toaster.open.spoken, "Download finished. report.pdf");
+        compare(toaster.open.spoken, "Browser. Download finished. report.pdf");
+        compare(board.rows[0].sender, "Browser");
+    }
+
+    // Quickshell's heuristicLookup("") answers with an arbitrary entry.
+    readonly property var lookingUpAnything: ({
+        heuristicLookup: name => ({ id: "org.example.any", name: name === "org.example.calendar" ? "Calendar" : "Anything" })
+    })
+
+    function test_a_notification_with_neither_a_desktop_entry_nor_an_app_name_is_never_looked_up() {
+        compare(Lookup.entry(lookingUpAnything, "", ""), null);
+        compare(Lookup.sender(lookingUpAnything, "", ""), "");
+    }
+
+    function test_the_entry_comes_from_the_hint_else_from_the_app_name_and_the_sender_from_the_name_else_from_the_entry() {
+        compare(Lookup.entry(lookingUpAnything, "org.example.calendar", "Mail").name, "Calendar");
+        compare(Lookup.entry(lookingUpAnything, "", "Mail").name, "Anything");
+        compare(Lookup.sender(lookingUpAnything, "org.example.calendar", ""), "Calendar");
+        compare(Lookup.sender(lookingUpAnything, "org.example.calendar", "Mail"), "Mail");
+    }
+
+    function test_without_an_app_name_the_desktop_entry_names_the_sender_and_without_either_the_toast_names_none() {
+        notify({ appName: "", desktopEntry: "org.example.calendar", summary: "Book club" });
+        compare(toaster.open.sender, "Calendar");
+        runOut();
+        notify({ appName: "", desktopEntry: "org.example.unknown", summary: "Book club" });
+        compare(toaster.open.sender, "");
+        compare(toaster.open.spoken, "Book club. lunch at noon?");
+        compare(board.rows[0].sender, "");
     }
 
     function test_the_image_takes_the_place_of_the_app_icon() {
@@ -263,7 +293,7 @@ TestCase {
         compare(toast.status, "", "the surface stays ink");
         compare(toast.actionLabel, "wiederholen");
         verify(tag.mapToItem(toast, 0, 0).x + tag.width <= findChild(toast, "action").x, "the action stays last");
-        compare(toast.Accessible.name, "dringend. backup. the disk is full");
+        compare(toast.Accessible.name, "chat. dringend. backup. the disk is full");
     }
 
     function test_normal_toasts_carry_no_tag_whatever_timeout_their_app_gives() {
@@ -273,7 +303,7 @@ TestCase {
             tryCompare(toaster.open, "waiting", false);
             compare(toaster.open.tag, "", summary);
             verify(!findChild(toaster.open, "tag").visible, summary);
-            compare(toaster.open.Accessible.name, `${summary}. lunch at noon?`);
+            compare(toaster.open.Accessible.name, `chat. ${summary}. lunch at noon?`);
             toaster.dismiss();
         }
     }

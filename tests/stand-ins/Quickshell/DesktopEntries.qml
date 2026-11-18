@@ -16,6 +16,9 @@ QtObject {
     property var hidden: []
 
     function heuristicLookup(name: string): var {
+        // As Quickshell 0.3: the empty name matches an arbitrary entry.
+        if (name === "")
+            return { id: "org.quickshell", name: "Quickshell" };
         const id = idsByName[name];
         return id ? { id } : null;
     }

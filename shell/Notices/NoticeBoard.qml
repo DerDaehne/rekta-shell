@@ -38,9 +38,11 @@ QtObject {
     // An image URL for an app icon's name or path.
     property var iconUrl: name => name
     // Newest first: { notification (null once it has closed), order (by arrival), appName, desktopEntry, summary,
-    // body, icon, time, unseen, toast }. Every change hands out a new array.
+    // body, icon, sender, time, unseen, toast }. Every change hands out a new array.
     property var rows: []
     readonly property int unseen: rows.filter(row => row.unseen).length
+    // The name an app goes by, from its desktop-entry hint and its app name; empty when none is known.
+    property var senderOf: (desktopEntry, appName) => appName
     // The id of the app a notification belongs to, from its desktop-entry hint and its app name.
     property var appOf: (desktopEntry, appName) => desktopEntry || appName
     // The unseen ones by app: { appId: count }.
@@ -156,6 +158,7 @@ QtObject {
         record.summary = words.title || words.text;
         record.body = words.title ? words.text : "";
         record.icon = notification.image || iconUrl(notification.appIcon);
+        record.sender = senderOf(notification.desktopEntry, notification.appName);
     }
 
     function listed(notification: var): bool {
@@ -167,8 +170,7 @@ QtObject {
         return notification.summary || notification.body;
     }
 
-    // A summary over a body; either alone is the toast's one sentence. The app's name is deliberately not added, though
-    // Rekta wants the sender's name in the title or the text (states.md:97–98).
+    // A summary over a body; either alone is the toast's one sentence. The sender's name is a line of its own above them.
     function toastWords(notification: var): var {
         const titled = notification.summary !== "" && notification.body !== "";
         return { title: titled ? notification.summary : "", text: titled ? notification.body : headline(notification) };
@@ -216,6 +218,7 @@ QtObject {
         record.toast = toaster.show(words.text, {
             title: words.title,
             icon: record.icon,
+            sender: record.sender,
             tag: critical ? "dringend" : "",
             stays: critical,
             act: act ? { label: act.text, run: () => act.invoke() } : null,

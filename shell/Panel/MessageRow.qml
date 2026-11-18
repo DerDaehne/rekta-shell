@@ -4,17 +4,19 @@ import QtQuick
 import Rekta
 
 // One notification in the centre, a row on a hairline (rekta.css:73–75): the picture or the app's icon, square with a
-// tile's corners, the summary in semibold, how long ago and a quiet "entfernen" button at the end, one line of the
-// body, cut, and under it up to two of the notification's actions as quiet buttons. A click, Enter or Space presses the
-// row, tinted on hover and press like a toast's text. A removable row always has the button; Delete, or pulling it
-// towards the trailing edge, are shortcuts to it (collections.md:164–166). Let go past half its width the pulled row leaves,
-// else it glides back. Leaving, it fades and drifts as a row that leaves a list does, a pulled row on to its full width
-// (motion.md, "Arriving, leaving"); then it has gone.
+// tile's corners, the summary in semibold, the sender's name and how long ago ("Kalender · 3 min", the name left out
+// when none is known) and a quiet "entfernen" button at the end, one line of the body, cut, and under it up to two of
+// the notification's actions as quiet buttons. A click, Enter or Space presses the row, tinted on hover and press like a
+// toast's text. A removable row always has the button; Delete, or pulling it towards the trailing edge, are shortcuts
+// to it (collections.md:164–166). Let go past half its width the pulled row leaves, else it glides back. Leaving, it
+// fades and drifts as a row that leaves a list does, a pulled row on to its full width (motion.md, "Arriving,
+// leaving"); then it has gone.
 Item {
     id: row
 
     required property int index
     required property int order
+    // The name of the program that sent it, empty for none.
     required property string app
     required property string summary
     required property string body
@@ -139,12 +141,44 @@ Item {
             objectName: "summary"
             x: Geometry.iconSize + Tokens.spaceS
             y: Geometry.hairline + Tokens.spaceS
-            width: when.x - Tokens.spaceM - x
+            width: (sender.visible ? sender.x : when.x) - Tokens.spaceM - x
             text: row.summary
             textFormat: Text.PlainText
             font.weight: Tokens.fontWeightSemibold
             wrapMode: Text.NoWrap
             elide: Text.ElideRight
+
+            OverflowTip {}
+        }
+
+        // The name and the time stand apart by a middle dot.
+        Meta {
+            id: dot
+
+            objectName: "dot"
+            visible: sender.visible
+            x: when.x - width
+            anchors.baseline: heading.baseline
+            text: "·"
+            leftPadding: Tokens.spaceXs
+            rightPadding: Tokens.spaceXs
+        }
+
+        // Name and summary each may take half of the room between them; one that needs less leaves the rest to the other.
+        Meta {
+            id: sender
+
+            objectName: "sender"
+            readonly property real room: dot.x - Tokens.spaceM - heading.x
+            visible: row.app !== ""
+            x: dot.x - width
+            width: Math.max(0, Math.min(implicitWidth, Math.max(room / 2, room - heading.implicitWidth)))
+            anchors.baseline: heading.baseline
+            text: row.app
+            textFormat: Text.PlainText
+            wrapMode: Text.NoWrap
+            elide: Text.ElideRight
+            maximumLineCount: 1
 
             OverflowTip {}
         }

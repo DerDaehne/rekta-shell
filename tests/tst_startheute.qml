@@ -512,6 +512,21 @@ TestCase {
         compare(time.x + time.width, rows()[0].width);
     }
 
+    function test_a_row_without_an_app_name_does_not_show_its_raw_desktop_id() {
+        notify({ appName: "", desktopEntry: "org.example.chat", summary: "anna" });
+        openNow();
+        verify(!findChild(rows()[0], "sender").visible);
+    }
+
+    function test_a_row_names_the_app_before_the_time() {
+        three();
+        openNow();
+        const row = rows()[0];
+        const sender = findChild(row, "sender");
+        compare(sender.text, "chat");
+        verify(sender.x + sender.width < findChild(row, "time").x);
+    }
+
     function test_a_row_cannot_be_pulled_away() {
         // The Start's swipe takes a drag across "heute" before a row could, so the row's own pull is checked switched off.
         three();

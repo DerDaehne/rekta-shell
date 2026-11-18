@@ -11,9 +11,9 @@ import "Status.js" as Status
 // time, and reduced motion leaves it alone (motion.md, "Reduced motion").
 //
 // A notification from another program (states.md:78–103; rekta.css:1181–1196) brings a title over its text, the
-// sender's icon or its own picture at the start, and a text that is a button. A deliberate deviation: the title is the
-// one the notification brings, so the sender's name stands in the title or the text only where the program put it there,
-// where Rekta has it there always (states.md:97–98).
+// sender's icon or its own picture at the start, and a text that is a button. Deliberate deviation: Rekta has the sender's
+// name in the title or the text (states.md:97–98); here it stands in a line of its own above the title, in the small
+// size of a meta, where the program may have put it nowhere.
 //
 // A toast that stays has no window, so it ends in a quiet icon button that sends it away and runs nothing, after its
 // action, as high as the toast and tinted and ringed as the action is. Rekta 0.6.0 has no such button
@@ -30,6 +30,9 @@ FocusScope {
     // (states.md:91, behaviour.md:678–679). Rekta has since decided that a foreign notification's toast always keeps to a
     // known height. Any other toast's text stands whole.
     property string title
+    // The name of the program a notification comes from: one line above the title, cut at its end with an ellipsis; the
+    // reader still gets all of it, and first. Empty for a toast of the product's own.
+    property string sender
     // The word of a neutral tag at the end of the text, before the action (`.rk-tag` without a status). It stands last
     // but is said first, so that a reader hears it before the text it qualifies.
     property string tag
@@ -75,7 +78,7 @@ FocusScope {
     readonly property string actionLabel: undoAction ? action : act?.label ?? ""
     // The action and the close button, at the trailing end.
     readonly property real trailingWidth: actionBox.width + closeBox.width
-    readonly property string spoken: [tag, title, text].filter(part => part !== "").join(". ")
+    readonly property string spoken: [sender, tag, title, text].filter(part => part !== "").join(". ")
     // An undo toast says how long its window is.
     readonly property string announcement: undoAction ? `${spoken}, ${seconds} ${seconds === 1 ? "second" : "seconds"} to ${action}` : spoken
     // Runs from 0, its travel below its place and unseen, to 1 at rest, linear in time. A toast of the product's own goes
@@ -361,11 +364,17 @@ FocusScope {
         anchors.verticalCenter: parent.verticalCenter
         width: toast.width - front.width - tagBox.width - toast.trailingWidth
         // From unwrapped copies: a wrapped Text's implicitWidth follows its width, which follows the toast's.
-        implicitWidth: Math.max(heading.visible ? naturalWidth(heading, headingLine) : 0, naturalWidth(message, messageLine))
+        implicitWidth: Math.max(byline.visible ? naturalWidth(byline, bylineLine) : 0, heading.visible ? naturalWidth(heading, headingLine) : 0, naturalWidth(message, messageLine))
         height: message.y + message.height
 
         function naturalWidth(role: Text, line: Text): real {
             return line.implicitWidth + role.leftPadding + role.rightPadding;
+        }
+
+        Unwrapped {
+            id: bylineLine
+
+            role: byline
         }
 
         Unwrapped {
@@ -383,9 +392,30 @@ FocusScope {
         }
 
         TextRole {
+            id: byline
+
+            objectName: "sender"
+            width: parent.width
+            visible: toast.sender !== ""
+            text: toast.sender
+            font.pixelSize: Tokens.fontSizeXxs
+            font.weight: Tokens.fontWeightRegular
+            color: toast.ink
+            textFormat: Text.PlainText
+            wrapMode: Text.NoWrap
+            elide: Text.ElideRight
+            maximumLineCount: 1
+            leftPadding: message.leftPadding
+            rightPadding: message.rightPadding
+            topPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxTop
+            bottomPadding: lineBoxBottom
+        }
+
+        TextRole {
             id: heading
 
             objectName: "title"
+            y: byline.visible ? byline.height : 0
             width: parent.width
             visible: toast.title !== ""
             text: toast.title
@@ -397,7 +427,7 @@ FocusScope {
             maximumLineCount: Geometry.toastMaxLines
             leftPadding: message.leftPadding
             rightPadding: message.rightPadding
-            topPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxTop
+            topPadding: (byline.visible ? 0 : Tokens.spaceS + Tokens.spaceXs) + lineBoxTop
             bottomPadding: lineBoxBottom
         }
 
@@ -405,7 +435,7 @@ FocusScope {
             id: message
 
             objectName: "message"
-            y: heading.visible ? heading.height : 0
+            y: heading.visible ? heading.y + heading.height : byline.visible ? byline.height : 0
             width: parent.width
             text: toast.text
             font.pixelSize: Tokens.fontSizeS
@@ -418,7 +448,7 @@ FocusScope {
             leftPadding: front.width > 0 ? Tokens.spaceS : Tokens.spaceM
             // A tag after the words stands the gap of the text's row away (rekta.css:1191).
             rightPadding: toast.tag !== "" ? Tokens.spaceS : Tokens.spaceM
-            topPadding: heading.visible ? lineBoxTop : Tokens.spaceS + Tokens.spaceXs + lineBoxTop
+            topPadding: heading.visible || byline.visible ? lineBoxTop : Tokens.spaceS + Tokens.spaceXs + lineBoxTop
             bottomPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxBottom
         }
     }

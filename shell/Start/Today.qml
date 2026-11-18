@@ -117,7 +117,7 @@ Column {
     function fields(row: var): var {
         return {
             order: row.order,
-            app: row.appName || row.desktopEntry,
+            app: row.sender,
             summary: row.summary,
             body: row.body,
             icon: row.icon.toString(),

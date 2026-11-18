@@ -242,6 +242,66 @@ TestCase {
             mouseRelease(row, 10 + share * row.width, y);
     }
 
+    function test_a_row_names_its_sender_between_the_summary_and_the_time_and_the_screen_reader_hears_it_first() {
+        notify({ appName: "Calendar", summary: "Book club at seven" });
+        openOnMessages();
+        const row = rows()[0];
+        const sender = findChild(row, "sender");
+        const summary = findChild(row, "summary");
+        const time = findChild(row, "time");
+        compare(sender.text, "Calendar");
+        compare(sender.font.pixelSize, Tokens.fontSizeXxs);
+        verify(!sender.truncated);
+        compare(summary.x + summary.width + Tokens.spaceM, sender.x);
+        verify(sender.x + sender.width < time.x, "the name stands before the time");
+        compare(time.text, "gerade eben");
+        compare(row.Accessible.name, "Calendar, Book club at seven, gerade eben");
+    }
+
+    function test_a_long_sender_beside_a_short_summary_leaves_the_summary_whole() {
+        notify({ appName: "A calendar program with a very long name that goes on and on and on", summary: "Book club" });
+        openOnMessages();
+        const row = rows()[0];
+        verify(findChild(row, "sender").truncated);
+        verify(!findChild(row, "summary").truncated, "the summary needs less than half and keeps all of it");
+        verify(findChild(row, "sender").width > findChild(row, "summary").width, "the name takes what the summary leaves");
+    }
+
+    function test_a_sender_on_one_line_whatever_it_holds_and_a_dot_only_beside_it() {
+        notify({ appName: "Cal\nendar\nthird", summary: "Book club at seven" });
+        notify({ appName: "", desktopEntry: "", summary: "No name" });
+        openOnMessages();
+        const [bare, named] = rows();
+        compare(findChild(named, "sender").lineCount, 1);
+        verify(findChild(named, "dot").visible);
+        verify(!findChild(bare, "dot").visible, "no stray dot without a sender");
+    }
+
+    function test_a_row_without_a_sender_stands_as_it_did() {
+        notify({ appName: "", desktopEntry: "org.example.unknown", summary: "Book club at seven" });
+        openOnMessages();
+        const row = rows()[0];
+        verify(!findChild(row, "sender").visible);
+        const summary = findChild(row, "summary");
+        compare(summary.x + summary.width + Tokens.spaceM, findChild(row, "time").x);
+        compare(row.Accessible.name, "Book club at seven, gerade eben");
+    }
+
+    function test_a_long_sender_and_a_long_summary_take_half_the_room_each_and_the_time_stays_whole() {
+        notify({ appName: "A calendar program with a very long name that goes on and on and on", summary: testCase.longSummary });
+        openOnMessages();
+        const row = rows()[0];
+        const sender = findChild(row, "sender");
+        const summary = findChild(row, "summary");
+        verify(sender.truncated, "the name ends in an ellipsis");
+        verify(summary.truncated, "so does the summary");
+        fuzzyCompare(sender.width, summary.width, 1, "each takes half of the room between them");
+        compare(summary.x + summary.width + Tokens.spaceM, sender.x);
+        compare(findChild(row, "time").text, "gerade eben");
+        compare(findChild(row, "time").x + findChild(row, "time").width + Tokens.spaceM, findChild(row, "remove").x);
+        verify(row.Accessible.name.startsWith("A calendar program with a very long name"), "all of it is read");
+    }
+
     function test_the_list_stands_newest_first_with_icon_summary_time_and_one_line_of_body() {
         notify({ summary: "anna", body: "lunch at noon?" });
         notify({ summary: "invoice 2026-10", body: "Your invoice for October is ready. It lists every build minute and every gigabyte of storage you used." });
@@ -513,7 +573,8 @@ TestCase {
                 compare(remove.x + remove.width, row.width, "the button at the end of the summary's line");
                 compare(remove.y + remove.height / 2, summary.y + summary.height / 2, "centred on it");
                 compare(time.x + time.width + Tokens.spaceM, remove.x, "the time space-m before the button");
-                compare(summary.x + summary.width + Tokens.spaceM, time.x, "the summary cut space-m before the time");
+                const sender = findChild(row, "sender");
+                compare(summary.x + summary.width + Tokens.spaceM, sender.visible ? sender.x : time.x, "the summary cut space-m before the name, or the time");
             }
         };
         stillThere("no pointer and no focus on it");
