@@ -141,7 +141,7 @@ Tile {
 
                 objectName: "key"
                 anchors.verticalCenter: parent.verticalCenter
-                text: "enter"
+                text: "Enter"
             }
 
             Kicker {

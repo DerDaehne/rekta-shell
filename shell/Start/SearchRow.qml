@@ -38,7 +38,7 @@ MenuItem {
     KeyHint {
         objectName: "enterKey"
         visible: row.best
-        text: "enter"
+        text: "Enter"
     }
 
     Kicker {

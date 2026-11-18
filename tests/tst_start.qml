@@ -1662,7 +1662,7 @@ TestCase {
         verify(tiles[0].best);
         const hint = findChild(tiles[0], "bestHit");
         verify(hint.visible);
-        compare(findChild(hint, "key").children[0].text, "enter");
+        compare(findChild(hint, "key").children[0].text, "Enter");
         compare(hint.children[1].text, "bester treffer");
         verify(hint.x >= findChild(tiles[0], "name").width, "after the name");
         verify(hint.x + hint.width <= tiles[0].width, "inside the tile");
@@ -2582,7 +2582,7 @@ TestCase {
         const rows = start.searchRows();
         verify(rows[0].best);
         verify(findChild(rows[0], "enterKey").visible);
-        compare(findChild(rows[0], "enterKey").text, "enter");
+        compare(findChild(rows[0], "enterKey").text, "Enter");
         compare(findChild(rows[0], "bestWord").text, "bester treffer");
         keyClick(Qt.Key_Return);
         compare(calls, ["command sperren"]);
