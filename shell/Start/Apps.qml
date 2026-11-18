@@ -4,14 +4,15 @@ import Quickshell.Io
 
 // The installed apps this desktop shows, A–Z, one list for every place that lists or searches them: Quickshell's
 // desktop entries, less those whose OnlyShowIn or NotShowIn keeps them from XDG_CURRENT_DESKTOP. Quickshell gives
-// neither key to QML, nor DBusActivatable, so grep reads them from the same files whenever the entries change. The
+// neither key to QML, nor DBusActivatable or Implements, so grep reads them from the same files whenever the entries change. The
 // shell hands it its Launcher and Usage to start apps with; the settings app only lists them and hands neither.
 Scope {
     id: apps
 
     property var launcher: null
     property var usage: null
-    // {id, name, genericName, keywords, exec, icon, launch(), actions}; null until the files have been read once. `actions`
+    // {id, name, genericName, keywords, exec, icon, iconName, implements, launch(), actions}; null until the files have been
+    // read once. `iconName` is the icon as the file names it, `implements` the D-Bus interfaces its Implements key lists, `actions`
     // are the app's desktop actions as the action registry lists them (Rules.desktopActions).
     property var list: null
     // The System Settings pages, shaped alike; they have no place in `list`, their entries carry NoDisplay.
@@ -32,6 +33,8 @@ Scope {
             keywords: Array.from(entry.keywords),
             exec: exec,
             icon: iconPath(entry.icon, found),
+            iconName: entry.icon,
+            implements: file?.Implements ?? [],
             actions: Rules.desktopActions(entry, Rules.busName(file), apps.launcher),
             launch: () => {
                 apps.launcher.launch(entry);
@@ -84,7 +87,7 @@ Scope {
         id: reader
 
         // -R follows symlinks, as NixOS links its entries into the profiles.
-        command: ["grep", "-R", "-s", "--null", "--include=*.desktop", "-E", "^(Type|OnlyShowIn|NotShowIn|DBusActivatable) *=", ...apps.dirs]
+        command: ["grep", "-R", "-s", "--null", "--include=*.desktop", "-E", "^(Type|OnlyShowIn|NotShowIn|DBusActivatable|Implements) *=", ...apps.dirs]
         running: true
         stdout: StdioCollector {
             onStreamFinished: apps.read(Rules.desktopFileKeys(text, apps.dirs))

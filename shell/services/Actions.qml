@@ -8,7 +8,9 @@ QtObject {
     required property var commands
     // As Apps.list has them; null until the apps have been read.
     property var apps: null
+    // As ActionProviders.list has them.
+    property var provided: []
 
     // Qt's JavaScript has no flatMap.
-    readonly property var list: [].concat(commands, ...(apps ?? []).map(app => app.actions))
+    readonly property var list: [].concat(commands, ...(apps ?? []).map(app => app.actions), provided)
 }

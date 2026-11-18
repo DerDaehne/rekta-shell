@@ -86,6 +86,24 @@ function desktopActions(entry, appBusName, launcher) {
     }));
 }
 
+// The actions a running provider of rekta.Actions1 lists (`listed`: the rows of its ListActions, [id, properties]) as the
+// action registry has them, named for its app. A row without an id or a title is left out, and so is a destructive one:
+// until the shell can ask first, an app's own may not run from outside. `invoke(id, parameters)` calls the provider's Invoke.
+function providedActions(app, listed, invoke) {
+    const usable = row => typeof row?.[0] === "string" && row[0] !== "" && typeof row[1]?.title === "string" && !row[1].destructive;
+    return listed.filter(usable).map(([id, properties]) => ({
+        id: `provider/${app.id}/${id}`,
+        text: properties.title,
+        keywords: properties.keywords?.length > 0 && typeof properties.keywords !== "string" ? Array.from(properties.keywords, String) : [],
+        parameters: properties.parameters ?? "",
+        readOnly: properties.readOnly === true,
+        app: app.id,
+        appName: app.name,
+        icon: properties.icon || app.iconName,
+        invokeWith: parameters => invoke(id, parameters)
+    }));
+}
+
 // A tile spans one to four units across and one or two down (tiles.md:29–33), at most `most` units.
 function span(units, most) {
     return Math.min(most, Math.max(1, Math.round(Number(units) || 1)));
@@ -134,8 +152,8 @@ function desktopId(relativePath) {
     return relativePath.replace(/\.desktop$/, "").replace(/\//g, "-");
 }
 
-// What Quickshell does not give QML, by desktop file ID: the OnlyShowIn and NotShowIn lists and whether DBusActivatable
-// is true, from what `grep -R --null -E '^(Type|OnlyShowIn|NotShowIn|DBusActivatable) *='` prints over `dirs`: a file, a
+// What Quickshell does not give QML, by desktop file ID: the OnlyShowIn, NotShowIn and Implements lists and whether DBusActivatable
+// is true, from what `grep -R --null -E '^(Type|OnlyShowIn|NotShowIn|DBusActivatable|Implements) *='` prints over `dirs`: a file, a
 // NUL, a line. Each ID keeps the file of the first directory that has one, as the entry Quickshell shows is that one;
 // every entry has a Type, so a file without any of the others still claims its ID.
 function desktopFileKeys(text, dirs) {

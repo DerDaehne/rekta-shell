@@ -120,6 +120,42 @@ TestCase {
         compare(files["kde-only"].OnlyShowIn, ["KDE"]);
     }
 
+    function test_the_interfaces_an_entry_implements_are_read_per_desktop_file_id_as_a_list() {
+        const files = Rules.desktopFileKeys([
+            "/usr/share/applications/org.example.Prober.desktop\0Type=Application",
+            "/usr/share/applications/org.example.Prober.desktop\0Implements=rekta.Actions1;org.example.Other;",
+            "/usr/share/applications/org.example.Plain.desktop\0Type=Application",
+            ""
+        ].join("\n"), dirs);
+        compare(files["org.example.Prober"].Implements, ["rekta.Actions1", "org.example.Other"]);
+        compare(files["org.example.Plain"].Implements, undefined);
+    }
+
+    function test_a_provider_s_listed_rows_become_registry_entries_without_destructive_or_unusable_ones() {
+        const app = { id: "org.example.Prober", name: "Prober", iconName: "prober" };
+        const invoked = [];
+        const rows = [
+            ["open", { title: "Open", keywords: ["file"], parameters: "{}", readOnly: true, icon: "document-open" }],
+            ["plain", { title: "Plain" }],
+            ["wipe", { title: "Wipe", destructive: true }],
+            ["", { title: "No id" }],
+            ["untitled", {}],
+            ["badtitle", { title: 3 }],
+            "junk"
+        ];
+        const entries = Rules.providedActions(app, rows, (id, parameters) => invoked.push([id, parameters]));
+        compare(entries.map(entry => entry.id), ["provider/org.example.Prober/open", "provider/org.example.Prober/plain"]);
+        compare(entries[0].text, "Open");
+        compare(entries[0].keywords, ["file"]);
+        compare(entries[0].readOnly, true);
+        compare(entries[0].icon, "document-open");
+        compare(entries[1].keywords, []);
+        compare(entries[1].icon, "prober", "the app's icon when the action has none");
+        compare([entries[1].app, entries[1].appName], ["org.example.Prober", "Prober"]);
+        entries[0].invokeWith({ path: "/x" });
+        compare(invoked, [["open", { path: "/x" }]]);
+    }
+
     function test_an_entry_runs_over_dbus_under_its_file_name_only_if_its_first_file_says_true_and_that_name_is_a_bus_name() {
         const files = Rules.desktopFileKeys([
             "/u/.local/share/applications/org.gnome.Nautilus.desktop\0Type=Application",

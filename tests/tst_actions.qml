@@ -40,6 +40,7 @@ TestCase {
     // The apps the Start lists, as Apps.list has them, and the registry over them and the commands.
     property var apps: null
     property var registry
+    property var providers
 
     Counterpart {
         id: counterpart
@@ -100,6 +101,16 @@ TestCase {
 
         Actions {
             commands: testCase.commands?.list ?? []
+            apps: testCase.apps
+            provided: testCase.providers?.list ?? []
+        }
+    }
+
+    Component {
+        id: providersComponent
+
+        ActionProviders {
+            sessionDesktop: "rekta"
             apps: testCase.apps
         }
     }
@@ -194,6 +205,7 @@ TestCase {
         return Rules.listedApps(entries, files, "KDE").map(entry => ({
                     id: entry.id,
                     name: entry.name,
+                    implements: [],
                     actions: Rules.desktopActions(entry, Rules.busName(files[entry.id]), testCase.launcher)
                 }));
     }
@@ -208,10 +220,12 @@ TestCase {
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         calls = [];
+        counterpart.forgetCalls();
         replies = {};
         owner = "";
         apps = null;
         commands = createTemporaryObject(commandsComponent, testCase);
+        providers = createTemporaryObject(providersComponent, testCase);
         registry = createTemporaryObject(registryComponent, testCase);
     }
 
@@ -559,6 +573,206 @@ TestCase {
         shellLauncher.call(false, "org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", "GetActive", [], "", error => answer = error);
         tryVerify(() => answer !== null);
         verify(String(answer).startsWith("org.freedesktop.DBus.Error.ServiceUnknown"), answer);
+    }
+
+    readonly property string probeName: "org.example.Prober"
+    readonly property string probeId: `provider/${probeName}/`
+    readonly property var probeActions: [
+        {
+            id: "open",
+            properties: {
+                title: "Open file",
+                keywords: ["file", "open"],
+                parameters: JSON.stringify({
+                    type: "object",
+                    properties: {
+                        path: {
+                            type: "string"
+                        }
+                    },
+                    required: ["path"]
+                }),
+                readOnly: true,
+                icon: "document-open"
+            }
+        },
+        {
+            id: "plain",
+            properties: {
+                title: "Plain"
+            }
+        },
+        {
+            id: "wipe",
+            properties: {
+                title: "Wipe everything",
+                destructive: true
+            }
+        }
+    ]
+
+    // The apps the Start lists, among them one whose desktop file says Implements=rekta.Actions1.
+    function appsWithProvider(): var {
+        return [...listedApps(desktopEntries()), {
+                id: probeName,
+                name: "Prober",
+                iconName: "prober",
+                implements: ["rekta.Actions1", "org.example.Other"],
+                actions: []
+            }];
+    }
+
+    // A round trip on the providers' own connection: what it sent before has reached the bus, and so has its answer.
+    function settle() {
+        let answered = false;
+        providers.bus.call("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetId", [], "", () => answered = true);
+        tryVerify(() => answered);
+    }
+
+    function startProvider() {
+        counterpart.provide(path, probeActions);
+        verify(counterpart.takeName(probeName));
+    }
+
+    function stopProvider() {
+        counterpart.releaseName(probeName);
+        counterpart.failInvokes(false);
+    }
+
+    function providedIds(): var {
+        return listActions().map(entry => entry[0]).filter(id => id.startsWith("provider/"));
+    }
+
+    function test_a_running_provider_lists_its_actions_named_for_its_app_without_a_destructive_one() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        compare(providedIds(), [`${probeId}open`, `${probeId}plain`]);
+        compare(action(`${probeId}open`), {
+            title: "Open file",
+            keywords: ["file", "open"],
+            parameters: probeActions[0].properties.parameters,
+            readOnly: true,
+            destructive: false,
+            app: probeName,
+            icon: "document-open"
+        });
+        compare(action(`${probeId}plain`).icon, "prober");
+        verify(action(`${probeId}wipe`) === undefined, "a foreign destructive action is not listed");
+        stopProvider();
+    }
+
+    function test_a_provider_already_running_when_its_app_is_read_is_listed() {
+        startProvider();
+        exportFor("rekta");
+        apps = appsWithProvider();
+        tryVerify(() => providedIds().length === 2);
+        stopProvider();
+    }
+
+    function test_an_invoke_of_a_foreign_destructive_action_is_refused_and_never_reaches_the_provider() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        const refused = invoke(`${probeId}wipe`, {});
+        compare(refused.error, "org.freedesktop.DBus.Error.Failed");
+        compare(counterpart.callsTo("Invoke"), 0);
+        stopProvider();
+    }
+
+    function test_a_provider_whose_name_has_no_owner_is_never_called_and_is_called_once_it_has_one() {
+        failOnWarning(/^ActionProviders: /);
+        counterpart.provide(path, probeActions);
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        settle();
+        compare(providedIds(), []);
+        compare(counterpart.callsTo("ListActions"), 0);
+        verify(counterpart.takeName(probeName));
+        tryVerify(() => counterpart.callsTo("ListActions") === 1);
+        tryVerify(() => providedIds().length === 2);
+        counterpart.releaseName(probeName);
+        tryVerify(() => providedIds().length === 0);
+        compare(counterpart.callsTo("ListActions"), 1, "a name that went is not asked again");
+    }
+
+    function test_a_provider_appearing_changing_or_going_sends_actions_changed_once_each_and_the_same_actions_again_none() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => heard.length === 1);
+        counterpart.provide(path, [probeActions[1]]);
+        counterpart.emitSignal(path, iface, "ActionsChanged", []);
+        tryVerify(() => heard.length === 2);
+        compare(providedIds(), [`${probeId}plain`]);
+        counterpart.emitSignal(path, iface, "ActionsChanged", []);
+        settle();
+        listActions();
+        compare(heard.length, 2, "actions that read the same bring none");
+        counterpart.releaseName(probeName);
+        tryVerify(() => heard.length === 3);
+        compare(providedIds(), []);
+    }
+
+    function test_invoking_a_provider_s_action_calls_its_invoke_with_the_same_parameters() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        compare(invoke(`${probeId}open`, {
+            path: "/tmp/a.txt",
+            fresh: true,
+            count: 3
+        }), {
+            signature: "a{sv}",
+            values: [{}],
+            error: ""
+        });
+        tryVerify(() => counterpart.callsTo("Invoke") === 1);
+        compare(counterpart.lastCall, {
+            path,
+            interface: iface,
+            member: "Invoke",
+            args: ["open", {
+                    path: "/tmp/a.txt",
+                    fresh: true,
+                    count: 3
+                }]
+        });
+        compare(counterpart.lastSignature, "sa{sv}");
+        stopProvider();
+    }
+
+    function test_a_provider_that_fails_an_invoke_is_logged_and_the_shell_still_answers_at_once() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        counterpart.failInvokes(true);
+        ignoreWarning(/^ActionProviders: org\.example\.Prober: plain: org\.rekta\.Counterpart\.Failed: the provider failed$/);
+        compare(invoke(`${probeId}plain`, {}).error, "");
+        tryVerify(() => counterpart.callsTo("Invoke") === 1);
+        settle();
+        stopProvider();
+    }
+
+    function test_outside_the_rekta_session_no_provider_is_looked_up() {
+        providers.sessionDesktop = "KDE";
+        apps = appsWithProvider();
+        startProvider();
+        settle();
+        compare(providers.owners, {});
+        compare(providers.list, []);
+        compare(counterpart.callsTo("ListActions"), 0);
+        stopProvider();
     }
 
     function test_version_is_one_and_can_only_be_read() {

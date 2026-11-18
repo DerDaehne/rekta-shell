@@ -51,6 +51,8 @@ QtObject {
             properties.app = command.app;
         if (command.icon)
             properties.icon = command.icon;
+        if (command.parameters)
+            properties.parameters = command.parameters;
         if (command.at !== undefined)
             properties.parameters = amountSchema;
         return [command.id, properties];
@@ -64,6 +66,8 @@ QtObject {
         const command = entries.find(candidate => candidate.id === id);
         if (command === undefined)
             throw new Error(`there is no action ${id}`);
+        if (command.invokeWith !== undefined)
+            return command.invokeWith(parameters);
         if (command.at === undefined) {
             command.run();
             return {};

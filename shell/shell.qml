@@ -223,12 +223,20 @@ ShellRoot {
         count: notifications.board.unseen
     }
 
+    ActionProviders {
+        id: actionProviders
+
+        sessionDesktop: Quickshell.env("XDG_SESSION_DESKTOP") ?? ""
+        apps: start.apps
+    }
+
     // Only the bus offers the apps' desktop actions; the Start's search keeps to the shell's own commands.
     Actions {
         id: actionRegistry
 
         commands: shellCommands.list
         apps: start.apps
+        provided: actionProviders.list
     }
 
     ActionsInterface {

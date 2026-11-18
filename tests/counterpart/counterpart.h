@@ -3,8 +3,11 @@
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusVirtualObject>
+#include <QHash>
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
+
+class Provider;
 
 // The other end of the bus for the tests of RektaShell.DBus, written against QtDBus alone. It owns
 // org.rekta.Counterpart, echoes every call to /echo back (or fails when asked "Fail") and records what arrived; it
@@ -48,6 +51,14 @@ public:
     Q_INVOKABLE void answerAt(const QString &path, const QVariantList &values);
     // Every call to path is recorded and stays without an answer.
     Q_INVOKABLE void ignoreAt(const QString &path);
+    // Puts up a provider of rekta.Actions1 at path: ListActions answers `actions`, a list of {id, properties} (a list of
+    // strings in a property goes as `as`), and Invoke an empty a{sv}, or an error while failInvokes(true). Calling it again
+    // replaces the actions. Every call is recorded.
+    Q_INVOKABLE void provide(const QString &path, const QVariantList &actions);
+    Q_INVOKABLE void failInvokes(bool fail);
+    // How many calls with that member arrived, at any path.
+    Q_INVOKABLE int callsTo(const QString &member) const;
+    Q_INVOKABLE void forgetCalls();
     // Sends count signals in a row, numbered from 1.
     Q_INVOKABLE void flood(const QString &path, const QString &interfaceName, const QString &member, int count);
     // Sends count calls in a row without waiting for their answers.
@@ -88,6 +99,9 @@ private:
     QString m_lastSignature;
     QVariantMap m_variantTypes;
     QVariantMap m_replyVariantTypes;
+    QHash<QString, int> m_callCounts;
+    Provider *m_provider = nullptr;
+    bool m_providing = false;
 };
 
 // A stand-in for powerdevil's org.kde.ScreenBrightness, written against QtDBus alone: while running it owns the name,

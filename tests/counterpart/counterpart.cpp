@@ -225,6 +225,7 @@ void Counterpart::releaseName(const QString &name)
     for (const QString &path : std::as_const(m_paths))
         m_connection.unregisterObject(path);
     m_paths.clear();
+    m_providing = false;
 }
 
 void Counterpart::answerAt(const QString &path, const QVariantList &values)
@@ -237,6 +238,123 @@ void Counterpart::ignoreAt(const QString &path)
 {
     m_connection.registerVirtualObject(path, new Answer(this, std::nullopt));
     m_paths.append(path);
+}
+
+namespace
+{
+
+struct ActionRow {
+    QString id;
+    QVariantMap properties;
+};
+
+QDBusArgument &operator<<(QDBusArgument &argument, const ActionRow &row)
+{
+    argument.beginStructure();
+    argument << row.id << row.properties;
+    argument.endStructure();
+    return argument;
+}
+
+const QDBusArgument &operator>>(const QDBusArgument &argument, ActionRow &row)
+{
+    argument.beginStructure();
+    argument >> row.id >> row.properties;
+    argument.endStructure();
+    return argument;
+}
+
+// A list of strings goes over the bus as `as`, as a JavaScript array reaches here as a list of variants.
+QVariantMap withStringLists(QVariantMap properties)
+{
+    for (auto &value : properties) {
+        const QVariantList list = value.toList();
+        if (value.metaType() != QMetaType::fromType<QVariantList>())
+            continue;
+        QStringList strings;
+        for (const QVariant &item : list)
+            strings.append(item.toString());
+        value = strings;
+    }
+    return properties;
+}
+
+}
+
+class Provider : public QDBusVirtualObject
+{
+public:
+    explicit Provider(Counterpart *counterpart)
+        : QDBusVirtualObject(counterpart)
+        , m_counterpart(counterpart)
+    {
+        qDBusRegisterMetaType<ActionRow>();
+        qDBusRegisterMetaType<QList<ActionRow>>();
+    }
+
+    QString introspect(const QString &) const override
+    {
+        return {};
+    }
+
+    bool handleMessage(const QDBusMessage &message, const QDBusConnection &connection) override
+    {
+        m_counterpart->record(message);
+        if (message.member() == u"ListActions"_s)
+            connection.send(message.createReply(QVariant::fromValue(m_rows)));
+        else if (m_failInvokes)
+            connection.send(message.createErrorReply(u"org.rekta.Counterpart.Failed"_s, u"the provider failed"_s));
+        else
+            connection.send(message.createReply(QVariant(QVariantMap())));
+        return true;
+    }
+
+    void setActions(const QVariantList &actions)
+    {
+        m_rows.clear();
+        for (const QVariant &action : actions) {
+            const QVariantMap map = action.toMap();
+            m_rows.append({map.value(u"id"_s).toString(), withStringLists(map.value(u"properties"_s).toMap())});
+        }
+    }
+
+    void setFailInvokes(bool fail)
+    {
+        m_failInvokes = fail;
+    }
+
+private:
+    Counterpart *m_counterpart;
+    QList<ActionRow> m_rows;
+    bool m_failInvokes = false;
+};
+
+void Counterpart::provide(const QString &path, const QVariantList &actions)
+{
+    if (!m_provider)
+        m_provider = new Provider(this);
+    if (!m_providing) {
+        m_connection.registerVirtualObject(path, m_provider);
+        m_paths.append(path);
+        m_providing = true;
+    }
+    m_provider->setActions(actions);
+}
+
+void Counterpart::failInvokes(bool fail)
+{
+    if (m_provider)
+        m_provider->setFailInvokes(fail);
+}
+
+void Counterpart::forgetCalls()
+{
+    m_callCounts.clear();
+}
+
+int Counterpart::callsTo(const QString &member) const
+{
+    return m_callCounts.value(member);
 }
 
 void Counterpart::flood(const QString &path, const QString &interfaceName, const QString &member, int count)
@@ -258,6 +376,7 @@ QString Counterpart::uniqueName() const
 
 void Counterpart::record(const QDBusMessage &message)
 {
+    m_callCounts[message.member()]++;
     m_lastCall = {
         {u"path"_s, message.path()},
         {u"interface"_s, message.interface()},

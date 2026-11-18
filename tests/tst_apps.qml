@@ -24,6 +24,8 @@ TestCase {
     property var kate
     property var notes
     property var tweaks
+    // What each desktop file ID's Implements key lists, by ID.
+    property var implementing: ({})
     property var display
     property var sound
 
@@ -118,6 +120,8 @@ TestCase {
                 path: `/usr/share/applications/${known.id}.desktop`
             };
         all["org.gnome.tweaks"].OnlyShowIn = ["GNOME"];
+        for (const [id, interfaces] of Object.entries(implementing))
+            all[id].Implements = interfaces;
         return all;
     }
 
@@ -128,6 +132,7 @@ TestCase {
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         launched = [];
+        implementing = {};
         makeEntries();
         install([konsole, dolphin, firefox, kate, notes, tweaks]);
         Quickshell.themeIcons = ["utilities-terminal", "system-file-manager", "firefox", "kate", "preferences-desktop-display"];
@@ -203,6 +208,15 @@ TestCase {
                 change: () => kate.genericName = "Text Editor",
                 shown: item => item.genericName,
                 expected: "Text Editor"
+            },
+            {
+                tag: "the interfaces it implements",
+                id: "org.kde.kate",
+                change: () => testCase.implementing = {
+                    "org.kde.kate": ["rekta.Actions1"]
+                },
+                shown: item => item.implements,
+                expected: ["rekta.Actions1"]
             },
             {
                 tag: "program",
