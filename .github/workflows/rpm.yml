@@ -95,5 +95,8 @@ jobs:
           binaries=()
           for f in *.rpm; do [[ $f == *.src.rpm ]] || binaries+=("$f"); done
           sha256sum "${binaries[@]}" "$srpm" > SHA256SUMS
+          # versions 0.x.y are pre-releases; the first stable one is 1.0.0
+          flags=()
+          [[ $GITHUB_REF_NAME == v0.* ]] && flags+=(--prerelease)
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
-            --title "$GITHUB_REF_NAME" --generate-notes "${binaries[@]}" "$srpm" SHA256SUMS
+            --title "$GITHUB_REF_NAME" --notes-from-tag "${flags[@]}" "${binaries[@]}" "$srpm" SHA256SUMS

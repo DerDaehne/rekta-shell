@@ -316,5 +316,9 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
 - Every push to `main` leaves the RPM and SRPM as a workflow artifact named
   `rekta-shell-<version>-fc<release>-<sha7>` (30 days; pull requests 7 days):
   `gh run download <run-id> -n <artifact name>`.
-- Tags `v<version>` are set by the maintainer only; the tag must equal `v` plus the spec's `Version`.
-  A tag publishes the GitHub release with RPMs, SRPM and `SHA256SUMS`.
+- Tags `v<version>` must equal `v` plus the spec's `Version`. A tag publishes the GitHub release with
+  RPMs, SRPM and `SHA256SUMS`; its notes are the annotated tag's message, and every `0.x.y` is a pre-release.
+- The coordinator sets a pre-release `v0.1.N` at the end of a session, on main with green CI (standing
+  instruction of the maintainer). Stable releases (`1.0.0` and later) are set by the maintainer only.
+- `scripts/release.sh <version> <notes-file> [--dry-run]` checks main and CI, bumps the spec, commits, scans and
+  tags with the notes as message (format in the script's header); it never pushes, it prints the two pushes.
