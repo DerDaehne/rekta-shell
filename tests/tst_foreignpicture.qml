@@ -29,7 +29,7 @@ TestCase {
 
     function test_no_other_scheme_gives_a_picture_so_nothing_is_fetched() {
         for (const url of ["http://127.0.0.1:1/a.png", "https://example.org/a.png", "HTTP://example.org/a.png", "ftp://example.org/a.png",
-                "data:image/png;base64,AAAA", "qrc:/a.png", "file://host/share/a.png", "//example.org/a.png", "relative/a.png", "../a.png"])
+                "data:image/png;base64,AAAA", "image://icon/http://example.org/a.png", "qrc:/a.png", "file://host/share/a.png", "//example.org/a.png", "relative/a.png", "../a.png"])
             compare(ForeignPicture.source(url, themed), "", url);
     }
 

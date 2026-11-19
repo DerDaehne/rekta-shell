@@ -559,6 +559,7 @@ TestCase {
         givePlayer({ trackArtUrl: "https://example.org/cover.png" });
         showSettled();
         verify(!part("cover").visible);
+        compare(part("cover").source.toString(), "", "nothing was asked to load");
         compare(part("title").x, 0);
     }
 

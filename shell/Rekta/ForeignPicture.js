@@ -9,7 +9,10 @@ function source(value, themed = () => "") {
         return "";
     if (value.startsWith("/") && !value.startsWith("//"))
         return "file://" + value.split("/").map(encodeURIComponent).join("/");
-    if (value.startsWith("file:///") || value.startsWith("image://"))
+    if (value.startsWith("file:///"))
         return value;
+    // A provider's id that is itself a URL is a theme lookup of that URL, which can only fail.
+    if (value.startsWith("image://"))
+        return value.includes("://", "image://".length) ? "" : value;
     return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value) || value.includes("/") ? "" : themed(value);
 }

@@ -323,6 +323,7 @@ TestCase {
         openNow();
         verify(findChild(music(), "musicIcon").visible);
         verify(!findChild(music(), "cover").visible);
+        compare(findChild(music(), "cover").source.toString(), "", "nothing was asked to load");
     }
 
     function test_a_press_on_what_plays_raises_the_player_and_the_start_turns_out_forward() {
