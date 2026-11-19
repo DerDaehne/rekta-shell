@@ -123,7 +123,9 @@ struct Splash {
 //
 // KWin hands the keyboard of the active window that goes to the next window in its focus chain, which holds no dock:
 // a layer surface going over the open Start would hand it to an app. While the Start asks for the keyboard, the effect
-// hands it to the Start instead, as KWin tells effects of a window closing before it looks for the next one.
+// hands it to the Start instead, as KWin tells effects of a window closing before it looks for the next one. A shell
+// surface that stops asking for the keyboard while it stays, as the toasts' does as a toast the key reached leaves,
+// would keep it: KWin moves it on only from a window that goes. The effect moves it on as if that surface went.
 //
 // The shell's popups come with their own fade and go at once, as Rekta's floating surfaces do: the effect holds each
 // from KWin's other effects, which would fade it in and out once more.
@@ -190,6 +192,7 @@ private:
     bool moving() const;
     void holdSplash(EffectWindow *w);
     void keepKeyboardOnStart(EffectWindow *w);
+    void handKeyboardOn(LayerSurfaceV1Interface *layer);
     void holdShellPopup(EffectWindow *w);
     void fadeSplash(std::chrono::nanoseconds presentation);
     bool fading() const;
@@ -278,6 +281,9 @@ void FadeBackEffect::watch(LayerSurfaceV1Interface *layer)
     if (layer->scope() == QLatin1StringView("docK")) {
         m_shell = layer->surface()->client();
     }
+    connect(layer, &LayerSurfaceV1Interface::acceptsFocusChanged, this, [this, layer] {
+        handKeyboardOn(layer);
+    });
     // KWin has made the surface's window by now, before its first frame; Qt makes a new surface for each showing.
     m_layers.insert(layer->scope(), layer);
     fadeSheet(layer->scope());
@@ -485,6 +491,20 @@ void FadeBackEffect::keepKeyboardOnStart(EffectWindow *w)
     if (overStart && closing == workspace()->activeWindow()) {
         workspace()->requestFocus(start);
     }
+}
+
+// KWin keeps the keyboard on a surface that stops asking for it: LayerShellV1Window::handleAcceptsFocusChanged only ever
+// activates. The Start and the leave surface hand theirs over themselves, as their windows come forward.
+void FadeBackEffect::handKeyboardOn(LayerSurfaceV1Interface *layer)
+{
+    Window *window = waylandServer()->findWindow(layer->surface());
+    const bool handsOverItself = layer == m_start.surface || layer == m_leave.surface;
+    const bool ofShell = m_shell && layer->surface()->client() == m_shell;
+    if (layer->acceptsFocus() || handsOverItself || !ofShell || !window || window != workspace()->activeWindow()) {
+        return;
+    }
+    keepKeyboardOnStart(window->effectWindow());
+    workspace()->activateNextWindow(window);
 }
 
 // fadingpopups, glide, fade and scale animate no window another effect holds, and drop an animation they have begun
