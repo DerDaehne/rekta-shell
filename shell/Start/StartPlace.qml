@@ -138,6 +138,20 @@ FocusScope {
     // What the search shows as rows below the tiles: [{name, rows: [{text, lead, icon, glyph, key, run, best}]}]
     // (Rules.rowGroups).
     property var rowGroups: []
+    // The rows of the latest hits. A change still waiting for its tiles to leave shows them too, when a newer one makes it
+    // at once: no row takes words it gives up again in the same turn.
+    property var rowsFound: []
+    // How long one turn of the event loop may make tiles and rows or give rows words, in ms: a key or a frame waits no
+    // longer for them, well inside two frames at 240 Hz.
+    readonly property int makingTime: 2
+    // As many rows as can be in view below the tiles: they take their words at once (wordRows).
+    readonly property int rowsInView: Math.ceil((results.height - rowsColumn.y + results.contentY) / Tokens.rowHeight)
+    // Rows still to take the words of the latest hits.
+    property bool wordsLeft: false
+    // The hit tiles shown; those made ahead wait hidden (makeAhead).
+    property int tilesShown: 0
+    // The pictures rows have loaded: Qt keeps them a while, so a row that takes one of them shows it at once.
+    property var picturesLoaded: new Set()
     // Without any hit, the ways on as rows (Rules.waysOut).
     property var waysOut: []
     // What Escape does in a search: "close" closes the Start at once, "back" clears the search first like the other ways
@@ -600,17 +614,22 @@ FocusScope {
         hitsFollow.waitsFor = "";
         showSearchView(false);
         found.clear();
+        tilesShown = 0;
         rowGroups = [];
+        rowsFound = [];
+        wordsLeft = false;
         waysOut = [];
     }
 
     // A key that acts on the hits finds them made: those still to follow what was typed, then a change still waiting.
     function makeHits() {
-        if (hitsFollow.running) {
+        if (hitsFollow.waitsFor !== "") {
             hitsFollow.waitsFor = "";
-            followHits();
+            followHits(true);
         }
         presence.finish();
+        if (wordsLeft)
+            wordRows(countRows(rowsFound));
     }
 
     function askHits() {
@@ -622,7 +641,7 @@ FocusScope {
         if (hitsFollow.waitsFor !== "turn")
             return;
         hitsFollow.waitsFor = "";
-        followHits();
+        followHits(false);
     }
 
     // What was typed stands in the next frame; what it finds follows once that frame has been taken (hitsFollow), so no
@@ -645,17 +664,70 @@ FocusScope {
             hideSearch();
         } else if (searching) {
             hitsFollow.waitsFor = "";
-            followHits();
+            followHits(false);
         }
     }
 
-    function followHits() {
+    // The hits of what was typed show once the tiles and rows they need are made, or at once with all of them (`atOnce`).
+    function followHits(atOnce: bool) {
         if (!searching || turning)
             return;
+        const matched = matching();
+        showWhenMade(matched, matchingRows(matched), atOnce);
+    }
+
+    function showWhenMade(matched: var, rows: var, atOnce: bool) {
+        if (!makeAhead(matched.tiles, rows, atOnce)) {
+            hitsFollow.waitsFor = "rows";
+            Qt.callLater(start.makeMore, matched, rows);
+            return;
+        }
+        hitsFollow.waitsFor = "";
+        rowsFound = rows;
         if (placeGivenWay)
-            filter();
+            filter(matched);
         else
-            giveWayToHits();
+            giveWayToHits(matched);
+    }
+
+    function makeMore(matched: var, rows: var) {
+        if (hitsFollow.waitsFor === "rows")
+            showWhenMade(matched, rows, false);
+    }
+
+    // The tiles and rows the hits need are made ahead, hidden, a few per turn of the event loop unless `atOnce`: making a
+    // tile takes about a millisecond, a row half of one, and loading a picture the first time up to a few. A group of rows
+    // keeps the rows it made, so typing on or erasing gives rows other words (showRows); it makes rows only past the most
+    // it has shown, each with the words it will show, and loads the pictures not loaded yet. True once all are made.
+    function makeAhead(tiles: var, groups: var, atOnce: bool): bool {
+        const until = Date.now() + makingTime;
+        const tilesMade = tileIds();
+        for (const app of tiles.filter(app => !tilesMade.includes(app.id))) {
+            if (!atOnce && Date.now() >= until)
+                return false;
+            found.append(tileOf(app, false));
+        }
+        for (const group of groups) {
+            const made = rowSection(group.name).made;
+            for (const [k, entry] of group.rows.entries()) {
+                if (k < made.count && picturesLoaded.has(entry.icon))
+                    continue;
+                if (!atOnce && Date.now() >= until)
+                    return false;
+                if (k < made.count) {
+                    pictureLoader.source = entry.icon;
+                } else {
+                    made.model.append({});
+                    (made.itemAt(k) as SearchRow).entry = entry;
+                }
+                picturesLoaded.add(entry.icon);
+            }
+        }
+        return true;
+    }
+
+    function rowSection(group: string): Item {
+        return rowSections.itemAt(Rules.rowGroupNames.indexOf(group));
     }
 
     function showSearchView(shown: bool) {
@@ -703,16 +775,14 @@ FocusScope {
     }
 
     // The place's parts leave and the hits arrive below the title.
-    function giveWayToHits() {
+    function giveWayToHits(matched: var) {
         placeGivenWay = true;
-        const matched = matching();
         const shown = matched.tiles;
-        const rows = matchingRows(matched);
         const going = partsIn(body).filter(part => !isIn(part, searchTitle));
         presence.change(going, [], () => {
             showResults(true);
-            showHits(shown, rows);
-        }, () => partsIn(results), shown.length + countRows(rows));
+            showHits(shown);
+        }, () => partsIn(results), shown.length + countRows(rowsFound));
     }
 
     // ponytail: the parts the place brings back are counted only once it shows, so past sixty the hits still leave in
@@ -727,7 +797,10 @@ FocusScope {
             if (typing)
                 searchField.focusInput();
             found.clear();
+            tilesShown = 0;
             rowGroups = [];
+            rowsFound = [];
+            wordsLeft = false;
             waysOut = [];
         };
         if (!placeGivenWay) {
@@ -763,43 +836,93 @@ FocusScope {
     }
 
     // Going on typing or erasing: the hits that no longer match go, the new ones come, and the rest close up.
-    function filter() {
+    function filter(matched: var) {
         presence.finish();
-        const matched = matching();
         const shown = matched.tiles;
-        const rows = matchingRows(matched);
         const kept = new Set(shown.map(app => app.id));
         const tiles = hitTiles();
         const before = new Set(tiles.map(tile => tile.appId));
         const coming = shown.filter(app => !before.has(app.id)).map(app => app.id);
         const going = tiles.filter(tile => !kept.has(tile.appId));
         const staying = tiles.filter(tile => kept.has(tile.appId));
-        presence.change(going, staying, () => showHits(shown, rows), () => hitTiles().filter(tile => coming.includes(tile.appId)), coming.length);
+        presence.change(going, staying, () => showHits(shown), () => hitTiles().filter(tile => coming.includes(tile.appId)), coming.length);
     }
 
-    // Brings the hit tiles in line with `shown`, step by step, so that a tile that stays is the same tile. The rows are
-    // made anew; ponytail: they change without motion while typing on, give them Presence like the tiles if that shows.
-    function showHits(shown: var, rows: var) {
-        rowGroups = rows;
-        waysOut = shown.length === 0 && rows.length === 0 ? Rules.waysOut(query.trim(), webSearch, openUrl) : [];
+    function showHits(shown: var) {
+        showRows();
+        waysOut = shown.length === 0 && rowsFound.length === 0 ? Rules.waysOut(query.trim(), webSearch, openUrl) : [];
+        showTiles(shown);
+    }
+
+    // The rows take the words of the latest hits; ponytail: they change without motion while typing on, give them
+    // Presence like the tiles if that shows.
+    function showRows() {
+        rowGroups = rowsFound;
+        for (let k = 0; k < rowSections.count; k++)
+            rowSections.itemAt(k).worded = 0;
+        wordRows(rowsInView);
+    }
+
+    // The rows take their words in reading order and show as they do: at least `least` at once, the rest a few per turn
+    // of the event loop, as other words and another picture take up to a tenth of a millisecond a row.
+    function wordRows(least: int) {
+        const until = Date.now() + makingTime;
+        let worded = 0;
+        for (const group of rowsFound) {
+            const section = rowSection(group.name);
+            for (; section.worded < group.rows.length; section.worded++, worded++) {
+                if (worded >= least && Date.now() >= until) {
+                    wordsLeft = true;
+                    Qt.callLater(start.wordMoreRows);
+                    return;
+                }
+                (section.made.itemAt(section.worded) as SearchRow).entry = group.rows[section.worded];
+            }
+        }
+        wordsLeft = false;
+    }
+
+    function wordMoreRows() {
+        if (wordsLeft)
+            wordRows(0);
+    }
+
+    // Brings the hit tiles in line with `shown`, step by step, so that a tile that stays is the same tile; a tile made
+    // ahead takes its place.
+    function showTiles(shown: var) {
         const byId = new Map(shown.map(app => [app.id, app]));
-        for (const step of Rules.steps(hitTiles().map(tile => tile.appId), shown.map(app => app.id))) {
+        for (const step of Rules.steps(tileIds(), shown.map(app => app.id))) {
             if (step.remove !== undefined)
                 found.remove(step.remove);
             else if (step.move !== undefined)
                 found.move(step.move, step.to, 1);
             else
-                found.insert(step.insert, {
-                    appId: step.id,
-                    label: byId.get(step.id).name,
-                    image: byId.get(step.id).icon,
-                    glyphName: Rules.ownGlyph(step.id)
-                });
+                found.insert(step.insert, tileOf(byId.get(step.id), true));
         }
+        for (let k = 0; k < found.count; k++)
+            found.setProperty(k, "hit", true);
+        tilesShown = found.count;
+    }
+
+    function tileOf(app: var, hit: bool): var {
+        return {
+            appId: app.id,
+            label: app.name,
+            image: app.icon,
+            glyphName: Rules.ownGlyph(app.id),
+            hit: hit
+        };
+    }
+
+    // The apps of the hit tiles and of those made ahead, in the order of their model.
+    function tileIds(): var {
+        return Array.from({
+            length: found.count
+        }, (_, k) => found.get(k).appId);
     }
 
     function hitTiles(): var {
-        return hitsGrid.children.filter(item => (item as Tile) !== null);
+        return hitsGrid.children.filter(item => (item as AppTile)?.hit === true);
     }
 
     function launchApp(appId: string) {
@@ -998,12 +1121,15 @@ FocusScope {
         });
     }
 
-    // The search's rows in reading order, under their headings, or the ways on below the empty sentence.
+    // The search's rows in reading order, under their headings, or the ways on below the empty sentence. A group's first
+    // rows are those it shows; the rest wait hidden for their words or a later search (makeAhead).
     function searchRows(): var {
         const isRow = item => (item as SearchRow) !== null;
         const rows = [];
-        for (const group of rowsColumn.children)
-            rows.push(...group.children.filter(isRow));
+        for (let k = 0; k < rowSections.count; k++) {
+            const group = rowSections.itemAt(k);
+            rows.push(...group.children.filter(isRow).slice(0, Math.min(group.worded, group.rows.length)));
+        }
         return rows.concat(waysOutColumn.children.filter(isRow));
     }
 
@@ -1542,9 +1668,9 @@ FocusScope {
         id: hitsFollow
 
         // "frame" until that frame begins, "sync" until its items are taken, "turn" until the event loop comes round,
-        // "" while the hits wait for nothing.
+        // "rows" until the tiles and rows they need are made, "" while the hits wait for nothing.
         property string waitsFor: ""
-        readonly property bool running: waitsFor !== ""
+        readonly property bool running: waitsFor !== "" || start.wordsLeft
 
         objectName: "hitsFollow"
         target: start.Window.window
@@ -2164,7 +2290,10 @@ FocusScope {
                         required property string image
                         required property string glyphName
                         required property int index
+                        // One of the hits, not one made ahead.
+                        required property bool hit
 
+                        visible: hit
                         name: label
                         icon: image
                         glyph: glyphName
@@ -2180,41 +2309,65 @@ FocusScope {
             }
 
             // Below the tiles, the other kinds of hit as rows (palette entries) under their heading, space-l apart; a group
-            // without a hit has no heading.
+            // without a hit has no heading. Each group stands, shown or not, and keeps the rows it made (makeAhead).
             Column {
                 id: rowsColumn
 
                 objectName: "rows"
-                y: hitsGrid.y + hitsGrid.height + (found.count > 0 ? Tokens.spaceL : 0)
+                y: hitsGrid.y + hitsGrid.height + (start.tilesShown > 0 ? Tokens.spaceL : 0)
                 width: start.searchWidth
 
                 Repeater {
-                    model: start.rowGroups
+                    id: rowSections
+
+                    model: Rules.rowGroupNames
 
                     delegate: Column {
                         id: group
 
-                        required property var modelData
+                        required property string modelData
+                        // The rows it shows; its first rows show them, the rest wait hidden.
+                        readonly property var rows: start.rowGroups.find(shown => shown.name === group.modelData)?.rows ?? []
+                        readonly property alias made: madeRows
+                        // Its first rows that have taken the words of the rows it shows.
+                        property int worded: 0
                         // Read once here for all its rows (MenuItem.column).
                         readonly property bool menuHasIcons: Array.from(children).some(row => row.hasIcon === true)
                         readonly property bool menuHasCheckWithIcon: Array.from(children).some(row => row.hasIcon === true && row.checkable === true)
 
-                        objectName: group.modelData.name
+                        objectName: group.modelData
+                        visible: rows.length > 0
                         width: rowsColumn.width
 
                         MenuLabel {
                             objectName: "heading"
                             leftPadding: 0
                             rightPadding: 0
-                            text: group.modelData.name
+                            text: group.modelData
                         }
 
                         Repeater {
-                            model: group.modelData.rows
-                            delegate: hitRow
+                            id: madeRows
+
+                            model: ListModel {}
+
+                            delegate: SearchRow {
+                                id: madeRow
+
+                                required property int index
+
+                                visible: madeRow.index < Math.min(group.worded, group.rows.length)
+                                onActivated: start.chooseRow(madeRow.entry)
+                            }
                         }
                     }
                 }
+            }
+
+            PictureIcon {
+                id: pictureLoader
+
+                visible: false
             }
 
             // Without a match, a sentence on the region's first hairline says so, and the ways on follow it as rows
@@ -2225,7 +2378,7 @@ FocusScope {
                 objectName: "noHits"
                 y: Tokens.spaceL
                 width: start.searchWidth
-                visible: found.count === 0 && start.rowGroups.length === 0
+                visible: start.tilesShown === 0 && start.rowGroups.length === 0
                 text: `nichts zum hingehen oder ausführen passt zu „${start.query.trim()}“.`
 
                 Column {
@@ -2236,26 +2389,16 @@ FocusScope {
 
                     Repeater {
                         model: start.waysOut
-                        delegate: hitRow
+
+                        delegate: SearchRow {
+                            id: wayOut
+
+                            required property var modelData
+
+                            entry: wayOut.modelData
+                            onActivated: start.chooseRow(wayOut.modelData)
+                        }
                     }
-                }
-            }
-
-            Component {
-                id: hitRow
-
-                SearchRow {
-                    id: searchRow
-
-                    required property var modelData
-
-                    text: searchRow.modelData.text
-                    lead: searchRow.modelData.lead
-                    icon: searchRow.modelData.glyph ? "" : searchRow.modelData.icon
-                    glyph: searchRow.modelData.glyph ?? ""
-                    best: searchRow.modelData.best === true
-                    keyHint: searchRow.modelData.key ?? ""
-                    onActivated: start.chooseRow(searchRow.modelData)
                 }
             }
         }

@@ -7,8 +7,10 @@ import Rekta
 MenuItem {
     id: row
 
+    // The hit it shows, one of Rules.rowGroups' rows or Rules.waysOut: {text, lead, icon, glyph, key, best, run}.
+    property var entry: null
     // The best hit of the search, which Enter acts on.
-    property bool best: false
+    readonly property bool best: row.entry?.best === true
     // As a tile that opens: the arrow keys reach it.
     readonly property bool opens: true
     // A place change turns a row as one part.
@@ -16,6 +18,11 @@ MenuItem {
 
     signal activated
 
+    text: row.entry?.text ?? ""
+    lead: row.entry?.lead ?? ""
+    icon: row.entry?.glyph ? "" : (row.entry?.icon ?? "")
+    glyph: row.entry?.glyph ?? ""
+    keyHint: row.entry?.key ?? ""
     inset: 0
     iconSlot: true
     activeFocusOnTab: true

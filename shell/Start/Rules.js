@@ -520,33 +520,25 @@ function windowLead(entry) {
     return app.toLowerCase() === String(entry.title).toLowerCase() ? "" : app;
 }
 
+// The palette's groups of rows, in the order the search shows them.
+const rowGroupNames = ["rechnen", "apps", "fenster", "einstellungen", "befehle"];
+
 // What the search shows as rows, in the palette's groups, empty ones left out: a calculation's result, the apps without
 // a tile (`sources.apps`, see appHits), windows, settings pages and commands as rows {text, lead, icon, glyph, run,
 // best}. The first row is the best hit when no app has a tile (`noApp`). `sources` also gives the locale's decimal
 // separator and how a result is copied.
 function rowGroups(sources, text, starts, noApp) {
-    const groups = [
-        {
-            name: "rechnen",
-            rows: calculationRows(text, sources.decimalPoint, sources.copy)
-        },
-        {
-            name: "apps",
-            rows: (sources.apps ?? []).map(app => ({ text: app.name, lead: "", icon: app.icon, glyph: ownGlyph(app.id), run: () => app.launch() }))
-        },
-        {
-            name: "fenster",
-            rows: windowHits(sources.windows, text).map(entry => ({ text: entry.title, lead: windowLead(entry), icon: entry.icon, run: () => entry.activate() }))
-        },
-        {
-            name: "einstellungen",
-            rows: hits(sources.settings, text, starts).map(page => ({ text: page.name, lead: "", icon: page.icon, run: () => page.launch() }))
-        },
-        {
-            name: "befehle",
-            rows: commandHits(sources.commands, text).map(command => ({ text: command.text, lead: "", icon: "", key: command.key ?? "", run: () => command.run() }))
-        }
-    ].filter(group => group.rows.length > 0);
+    const rows = {
+        rechnen: calculationRows(text, sources.decimalPoint, sources.copy),
+        apps: (sources.apps ?? []).map(app => ({ text: app.name, lead: "", icon: app.icon, glyph: ownGlyph(app.id), run: () => app.launch() })),
+        fenster: windowHits(sources.windows, text).map(entry => ({ text: entry.title, lead: windowLead(entry), icon: entry.icon, run: () => entry.activate() })),
+        einstellungen: hits(sources.settings, text, starts).map(page => ({ text: page.name, lead: "", icon: page.icon, run: () => page.launch() })),
+        befehle: commandHits(sources.commands, text).map(command => ({ text: command.text, lead: "", icon: "", key: command.key ?? "", run: () => command.run() }))
+    };
+    const groups = rowGroupNames.map(name => ({
+                name: name,
+                rows: rows[name]
+            })).filter(group => group.rows.length > 0);
     if (noApp && groups.length > 0)
         groups[0].rows[0].best = true;
     return groups;

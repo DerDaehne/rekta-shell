@@ -5,6 +5,7 @@ import QtTest
 import Rekta
 import Start
 import "ContactSheets.js" as ContactSheets
+import "ManyApps.js" as ManyApps
 
 TestCase {
     id: testCase
@@ -2819,9 +2820,130 @@ TestCase {
         openWithEverything();
         typeNow("blue");
         compare(groupNames(), ["einstellungen"]);
-        compare(findChild(named("rows"), "fenster"), null);
-        compare(findChild(named("rows"), "befehle"), null);
+        verify(!findChild(named("rows"), "fenster").visible);
+        verify(!findChild(named("rows"), "befehle").visible);
         compare(hitNames(), []);
+    }
+
+    // A hundred and twenty apps and as many settings pages: one letter finds far more rows than are in view.
+    function openWithManyApps() {
+        start.settings = ManyApps.names.map(name => Object.assign(installedApp(`${name} Einstellungen`), {
+                id: `kcm_${name}`
+            }));
+        start.apps = ManyApps.names.map(name => installedApp(name));
+        openNow();
+    }
+
+    function shownHits(): var {
+        return {
+            tiles: hitNames(),
+            rows: start.searchRows().map(row => `${row.parent.objectName}: ${row.text}${row.best ? " (best)" : ""}`)
+        };
+    }
+
+    function rowsFound(): var {
+        const rows = [];
+        for (const group of start.rowGroups)
+            rows.push(...group.rows.map(row => `${group.name}: ${row.text}${row.best ? " (best)" : ""}`));
+        return rows;
+    }
+
+    function rowsMade(): int {
+        return named("rows").children.reduce((count, group) => count + (group.children ?? []).filter(row => (row as SearchRow) !== null).length, 0);
+    }
+
+    function test_many_hits_show_the_same_tiles_and_rows_typed_afresh_typed_on_or_erased_back() {
+        openWithManyApps();
+        const afresh = {};
+        for (const text of ["e", "en", "ent"]) {
+            start.query = "";
+            typeNow(text);
+            afresh[text] = shownHits();
+            compare(afresh[text].rows, rowsFound(), `every row of "${text}" in its order`);
+        }
+        start.query = "";
+        typeNow("e");
+        compare(shownHits(), afresh.e);
+        verify(afresh.e.rows.length > start.rowsInView, "more rows than are in view");
+        typeNow("n");
+        compare(shownHits(), afresh.en);
+        typeNow("t");
+        compare(shownHits(), afresh.ent);
+        keyClick(Qt.Key_Backspace);
+        hitsFollowed();
+        compare(shownHits(), afresh.en);
+        keyClick(Qt.Key_Backspace);
+        hitsFollowed();
+        compare(shownHits(), afresh.e);
+    }
+
+    function test_typing_on_and_erasing_give_the_rows_other_words_and_make_none_anew() {
+        openWithManyApps();
+        typeNow("e");
+        const rows = start.searchRows();
+        const made = rowsMade();
+        typeNow("n");
+        keyClick(Qt.Key_Backspace);
+        hitsFollowed();
+        const again = start.searchRows();
+        compare(again.length, rows.length);
+        verify(again.every((row, k) => row === rows[k]), "the same rows");
+        compare(rowsMade(), made, "none made anew");
+        start.query = "";
+        typeNow("en");
+        verify(start.searchRows().every(row => rows.includes(row)), "a later search takes the rows made before");
+    }
+
+    function test_the_tiles_and_rows_of_many_hits_are_made_over_several_turns_hidden_so_no_key_waits_for_them() {
+        openWithManyApps();
+        typeNow("ent");
+        const before = start.hitTiles().length;
+        const follow = named("hitsFollow");
+        const seen = [];
+        follow.waitsForChanged.connect(() => seen.push({
+                waitsFor: follow.waitsFor,
+                made: rowsMade(),
+                tilesShown: named("hits").children.filter(item => (item as Tile)?.visible === true).length
+            }));
+        keyClick(Qt.Key_Backspace);
+        keyClick(Qt.Key_Backspace);
+        hitsFollowed();
+        const needed = rowsFound().length;
+        const making = seen.filter(state => state.waitsFor === "rows");
+        verify(making.some(state => state.made < needed), JSON.stringify(seen));
+        verify(making.every(state => state.tilesShown === before), "the tiles made ahead wait hidden");
+        compare(rowsMade(), needed);
+        compare(start.hitTiles().length, 5);
+    }
+
+    function test_enter_before_the_rows_of_many_hits_are_made_makes_them_at_once_and_presses_the_best_hit() {
+        openWithManyApps();
+        holdHits();
+        keyClick("e");
+        const matched = start.matching();
+        const needed = start.countRows(start.matchingRows(matched));
+        verify(rowsMade() < needed, "the rows not yet made");
+        keyClick(Qt.Key_Return);
+        compare(calls, [`launch ${matched.tiles[0].name}`]);
+        compare(rowsMade(), needed, "every row made at once");
+    }
+
+    function test_the_rows_in_view_take_their_words_at_once_and_the_rest_follow_over_the_next_turns() {
+        openWithManyApps();
+        // So tall that giving the rows in view their words takes longer than one turn may.
+        start.height = 4000;
+        const shown = [];
+        start.wordsLeftChanged.connect(() => {
+            if (start.wordsLeft)
+                shown.push({
+                    worded: start.searchRows().length,
+                    inView: start.rowsInView
+                });
+        });
+        typeNow("e");
+        verify(shown.length > 0, "some rows took their words later");
+        verify(shown.every(state => state.worded >= state.inView && state.worded < rowsFound().length), JSON.stringify(shown));
+        compare(shownHits().rows, rowsFound());
     }
 
     function test_without_an_app_the_first_row_is_the_best_hit_with_enter_and_enter_acts_on_it() {
