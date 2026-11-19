@@ -294,16 +294,4 @@ ShellRoot {
 
         primaryScreen: primary.screen
     }
-
-    // A toast the key brought the keyboard to goes: the open Start asks for the keyboard again, as the toasts' surface
-    // may stay mapped for another toast. Not after its action: asking would take the keyboard from a window the action
-    // brings.
-    Connections {
-        target: toasts.toaster
-
-        function onKeysGoBack(reason: string) {
-            if (reason !== "acted")
-                start.takeKeyboardBack();
-        }
-    }
 }

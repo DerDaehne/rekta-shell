@@ -56,9 +56,6 @@ Item {
     readonly property int countGoes: Math.round(Tokens.turnOverlap * Geometry.peekOutShare * Tokens.durationModerate)
     property var removeKeyLayers: []
 
-    // The toast the key reached has begun to leave, `reason` as its onEnd hears it: the host hands the keyboard on.
-    signal keysGoBack(string reason)
-
     function now(): double {
         return clock();
     }
@@ -119,17 +116,14 @@ Item {
         return true;
     }
 
-    // A toast has begun to leave, `reason` as its onEnd hears it. It is leaving before it is no longer open: a host
-    // that shows its surface while either holds would otherwise unmap and map it anew, without a frame for a while.
-    function letGo(toast: Toast, reason: string) {
-        const wasReached = reached === toast;
-        if (wasReached)
+    // A toast has begun to leave. It is leaving before it is no longer open: a host that shows its surface while either
+    // holds would otherwise unmap and map it anew, without a frame for a while.
+    function letGo(toast: Toast) {
+        if (reached === toast)
             reached = null;
         leaving++;
         if (open === toast)
             open = null;
-        if (wasReached)
-            keysGoBack(reason);
     }
 
     // A toast that began to leave over `way` ms has ended, and its end may have shown the next toast. A notification's

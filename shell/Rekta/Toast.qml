@@ -121,7 +121,7 @@ FocusScope {
         const way = waiting ? 0 : goingDown.duration;
         rising.stop();
         const ending = doUndo && undoAction ? "undone" : reason;
-        toaster.letGo(toast, ending);
+        toaster.letGo(toast);
         if (waiting)
             goAway();
         else

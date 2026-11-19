@@ -949,17 +949,15 @@ TestCase {
         compare(toaster.reached, null);
     }
 
-    function test_the_keys_go_back_whatever_ends_a_reached_toast_and_the_host_hears_why() {
+    function test_a_reached_toast_lets_go_of_the_keys_whatever_ends_it() {
         const ways = {
-            "its action": { ends: ["toast acted", "retried"], reason: "acted" },
-            "its text": { ends: ["toast acted", "opened"], reason: "acted" },
-            "a toast replacing it": { ends: ["toast replaced"], reason: "replaced" },
-            "escape": { ends: ["toast dismissed"], reason: "dismissed" }
+            "its action": ["toast acted", "retried"],
+            "its text": ["toast acted", "opened"],
+            "a toast replacing it": ["toast replaced"],
+            "escape": ["toast dismissed"]
         };
-        const back = createTemporaryObject(spyComponent, testCase, { target: toaster, signalName: "keysGoBack" });
         for (const end of Object.keys(ways)) {
             testCase.ends = [];
-            back.clear();
             standing({});
             toaster.reach();
             if (end === "its action")
@@ -970,10 +968,8 @@ TestCase {
                 keyClick(Qt.Key_Escape);
             else
                 keyClick(Qt.Key_Return);
-            compare(testCase.ends, ways[end].ends);
+            compare(testCase.ends, ways[end]);
             compare(toaster.reached, null, end);
-            compare(back.count, 1, end);
-            compare(back.signalArguments[0][0], ways[end].reason, end);
             toaster.dismiss();
             toaster.leaving = 0;
         }
@@ -1014,20 +1010,6 @@ TestCase {
         const next = toaster.show("saved", { notification: true });
         tryVerify(() => next.phase === 1, 1000);
         compare(host.hidden, 0, "shown all the way from the replaced toast to the next one standing");
-    }
-
-    function test_only_the_toast_the_key_reached_hands_the_keys_back_as_it_goes() {
-        const back = createTemporaryObject(spyComponent, testCase, { target: toaster, signalName: "keysGoBack" });
-        standing({});
-        toaster.dismiss();
-        compare(back.count, 0, "one never reached");
-        toaster.leaving = 0;
-        standing({});
-        toaster.reach();
-        toaster.show("saved", {});
-        compare(back.count, 1, "the reached one, replaced");
-        toaster.dismiss();
-        compare(back.count, 1, "not the one that replaced it");
     }
 
     // A toast at a fraction of a pixel is drawn blurred; pixel tests put it on the grid.
