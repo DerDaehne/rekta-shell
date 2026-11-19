@@ -1,5 +1,5 @@
 Name:           rekta-shell
-Version:        0.1.0
+Version:        0.1.1
 Release:        1%{?dist}
 Summary:        Desktop shell for KDE Plasma 6 that follows Rekta Design
 
@@ -156,5 +156,7 @@ QMLTESTRUNNER=%{_qt6_bindir}/qmltestrunner $src/tests/run-qml-tests.sh $src
 %config(noreplace) %{_sysconfdir}/rekta-shell/defaults.json
 
 %changelog
+* Thu Nov 19 2026 rekta-shell maintainers - 0.1.1-1
+- Release 0.1.1
 * Thu Oct 29 2026 rekta-shell maintainers - 0.1.0-1
 - First package
