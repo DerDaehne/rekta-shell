@@ -400,6 +400,7 @@ TestCase {
         compare(start.phase, "closed");
         const panel = createTemporaryObject(otherSurface, testCase);
         tryVerify(() => !start.Window.active, 2000);
+        compare(takenSpy.count, 0, "the Start had closed, so no popup of the bar waited for it");
         start.windowHasKeyboard = false;
         openNow();
         start.windowHasKeyboard = true;
