@@ -120,6 +120,22 @@ TestCase {
         SignalSpy {}
     }
 
+    // The shell's host: its surface is mapped while a toast is open or leaving, and goes each time neither holds.
+    Component {
+        id: hostComponent
+
+        QtObject {
+            required property Toaster toaster
+            readonly property bool shown: toaster !== null && (toaster.open !== null || toaster.leaving > 0)
+            property int hidden: 0
+
+            onShownChanged: {
+                if (!shown)
+                    hidden++;
+            }
+        }
+    }
+
     readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
     readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
 
@@ -963,17 +979,41 @@ TestCase {
         }
     }
 
-    function test_a_reached_toast_no_longer_holds_the_keys_when_its_surface_maps_again_as_it_goes() {
-        const reachedAsLeavingRose = [];
-        const record = () => toaster.leaving > 0 && reachedAsLeavingRose.push(toaster.reached);
-        standing({});
-        toaster.reach();
-        toaster.leavingChanged.connect(record);
-        keyClick(Qt.Key_Escape);
-        toaster.leavingChanged.disconnect(record);
-        compare(reachedAsLeavingRose, [null]);
-        toaster.dismiss();
-        toaster.leaving = 0;
+    function test_the_host_keeps_a_toast_shown_from_its_standing_frame_until_it_has_gone_whatever_ends_it() {
+        Prefs.motion = "on";
+        const host = createTemporaryObject(hostComponent, testCase, { toaster: toaster });
+        const ways = {
+            "its window running out": toast => at(Tokens.durationToast, toast),
+            "escape": () => keyClick(Qt.Key_Escape),
+            "its text": () => keyClick(Qt.Key_Return),
+            "its action": () => {
+                keyClick(Qt.Key_Tab);
+                keyClick(Qt.Key_Return);
+            },
+            "its close button": toast => mouseClick(findChild(toast, "close")),
+            "its app closing it": () => toaster.dismiss()
+        };
+        for (const way of Object.keys(ways)) {
+            time = 0;
+            // Away from the toast, which holds its window while hovered.
+            mouseMove(scene, 1, scene.height - 1);
+            const toast = way === "its window running out" ? toaster.show("saved", { notification: true }) : standing({ notification: true });
+            tryVerify(() => toast.phase === 1, 1000, `${way}: it stands`);
+            if (toast.stays)
+                verify(toaster.reach(), way);
+            host.hidden = 0;
+            ways[way](toast);
+            verify(toast.done, `${way} ends it`);
+            compare(host.hidden, 0, `${way}: still shown as it starts to leave`);
+            tryCompare(toaster, "leaving", 0, 1000, way);
+            compare(host.hidden, 1, `${way}: hidden once it has gone`);
+        }
+        const replaced = standing({ notification: true });
+        tryVerify(() => replaced.phase === 1, 1000);
+        host.hidden = 0;
+        const next = toaster.show("saved", { notification: true });
+        tryVerify(() => next.phase === 1, 1000);
+        compare(host.hidden, 0, "shown all the way from the replaced toast to the next one standing");
     }
 
     function test_only_the_toast_the_key_reached_hands_the_keys_back_as_it_goes() {

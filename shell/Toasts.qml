@@ -8,14 +8,13 @@ import "services"
 // top of the bar; under a full-screen window, where the bar and its zone have gone, from the screen's edge. On the overlay
 // layer, above every window, so a critical toast shows over a full-screen one too, and above the Start and the side panel,
 // which keep to the top layer. On the top layer while the app bar has a floating surface open (`stepsBack`, which the bar
-// sets): KWin keeps popups between the two. Mapped only while a toast shows: KWin puts a newly mapped surface that takes
-// no keys below the active surface of its layer (Workspace::addWaylandWindow, restackWindowUnderActive), so a toast that
-// comes while a sheet holds the keyboard stays below it. A toast starts its way below the surface's edge, which hides it there. It takes
+// sets): KWin keeps popups between the two. Mapped only while a toast shows or leaves, and all the while: KWin puts a newly
+// mapped surface that takes no keys below the active surface of its layer (Workspace::addWaylandWindow,
+// restackWindowUnderActive), so a toast that comes while a sheet holds the keyboard stays below it, and a surface mapped
+// anew shows nothing for some frames. A toast starts its way below the surface's edge, which hides it there. It takes
 // input only over the open toast, and the keyboard only once the session's key has brought it to a toast that stays: KWin
-// activates a layer surface as soon as it wants keys, and hands the keyboard on to the next window once the surface goes.
-// ponytail: a toast that replaces the one the key reached keeps the keyboard until it goes too, unless the open Start asks
-// for it again; give it back to the window that had it, should that show. Not the namespace "notification": KWin would
-// slide that in with an effect of its own.
+// activates a layer surface as soon as it wants keys, and KWin's fade-back hands the keyboard on as soon as it no longer
+// does. Not the namespace "notification": KWin would slide that in with an effect of its own.
 PanelWindow {
     id: host
 

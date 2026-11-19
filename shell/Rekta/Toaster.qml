@@ -119,14 +119,15 @@ Item {
         return true;
     }
 
-    // A toast has begun to leave, `reason` as its onEnd hears it.
+    // A toast has begun to leave, `reason` as its onEnd hears it. It is leaving before it is no longer open: a host
+    // that shows its surface while either holds would otherwise unmap and map it anew, without a frame for a while.
     function letGo(toast: Toast, reason: string) {
         const wasReached = reached === toast;
         if (wasReached)
             reached = null;
+        leaving++;
         if (open === toast)
             open = null;
-        leaving++;
         if (wasReached)
             keysGoBack(reason);
     }
