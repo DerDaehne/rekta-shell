@@ -30,6 +30,7 @@ git -C "$work" fetch -q origin
 
 export SCAN_SECRETS_SKIP_GITLEAKS=1 # set to 0 per scenario where gitleaks itself is under test
 
+scan_args=()
 pass=0
 fail=0
 
@@ -49,7 +50,7 @@ commit_as_author() {
 
 run_scan() {
 	local dir="$1" got=0
-	(cd "$dir" && bash scripts/scan-secrets.sh) >"$tmp/out.txt" 2>&1 || got=$?
+	(cd "$dir" && bash scripts/scan-secrets.sh "${scan_args[@]}") >"$tmp/out.txt" 2>&1 || got=$?
 	return "$got"
 }
 
@@ -605,6 +606,40 @@ echo x >"$work/i.txt"
 git -C "$work" add i.txt
 commit_as GitHub noreply@github.com "feat: edited on github.com"
 check "identity: a commit made on github.com is fine" 0
+
+# --- release notes (--notes <file>) ---
+
+notes_dir="$tmp/ProbeNotesDir"
+mkdir -p "$notes_dir"
+printf 'rekta-shell 0.1.1\n\n## Shell\n- A thing (#12)\n' >"$notes_dir/notes.md"
+
+reset_work
+printf 'ProbeNotesDir\n' >"$work/.privacy-patterns"
+scan_args=(--notes "$notes_dir/notes.md")
+check "notes: clean content at a path matching a pattern passes" 0
+
+printf 'a line with ProbeInside\n' >"$notes_dir/pattern.md"
+printf 'ProbeInside\n' >"$work/.privacy-patterns"
+scan_args=(--notes "$notes_dir/pattern.md")
+check "notes: a pattern in the content fails and names its number" 1 "pattern #1 in the notes file"
+check_absent "notes: the pattern text is never printed" 1 "ProbeInside"
+
+printf 'see %s\n' "$home_path" >"$notes_dir/home.md"
+printf 'ProbeNoop\n' >"$work/.privacy-patterns"
+scan_args=(--notes "$notes_dir/home.md")
+check "notes: a local home path in the content fails" 1 "Local home path in the notes file"
+
+printf 'see %s\n' "$slug" >"$notes_dir/board.md"
+scan_args=(--notes "$notes_dir/board.md")
+check "notes: a board reference in the content fails" 1 "Board reference in the notes file"
+
+cp "$notes_dir/home.md" "$work/relative-home.md"
+scan_args=(--notes relative-home.md)
+check "notes: a relative path is scanned too" 1 "Local home path in the notes file"
+scan_args=(--notes missing.md)
+check "notes: a missing file fails instead of passing" 1 "needs an existing file"
+rm "$work/relative-home.md"
+scan_args=()
 
 if command -v gitleaks >/dev/null 2>&1 || command -v nix >/dev/null 2>&1; then
 	reset_work

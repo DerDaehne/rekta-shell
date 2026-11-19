@@ -29,11 +29,13 @@
 # Never end a pipeline in grep -q under pipefail: it exits at the first hit, the producer dies of SIGPIPE and the hit is lost;
 # feed it a here-string instead.
 set -euo pipefail
-cd "$(git rev-parse --show-toplevel)"
-
-# --notes <file>: also scans a text that is published without being committed (release notes); the path must be absolute.
+# --notes <file>: also scans a text that is published without being committed (release notes).
 notes=""
-if [ "${1:-}" = --notes ]; then notes="${2:?--notes needs a file}"; fi
+if [ "${1:-}" = --notes ]; then
+	[ -f "${2:-}" ] || { echo "--notes needs an existing file" >&2; exit 1; }
+	notes="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"
+fi
+cd "$(git rev-parse --show-toplevel)"
 
 GITLEAKS_HINT="Rotate the secret now and clean the history before pushing; false positive → add its fingerprint to .gitleaksignore."
 CONTENT_HINT="Remove it; if already committed → git commit --amend or git rebase -i origin/main, before pushing."
@@ -237,6 +239,10 @@ if [ -n "$notes" ] && LC_ALL=C grep -aE "$HOME_PATH" "$notes" >/dev/null; then
 	echo "Local home path in the notes file" >&2
 	conventions=1
 fi
+if [ -n "$notes" ] && LC_ALL=C grep -aiE -e "$NOTE_SLUG" -e "$ADR_ID" -e "$COMMENT_ID" "$notes" >/dev/null; then
+	echo "Board reference in the notes file — $BOARD_HINT" >&2
+	conventions=1
+fi
 if git rev-parse --verify -q origin/main >/dev/null; then
 	report "Board reference in the message of commit" "$BOARD_HINT" "$(board_references_in_messages)" || conventions=1
 	report "German in the message of commit" "$MESSAGE_LANGUAGE_HINT" "$(german_in_messages)" || conventions=1
@@ -273,7 +279,6 @@ else
 	# git diff origin/main (without ..HEAD) compares against the working tree including the
 	# index, which covers staged and unstaged changes.
 	mapfile -d '' -t changed_files < <(git -c core.quotePath=false diff --name-only -z origin/main -- . 2>/dev/null)
-	[ -z "$notes" ] || changed_files+=("$notes")
 	mapfile -t unpushed_shas < <(git rev-list origin/main..HEAD 2>/dev/null)
 	hit=0
 	pattern_index=0 # 1-based over non-blank/non-comment lines, see header comment above
@@ -293,6 +298,12 @@ else
 				hit=1
 				continue
 			fi
+		fi
+
+		# The notes file: its content only, never its path.
+		if [ -n "$notes" ] && grep -qEai -- "$pattern" "$notes" 2>/dev/null; then
+			echo "Match for pattern #$pattern_index in the notes file — $CONTENT_HINT" >&2
+			hit=1
 		fi
 
 		# Working tree: file name AND content of the files changed against origin/main.

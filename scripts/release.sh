@@ -16,7 +16,7 @@
 #
 #   ## Packaging
 #   - The RPM requires the exact kwin-libs it was built against (#<id>)
-set -euo pipefail
+set -Eeuo pipefail
 
 spec=packaging/fedora/rekta-shell.spec
 required_workflows="privacy nix rpm"
