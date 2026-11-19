@@ -95,9 +95,8 @@ FocusScope {
     // along with them. A finger taking the closing along keeps it. Read from the phase itself: `wanted` and
     // `fingerCloses` change one after the other, and the keyboard must not drop between them.
     readonly property bool holdsKeyboard: wanted || phase === "followingOut" || phase === "returningIn" || (phase === "closing" && !glassOut.running)
-    // A window was asked to take the keyboard back, and KWin has not yet taken it from the Start.
-    // ponytail: should KWin refuse that window, the app bar's popups wait until another one is activated or the Start
-    // opens again; bound it in time if that ever shows.
+    // A window was asked to take the keyboard back, and KWin has not yet taken it from the Start, for a moment at most:
+    // KWin may refuse that window.
     property bool handingBack: false
     // Leaving, or handing the keyboard back, and its surface still has it. Once it has not, KWin has handed it on, and
     // has closed every grabbing popup as it did. Without a window to hand it to, it is over once the Start has closed.
@@ -155,6 +154,9 @@ FocusScope {
     property real closingTime: 0
 
     signal closed
+    // Another program took the keyboard from the leaving Start before it handed it back. KWin closes every grabbing popup
+    // then, so a popup still waiting for the hand-back must not show.
+    signal keyboardTaken
     // The windows behind the Start stand `time` ms into its opening and go on from there: held (0), on (1) or back to
     // its beginning (-1). KWin's fade-back moves them, and the glass with them.
     signal windowsAt(real time, int pace)
@@ -563,6 +565,7 @@ FocusScope {
         if (!next)
             return;
         handingBack = true;
+        handBackLimit.restart();
         next.activate();
     }
 
@@ -1362,8 +1365,11 @@ FocusScope {
             hadKeyboard = true;
     }
     Window.onActiveChanged: {
-        if (!Window.active)
-            handingBack = false;
+        if (Window.active)
+            return;
+        if (phase === "closing" && !handingBack)
+            keyboardTaken();
+        handingBack = false;
     }
     // A window took the keyboard from the open Start, one that came or one brought forward from elsewhere: the Start
     // turns out forward, as after a choice in it, and the window keeps the keyboard.
@@ -1412,6 +1418,15 @@ FocusScope {
         anchors.fill: parent
         color: Tokens.color.glass
         visible: start.shown
+    }
+
+    // KWin answers an activation at once; a busy shell has read that answer up to half a second late.
+    // ponytail: a fixed bound for a hand-back KWin never acts on; the app bar's popups wait that long then.
+    Timer {
+        id: handBackLimit
+
+        interval: 1000
+        onTriggered: start.handingBack = false
     }
 
     // The glass goes as the windows come forward from the hand-over, or from `ahead` ms into their way, where a finger

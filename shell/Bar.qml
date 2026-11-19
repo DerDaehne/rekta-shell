@@ -84,6 +84,11 @@ PanelWindow {
             background.menu.openAt(0);
     }
 
+    // Closes every floating surface of the bar for `reason`, also one that still waits unseen for the Start.
+    function closeFloats(reason: string) {
+        [bar.menu, background.menu, clock.calendar].forEach(surface => surface.closeAs(reason));
+    }
+
     AppBar {
         id: bar
 

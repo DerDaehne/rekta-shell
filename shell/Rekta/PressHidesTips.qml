@@ -5,8 +5,8 @@ import QtQuick
 Item {
     id: catcher
 
-    // Each press, for a host that has more to do on it.
-    signal pressed
+    // Each press, at `at` in its parent, for a host that has more to do on it.
+    signal pressed(point at)
 
     anchors.fill: parent
 
@@ -16,7 +16,7 @@ Item {
             if (!active)
                 return;
             Tips.hide();
-            catcher.pressed();
+            catcher.pressed(point.position);
         }
     }
 }

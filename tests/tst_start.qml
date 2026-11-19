@@ -120,6 +120,12 @@ TestCase {
         signalName: "closed"
     }
 
+    SignalSpy {
+        id: takenSpy
+
+        signalName: "keyboardTaken"
+    }
+
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var start
     property var turner
@@ -134,6 +140,8 @@ TestCase {
         turner = findChild(start, "turn");
         closedSpy.target = start;
         closedSpy.clear();
+        takenSpy.target = start;
+        takenSpy.clear();
     }
 
     function cleanup() {
@@ -320,10 +328,13 @@ TestCase {
     function test_when_no_window_shows_any_more_closing_activates_none() {
         start.windows = windowsWithTheDocsActive();
         openNow();
+        tryVerify(() => start.Window.active, 2000);
         start.windows.forEach(window => window.minimized = true);
         keyClick(Qt.Key_Escape);
         tryVerify(() => closedSpy.count === 1, 3000);
         compare(calls, []);
+        verify(start.Window.active);
+        verify(!start.leavesWithKeyboard, "nothing was handed back, so the bar's popups wait no longer");
     }
 
     function test_without_a_window_that_had_the_keyboard_closing_activates_none() {
@@ -898,6 +909,7 @@ TestCase {
         tryVerify(() => !start.Window.active, 2000);
         compare(start.phase, "closing");
         verify(!start.leavesWithKeyboard, "the window has the keyboard");
+        compare(takenSpy.count, 0, "the Start handed it on itself");
         glassOut.triggered();
         start.Window.window.requestActivate();
         tryVerify(() => start.Window.active, 2000);
@@ -919,6 +931,36 @@ TestCase {
         start.Window.window.requestActivate();
         tryVerify(() => start.Window.active, 2000);
         verify(!start.leavesWithKeyboard, "that hand-back is over once KWin took the keyboard");
+    }
+
+    function test_a_hand_back_kwin_never_acts_on_holds_the_bars_popups_for_a_moment_at_most() {
+        start.windows = windowsWithTheDocsActive();
+        openNow();
+        tryVerify(() => start.Window.active, 2000);
+        keyClick(Qt.Key_Escape);
+        compare(start.phase, "closed");
+        verify(start.leavesWithKeyboard);
+        tryVerify(() => !start.leavesWithKeyboard, 3000);
+        verify(start.Window.active, "KWin never took the keyboard");
+    }
+
+    // A press into another program as the Start leaves: KWin gives that program the keyboard before the Start hands it on.
+    function test_another_program_taking_the_keyboard_from_the_leaving_start_before_its_hand_back_is_told() {
+        Prefs.motion = "on";
+        start.windows = windowsWithTheDocsActive();
+        openNow();
+        tryVerify(() => start.Window.active, 2000);
+        keyClick(Qt.Key_Escape);
+        turner.paused = true;
+        verify(start.leavesWithKeyboard);
+        createTemporaryObject(otherSurface, testCase);
+        tryVerify(() => !start.Window.active, 2000);
+        compare(takenSpy.count, 1);
+        verify(!start.leavesWithKeyboard);
+        compare(calls, [], "no hand-back yet");
+        turner.paused = false;
+        start.Window.window.requestActivate();
+        tryVerify(() => start.Window.active, 2000);
     }
 
     function test_a_start_that_opens_again_before_kwin_took_the_keyboard_holds_no_popups() {

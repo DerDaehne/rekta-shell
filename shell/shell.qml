@@ -108,6 +108,8 @@ ShellRoot {
     }
 
     Variants {
+        id: bars
+
         model: primary.screens
 
         Bar {
@@ -193,6 +195,17 @@ ShellRoot {
         onVisibleChanged: {
             if (!visible)
                 start.takeKeyboardBack();
+        }
+    }
+
+    // KWin closes every grabbing popup when another program takes the keyboard; the bars' floating surfaces that waited
+    // unseen for the leaving Start go the same way.
+    Connections {
+        target: start
+
+        function onKeyboardTaken() {
+            for (const bar of bars.instances)
+                (bar as Bar).closeFloats("popup-done");
         }
     }
 

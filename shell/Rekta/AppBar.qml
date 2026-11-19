@@ -290,12 +290,16 @@ Rectangle {
         buttons().forEach(control => (control.held = !motion.known.includes(control) || (gliding && control.held)));
     }
 
-    // Every floating surface a control of the bar has open closes once the press has reached what it landed on.
-    function dismissFloats() {
-        buttons().concat([centre]).forEach(control => {
-            const surface = (control as AppBarButton)?.opens;
+    // Every floating surface a control of the bar has open closes once the press has reached what it landed on. A press
+    // at `at` on the control that opened one is that control's second press; with no popup over the bar to take it, as
+    // while a surface waits unseen, the bar sees that press first.
+    function dismissFloats(at: point) {
+        const controls = buttons().concat([centre]).filter(control => (control as AppBarButton) !== null);
+        const pressed = controls.find(control => control.visible && control.contains(mapToItem(control, at)));
+        controls.forEach(control => {
+            const surface = (control as AppBarButton).opens;
             if (surface?.open)
-                surface.dismiss("press-on-bar");
+                surface.dismiss(pressed?.surfaces.includes(surface) ? "second-press" : "press-on-bar");
         });
     }
 
@@ -430,7 +434,7 @@ Rectangle {
     // press in the window it belongs to, so the bar closes them itself (states.md, "Floating surfaces": a click outside
     // closes).
     PressHidesTips {
-        onPressed: bar.dismissFloats()
+        onPressed: at => bar.dismissFloats(at)
     }
 
     // A control in "more" repeats its words and its reason; choosing it presses the control.

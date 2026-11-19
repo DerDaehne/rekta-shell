@@ -39,6 +39,8 @@ PanelWindow {
     readonly property alias opened: place.wanted
     // It leaves, and KWin has not yet taken the keyboard from it.
     readonly property alias leavesWithKeyboard: place.leavesWithKeyboard
+    // Another program took the keyboard from it as it left, before it handed it back (StartPlace.keyboardTaken).
+    signal keyboardTaken
     // The window that had the keyboard as the Start opened is full screen: back the way it came, the Start hands it back.
     property bool handsToFullScreen: false
     // The shell's commands, see StartPlace.commands.
@@ -170,6 +172,7 @@ PanelWindow {
         }
         onWindowsAt: (time, pace) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setStartAt", [time, pace], "di")
         onWindowsOutAt: (time, pace) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setStartOutAt", [time, pace], "di")
+        onKeyboardTaken: surface.keyboardTaken()
     }
 
     // KWin's rekta-fadeback, which holds the bottom edge of the primary screen for a finger that swipes the Start open,

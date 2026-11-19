@@ -812,6 +812,21 @@ TestCase {
         }
     }
 
+    // While its surface waits unseen no popup lies over the bar, and the bar sees the press on the control first.
+    function test_a_press_on_the_control_that_opened_a_surface_the_bar_sees_first_is_its_second_press() {
+        makeScene({ barWidth: 760 });
+        const menu = bar.menu;
+        const seen = [];
+        menu.closedFor.connect(reason => seen.push(reason));
+        mouseClick(bar.more, 10, 10);
+        verify(menu.open);
+        mousePress(bar.more, 10, 10);
+        tryVerify(() => !menu.open, 1000, "it closes as the press lands");
+        mouseRelease(bar.more, 10, 10);
+        verify(!menu.open, "the release opens nothing");
+        compare(seen.join(), "second-press");
+    }
+
     function test_the_menu_of_more_names_each_way_it_was_closed() {
         makeScene({ barWidth: 760 });
         const menu = bar.menu;
