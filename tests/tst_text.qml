@@ -99,8 +99,40 @@ TestCase {
         }
     }
 
+    // Another program's words as they may come: a window title, a menu label, a stream's name.
+    readonly property string markup: "<b>bold</b> <img src=\"http://127.0.0.1:1/pixel.png\"> <a href=\"http://127.0.0.1:1/\">link</a>"
+
+    Component {
+        id: controlsWithMarkup
+
+        // The controls that show words a caller hands them.
+        Column {
+            MenuItem { width: 400; lead: testCase.markup; text: testCase.markup; keyHint: testCase.markup }
+            Button { text: testCase.markup }
+            Select { width: 400; options: [{ text: testCase.markup }]; currentIndex: 0 }
+            AppBarMiddle { width: 400; parts: [testCase.markup, testCase.markup] }
+            FieldLabel { objectName: "fieldLabel"; text: testCase.markup }
+        }
+    }
+
+    // Every Text in an item, the item included.
+    function textsIn(item: Item): var {
+        const own = item instanceof Text ? [item] : [];
+        return own.concat(...Array.from(item.children, child => textsIn(child)));
+    }
+
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
+    }
+
+    function test_markup_stays_plain_words_in_every_role_and_every_control_that_shows_a_callers_words() {
+        const roleTexts = textsIn(createTemporaryObject(roles, testCase));
+        const controlTexts = textsIn(createTemporaryObject(controlsWithMarkup, testCase));
+        const names = controlTexts.map(text => text.objectName);
+        for (const name of ["lead", "label", "key", "chosen", "part 0", "part 1", "fieldLabel"])
+            verify(names.includes(name), `${name} is among the texts`);
+        for (const text of roleTexts.concat(controlTexts))
+            compare(text.textFormat, Text.PlainText, `${text.objectName || text}`);
     }
 
     function test_every_role_takes_its_values_from_the_tokens() {

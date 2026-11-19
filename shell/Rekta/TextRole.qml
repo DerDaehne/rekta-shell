@@ -15,6 +15,8 @@ Text {
     // rounded up and cut to whole pixels (QQuickTextPrivate::lineHeightOffset); the box ends with its last line.
     readonly property real lineBoxBottom: -lineBoxTop - Math.max(0, Math.floor(Math.ceil(metrics.height) - lineHeight))
 
+    // A role may hold another program's words: never markup, so no tag in them styles the text or fetches an image.
+    textFormat: Text.PlainText
     font.family: Tokens.fontSans
     lineHeightMode: Text.FixedHeight
     lineHeight: lineHeightFactor * font.pixelSize

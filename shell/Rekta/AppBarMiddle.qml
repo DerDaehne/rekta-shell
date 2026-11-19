@@ -83,6 +83,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             width: last ? Math.max(0, middle.width - x) : implicitWidth
             text: modelData
+            textFormat: Text.PlainText
             elide: last ? Text.ElideRight : Text.ElideNone
             font: index === middle.figuresPart ? figureMetrics.font : metrics.font
             opacity: middle.shown

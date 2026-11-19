@@ -166,6 +166,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         visible: item.lead !== ""
         text: item.lead
+        textFormat: Text.PlainText
         font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeS
         font.weight: Tokens.fontWeightSemibold
@@ -180,6 +181,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: Math.max(0, item.width - item.textEdge - item.endSpace - item.keySpace - item.onwardSpace - item.inset)
         text: item.label
+        textFormat: Text.PlainText
         elide: Text.ElideRight
         font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeS
@@ -236,6 +238,7 @@ Item {
         elide: Text.ElideRight
         visible: item.keyHint !== ""
         text: item.keyHint
+        textFormat: Text.PlainText
         font.family: Tokens.fontSans
         font.pixelSize: Tokens.fontSizeXxs
         color: Tokens.color.textContrastHigh

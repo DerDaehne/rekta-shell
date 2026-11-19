@@ -155,6 +155,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             width: Math.max(0, box.width - Geometry.inputPadding - Geometry.selectPaddingEnd)
             text: select.currentText
+            textFormat: Text.PlainText
             elide: Text.ElideRight
             font.family: Tokens.fontSans
             font.pixelSize: Tokens.fontSizeS

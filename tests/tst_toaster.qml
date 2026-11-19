@@ -164,10 +164,11 @@ TestCase {
         return toast.toaster.height - Tokens.spaceS - toast.height;
     }
 
-    function test_a_notifications_title_and_text_are_drawn_as_plain_words_whatever_markup_they_carry() {
+    function test_a_notifications_title_text_and_action_are_drawn_as_plain_words_whatever_markup_they_carry() {
         const markup = "<b>bold</b> <img src=\"http://127.0.0.1:1/pixel.png\"> <a href=\"http://127.0.0.1:1/x\">link</a>\nsecond line " + "w".repeat(5000);
-        const toast = toaster.show(markup, { title: "<i>title</i><img src=\"http://127.0.0.1:1/t.png\">", notification: true });
-        for (const name of ["title", "message", "messageLine"]) {
+        const act = { label: "<u>open</u><img src=\"http://127.0.0.1:1/a.png\">", run: () => {} };
+        const toast = toaster.show(markup, { title: "<i>title</i><img src=\"http://127.0.0.1:1/t.png\">", act, notification: true });
+        for (const name of ["title", "message", "messageLine", "actionLabel"]) {
             const part = findChild(toast, name);
             compare(part.textFormat, Text.PlainText, name);
         }

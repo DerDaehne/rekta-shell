@@ -179,6 +179,7 @@ Row {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: text !== ""
                 text: button.pending ? button.pendingText : button.text
+                textFormat: Text.PlainText
                 font.family: Tokens.fontSans
                 font.pixelSize: Tokens.fontSizeS
                 font.weight: Tokens.fontWeightSemibold
@@ -191,6 +192,7 @@ Row {
 
             visible: false
             text: button.text
+            textFormat: Text.PlainText
             font: label.font
         }
 

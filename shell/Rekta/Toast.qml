@@ -596,7 +596,9 @@ FocusScope {
             Text {
                 id: label
 
+                objectName: "actionLabel"
                 text: toast.actionLabel
+                textFormat: Text.PlainText
                 font.family: Tokens.fontSans
                 font.pixelSize: Tokens.fontSizeS
                 font.weight: Tokens.fontWeightSemibold
