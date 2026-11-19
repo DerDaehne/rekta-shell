@@ -31,6 +31,10 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
+# --notes <file>: also scans a text that is published without being committed (release notes); the path must be absolute.
+notes=""
+if [ "${1:-}" = --notes ]; then notes="${2:?--notes needs a file}"; fi
+
 GITLEAKS_HINT="Rotate the secret now and clean the history before pushing; false positive → add its fingerprint to .gitleaksignore."
 CONTENT_HINT="Remove it; if already committed → git commit --amend or git rebase -i origin/main, before pushing."
 PATH_HINT="Rename the file (git mv); if already committed → git rebase -i origin/main, before pushing."
@@ -195,6 +199,13 @@ run_gitleaks() {
 if [ "${SCAN_SECRETS_SKIP_GITLEAKS:-}" = "1" ]; then
 	echo "== gitleaks: skipped (SCAN_SECRETS_SKIP_GITLEAKS=1) =="
 else
+	if [ -n "$notes" ]; then
+		echo "== gitleaks: notes file =="
+		if ! run_gitleaks dir --verbose --redact --no-banner "$notes"; then
+			echo "$GITLEAKS_HINT" >&2
+			status=1
+		fi
+	fi
 	echo "== gitleaks: History =="
 	if ! run_gitleaks git --verbose --redact --no-banner .; then
 		echo "$GITLEAKS_HINT" >&2
@@ -222,6 +233,10 @@ conventions=0
 report "Board reference" "$BOARD_HINT" "$(board_references_in_files)" || conventions=1
 report "German comment or test name" "$LANGUAGE_HINT" "$(german_in_code)" || conventions=1
 report "Local home path" "$HOME_PATH_HINT" "$(home_paths_in_files)" || conventions=1
+if [ -n "$notes" ] && LC_ALL=C grep -aE "$HOME_PATH" "$notes" >/dev/null; then
+	echo "Local home path in the notes file" >&2
+	conventions=1
+fi
 if git rev-parse --verify -q origin/main >/dev/null; then
 	report "Board reference in the message of commit" "$BOARD_HINT" "$(board_references_in_messages)" || conventions=1
 	report "German in the message of commit" "$MESSAGE_LANGUAGE_HINT" "$(german_in_messages)" || conventions=1
@@ -258,6 +273,7 @@ else
 	# git diff origin/main (without ..HEAD) compares against the working tree including the
 	# index, which covers staged and unstaged changes.
 	mapfile -d '' -t changed_files < <(git -c core.quotePath=false diff --name-only -z origin/main -- . 2>/dev/null)
+	[ -z "$notes" ] || changed_files+=("$notes")
 	mapfile -t unpushed_shas < <(git rev-list origin/main..HEAD 2>/dev/null)
 	hit=0
 	pattern_index=0 # 1-based over non-blank/non-comment lines, see header comment above

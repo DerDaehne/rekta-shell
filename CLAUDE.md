@@ -47,7 +47,7 @@ This repository is public. **Never** put into files, commits or commit messages:
 names of people, email addresses, passwords, API keys/tokens, local paths,
 hostnames, IP addresses, hardware or setup details (monitors, GPUs, devices), or
 internal board content (ticket comments, note slugs, board columns). Ticket
-numbers appear only in commit subjects as `(#<id>)`. Device and user values are
+numbers appear only as `(#<id>)`, in commit subjects and release notes. Device and user values are
 module options, never defaults in code. Personal and internal information
 belongs in `CLAUDE.local.md`.
 
@@ -59,7 +59,8 @@ belongs in `CLAUDE.local.md`.
   to run fully in a worktree: it finds the main checkout's copy on its own, and a
   hit is always reported as file/line/commit plus a pattern number, never the
   pattern text itself.
-- Push to the public remote only `main`, only after "Review ok" and a clean scan.
+- Push to the public remote only `main`, only after "Review ok" and a clean scan, and the release tag
+  `v<version>` that the coordinator sets at the end of a session.
 
 ## Code style (binding)
 
