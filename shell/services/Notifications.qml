@@ -66,7 +66,7 @@ Scope {
         quiet: notifications.quiet
         appOf: (desktopEntry, appName) => notifications.appIdOf(desktopEntry, appName)
         senderOf: (desktopEntry, appName) => notifications.senderOf(desktopEntry, appName)
-        iconUrl: name => name === "" || name.includes("://") ? name : Quickshell.iconPath(name, true)
+        iconUrl: name => Quickshell.iconPath(name, true)
 
         onAppWanted: (desktopEntry, appName) => notifications.bringForward(desktopEntry, appName)
         onSounding: notification => notifications.play(notification)

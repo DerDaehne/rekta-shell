@@ -318,6 +318,13 @@ TestCase {
         verify(!findChild(music(), "cover").visible);
     }
 
+    function test_a_cover_at_a_web_address_is_not_fetched_and_the_music_icon_stays() {
+        play({ trackArtUrl: "http://127.0.0.1:1/cover.png" });
+        openNow();
+        verify(findChild(music(), "musicIcon").visible);
+        verify(!findChild(music(), "cover").visible);
+    }
+
     function test_a_press_on_what_plays_raises_the_player_and_the_start_turns_out_forward() {
         play();
         openNow();

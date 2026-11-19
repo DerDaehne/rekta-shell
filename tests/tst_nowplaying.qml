@@ -19,7 +19,7 @@ TestCase {
     height: 720
 
     // A 40 × 40 picture, as a player hands its cover over.
-    readonly property string cover: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAHlBMVEX///86dvBEffF4ofW5zvrs8v7///9Be/GcuvdVifLlkWmGAAAAAXRSTlMAQObYZgAAAI1JREFUOMu11UkOgCAQRFGaocH7X9iFMaKW5DvV+sWANEUIS+wyoY8NA9lGzaCk0AxKCg3mOYwpFy85xTGszde0OoCT95ku4d7tZQ+rH1M1bCfYJIx+TlQwCZgUzAJmBYuARUFXefVFvEa8a/wf8cnws8bTw+eRTzi/M39c17dVcaekvu9HXs287NHzMQN/Vg0WT30WoAAAAABJRU5ErkJggg=="
+    readonly property string cover: Qt.resolvedUrl("pictures/blue-32.png").toString()
     readonly property easingCurve easeOut: ({ type: Easing.Bezier, bezierCurve: Tokens.easeOut })
     property Item scene
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
@@ -553,6 +553,13 @@ TestCase {
         side.show(0);
         verify(part("nowPlaying").visible);
         verify(!part("progress").visible);
+    }
+
+    function test_a_cover_at_a_web_address_is_not_fetched_and_the_words_stand_without_it() {
+        givePlayer({ trackArtUrl: "https://example.org/cover.png" });
+        showSettled();
+        verify(!part("cover").visible);
+        compare(part("title").x, 0);
     }
 
     function test_the_cover_stands_in_the_icons_field_at_the_start_with_the_tiles_corners_and_the_words_beside_it() {

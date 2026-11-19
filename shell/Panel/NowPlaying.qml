@@ -213,7 +213,8 @@ Column {
     component Track: Item {
         id: track
 
-        readonly property string artUrl: nowPlaying.player?.trackArtUrl ?? ""
+        // A remote cover (http) is not fetched; a local player names its cover by file.
+        readonly property string artUrl: ForeignPicture.source(nowPlaying.player?.trackArtUrl)
         readonly property bool covered: artUrl !== "" && cover.status !== Image.Error
         readonly property real wordsX: covered ? Geometry.iconSize + Tokens.spaceS : 0
 

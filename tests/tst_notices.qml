@@ -15,8 +15,8 @@ TestCase {
     width: 900
     height: 640
 
-    // A 40px app icon: a blue rounded square with a white dot.
-    readonly property string picture: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAHlBMVEX///86dvBEffF4ofW5zvrs8v7///9Be/GcuvdVifLlkWmGAAAAAXRSTlMAQObYZgAAAI1JREFUOMu11UkOgCAQRFGaocH7X9iFMaKW5DvV+sWANEUIS+wyoY8NA9lGzaCk0AxKCg3mOYwpFy85xTGszde0OoCT95ku4d7tZQ+rH1M1bCfYJIx+TlQwCZgUzAJmBYuARUFXefVFvEa8a/wf8cnws8bTw+eRTzi/M39c17dVcaekvu9HXs287NHzMQN/Vg0WT30WoAAAAABJRU5ErkJggg=="
+    // A 32px app icon, a blue square (a file, as a program names its own).
+    readonly property string picture: Qt.resolvedUrl("pictures/blue-32.png").toString()
     // A pink 20px square, the icon the theme has for "konsole".
     readonly property string konsoleIcon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGN4aTWLbMQwqnlU86jmUc0DqxkAreu3b+7dCC4AAAAASUVORK5CYII="
     // The wall clock the toasts run against, in ms.
@@ -233,6 +233,25 @@ TestCase {
         runOut();
         notify({ appIcon: "konsole" });
         compare(toaster.open.icon, testCase.konsoleIcon, "without an image, the app's icon from the theme");
+    }
+
+    function test_an_icon_or_image_naming_another_scheme_than_file_shows_no_picture() {
+        for (const url of ["http://127.0.0.1:1/a.png", "https://example.org/a.png", "ftp://example.org/a.png", "data:image/png;base64,AAAA"]) {
+            notify({ appIcon: url });
+            compare(toaster.open.icon, "", `app icon ${url}`);
+            runOut();
+            notify({ image: url, appIcon: "konsole" });
+            compare(toaster.open.icon, testCase.konsoleIcon, `image ${url} falls back to the app icon`);
+            runOut();
+        }
+    }
+
+    function test_an_app_icon_naming_a_file_or_a_path_shows_that_file() {
+        notify({ appIcon: testCase.picture });
+        compare(toaster.open.icon, testCase.picture);
+        runOut();
+        notify({ appIcon: "/usr/share/a.png" });
+        compare(toaster.open.icon, "file:///usr/share/a.png");
     }
 
     function test_a_normal_toast_runs_duration_toast_then_expires_and_stays_in_the_list_unseen() {

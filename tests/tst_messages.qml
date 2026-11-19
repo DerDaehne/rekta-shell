@@ -18,8 +18,8 @@ TestCase {
     width: 1000
     height: 720
 
-    // A 40px app icon: a blue rounded square with a white dot.
-    readonly property string picture: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAHlBMVEX///86dvBEffF4ofW5zvrs8v7///9Be/GcuvdVifLlkWmGAAAAAXRSTlMAQObYZgAAAI1JREFUOMu11UkOgCAQRFGaocH7X9iFMaKW5DvV+sWANEUIS+wyoY8NA9lGzaCk0AxKCg3mOYwpFy85xTGszde0OoCT95ku4d7tZQ+rH1M1bCfYJIx+TlQwCZgUzAJmBYuARUFXefVFvEa8a/wf8cnws8bTw+eRTzi/M39c17dVcaekvu9HXs287NHzMQN/Vg0WT30WoAAAAABJRU5ErkJggg=="
+    // A 32px app icon, a blue square (a file, as a program names its own).
+    readonly property string picture: Qt.resolvedUrl("pictures/blue-32.png").toString()
     // A title and a text of three lines, both too long for a row.
     readonly property string longSummary: "invoice 2026-10 for the build minutes and the storage of every project"
     readonly property string longBody: "Your invoice for October is ready.\nIt lists every build minute and every gigabyte of storage you used.\nPay by the 15th."

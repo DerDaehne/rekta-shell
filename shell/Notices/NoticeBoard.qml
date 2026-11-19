@@ -35,7 +35,7 @@ QtObject {
     required property Toaster toaster
     property bool quiet: false
     property bool listInSight: false
-    // An image URL for an app icon's name or path.
+    // The image URL of a theme icon name; what is not a name is ForeignPicture's to judge.
     property var iconUrl: name => name
     // Newest first: { notification (null once it has closed), order (by arrival), appName, desktopEntry, summary,
     // body, icon, sender, time, unseen, toast }. Every change hands out a new array.
@@ -157,7 +157,7 @@ QtObject {
         const words = toastWords(notification);
         record.summary = words.title || words.text;
         record.body = words.title ? words.text : "";
-        record.icon = notification.image || iconUrl(notification.appIcon);
+        record.icon = ForeignPicture.source(notification.image, iconUrl) || ForeignPicture.source(notification.appIcon, iconUrl);
         record.sender = senderOf(notification.desktopEntry, notification.appName);
     }
 

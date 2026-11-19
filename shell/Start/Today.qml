@@ -183,7 +183,8 @@ Column {
         id: music
 
         readonly property bool opens: true
-        readonly property string artUrl: today.player?.trackArtUrl ?? ""
+        // A remote cover (http) is not fetched; a local player names its cover by file.
+        readonly property string artUrl: ForeignPicture.source(today.player?.trackArtUrl)
         readonly property bool covered: artUrl !== "" && cover.status !== Image.Error
 
         objectName: "music"
