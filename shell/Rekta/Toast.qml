@@ -419,6 +419,7 @@ FocusScope {
             width: parent.width
             visible: toast.title !== ""
             text: toast.title
+            textFormat: Text.PlainText
             font.pixelSize: Tokens.fontSizeS
             font.weight: Tokens.fontWeightSemibold
             color: toast.ink
@@ -438,6 +439,8 @@ FocusScope {
             y: heading.visible ? heading.y + heading.height : byline.visible ? byline.height : 0
             width: parent.width
             text: toast.text
+            // The server reports no body-markup, so a program's words are never rich text (no markup, no image fetch).
+            textFormat: Text.PlainText
             font.pixelSize: Tokens.fontSizeS
             font.weight: Tokens.fontWeightRegular
             color: toast.ink

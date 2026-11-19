@@ -164,6 +164,17 @@ TestCase {
         return toast.toaster.height - Tokens.spaceS - toast.height;
     }
 
+    function test_a_notifications_title_and_text_are_drawn_as_plain_words_whatever_markup_they_carry() {
+        const markup = "<b>bold</b> <img src=\"http://127.0.0.1:1/pixel.png\"> <a href=\"http://127.0.0.1:1/x\">link</a>\nsecond line " + "w".repeat(5000);
+        const toast = toaster.show(markup, { title: "<i>title</i><img src=\"http://127.0.0.1:1/t.png\">", notification: true });
+        for (const name of ["title", "message", "messageLine"]) {
+            const part = findChild(toast, name);
+            compare(part.textFormat, Text.PlainText, name);
+        }
+        compare(findChild(toast, "message").text, markup, "the words stay as they came");
+        verify(findChild(toast, "message").lineCount <= Geometry.toastMaxLines, "a very long text still ends after the cut");
+    }
+
     function test_a_toast_stands_space_s_above_the_bar_flush_with_the_trailing_edge_it_is_given() {
         toaster.trailingEdge = 600;
         const toast = toaster.show("3 messages archived", {});
