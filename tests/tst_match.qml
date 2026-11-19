@@ -26,6 +26,12 @@ TestCase {
         compare(Match.score("Konsole", konsoleKeywords, "kon xyz"), 0, "every word must match");
     }
 
+    function test_a_text_is_split_into_its_words_once_however_often_it_is_ranked() {
+        const words = Match.words("Konsole Terminal-Emulator 2");
+        compare(words, ["konsole", "terminal", "emulator", "2"]);
+        verify(Match.words("Konsole Terminal-Emulator 2") === words, "the same list again");
+    }
+
     function test_case_never_counts() {
         compare(Match.score("Konsole", konsoleKeywords, "KON"), 3);
         compare(Match.score("konsole", "TERMINAL", "Term"), 2);

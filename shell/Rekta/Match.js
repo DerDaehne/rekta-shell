@@ -8,13 +8,30 @@ var nameStart = 3;
 var wordStart = 2;
 var inside = 1;
 
-// A letter is what has a case, as QML's regular expressions know no \p{L}; scripts without one have no words here.
+// A letter is what has a case, as QML's regular expressions know no \p{L}; scripts without one have no words here. Plain
+// lower-case letters and digits, most of what is read, are told without asking for a case.
 function isWordCharacter(character) {
-    return character.toLowerCase() !== character.toUpperCase() || (character >= "0" && character <= "9");
+    return (character >= "a" && character <= "z") || (character >= "0" && character <= "9") || character.toLowerCase() !== character.toUpperCase();
 }
 
-// The runs of letters and digits in a text, lower case.
+// The words of the texts read so far: a search ranks the same names and keywords at every key, and splitting them is
+// most of its work. Emptied when it holds many, as window titles come and go.
+var wordsRead = new Map();
+const mostWordsRead = 5000;
+
+// The runs of letters and digits in a text, lower case. The list is shared: do not change it.
 function words(text) {
+    let found = wordsRead.get(text);
+    if (found === undefined) {
+        if (wordsRead.size >= mostWordsRead)
+            wordsRead.clear();
+        found = splitIntoWords(text);
+        wordsRead.set(text, found);
+    }
+    return found;
+}
+
+function splitIntoWords(text) {
     const found = [];
     let word = "";
     for (const character of text.toLowerCase()) {
