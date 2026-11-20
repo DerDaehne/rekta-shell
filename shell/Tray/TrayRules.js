@@ -17,9 +17,26 @@ function word(title, id) {
     return title !== "" ? title : id;
 }
 
-// The tooltip's title, else its description, cut short; an app that wants attention says "wartet" first.
+// Characters of a tooltip text that are looked at; the rest is never read.
+const readLength = 1000;
+const tag = /<\/?[a-zA-Z][^>]*(?:>|$)/g;
+const lineBreak = /<br\s*\/?>|<\/(?:p|div|li|h[1-6])\s*>/gi;
+const entities = { "amp": "&", "lt": "<", "gt": ">", "quot": "\"", "#39": "'", "nbsp": " " };
+
+// The words of an app's tooltip, which the StatusNotifierItem specification lets carry a small set of HTML tags and
+// entities. Never markup: tags go, entities become their characters, and a decoded "<" stays text.
+function plainWords(markup) {
+    if (typeof markup !== "string")
+        return "";
+    const withoutTags = markup.slice(0, readLength).replace(lineBreak, " ").replace(tag, "");
+    const decoded = withoutTags.replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (_, name) => entities[name]);
+    return decoded.replace(/\s+/g, " ").trim();
+}
+
+// The tooltip's title, else its description, as words and cut short; an app that wants attention says "wartet" first.
 function state(status, tooltipTitle, tooltipDescription) {
-    const said = tooltipTitle !== "" ? tooltipTitle : tooltipDescription;
+    const title = plainWords(tooltipTitle);
+    const said = title !== "" ? title : plainWords(tooltipDescription);
     const cut = said.length > stateLength ? said.slice(0, stateLength - 1) + "…" : said;
     if (status !== needsAttention)
         return cut;

@@ -928,6 +928,43 @@ TestCase {
         compare(TrayRules.state(1, "", ""), "");
     }
 
+    function test_a_tooltip_with_tags_a_break_and_entities_reads_as_words() {
+        compare(TrayRules.state(1, "<b>3</b> neue&amp;mehr<br>zeile", ""), "3 neue&mehr zeile");
+        compare(TrayRules.state(1, "", "<i>a</i> <a href=\"http://x.test/\">link</a><br/>b"), "a link b");
+        compare(TrayRules.state(1, "<img src=\"http://x.test/p.png\">Fertig", ""), "Fertig");
+        compare(TrayRules.state(1, "<p>eins</p><p>zwei</p>", ""), "eins zwei");
+    }
+
+    function test_entities_decode_once_and_never_turn_into_markup() {
+        compare(TrayRules.plainWords("&lt;b&gt;x&lt;/b&gt; &quot;q&quot; it&#39;s&nbsp;ok"), "<b>x</b> \"q\" it's ok");
+        compare(TrayRules.plainWords("&amp;lt;"), "&lt;");
+        compare(TrayRules.plainWords("3 < 5 and 7 > 2"), "3 < 5 and 7 > 2");
+    }
+
+    function test_nested_and_unclosed_tags_leave_only_their_words() {
+        compare(TrayRules.plainWords("<b><i>fett</i> und</b> <u>so"), "fett und so");
+        compare(TrayRules.plainWords("ende <b"), "ende");
+        compare(TrayRules.plainWords("  viel \n\t  Raum  "), "viel Raum");
+    }
+
+    function test_a_tooltip_title_that_is_only_markup_falls_back_to_the_description() {
+        compare(TrayRules.state(1, "<b></b><br>", "alles aktuell"), "alles aktuell");
+    }
+
+    function test_a_huge_or_non_string_tooltip_is_bounded_and_harmless() {
+        const huge = TrayRules.plainWords("<b>".repeat(10000) + "x".repeat(10000));
+        verify(huge.length <= 1000);
+        compare(TrayRules.plainWords(null), "");
+        compare(TrayRules.plainWords(undefined), "");
+        compare(TrayRules.plainWords(42), "");
+        compare(TrayRules.plainWords({}), "");
+    }
+
+    function test_the_cut_counts_the_visible_characters_only() {
+        compare(TrayRules.state(1, "<b>" + "a".repeat(23) + "</b>", ""), "a".repeat(23));
+        verify(TrayRules.state(1, "<b>" + "a".repeat(30) + "</b>", "").endsWith("…"));
+    }
+
     function test_an_app_that_needs_attention_says_wartet_first() {
         compare(TrayRules.state(2, "2 neue", ""), "wartet · 2 neue");
         compare(TrayRules.state(2, "", ""), "wartet");
