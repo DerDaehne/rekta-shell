@@ -14,24 +14,8 @@ function isWordCharacter(character) {
     return (character >= "a" && character <= "z") || (character >= "0" && character <= "9") || character.toLowerCase() !== character.toUpperCase();
 }
 
-// The words of the texts read so far: a search ranks the same names and keywords at every key, and splitting them is
-// most of its work. Emptied when it holds many, as window titles come and go.
-var wordsRead = new Map();
-const mostWordsRead = 5000;
-
-// The runs of letters and digits in a text, lower case. The list is shared: do not change it.
+// The runs of letters and digits in a text, lower case.
 function words(text) {
-    let found = wordsRead.get(text);
-    if (found === undefined) {
-        if (wordsRead.size >= mostWordsRead)
-            wordsRead.clear();
-        found = splitIntoWords(text);
-        wordsRead.set(text, found);
-    }
-    return found;
-}
-
-function splitIntoWords(text) {
     const found = [];
     let word = "";
     for (const character of text.toLowerCase()) {
@@ -45,12 +29,23 @@ function splitIntoWords(text) {
     return word !== "" ? [...found, word] : found;
 }
 
+// The words of a text in one line, each after a space: " konsole terminal shell". A typed word starts one of them where
+// the line holds it after a space. One string is far smaller than a list of words, so a search may keep the line of each
+// thing it ranks again and again.
+function wordLine(text) {
+    return words(text).map(word => ` ${word}`).join("");
+}
+
 function score(name, keywords, text) {
+    return scoreLine(name, wordLine(`${name} ${keywords}`), text);
+}
+
+// score(), with the name and its keywords already read into a wordLine().
+function scoreLine(name, line, text) {
     if (text === "")
         return inside;
     const typed = text.toLowerCase();
-    const known = words(`${name} ${keywords}`);
-    if (!words(text).every(word => known.some(candidate => candidate.startsWith(word))))
+    if (!words(text).every(word => line.includes(` ${word}`)))
         return name.toLowerCase().includes(typed) ? inside : 0;
     return name.toLowerCase().startsWith(typed) ? nameStart : wordStart;
 }

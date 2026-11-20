@@ -276,12 +276,18 @@ function programName(command) {
     return String(command[0] ?? "").split("/").pop();
 }
 
+// The words an app or settings page is found by, its name, generic name, keywords and program, in one line
+// (Match.wordLine): the one its item carries, made once as the app list reads its entry, or read now.
+function wordLineOf(app) {
+    return app.wordLine ?? Rekta.Match.wordLine(`${app.name} ${[app.genericName, ...app.keywords, app.exec].join(" ")}`);
+}
+
 // The installed apps that match what was typed, the most often started first, then the best match, A–Z among equals:
 // by name, or by a word of their generic name, keywords or program. `starts` counts the starts by app id. Space around
 // the text does not count (rekta.js:2604).
 function hits(apps, text, starts) {
     const typed = text.trim();
-    const ranked = Rekta.Match.ranked(apps, app => Rekta.Match.score(app.name, [app.genericName, ...app.keywords, app.exec].join(" "), typed));
+    const ranked = Rekta.Match.ranked(apps, app => Rekta.Match.scoreLine(app.name, wordLineOf(app), typed));
     const startsOf = app => (starts ?? {})[app.id] ?? 0;
     // Decorated with the rank, as QML's sort does not keep equals in order.
     return ranked.map((app, at) => ({ app: app, at: at })).sort((a, b) => (startsOf(b.app) - startsOf(a.app)) || (a.at - b.at)).map(entry => entry.app);

@@ -25,8 +25,9 @@ Scope {
     property var iconPaths: new Map()
 
     // `file` is what Rules.desktopFileKeys() read of the entry; `paths` gathers the icons this read looked up.
+    // An item carries the words the search finds it by, read once here: splitting them is most of a search's work.
     function describe(entry: DesktopEntry, exec: string, file: var, paths: var): var {
-        return {
+        const item = {
             id: entry.id,
             name: entry.name,
             genericName: entry.genericName,
@@ -41,6 +42,8 @@ Scope {
                 apps.usage.count(entry.id);
             }
         };
+        item.wordLine = Rules.wordLineOf(item);
+        return item;
     }
 
     // Quickshell looks an icon up in the theme on the GUI thread, so a name looked up once is not looked up again while an

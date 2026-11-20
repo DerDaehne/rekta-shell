@@ -306,6 +306,32 @@ TestCase {
         return Rules.hits(installed, text, starts).map(hit => hit.name);
     }
 
+    function test_an_app_carrying_its_word_line_is_found_by_it_without_reading_its_words_again() {
+        let reads = 0;
+        const konsole = {
+            id: "konsole",
+            name: "Konsole",
+            genericName: "Terminal",
+            exec: "konsole",
+            wordLine: " konsole terminal shell konsole",
+            get keywords() {
+                reads++;
+                return ["shell"];
+            }
+        };
+        compare(Rules.hits([konsole], "sh", {}).length, 1);
+        compare(Rules.hits([konsole], "term", {}).length, 1);
+        compare(reads, 0);
+        const plain = {
+            id: "konsole",
+            name: "Konsole",
+            genericName: "Terminal",
+            exec: "konsole",
+            keywords: ["shell"]
+        };
+        compare(Rules.hits([plain], "sh", {}).length, 1, "an item without a line is read as it is ranked");
+    }
+
     function test_an_app_started_more_often_comes_before_one_that_matches_as_well_or_better() {
         compare(startedHitNames("te", { dateien: 1 }), ["Dateien", "Telegram", "Kate", "Konsole"]);
         compare(startedHitNames("te", { kate: 3, konsole: 2 }), ["Kate", "Konsole", "Telegram", "Dateien"]);

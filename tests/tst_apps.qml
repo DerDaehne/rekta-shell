@@ -162,6 +162,14 @@ TestCase {
         compare(settingsSpy.count, 1);
     }
 
+    function test_an_item_carries_the_words_the_search_finds_it_by_and_a_changed_entry_its_new_ones() {
+        apps.read(files());
+        compare(apps.list.find(app => app.id === "org.kde.kate").wordLine, " kate kate app kate tool kate");
+        kate.keywords = ["kate", "tool", "editor"];
+        apps.read(files());
+        compare(apps.list.find(app => app.id === "org.kde.kate").wordLine, " kate kate app kate tool editor kate");
+    }
+
     function test_a_read_that_finds_every_entry_alike_changes_neither_list() {
         apps.read(files());
         const list = apps.list;
