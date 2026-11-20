@@ -2916,6 +2916,33 @@ TestCase {
         compare(start.hitTiles().length, 5);
     }
 
+    function test_a_start_closed_while_the_rows_of_many_hits_are_made_shows_none_of_its_hits_as_it_turns_out() {
+        Prefs.motion = "on";
+        openWithManyApps();
+        const follow = named("hitsFollow");
+        let closedAmid = false;
+        follow.waitsForChanged.connect(() => {
+            if (follow.waitsFor !== "rows" || closedAmid)
+                return;
+            closedAmid = true;
+            keyClick(Qt.Key_Escape);
+        });
+        const results = named("results");
+        const shown = [];
+        results.visibleChanged.connect(() => shown.push({
+                visible: results.visible,
+                phase: start.phase
+            }));
+        keyClick("e");
+        tryVerify(() => closedSpy.count === 1, 3000);
+        verify(closedAmid, "Escape came while the rows were made");
+        compare(shown.filter(change => change.visible), [], JSON.stringify(shown));
+        compare(follow.waitsFor, "", "nothing left to make");
+        openNow();
+        verify(named("pivot").visible);
+        verify(!results.visible);
+    }
+
     function test_enter_before_the_rows_of_many_hits_are_made_makes_them_at_once_and_presses_the_best_hit() {
         openWithManyApps();
         holdHits();

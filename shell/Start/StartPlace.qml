@@ -690,8 +690,9 @@ FocusScope {
             giveWayToHits(matched);
     }
 
+    // A Start that turns out shows no hits that come late: what is still to make stops, and a closed Start ends the search.
     function makeMore(matched: var, rows: var) {
-        if (hitsFollow.waitsFor === "rows")
+        if (hitsFollow.waitsFor === "rows" && !turning)
             showWhenMade(matched, rows, false);
     }
 
@@ -883,7 +884,7 @@ FocusScope {
     }
 
     function wordMoreRows() {
-        if (wordsLeft)
+        if (wordsLeft && !turning)
             wordRows(0);
     }
 
