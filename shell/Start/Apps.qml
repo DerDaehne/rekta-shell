@@ -21,18 +21,18 @@ Scope {
     // What the last read made of each app and each page, by desktop file ID (Rules.reread).
     property var appRecords: new Map()
     property var pageRecords: new Map()
-    // The icon paths found, by name.
-    property var foundIcons: new Map()
+    // The icon path of each name looked up, by name; empty where no theme has the icon.
+    property var iconPaths: new Map()
 
-    // `file` is what Rules.desktopFileKeys() read of the entry; `found` gathers the icons this read found.
-    function describe(entry: DesktopEntry, exec: string, file: var, found: var): var {
+    // `file` is what Rules.desktopFileKeys() read of the entry; `paths` gathers the icons this read looked up.
+    function describe(entry: DesktopEntry, exec: string, file: var, paths: var): var {
         return {
             id: entry.id,
             name: entry.name,
             genericName: entry.genericName,
             keywords: Array.from(entry.keywords),
             exec: exec,
-            icon: iconPath(entry.icon, found),
+            icon: iconPath(entry.icon, paths),
             iconName: entry.icon,
             implements: file?.Implements ?? [],
             actions: Rules.desktopActions(entry, Rules.busName(file), apps.launcher),
@@ -43,21 +43,23 @@ Scope {
         };
     }
 
-    // Quickshell looks an icon up in the theme on the GUI thread, so a name found once is not looked up again while an
-    // entry names it; a missing one is, as the theme may gain it.
-    function iconPath(name: string, found: var): string {
-        const path = foundIcons.get(name) ?? Quickshell.iconPath(name, true);
-        if (path !== "")
-            found.set(name, path);
+    // Quickshell looks an icon up in the theme on the GUI thread, so a name looked up once is not looked up again while an
+    // entry names it, found or not: a missing name walks every directory of every theme, some 20 ms, once Qt's cache of
+    // 100 icons has let it go, as one search in the Start with many hits already does.
+    // ponytail: an icon a theme gains while its app stays listed shows once the app is listed anew or the shell
+    // restarts; look missing names up again when the apps change, should that show.
+    function iconPath(name: string, paths: var): string {
+        const path = iconPaths.get(name) ?? Quickshell.iconPath(name, true);
+        paths.set(name, path);
         return path;
     }
 
     // The entries as describe() makes them, each keeping what the last read made of it when it reads the same:
     // {items, records}, `records` this read's by desktop file ID.
-    function describeAll(entries: var, files: var, execOf: var, records: var, found: var): var {
+    function describeAll(entries: var, files: var, execOf: var, records: var, paths: var): var {
         const next = new Map();
         for (const entry of entries)
-            next.set(entry.id, Rules.reread(records.get(entry.id), describe(entry, execOf(entry), files[entry.id], found)));
+            next.set(entry.id, Rules.reread(records.get(entry.id), describe(entry, execOf(entry), files[entry.id], paths)));
         return {
             items: Array.from(next.values(), record => record.item),
             records: next
@@ -69,14 +71,14 @@ Scope {
     // the lists change only when what they hold does.
     function read(files: var) {
         const desktop = Quickshell.env("XDG_CURRENT_DESKTOP");
-        const found = new Map();
+        const paths = new Map();
         const entries = Rules.listedApps(Array.from(DesktopEntries.applications.values), files, desktop);
-        const listed = describeAll(entries, files, entry => Rules.programName(entry.command), appRecords, found);
+        const listed = describeAll(entries, files, entry => Rules.programName(entry.command), appRecords, paths);
         const pages = Object.keys(files).filter(Rules.isSettingsPage).map(id => DesktopEntries.byId(id)).filter(entry => entry !== null);
-        const shown = describeAll(Rules.listedApps(pages, files, desktop), files, () => "", pageRecords, found);
+        const shown = describeAll(Rules.listedApps(pages, files, desktop), files, () => "", pageRecords, paths);
         appRecords = listed.records;
         pageRecords = shown.records;
-        foundIcons = found;
+        iconPaths = paths;
         if (!Rules.sameItems(listed.items, list))
             list = listed.items;
         if (!Rules.sameItems(shown.items, settings))

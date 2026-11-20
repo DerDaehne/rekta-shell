@@ -270,22 +270,27 @@ TestCase {
         verify(launched[1][0] === again && launched[1][1] === again.actions[1], "the action from the new one's");
     }
 
-    function test_an_icon_found_is_looked_up_once_and_a_missing_one_on_every_read() {
+    function test_an_icon_is_looked_up_once_whether_found_or_missing() {
         apps.read(files());
         apps.read(files());
         apps.read(files());
         compare(lookups("kate"), 1);
         compare(lookups("preferences-desktop-display"), 1);
-        compare(lookups("notes"), 3);
-        compare(lookups("audio-volume-high"), 3);
+        compare(lookups("notes"), 1);
+        compare(lookups("audio-volume-high"), 1);
     }
 
-    function test_an_icon_the_theme_gains_shows_on_the_next_read() {
+    function test_an_icon_the_theme_gains_shows_once_its_app_is_listed_anew() {
         apps.read(files());
         Quickshell.themeIcons = [...Quickshell.themeIcons, "notes"];
         apps.read(files());
-        compare(listSpy.count, 2);
+        compare(apps.list.find(app => app.id === "org.example.notes").icon, "");
+        install([konsole, dolphin, firefox, kate, tweaks]);
+        apps.read(files());
+        install([konsole, dolphin, firefox, kate, notes, tweaks]);
+        apps.read(files());
         compare(apps.list.find(app => app.id === "org.example.notes").icon, "image://icon/notes");
+        compare(lookups("notes"), 2);
     }
 
     function test_an_icon_no_entry_names_any_more_is_looked_up_anew_when_an_app_names_it_again() {
