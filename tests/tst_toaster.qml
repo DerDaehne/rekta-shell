@@ -192,6 +192,24 @@ TestCase {
         verify(findChild(toast, "message").lineCount <= Geometry.toastMaxLines, "a very long text still ends after the cut");
     }
 
+    function test_a_very_long_action_label_ends_in_an_ellipsis_and_leaves_the_words_half_the_toast() {
+        const label = "x".repeat(200);
+        const toast = toaster.show("a very long sentence that says what happened in many words, and then some more words, so it wraps", { act: { label, run: () => {} } });
+        const action = findChild(toast, "action");
+        compare(action.width, Math.min(Geometry.toastMaxWidth, toaster.width - 2 * Tokens.spaceM) / 2);
+        verify(findChild(toast, "actionLabel").truncated, "the label ends in an ellipsis");
+        compare(action.Accessible.name, label, "the whole word is the name");
+        compare(toast.width, Geometry.toastMaxWidth);
+        verify(findChild(toast, "words").width >= toast.width / 2, "the words keep at least half the toast");
+    }
+
+    function test_a_short_action_keeps_the_width_of_its_label() {
+        const toast = toaster.show("3 messages archived", { act: { label: "open", run: () => {} } });
+        const label = findChild(toast, "actionLabel");
+        compare(findChild(toast, "action").width, Math.max(Tokens.controlHeight, label.implicitWidth + 2 * Tokens.spaceM));
+        verify(!label.truncated);
+    }
+
     function test_a_toast_stands_space_s_above_the_bar_flush_with_the_trailing_edge_it_is_given() {
         toaster.trailingEdge = 600;
         const toast = toaster.show("3 messages archived", {});
@@ -1507,6 +1525,7 @@ TestCase {
             findChild(sheet, "pressable").show("Backup finished", { title: "Backups", icon: testCase.appIcon, open: { run: () => {} }, act: { label: "show", run: () => {} } });
             findChild(findChild(sheet, "pressable").open, "open").forceActiveFocus(Qt.TabFocusReason);
             findChild(sheet, "standing").show("the disk is full", { title: "backup", tag: "urgent", icon: testCase.appIcon, stays: true, open: { run: () => {} }, act: { label: "retry", run: () => {} } });
+            findChild(sheet, "longAction").show("Backup finished", { title: "Backups", icon: testCase.appIcon, open: { run: () => {} }, act: { label: "open the backup report in the browser and compare it with last week", run: () => {} } });
             findChild(sheet, "neutral").set("offline", true, { since: false });
             const fiveAfterTwo = new Date();
             fiveAfterTwo.setHours(14, 5, 0, 0);
@@ -1576,6 +1595,12 @@ TestCase {
 
                 Toaster {
                     objectName: "standing"
+                    width: parent.width
+                    clock: () => testCase.time
+                }
+
+                Toaster {
+                    objectName: "longAction"
                     width: parent.width
                     clock: () => testCase.time
                 }
