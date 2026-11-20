@@ -2922,11 +2922,13 @@ TestCase {
         openWithManyApps();
         const follow = named("hitsFollow");
         let closedAmid = false;
+        let madeAtEscape = 0;
         follow.waitsForChanged.connect(() => {
             if (follow.waitsFor !== "rows" || closedAmid)
                 return;
             closedAmid = true;
             keyClick(Qt.Key_Escape);
+            madeAtEscape = rowsMade();
         });
         const results = named("results");
         const shown = [];
@@ -2939,9 +2941,28 @@ TestCase {
         verify(closedAmid, "Escape came while the rows were made");
         compare(shown.filter(change => change.visible), [], JSON.stringify(shown));
         compare(follow.waitsFor, "", "nothing left to make");
+        compare(rowsMade(), madeAtEscape, "no row made after the Start began to close");
         openNow();
         verify(named("pivot").visible);
         verify(!results.visible);
+    }
+
+    function test_a_start_closed_while_its_rows_take_their_words_gives_them_none_as_it_turns_out() {
+        Prefs.motion = "on";
+        openWithManyApps();
+        start.makingTime = 0;
+        const sections = named("rows").children.filter(group => group.worded !== undefined);
+        let wordedAtEscape = null;
+        start.wordsLeftChanged.connect(() => {
+            if (!start.wordsLeft || wordedAtEscape !== null)
+                return;
+            keyClick(Qt.Key_Escape);
+            wordedAtEscape = sections.map(group => group.worded);
+        });
+        keyClick("e");
+        tryVerify(() => closedSpy.count === 1, 10000);
+        verify(wordedAtEscape !== null, "Escape came while rows took their words");
+        compare(sections.map(group => group.worded), wordedAtEscape);
     }
 
     function test_enter_before_the_rows_of_many_hits_are_made_makes_them_at_once_and_presses_the_best_hit() {
