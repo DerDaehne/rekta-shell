@@ -2897,6 +2897,7 @@ TestCase {
     function test_the_tiles_and_rows_of_many_hits_are_made_over_several_turns_hidden_so_no_key_waits_for_them() {
         openWithManyApps();
         typeNow("ent");
+        start.makingTime = 0;
         const before = start.hitTiles().length;
         const follow = named("hitsFollow");
         const seen = [];
@@ -2907,7 +2908,7 @@ TestCase {
             }));
         keyClick(Qt.Key_Backspace);
         keyClick(Qt.Key_Backspace);
-        hitsFollowed();
+        tryVerify(() => !follow.running, 10000);
         const needed = rowsFound().length;
         const making = seen.filter(state => state.waitsFor === "rows");
         verify(making.some(state => state.made < needed), JSON.stringify(seen));
@@ -2957,8 +2958,7 @@ TestCase {
 
     function test_the_rows_in_view_take_their_words_at_once_and_the_rest_follow_over_the_next_turns() {
         openWithManyApps();
-        // So tall that giving the rows in view their words takes longer than one turn may.
-        start.height = 4000;
+        start.makingTime = 0;
         const shown = [];
         start.wordsLeftChanged.connect(() => {
             if (start.wordsLeft)
@@ -2967,9 +2967,11 @@ TestCase {
                     inView: start.rowsInView
                 });
         });
-        typeNow("e");
+        keyClick("e");
+        tryVerify(() => !named("hitsFollow").running, 10000);
         verify(shown.length > 0, "some rows took their words later");
-        verify(shown.every(state => state.worded >= state.inView && state.worded < rowsFound().length), JSON.stringify(shown));
+        verify(shown.every(state => state.worded === state.inView), JSON.stringify(shown));
+        verify(start.rowsInView < rowsFound().length);
         compare(shownHits().rows, rowsFound());
     }
 

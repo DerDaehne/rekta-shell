@@ -142,8 +142,8 @@ FocusScope {
     // at once: no row takes words it gives up again in the same turn.
     property var rowsFound: []
     // How long one turn of the event loop may make tiles and rows or give rows words, in ms: a key or a frame waits no
-    // longer for them, well inside two frames at 240 Hz.
-    readonly property int makingTime: 2
+    // longer for them, well inside two frames at 240 Hz. A turn always does one thing at least, so it gets on however short.
+    property int makingTime: 2
     // As many rows as can be in view below the tiles: they take their words at once (wordRows).
     readonly property int rowsInView: Math.ceil((results.height - rowsColumn.y + results.contentY) / Tokens.rowHeight)
     // Rows still to take the words of the latest hits.
@@ -701,30 +701,51 @@ FocusScope {
     // keeps the rows it made, so typing on or erasing gives rows other words (showRows); it makes rows only past the most
     // it has shown, each with the words it will show, and loads the pictures not loaded yet. True once all are made.
     function makeAhead(tiles: var, groups: var, atOnce: bool): bool {
-        const until = Date.now() + makingTime;
-        const tilesMade = tileIds();
-        for (const app of tiles.filter(app => !tilesMade.includes(app.id))) {
-            if (!atOnce && Date.now() >= until)
+        const turn = {
+            atOnce: atOnce,
+            done: 0,
+            until: Date.now() + makingTime
+        };
+        return makeTilesAhead(tiles, turn) && groups.every(group => makeRowsAhead(group, turn));
+    }
+
+    function turnUsedUp(turn: var): bool {
+        return !turn.atOnce && turn.done > 0 && Date.now() >= turn.until;
+    }
+
+    function makeTilesAhead(tiles: var, turn: var): bool {
+        const made = tileIds();
+        for (const app of tiles.filter(app => !made.includes(app.id))) {
+            if (turnUsedUp(turn))
                 return false;
             found.append(tileOf(app, false));
-        }
-        for (const group of groups) {
-            const made = rowSection(group.name).made;
-            for (const [k, entry] of group.rows.entries()) {
-                if (k < made.count && picturesLoaded.has(entry.icon))
-                    continue;
-                if (!atOnce && Date.now() >= until)
-                    return false;
-                if (k < made.count) {
-                    pictureLoader.source = entry.icon;
-                } else {
-                    made.model.append({});
-                    (made.itemAt(k) as SearchRow).entry = entry;
-                }
-                picturesLoaded.add(entry.icon);
-            }
+            turn.done++;
         }
         return true;
+    }
+
+    function makeRowsAhead(group: var, turn: var): bool {
+        const made = rowSection(group.name).made;
+        for (const [k, entry] of group.rows.entries()) {
+            if (k < made.count && picturesLoaded.has(entry.icon))
+                continue;
+            if (turnUsedUp(turn))
+                return false;
+            makeRowAhead(made, k, entry);
+            turn.done++;
+        }
+        return true;
+    }
+
+    // A row past those made, or the picture of one made.
+    function makeRowAhead(made: Repeater, k: int, entry: var) {
+        if (k < made.count) {
+            pictureLoader.source = entry.icon;
+        } else {
+            made.model.append({});
+            (made.itemAt(k) as SearchRow).entry = entry;
+        }
+        picturesLoaded.add(entry.icon);
     }
 
     function rowSection(group: string): Item {
@@ -867,20 +888,27 @@ FocusScope {
     // The rows take their words in reading order and show as they do: at least `least` at once, the rest a few per turn
     // of the event loop, as other words and another picture take up to a tenth of a millisecond a row.
     function wordRows(least: int) {
-        const until = Date.now() + makingTime;
-        let worded = 0;
-        for (const group of rowsFound) {
-            const section = rowSection(group.name);
-            for (; section.worded < group.rows.length; section.worded++, worded++) {
-                if (worded >= least && Date.now() >= until) {
-                    wordsLeft = true;
-                    Qt.callLater(start.wordMoreRows);
-                    return;
-                }
-                (section.made.itemAt(section.worded) as SearchRow).entry = group.rows[section.worded];
-            }
+        const turn = {
+            least: Math.max(1, least),
+            worded: 0,
+            until: Date.now() + makingTime
+        };
+        wordsLeft = !rowsFound.every(group => wordGroup(rowSection(group.name), group.rows, turn));
+        if (wordsLeft)
+            Qt.callLater(start.wordMoreRows);
+    }
+
+    // The group's rows take their words from the first still waiting for them; false once the turn is used up. The rows
+    // show together, as the group learns how many have words, so each row is not shown anew for every row after it.
+    function wordGroup(section: Item, rows: var, turn: var): bool {
+        let k = section.worded;
+        for (; k < rows.length; k++, turn.worded++) {
+            if (turn.worded >= turn.least && Date.now() >= turn.until)
+                break;
+            (section.made.itemAt(k) as SearchRow).entry = rows[k];
         }
-        wordsLeft = false;
+        section.worded = k;
+        return k === rows.length;
     }
 
     function wordMoreRows() {
