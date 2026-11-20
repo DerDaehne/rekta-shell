@@ -2228,6 +2228,19 @@ TestCase {
         verify(tiles.every(tile => tile.opacity === 1));
     }
 
+    function test_a_later_letter_stands_in_the_title_at_once_and_its_hits_follow_from_the_next_frame_too() {
+        openWithApps();
+        typeNow("k");
+        const before = hitNames();
+        holdHits();
+        keyClick("o");
+        compare(named("typed").text, "ko");
+        verify(named("hitsFollow").running, "nothing for the hits holds up the frame that shows the letter");
+        compare(hitNames(), before, "the hits of what was typed before stand until the frame is taken");
+        letHitsFollow();
+        compare(hitNames(), ["Konsole"]);
+    }
+
     // A render loop on the GUI thread says it has taken the frame before it draws it; the hits change nothing in between.
     function test_the_hits_change_nothing_between_taking_the_frame_with_the_letter_and_drawing_it() {
         openWithApps();
