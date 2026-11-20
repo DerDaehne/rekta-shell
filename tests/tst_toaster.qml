@@ -203,6 +203,13 @@ TestCase {
         verify(findChild(toast, "words").width >= toast.width / 2, "the words keep at least half the toast");
     }
 
+    function test_in_a_narrow_region_a_long_action_takes_half_of_what_the_region_leaves_the_toast() {
+        toaster.width = 400;
+        const toast = toaster.show("a very long sentence that says what happened in many words, and then some more words, so it wraps", { act: { label: "x".repeat(200), run: () => {} } });
+        compare(toast.width, 400 - 2 * Tokens.spaceM);
+        compare(findChild(toast, "action").width, (400 - 2 * Tokens.spaceM) / 2);
+    }
+
     function test_a_short_action_keeps_the_width_of_its_label() {
         const toast = toaster.show("3 messages archived", { act: { label: "open", run: () => {} } });
         const label = findChild(toast, "actionLabel");

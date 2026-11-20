@@ -572,7 +572,7 @@ FocusScope {
 
         objectName: "action"
         x: toast.width - closeBox.width - width
-        // ponytail: Rekta sets no maximum for the action (report 1784); half of the widest toast, until it does.
+        // ponytail: half of the widest toast, until Rekta gives the action a width.
         readonly property real maxWidth: Math.min(Geometry.toastMaxWidth, toast.toaster.width - 2 * Tokens.spaceM) / 2
         width: toast.actionLabel !== "" ? Math.max(Tokens.controlHeight, Math.min(label.implicitWidth + 2 * Tokens.spaceM, maxWidth)) : 0
         height: toast.height
