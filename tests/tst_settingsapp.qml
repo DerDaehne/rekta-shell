@@ -73,6 +73,7 @@ TestCase {
             Backdrop {
                 id: ground
 
+                anchors.fill: parent
                 solid: shellSettings.value("background") !== "rekta"
             }
 
@@ -109,6 +110,7 @@ TestCase {
         Prefs.motion = "system";
         Prefs.systemMoreContrast = false;
         Prefs.systemReducedTransparency = false;
+        Prefs.theme = "system";
     }
 
     function pivot(): var {
@@ -288,9 +290,28 @@ TestCase {
 
     function test_the_page_starts_at_its_first_group_and_sideways_groups_stand_space_xl_apart() {
         compare(page(0).topMargin, 0);
+        compare(page(0).bottomMargin, 0);
         compare(groupAt("farben").y, 0);
         tryVerify(() => groupAt("fläche").x > 0);
         compare(groupAt("fläche").x - (groupAt("farben").x + groupAt("farben").width), Tokens.spaceXl);
+    }
+
+    function test_sideways_columns_share_the_width_less_one_space_xl() {
+        compare(groupAt("farben").width, (page(0).width - Tokens.spaceXl) / 2);
+    }
+
+    function test_sideways_groups_have_no_hairline() {
+        compare(findChild(view, "hairline-fläche").visible, false);
+    }
+
+    function test_a_stacked_group_has_a_hairline_on_its_top_edge_and_the_first_has_none() {
+        view.parent.width = Tokens.bpSidewaysScrollMin - 1;
+        const line = findChild(view, "hairline-fläche");
+        tryVerify(() => line.visible);
+        compare(line.y, groupAt("fläche").y);
+        compare(line.width, groupAt("fläche").width);
+        compare(line.height, Geometry.hairline);
+        compare(findChild(view, "hairline-farben").visible, false);
     }
 
     function test_stacked_groups_follow_each_other_with_the_space_of_their_own_padding_only() {

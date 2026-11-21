@@ -373,6 +373,7 @@ FocusScope {
                         id: group
 
                         required property string modelData
+                        required property int index
 
                         objectName: `group-${modelData}`
                         width: page.columnWidth
@@ -389,6 +390,16 @@ FocusScope {
                         Loader {
                             width: group.width
                             sourceComponent: view.contents[group.modelData] ?? comingSoon
+                        }
+
+                        // Compact, a hairline parts a stacked section from the one above (layout.md:92; rekta.css:1156, :1525); it stands outside the column's flow.
+                        Hairline {
+                            objectName: `hairline-${modelData}`
+                            parent: grid.parent
+                            visible: view.columns === 1 && group.index > 0
+                            x: grid.x + group.x
+                            y: grid.y + group.y
+                            width: group.width
                         }
                     }
                 }
