@@ -10,8 +10,7 @@ Row {
     // Tabular figures, for a word whose digits change.
     property bool figures: false
     // In the plain, ink toast the word takes the toast's text colour and the square an edge in it, since a status colour
-    // may sink into the ink; under more contrast the neutral square takes that colour too (rekta.css:1178–1179, :1554,
-    // :1558).
+    // may sink into the ink; the neutral square takes that colour itself (rekta.css:1209–1211).
     property bool inInkToast: false
     readonly property color ink: inInkToast ? Tokens.color.bg : Tokens.color.textPrimary
     readonly property color mark: Status.mark(status, Tokens.color, Tokens.color.textContrastMedium)
@@ -30,7 +29,7 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         width: Geometry.tagMark
         height: Geometry.tagMark
-        color: tag.inInkToast && tag.status === "" && Tokens.moreContrast ? tag.ink : tag.mark
+        color: tag.inInkToast && tag.status === "" ? tag.ink : tag.mark
 
         // Outside the square, as a box-shadow is drawn.
         Rectangle {

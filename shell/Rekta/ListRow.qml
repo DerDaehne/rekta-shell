@@ -1,9 +1,9 @@
 import QtQuick
 
-// One row of a long list (rekta.css:625–635): an icon and its text at the density's row height, on a hairline. Chosen,
+// One row of a long list (rekta.css:636–646): an icon and its text at the density's row height, on a hairline. Chosen,
 // it takes the accent fill with on-accent text, loses its hairline and shows a checkmark in its leading padding, at
 // once, as a row drawn again while scrolling does (motion.md, "Checkmark"). It nudges where it is pressed, by up to
-// row-tilt, and shrinks to row-press-scale; under reduced motion it only shrinks (rekta.css:941–948, :1531).
+// row-tilt, and shrinks to row-press-scale; under reduced motion it only shrinks (rekta.css:953–960, :1563).
 Item {
     id: row
 
@@ -64,7 +64,7 @@ Item {
     }
 
     // perspective(turnstile-perspective) rotateX(-py · tilt) rotateY(px · tilt) scale(press-scale) around the centre
-    // (rekta.css:946), flattened to the item's plane as Qt's own Rotation does.
+    // (rekta.css:958), flattened to the item's plane as Qt's own Rotation does.
     transform: Matrix4x4 {
         matrix: {
             const rad = Math.PI / 180;
@@ -103,7 +103,7 @@ Item {
         }
     }
 
-    // Hover tints the row over its fill (rekta.css:1347).
+    // Hover tints the row over its fill (rekta.css:1379).
     Rectangle {
         objectName: "tint"
         anchors.fill: parent
@@ -163,7 +163,7 @@ Item {
         }
     }
 
-    // On a chosen row text-contrast-low turns clear, and with it the hairline (rekta.css:950).
+    // On a chosen row text-contrast-low turns clear, and with it the hairline (rekta.css:962).
     Hairline {
         objectName: "hairline"
         y: row.height - height
@@ -171,9 +171,12 @@ Item {
         visible: !row.chosen
     }
 
+    // On the chosen row's fill the ring, the accent, would sink into it: it takes the fill's text colour (rekta.css:963).
     FocusRing {
+        objectName: "ring"
         offset: -Geometry.focusRingInsetInRow
         shown: row.ringed
+        border.color: row.chosen ? Tokens.color.textOnAccent : Tokens.color.focus
     }
 
     HoverHandler {
@@ -195,14 +198,14 @@ Item {
         onTriggered: area.pressAtStart()
     }
 
-    // The press, after rekta.js press() (:313–353): a mouse presses at once, a finger after tap-delay, so the start of
+    // The press, after rekta.js press() (:314–354): a mouse presses at once, a finger after tap-delay, so the start of
     // a scroll never sinks the row; moving past the slop, or the list taking over to scroll, gives up.
     MouseArea {
         id: area
 
         property point start
         // Where it began in the window: the way a pointer has gone is counted on the screen, as rekta.js counts it in
-        // client coordinates (:331), never on the row that shrinks and tilts under it as it sinks.
+        // client coordinates (:332), never on the row that shrinks and tilts under it as it sinks.
         property point startInWindow
         property bool touch: false
         property bool moved: false

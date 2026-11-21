@@ -199,11 +199,12 @@ TestCase {
         verify(start.letterTiles().every(tile => tile.opens && tile.width === Tokens.tileUnit && tile.height === Tokens.tileUnit));
     }
 
-    function test_the_sections_have_the_start_place_s_spaces_and_headings() {
+    function test_the_sections_have_the_start_place_s_headings_and_rektas_spaces() {
         openOnAllApps(desktopApps, 1600, 900);
         const section = sections()[0];
-        compare(section.verticalInset, Tokens.spaceXl);
-        compare(section.headingSpacing, Tokens.spaceL);
+        const heading = findChild(section, "heading");
+        compare(heading.mapToItem(section, 0, 0).y, Tokens.spaceXl);
+        compare(findChild(section, "grid").mapToItem(section, 0, 0).y, Tokens.spaceXl + heading.height + Tokens.spaceL);
         compare(findChild(section, "heading").font.pixelSize, Math.floor(Tokens.fluid(Tokens.fontSizeXl, start.width)));
     }
 
@@ -220,7 +221,7 @@ TestCase {
         verify(sections().every(section => section.width <= unit(6)));
     }
 
-    // Never flush at the edge (layout.md:41–50): sections as wide as their letters need, the gap spread over all of them.
+    // Never flush at the edge (layout.md:65–74): sections as wide as their letters need, the gap spread over all of them.
     function test_the_windows_edge_lies_space_xl_inside_a_letter_with_even_gaps_spread_from_space_xl_data() {
         return [
             {
@@ -370,7 +371,7 @@ TestCase {
         panorama.userScroll();
         panorama.scroller.contentX = panorama.mostScroll();
         compare(strip.currentIndex, sections().length - 1, "at the end, the last");
-        // Rekta's rule (rekta.js:979–980): the last section whose left edge lies within a third of the width.
+        // Rekta's rule (rekta.js:980–981): the last section whose left edge lies within a third of the width.
         const at = flushLeft(titled("l–p"));
         panorama.scroller.contentX = at;
         compare(strip.currentIndex, sections().filter(section => section.x - at <= panorama.width / 3).length - 1);
@@ -475,7 +476,7 @@ TestCase {
         tryVerify(() => named("results").visible);
     }
 
-    // The wheel and the swipe (layout.md:52–81)
+    // The wheel and the swipe (layout.md:98–131)
 
     function test_a_vertical_wheel_moves_the_panorama_sideways_and_a_gesture_back_past_its_start_goes_to_start_once() {
         openOnAllApps(desktopApps, 1920, 1080);
@@ -714,7 +715,7 @@ TestCase {
         compare(named("appsStrip").currentIndex, 0);
     }
 
-    // Away and back (rekta.js:1070)
+    // Away and back (rekta.js:1079)
 
     function standOnFifthSection(): real {
         Prefs.motion = "off";

@@ -1,9 +1,9 @@
 import QtQuick
 
-// A value on a scale (forms.md, "Inputs"): a 6px track the accent fills up to the value, an ink bar as the thumb, and
-// the value shown beside it in tabular figures. Disabled, the thumb, the fill up to the value and the value grey while
-// the empty track stays (rekta.css:520–525); the reason stands below (forms.md, "Disabled controls say why"), or only
-// in the value where the value says it (a muted volume reads "stumm").
+// A value on a scale (forms.md, "Inputs"): a 6px track ink fills up to the value whatever the accent
+// (colour.md:170–177), an ink bar as the thumb, and the value shown beside it in tabular figures. Disabled, the thumb,
+// the fill up to the value and the value grey while the empty track stays (rekta.css:530–535); the reason stands below
+// (forms.md, "Disabled controls say why"), or only in the value where the value says it (a muted volume reads "stumm").
 Item {
     id: slider
 
@@ -82,7 +82,7 @@ Item {
                     objectName: "fill"
                     width: track.width * slider.position
                     height: track.height
-                    color: slider.disabled ? Tokens.color.disabled : Tokens.color.accent
+                    color: slider.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
                 }
             }
 

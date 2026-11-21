@@ -204,7 +204,7 @@ TestCase {
         const heading = findChild(section, "heading");
         const grid = findChild(section, "grid");
         compare(heading.mapToItem(section, 0, 0).y, Tokens.spaceXl);
-        compare(grid.y, heading.y + heading.height + Tokens.spaceL);
+        compare(grid.mapToItem(section, 0, 0).y, heading.mapToItem(section, 0, 0).y + heading.height + Tokens.spaceL);
         compare(section.implicitHeight, grid.mapToItem(section, 0, 0).y + grid.height + Tokens.spaceXl);
     }
 
@@ -470,7 +470,7 @@ TestCase {
         compare(findChild(dolphin, "name").color, Tokens.color.textPrimary);
     }
 
-    // The launch tile (tiles.md:141–156; rekta.css:176–187).
+    // The launch tile (tiles.md:141–156; rekta.css:180–191).
 
     function test_an_app_tile_has_its_icon_at_tile_icon_in_its_padding_and_its_name_at_the_foot_in_xs_semibold() {
         start.pinned = [Object.assign(fakeApp("dolphin", 1), { icon: largeIcon })];
@@ -595,7 +595,7 @@ TestCase {
         compare(best.Accessible.description, "bester treffer");
     }
 
-    // The preview tile (tiles.md:123–132; rekta.css:132–136).
+    // The preview tile (tiles.md:123–132; rekta.css:136–140).
 
     function test_a_running_tiles_foot_holds_the_apps_icon_at_20_and_the_title_in_s_on_the_tile_surface_without_a_count() {
         start.windows = [Object.assign(fakeWindow("Rekta Design — docs, a title longer than the tile", 30), { icon: largeIcon })];
@@ -631,7 +631,7 @@ TestCase {
         verify(ring.z > findChild(tile, "upper").z);
     }
 
-    // object-fit: cover (rekta.css:134)
+    // object-fit: cover (rekta.css:138)
     function test_a_preview_in_other_proportions_than_its_place_fills_it_whole_from_its_middle_and_the_rest_is_cut_off() {
         start.preview = previewComponent;
         start.windows = [Object.assign(fakeWindow("wide", 30), {
@@ -1575,7 +1575,7 @@ TestCase {
         compare(Qt.size(tiles[0].width, tiles[0].height), Qt.size(2 * Tokens.tileUnit + Tokens.spaceS, Tokens.tileUnit));
         compare(Qt.size(tiles[1].width, tiles[1].height), Qt.size(Tokens.tileUnit, Tokens.tileUnit));
         compare(tiles[1].x - tiles[0].x, 2 * (Tokens.tileUnit + Tokens.spaceS));
-        compare(named("hits").mapToItem(start, 0, 0), Qt.point(Tokens.spaceXl, named("pivot").height + Tokens.spaceL));
+        compare(named("hits").mapToItem(start, 0, 0), Qt.point(Tokens.spaceXl, named("pivot").height + Tokens.spaceXl));
         compare(findChild(tiles[0], "icon").source.toString(), pinkIcon);
     }
 
@@ -1587,7 +1587,7 @@ TestCase {
         verify(sentence.visible);
         compare(sentence.text, "nichts zum hingehen oder ausführen passt zu „q“.");
         compare(sentence.color, Tokens.color.textContrastHigh);
-        compare(named("noHits").y, Tokens.spaceL);
+        compare(named("noHits").y, Tokens.spaceXl);
         compare(findChild(named("noHits"), "line").y, 0);
         compare(sentence.y, Geometry.hairline + Tokens.spaceM);
     }
@@ -2416,7 +2416,7 @@ TestCase {
     }
 
     // Whatever the windows show lies under the glass, its blur averaging it, so white and black are the limits; Rekta
-    // asks 4.5:1 there, 7:1 under more contrast, large type too (colour.md:65–75). Measured at each title's own colour.
+    // asks 4.5:1 there, 7:1 under more contrast, large type too (colour.md:74–84). Measured at each title's own colour.
     function test_every_title_on_the_glass_keeps_4_5_to_1_over_white_and_black_and_7_to_1_under_more_contrast() {
         const luminance = colour => {
             const channel = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);

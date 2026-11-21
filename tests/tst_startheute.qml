@@ -282,11 +282,9 @@ TestCase {
         verify(named("panorama").fit);
     }
 
-    function test_heute_has_the_spaces_and_heading_of_the_other_sections() {
+    function test_heute_has_the_heading_of_the_other_sections() {
         const section = named("today");
         const pinned = named("pinned");
-        compare(section.verticalInset, pinned.verticalInset);
-        compare(section.headingSpacing, pinned.headingSpacing);
         compare(section.headingToken, pinned.headingToken);
     }
 

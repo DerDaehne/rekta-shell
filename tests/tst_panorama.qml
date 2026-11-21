@@ -302,7 +302,7 @@ TestCase {
     // The sections' content comes in a Column, which lays out on the next frame.
     function settled(panorama) {
         const first = panorama.sectionParent.children[0];
-        tryVerify(() => first.contentHeight > 2 * Tokens.spaceL + 10);
+        tryVerify(() => first.contentHeight > 2 * Tokens.spaceXl + 10);
         waitForRendering(panorama);
     }
 
@@ -379,17 +379,52 @@ TestCase {
         compare(spy.count, 0, "it scrolls instead");
     }
 
-    function test_a_section_takes_its_spaces_and_heading_size_from_its_place_with_rektas_as_the_default() {
+    function test_a_section_takes_its_heading_size_from_its_place_with_rektas_as_the_default() {
         const panorama = makePanorama(1, 100);
         const section = sectionAt(panorama, 0);
-        compare(section.verticalInset, Tokens.spaceL);
-        compare(section.headingSpacing, Tokens.spaceM);
         compare(findChild(section, "heading").sizeToken, Tokens.fontSizeGroup);
-        const before = section.implicitHeight;
-        section.verticalInset = Tokens.spaceXl;
-        compare(section.implicitHeight, before + 2 * (Tokens.spaceXl - Tokens.spaceL));
         section.headingToken = Tokens.fontSizeXl;
         compare(findChild(section, "heading").sizeToken, Tokens.fontSizeXl);
+    }
+
+    Component {
+        id: twoBlocksComponent
+
+        Section {
+            title: "two blocks"
+            width: 400
+
+            Rectangle {
+                objectName: "first"
+                width: 100
+                height: 30
+            }
+            Rectangle {
+                objectName: "second"
+                width: 100
+                height: 40
+            }
+        }
+    }
+
+    function test_a_section_stands_space_xl_from_its_edges_its_heading_space_l_above_what_follows_and_its_blocks_space_m_apart() {
+        const section = createTemporaryObject(twoBlocksComponent, testCase);
+        const heading = findChild(section, "heading");
+        const first = findChild(section, "first");
+        const second = findChild(section, "second");
+        const top = item => item.mapToItem(section, 0, 0).y;
+        tryVerify(() => top(second) > top(first));
+        compare(top(heading), Tokens.spaceXl);
+        compare(top(first), top(heading) + heading.height + Tokens.spaceL);
+        compare(top(second), top(first) + first.height + Tokens.spaceM);
+        compare(section.implicitHeight, top(second) + second.height + Tokens.spaceXl);
+    }
+
+    function test_a_section_without_a_title_starts_its_first_block_space_xl_from_its_top() {
+        const section = createTemporaryObject(twoBlocksComponent, testCase, { title: "" });
+        const first = findChild(section, "first");
+        tryVerify(() => findChild(section, "second").mapToItem(section, 0, 0).y > 0);
+        compare(first.mapToItem(section, 0, 0).y, Tokens.spaceXl);
     }
 
     function test_a_jump_aligns_a_section_flush_left_or_as_far_as_the_panorama_scrolls() {
@@ -412,7 +447,7 @@ TestCase {
         compare(panorama.scroller.contentWidth, reach + panorama.gap + spacer + Tokens.spaceXl);
     }
 
-    // Never flush at the edge (layout.md:41–50; rekta.js spread(), :1043–1067). Five sections of 622 px, the inset 48.
+    // Never flush at the edge (layout.md:65–74; rekta.js spread(), :1052–1076). Five sections of 622 px, the inset 48.
 
     // The window's edge with the first section at the start lies at least space-xl inside one section.
     function edgeInsideASection(panorama: var): bool {
@@ -611,7 +646,7 @@ TestCase {
         compare(panorama.scroller.contentX, 1340);
     }
 
-    // The wheel latch, rules 1 to 6 (layout.md:52–76; rekta.js:998–1026).
+    // The wheel latch, rules 1 to 6 (layout.md:98–126; rekta.js:1011–1035).
 
     function test_events_closer_than_the_latch_are_one_gesture_however_long_it_lasts() {
         const down = {
@@ -984,7 +1019,7 @@ TestCase {
         }
     }
 
-    // Keys (navigation.md:454–456).
+    // Keys (navigation.md:484–486).
 
     function test_arrow_and_page_keys_jump_to_the_previous_and_next_section_flush_left() {
         Prefs.motion = "off";
@@ -1282,7 +1317,7 @@ TestCase {
         verify(!panorama.gliding);
     }
 
-    // The strip's own wheel (layout.md:78–81; rekta.js stripWheel()).
+    // The strip's own wheel (layout.md:128–131; rekta.js stripWheel()).
 
     function test_a_plain_vertical_wheel_over_a_strip_that_does_not_fit_moves_it_sideways() {
         const strip = createTemporaryObject(stripAndPanoramaComponent, testCase).strip;

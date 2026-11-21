@@ -89,18 +89,25 @@ TestCase {
         }
     }
 
-    // The default accent is ink, the same colour as the text; tests about the accent give it a colour of its own.
+    // The default accent is ink, the same colour as the text, and the words on it the ground; tests about the accent give
+    // both colours of their own.
     property color inkLight
     property color inkDark
+    property color onInkLight
+    property color onInkDark
 
     function initTestCase() {
         inkLight = Tokens.light.accent;
         inkDark = Tokens.dark.accent;
+        onInkLight = Tokens.light.textOnAccent;
+        onInkDark = Tokens.dark.textOnAccent;
     }
 
     function useColourfulAccent() {
         Tokens.light.accent = "#1f5fd1";
         Tokens.dark.accent = "#7fb0ff";
+        Tokens.light.textOnAccent = "#fffbe0";
+        Tokens.dark.textOnAccent = "#00113a";
     }
 
     function optionsOf(segments) {
@@ -113,6 +120,8 @@ TestCase {
         Prefs.density = "auto";
         Tokens.light.accent = inkLight;
         Tokens.dark.accent = inkDark;
+        Tokens.light.textOnAccent = onInkLight;
+        Tokens.dark.textOnAccent = onInkDark;
     }
 
     function test_a_toggle_switches_on_click_and_space_and_says_its_state() {
@@ -131,7 +140,7 @@ TestCase {
         compare(word.text, "off");
     }
 
-    function test_an_on_toggle_fills_in_the_accent_inside_a_two_pixel_frame() {
+    function test_an_on_toggle_fills_in_ink_inside_a_two_pixel_frame_whatever_the_accent() {
         useColourfulAccent();
         const toggle = createTemporaryObject(toggleComponent, testCase);
         const track = findChild(toggle, "track");
@@ -142,7 +151,7 @@ TestCase {
         compare(thumb.color, Tokens.color.textPrimary);
         compare(fill.width, 0);
         toggle.checked = true;
-        compare(fill.color, Qt.color("#1f5fd1"));
+        compare(fill.color, Tokens.color.textPrimary);
         tryCompare(fill, "width", 46 - 2 * 4 - 14);
         tryCompare(thumb, "x", 46 - 12);
     }
@@ -172,7 +181,7 @@ TestCase {
         compare(findChild(toggle, "label").color, Tokens.color.disabled);
         compare(findChild(toggle, "word").color, Tokens.color.disabled);
         toggle.disabledReason = "";
-        compare(findChild(toggle, "fill").color, Tokens.color.accent);
+        compare(findChild(toggle, "fill").color, Tokens.color.textPrimary);
         compare(findChild(toggle, "word").color, Tokens.color.textContrastHigh);
         toggle.disabledReason = "set by the administrator";
         toggle.checked = false;
@@ -229,14 +238,14 @@ TestCase {
         verify(slider.value === 0.3, `exactly 0.3, not ${slider.value}`);
     }
 
-    function test_a_slider_fills_to_its_value_and_shows_it_in_tabular_figures() {
+    function test_a_slider_fills_in_ink_to_its_value_whatever_the_accent_and_shows_it_in_tabular_figures() {
         useColourfulAccent();
         const slider = createTemporaryObject(sliderComponent, testCase);
         const track = findChild(slider, "track");
         const fill = findChild(slider, "fill");
         const output = findChild(slider, "output");
         compare(fill.width, track.width * 0.4);
-        compare(fill.color, Qt.color("#1f5fd1"));
+        compare(fill.color, Tokens.color.textPrimary);
         compare(track.height, 6);
         compare(output.text, "40");
         verify(output.width >= 3.5 * output.font.pixelSize);
@@ -273,7 +282,7 @@ TestCase {
         compare(output.color, Tokens.color.disabled);
         slider.disabledReason = "";
         compare(thumb.color, Tokens.color.textPrimary, "enabled, it takes its colours back");
-        compare(fill.color, Qt.color("#1f5fd1"));
+        compare(fill.color, Tokens.color.textPrimary);
         compare(output.color, Tokens.color.textPrimary);
         slider.disabledReason = "no backlight";
         const why = findChild(slider, "why");
@@ -291,15 +300,16 @@ TestCase {
         compare(slider.Accessible.description, "muted");
     }
 
-    function test_segments_follow_the_keys_and_slide_the_accent_over() {
+    function test_segments_follow_the_keys_and_slide_the_ink_block_over_whatever_the_accent() {
         useColourfulAccent();
         const segments = createTemporaryObject(segmentsComponent, testCase);
         const slide = findChild(segments, "slide");
         const options = optionsOf(segments);
         compare(options.length, 3);
         compare(slide.x, options[0].x);
-        compare(slide.color, Qt.color("#1f5fd1"));
-        compare(options[0].border.color, Qt.color("#1f5fd1"));
+        compare(slide.color, Tokens.color.textPrimary);
+        compare(options[0].border.color, Tokens.color.textPrimary);
+        compare(Array.from(options[0].children).find(child => child.text !== undefined).color, Tokens.color.bg, "the chosen word");
         segments.forceActiveFocus();
         keyClick(Qt.Key_Right);
         compare(segments.currentIndex, 1);

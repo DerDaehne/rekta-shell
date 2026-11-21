@@ -1,31 +1,30 @@
 import QtQuick
 
-// A panorama section (rekta.css `.rk-sec`, :1124–1128, :1492): a heading and what belongs to it, space-m apart, space-l
-// above and below. Sideways it scrolls vertically within itself when its content is taller than the panorama's box;
-// stacked (compact) it takes its content's height and a hairline separates it from the section above (:1126).
+// A panorama section (layout.md:76–96; rekta.css `.rk-sec`, :1152–1159, :1524): a heading and what belongs to it,
+// space-xl above and below, the heading space-l above what follows it and the blocks after it space-m apart. Sideways
+// it scrolls vertically within itself when its content is taller than the panorama's box; stacked (compact) it takes
+// its content's height and a hairline separates it from the section above (:1156).
 Flickable {
     id: section
 
     property string title
     // 0: the panorama's section width.
     property real sectionWidth: 0
-    // Rekta's values are the defaults; a place may set larger ones (the Start does: ADR-034, point 3).
-    property real verticalInset: Tokens.spaceL
-    property real headingSpacing: Tokens.spaceM
+    // Rekta's is the default; a place may set a larger one.
     property var headingToken: Tokens.fontSizeGroup
     property real placeWidth: Window.width
     // Set by the panorama: stacked top to bottom (compact), and not the first one.
     property bool stacked: false
     property bool separated: false
     readonly property bool headingFocused: headline.activeFocus
-    default property alias content: column.data
+    default property alias content: blocks.data
 
     // The section's heading takes the focus when a jump asks for it (rekta.js focusHeading(), :217–223).
     function focusHeading() {
         headline.forceActiveFocus(Qt.TabFocusReason);
     }
 
-    implicitHeight: column.height + 2 * section.verticalInset
+    implicitHeight: column.height + 2 * Tokens.spaceXl
     contentWidth: width
     contentHeight: implicitHeight
     interactive: !stacked
@@ -41,10 +40,10 @@ Flickable {
     Column {
         id: column
 
-        y: section.verticalInset
-        // Sideways a section keeps space-s clear on the right for its scrollbar (rekta.css:1492).
+        y: Tokens.spaceXl
+        // Sideways a section keeps space-s clear on the right for its scrollbar (rekta.css:1524).
         width: section.width - (section.stacked ? 0 : Tokens.spaceS)
-        spacing: section.headingSpacing
+        spacing: Tokens.spaceL
 
         GroupHeading {
             id: headline
@@ -64,6 +63,14 @@ Flickable {
             FocusRing {
                 shown: headline.activeFocus
             }
+        }
+
+        Column {
+            id: blocks
+
+            objectName: "blocks"
+            width: parent.width
+            spacing: Tokens.spaceM
         }
     }
 }

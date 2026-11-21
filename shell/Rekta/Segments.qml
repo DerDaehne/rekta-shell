@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// Two to five options seen at a glance (forms.md, "Inputs"; rekta.css:530–552): joined buttons, the chosen one in the
-// accent. On a choice made here the accent block slides over from the old one and the chosen label turns light
-// halfway (motion.md, segments). Disabled, the frames and words grey and the chosen one is a grey block with `bg`
+// Two to five options seen at a glance (forms.md, "Inputs"; rekta.css:540–562): joined buttons, the chosen one in ink
+// whatever the accent (colour.md:170–177). On a choice made here the ink block slides over from the old one and the
+// chosen label turns light halfway (motion.md, segments). Disabled, the frames and words grey and the chosen one is a grey block with `bg`
 // words, and the reason stands beside it on the words' line while it fits the width, else below, wrapped within the
 // width (the hint is inline after the control, forms.md, "Disabled controls say why").
 Item {
@@ -89,7 +89,7 @@ Item {
             bottomLeftRadius: chosen ? chosen.bottomLeftRadius : 0
             topRightRadius: chosen ? chosen.topRightRadius : 0
             bottomRightRadius: chosen ? chosen.bottomRightRadius : 0
-            color: segments.disabled ? Tokens.color.disabled : Tokens.color.accent
+            color: segments.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
 
             Behavior on x {
                 enabled: segments.sliding
@@ -146,7 +146,7 @@ Item {
                     height: Tokens.controlHeight
                     color: "transparent"
                     border.width: Geometry.segmentBorder
-                    border.color: segments.disabled ? Tokens.color.disabled : chosen ? Tokens.color.accent : Tokens.color.textPrimary
+                    border.color: segments.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
                     topLeftRadius: first ? Tokens.radiusS : 0
                     bottomLeftRadius: first ? Tokens.radiusS : 0
                     topRightRadius: last ? Tokens.radiusS : 0
@@ -164,7 +164,7 @@ Item {
                         font.family: Tokens.fontSans
                         font.pixelSize: Tokens.fontSizeS
                         font.weight: Tokens.fontWeightSemibold
-                        color: segments.disabled ? (option.chosen ? Tokens.color.bg : Tokens.color.disabled) : option.lit ? Tokens.color.textOnAccent : Tokens.color.textPrimary
+                        color: segments.disabled ? (option.chosen ? Tokens.color.bg : Tokens.color.disabled) : option.lit ? Tokens.color.bg : Tokens.color.textPrimary
                     }
 
                     Timer {

@@ -209,8 +209,6 @@ TestCase {
         compare(section.width, 2 * start.unitStep);
         compare(section.x, today.x + today.width + named("panorama").gap);
         compare(findChild(section, "heading").text, "zuletzt");
-        compare(section.verticalInset, today.verticalInset);
-        compare(section.headingSpacing, today.headingSpacing);
         compare(section.headingToken, today.headingToken);
     }
 

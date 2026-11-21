@@ -111,16 +111,16 @@ TestCase {
         return createTemporaryObject(spyComponent, testCase, { target, signalName });
     }
 
-    function test_pressed_it_takes_the_accent_fill_with_on_accent_words_like_a_chosen_segment() {
+    function test_pressed_it_takes_an_ink_fill_with_ground_coloured_words_like_a_chosen_segment_whatever_the_accent() {
         const button = make({ checked: true });
         const fill = findChild(button, "fill");
-        compare(fill.color, Tokens.color.accent);
+        compare(fill.color, Tokens.color.textPrimary);
         compare(fill.opacity, 1);
-        compare(findChild(button, "frame").border.color, Tokens.color.accent);
+        compare(findChild(button, "frame").border.color, Tokens.color.textPrimary);
         compare(findChild(button, "frame").border.width, Geometry.buttonBorder);
         compare(fill.radius, Tokens.radiusS);
         for (const part of ["word", "state", "glyph"])
-            compare(findChild(button, part).color, Tokens.color.textOnAccent, part);
+            compare(findChild(button, part).color, Tokens.color.bg, part);
     }
 
     function test_not_pressed_it_is_a_quiet_button_whose_words_darken_under_the_pointer() {

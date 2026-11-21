@@ -150,11 +150,11 @@ TestCase {
     }
 
     function test_the_reason_beside_the_remedy_takes_the_primary_ink_on_the_status_fill_in_each_theme() {
-        const inks = { light: "#010205", dark: "#fbfcff" };
+        const inks = { light: Tokens.light.textPrimary, dark: Tokens.dark.textPrimary };
         turn({ storageFull: true });
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
-            compare(findChild(findChild(banner, "remedy"), "why").color, Qt.color(inks[theme]), theme);
+            compare(findChild(findChild(banner, "remedy"), "why").color, inks[theme], theme);
         }
     }
 

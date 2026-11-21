@@ -329,7 +329,7 @@ TestCase {
         compare(named("pinned").mapToItem(panorama, 0, 0).x, Tokens.spaceXl);
     }
 
-    // Never flush at the edge (layout.md:41–50): the window's edge lies at least space-xl inside a section.
+    // Never flush at the edge (layout.md:65–74): the window's edge lies at least space-xl inside a section.
     function edgeInsideASection(panorama: var): bool {
         const edge = panorama.width;
         return panorama.sectionItems().some(section => section.x + Tokens.spaceXl <= edge && edge <= section.x + section.width - Tokens.spaceXl);
@@ -378,12 +378,11 @@ TestCase {
         compare(named("sectionStrip").currentIndex, 0);
     }
 
-    function test_the_headings_and_spaces_are_the_starts_not_rektas() {
+    function test_the_headings_are_the_starts_and_the_spaces_rektas() {
         openNow();
         const section = named("running");
         const heading = findChild(section, "heading");
-        compare(section.verticalInset, Tokens.spaceXl);
-        compare(section.headingSpacing, Tokens.spaceL);
+        compare(heading.mapToItem(section, 0, 0).y, Tokens.spaceXl);
         compare(heading.font.pixelSize, Math.floor(Tokens.fluid(Tokens.fontSizeXl, start.width)));
     }
 

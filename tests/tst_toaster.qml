@@ -681,7 +681,7 @@ TestCase {
         return (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
     }
 
-    function test_in_the_ink_toast_a_neutral_tag_s_word_takes_the_toast_s_text_colour_and_its_square_an_edge_in_it() {
+    function test_in_the_ink_toast_a_neutral_tag_s_word_and_square_take_the_toast_s_text_colour_and_the_square_an_edge_in_it() {
         for (const theme of ["light", "dark"]) {
             Prefs.theme = theme;
             const toast = toaster.show("lunch at noon?", { title: "anna", tag: "urgent" });
@@ -692,7 +692,7 @@ TestCase {
             const edge = findChild(tag, "edge");
             compare(tag.status, "", "neutral: urgency is not a status");
             compare(word, toast.ink, theme);
-            compare(mark.color, Tokens.color.textContrastMedium, `${theme}: the neutral square`);
+            compare(mark.color, toast.ink, `${theme}: the neutral square`);
             verify(edge.visible, theme);
             compare(edge.color, Qt.color("transparent"));
             compare(edge.border.color, toast.ink);

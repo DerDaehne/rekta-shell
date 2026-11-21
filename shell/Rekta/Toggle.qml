@@ -1,7 +1,8 @@
 import QtQuick
 
-// A toggle switch, the Metro way (forms.md, "Inputs"): it acts at once. A square frame, the accent fill growing from
-// the leading edge when on, a solid ink bar as the thumb, and the state word beside it.
+// A toggle switch, the Metro way (forms.md, "Inputs"): it acts at once. A square frame, an ink fill growing from
+// the leading edge when on whatever the accent (colour.md:170–177), a solid ink bar as the thumb, and the state word
+// beside it.
 Item {
     id: toggle
 
@@ -57,7 +58,7 @@ Item {
             objectName: "label"
             anchors.verticalCenter: parent.verticalCenter
             visible: toggle.label !== ""
-            // `.rk-toggle-label { margin-right: space-s }` on top of the row's gap (rekta.css:473, :491)
+            // `.rk-toggle-label { margin-right: space-s }` on top of the row's gap (rekta.css:483, :501)
             rightPadding: Tokens.spaceS
             text: toggle.label
             font.family: Tokens.fontSans
@@ -85,7 +86,7 @@ Item {
                 y: inset
                 width: toggle.checked ? track.width - 2 * inset - (Geometry.toggleThumb + Geometry.togglePadding) : 0
                 height: track.height - 2 * inset
-                color: toggle.disabled ? Tokens.color.disabled : Tokens.color.accent
+                color: toggle.disabled ? Tokens.color.disabled : Tokens.color.textPrimary
 
                 Behavior on width {
                     NumberAnimation {
