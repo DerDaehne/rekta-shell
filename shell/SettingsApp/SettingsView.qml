@@ -41,6 +41,8 @@ FocusScope {
     readonly property string windowTitle: `${places[place].title} · rekta einstellungen`
     // The same rule as the pivot's: sideways when wide and tall enough, else compact.
     readonly property int columns: Prefs.sizeClass(width, height) === "sideways" ? 2 : 1
+    // The pivot and the pages stand space-xl in sideways and space-m in compact (rekta.css:1152; Panorama.inset).
+    readonly property real inset: columns === 2 ? Tokens.spaceXl : Tokens.spaceM
     // Two columns of two tile units, with the gap between and the pivot's inset on both sides.
     readonly property real minimumWidth: 4 * Tokens.tileUnit + Tokens.spaceXl + 2 * Tokens.spaceXl
     // Taller than Rekta's short viewport, so the window stays sideways (layout.md, size classes), with a space-xl of
@@ -326,8 +328,8 @@ FocusScope {
 
         objectName: "pivot"
         focus: true
-        x: Tokens.spaceXl
-        width: view.width - 2 * Tokens.spaceXl
+        x: view.inset
+        width: view.width - 2 * view.inset
         level: "nav"
         titles: view.places.map(place => place.title)
         placeWidth: view.width
@@ -348,9 +350,9 @@ FocusScope {
             readonly property real columnWidth: (width - (view.columns - 1) * Tokens.spaceXl) / view.columns
 
             objectName: `page-${index}`
-            x: Tokens.spaceXl
+            x: view.inset
             y: pivot.height
-            width: view.width - 2 * Tokens.spaceXl
+            width: view.width - 2 * view.inset
             height: view.height - y
             visible: index === 0
             clip: true

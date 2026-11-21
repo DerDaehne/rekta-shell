@@ -300,6 +300,22 @@ TestCase {
         compare(groupAt("farben").width, (page(0).width - Tokens.spaceXl) / 2);
     }
 
+    function test_sideways_the_pivot_and_the_pages_stand_space_xl_in() {
+        compare(pivot().x, Tokens.spaceXl);
+        compare(pivot().width, view.width - 2 * Tokens.spaceXl);
+        compare(page(0).x, Tokens.spaceXl);
+        compare(page(0).width, view.width - 2 * Tokens.spaceXl);
+    }
+
+    function test_stacked_the_pivot_and_the_pages_stand_space_m_in() {
+        view.parent.width = Tokens.bpSidewaysScrollMin - 1;
+        tryVerify(() => view.columns === 1);
+        compare(pivot().x, Tokens.spaceM);
+        compare(pivot().width, view.width - 2 * Tokens.spaceM);
+        compare(page(0).x, Tokens.spaceM);
+        compare(page(0).width, view.width - 2 * Tokens.spaceM);
+    }
+
     function test_sideways_groups_have_no_hairline() {
         compare(findChild(view, "hairline-fläche").visible, false);
     }
