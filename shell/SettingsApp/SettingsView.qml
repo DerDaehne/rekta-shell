@@ -394,7 +394,7 @@ FocusScope {
 
                         // Compact, a hairline parts a stacked section from the one above (layout.md:92; rekta.css:1156, :1525); it stands outside the column's flow.
                         Hairline {
-                            objectName: `hairline-${modelData}`
+                            objectName: `hairline-${group.modelData}`
                             parent: grid.parent
                             visible: view.columns === 1 && group.index > 0
                             x: grid.x + group.x
