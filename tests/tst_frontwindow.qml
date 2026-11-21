@@ -56,6 +56,17 @@ TestCase {
         compare(frontTitle(desk({ minimized: true }), primary), "browser");
     }
 
+    function test_a_minimised_window_last_activated_is_never_in_front_even_when_it_is_not_full_screen() {
+        const windows = desk();
+        Object.assign(windows[2], { lastActivated: 4000, minimized: true });
+        compare(frontTitle(windows, primary), "game");
+    }
+
+    function test_a_window_on_two_of_three_desktops_is_in_front_on_the_second() {
+        compare(frontTitle(desk({ desktops: ["one", "two"] }), primary, "two"), "game");
+        compare(frontTitle(desk({ desktops: ["one", "two"] }), primary, "three"), "");
+    }
+
     function test_a_window_on_another_desktop_is_never_in_front() {
         compare(frontTitle(desk({ desktops: ["two"] }), primary), "browser");
         compare(frontTitle(desk(), primary, "two"), "", "the other desktop has no window");
