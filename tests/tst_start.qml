@@ -1579,6 +1579,16 @@ TestCase {
         compare(findChild(tiles[0], "icon").source.toString(), pinkIcon);
     }
 
+    function test_the_search_s_hits_end_space_xl_above_the_end_of_its_scroll_as_a_section_does() {
+        openWithApps();
+        typeNow("fi");
+        compare(rowTexts("apps"), ["Dateien"]);
+        const results = named("results");
+        const rows = findChild(results, "rows");
+        tryVerify(() => rows.height > 0, 1000, "the rows are laid out");
+        compare(results.contentHeight, rows.y + rows.height + Tokens.spaceXl);
+    }
+
     function test_without_a_match_a_sentence_on_the_first_hairline_says_so() {
         openWithApps();
         typeNow("q");

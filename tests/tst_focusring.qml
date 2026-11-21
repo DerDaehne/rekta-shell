@@ -15,6 +15,10 @@ TestCase {
     width: 1000
     height: 400
 
+    // The default accent is ink; a test about the accent gives it a colour of its own.
+    property color inkLight
+    property color inkDark
+
     Component {
         id: focusable
 
@@ -93,6 +97,16 @@ TestCase {
         }
     }
 
+    function initTestCase() {
+        inkLight = Tokens.light.accent;
+        inkDark = Tokens.dark.accent;
+    }
+
+    function cleanup() {
+        Tokens.light.accent = inkLight;
+        Tokens.dark.accent = inkDark;
+    }
+
     function test_on_a_fill_the_ring_sits_inside_in_the_text_colour() {
         const item = createTemporaryObject(focusable, testCase);
         const ring = item.ring;
@@ -110,6 +124,14 @@ TestCase {
         compare(item.ring.x, -outset);
         compare(item.ring.width, item.width + 2 * outset);
         compare(item.ring.border.color, Tokens.color.focus);
+    }
+
+    function test_on_a_neutral_ground_the_ring_is_the_accent_a_product_sets_too() {
+        Tokens.light.accent = "#1f5fd1";
+        Tokens.dark.accent = "#1f5fd1";
+        const item = createTemporaryObject(focusable, testCase, { color: Tokens.color.bg });
+        item.ring.onFill = false;
+        compare(item.ring.border.color, Qt.color("#1f5fd1"));
     }
 
     function test_the_ring_shows_while_its_target_has_focus() {

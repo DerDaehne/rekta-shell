@@ -47,11 +47,13 @@ TestCase {
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var list
     property var view
-    // The default accent is ink; a test about the accent gives it a colour of its own.
+    // The default accent is ink and the words on it the ground; a test about the accent gives both colours of their own.
     property color inkLight
+    property color onInkLight
 
     function initTestCase() {
         inkLight = Tokens.light.accent;
+        onInkLight = Tokens.light.textOnAccent;
     }
 
     function init() {
@@ -65,6 +67,7 @@ TestCase {
 
     function cleanup() {
         Tokens.light.accent = inkLight;
+        Tokens.light.textOnAccent = onInkLight;
         Prefs.motion = "system";
         Prefs.theme = "system";
         Prefs.density = "auto";
@@ -264,11 +267,12 @@ TestCase {
     function test_on_the_chosen_row_the_ring_takes_the_fill_s_text_colour_and_elsewhere_the_accent() {
         Prefs.theme = "light";
         Tokens.light.accent = "#1f5fd1";
+        Tokens.light.textOnAccent = "#fffbe0";
         mouseClick(row(0));
         list.forceActiveFocus();
         const ring = findChild(row(0), "ring");
         verify(ring.visible);
-        compare(ring.border.color, Tokens.color.textOnAccent, "it would sink into the accent fill");
+        compare(ring.border.color, Qt.color("#fffbe0"), "it would sink into the accent fill");
         keyClick(Qt.Key_Down);
         const next = findChild(row(1), "ring");
         verify(next.visible);
