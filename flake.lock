@@ -19,17 +19,17 @@
     "rekta-design": {
       "flake": false,
       "locked": {
-        "lastModified": 1793641453,
-        "narHash": "sha256-/4Nt/D40N2xByblRWLY+tFJPnOaNAP4KuSUCxPoJuWo=",
+        "lastModified": 1795188664,
+        "narHash": "sha256-wR1PJAgKOoGyd01OzSqv/jpR6tVheQ3AGIKki32kN4Q=",
         "owner": "DerDaehne",
         "repo": "rekta-design",
-        "rev": "1116956c67ed9d34a90a0bed18e1046ebdb3366e",
+        "rev": "e0abd850af230e378025649b2d35436b58e545da",
         "type": "github"
       },
       "original": {
         "owner": "DerDaehne",
         "repo": "rekta-design",
-        "rev": "1116956c67ed9d34a90a0bed18e1046ebdb3366e",
+        "rev": "e0abd850af230e378025649b2d35436b58e545da",
         "type": "github"
       }
     },

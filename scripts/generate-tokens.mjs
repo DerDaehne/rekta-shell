@@ -11,7 +11,7 @@ const FONT_SANS = 'Atkinson Hyperlegible Next';
 const FONT_MONO = 'monospace';
 // Rekta's ascent and descent are Barlow's and a product with another face sets its own: the face's hhea values in em.
 const FONT_METRICS = { 'font-ascent': 0.984, 'font-descent': 0.316 };
-// Rekta lets the product choose the tile unit, below and from 2560px (platforms.md:105); the product uses one value for
+// Rekta lets the product choose the tile unit, below and from 2560px (platforms.md:107); the product uses one value for
 // every width.
 const PRODUCT_SIZES = { 'tile-unit': 170, 'tile-unit-ultrawide': 170 };
 
@@ -22,8 +22,12 @@ const SKIPPED_GROUPS = new Set(['name', 'version', 'units', 'descriptions', 'hoo
 const QML_NAMES = { 'on-accent': 'textOnAccent' };
 
 // Under reduced transparency a colour takes another's value in every theme: glass becomes the ground (colour.md, "More
-// contrast, less transparency"; platforms.md:78).
+// contrast, less transparency"; platforms.md:79).
 const REDUCED_TRANSPARENCY = { glass: 'bg' };
+
+// A colour Rekta gives as another's in every theme, so it follows a product's value for that one: the focus ring is the
+// accent (colour.md, "Focus, hover, disabled").
+const FOLLOWS = { focus: 'accent' };
 
 function camel(name) {
 	const qmlName = QML_NAMES[name] ?? name.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
@@ -71,8 +75,10 @@ function modeInstance(type, mode, values, format) {
 	return [`    readonly property ${type} ${camel(mode)}: ${type} {`, ...lines, '    }'];
 }
 
-// A theme's colour; one that changes under reduced transparency names the colour it takes then.
+// A theme's colour; one that follows another is bound to it, one that changes under reduced transparency names the colour
+// it takes then.
 function colour(hex, name) {
+	if (FOLLOWS[name]) return camel(FOLLOWS[name]);
 	const reduced = REDUCED_TRANSPARENCY[name];
 	if (reduced === undefined) return `"${qtColour(hex)}"`;
 	return `tokens.reducedTransparency ? ${camel(reduced)} : "${qtColour(hex)}"`;
@@ -115,7 +121,8 @@ function expectModes(group, modes, names) {
 }
 
 const KNOWN_GROUPS = ['themes', 'accents', 'densities', 'typography', 'spacing', 'radius', 'size', 'motion', 'timing', 'layer', 'breakpoint'];
-const THEMES = ['light', 'dark', 'light-contrast', 'dark-contrast'];
+// black and black-contrast: the dark ones on the black ground (colour.md, "The black ground").
+const THEMES = ['light', 'dark', 'light-contrast', 'dark-contrast', 'black', 'black-contrast'];
 
 function expectKnownGroups(tokens) {
 	const unknown = Object.keys(tokens).filter((g) => !SKIPPED_GROUPS.has(g) && !KNOWN_GROUPS.includes(g));
@@ -124,6 +131,11 @@ function expectKnownGroups(tokens) {
 	expectModes('densities', tokens.densities, ['comfortable', 'compact']);
 	const lost = Object.entries(REDUCED_TRANSPARENCY).flat().filter((name) => !(name in tokens.themes.light));
 	if (lost.length) throw new Error(`reduced transparency: no colour ${lost.join(', ')} in the themes`);
+	for (const [theme, colours] of Object.entries(tokens.themes)) {
+		for (const [name, other] of Object.entries(FOLLOWS)) {
+			if (colours[name] !== colours[other]) throw new Error(`${theme}: ${name} is no longer ${other}`);
+		}
+	}
 }
 
 function inputs(tokens) {
@@ -135,8 +147,10 @@ function inputs(tokens) {
 		'QtObject {',
 		'    id: tokens',
 		'',
-		'    // Inputs: set from the preferences (theme, more contrast, reduced transparency, density, reduced motion).',
+		'    // Inputs: set from the preferences (theme, ground, more contrast, reduced transparency, density, reduced motion).',
 		'    property string theme: "light"',
+		'    // "black" puts the dark theme on the black ground; the light theme keeps its own.',
+		'    property string ground: "normal"',
 		'    property bool moreContrast: false',
 		'    property bool reducedTransparency: false',
 		'    property string density: "compact"',
@@ -149,7 +163,7 @@ function modes(tokens) {
 	return [
 		...modeComponent('Colours', 'color', tokens.themes),
 		...Object.entries(tokens.themes).flatMap(([theme, colours]) => modeInstance('Colours', theme, colours, colour)),
-		'    readonly property Colours color: theme === "dark" ? (moreContrast ? darkContrast : dark) : (moreContrast ? lightContrast : light)',
+		'    readonly property Colours color: theme !== "dark" ? (moreContrast ? lightContrast : light) : ground === "black" ? (moreContrast ? blackContrast : black) : (moreContrast ? darkContrast : dark)',
 		...accents(tokens.accents),
 		'',
 		...modeComponent('Density', 'int', tokens.densities),

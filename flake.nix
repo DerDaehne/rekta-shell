@@ -3,9 +3,9 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    # Release v0.6.0; only its source is used, not its flake outputs.
+    # main after v0.6.0; only its source is used, not its flake outputs.
     rekta-design = {
-      url = "github:DerDaehne/rekta-design/1116956c67ed9d34a90a0bed18e1046ebdb3366e";
+      url = "github:DerDaehne/rekta-design/e0abd850af230e378025649b2d35436b58e545da";
       flake = false;
     };
   };

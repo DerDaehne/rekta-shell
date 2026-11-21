@@ -5,8 +5,10 @@ import QtQuick
 QtObject {
     id: tokens
 
-    // Inputs: set from the preferences (theme, more contrast, reduced transparency, density, reduced motion).
+    // Inputs: set from the preferences (theme, ground, more contrast, reduced transparency, density, reduced motion).
     property string theme: "light"
+    // "black" puts the dark theme on the black ground; the light theme keeps its own.
+    property string ground: "normal"
     property bool moreContrast: false
     property bool reducedTransparency: false
     property string density: "compact"
@@ -46,15 +48,15 @@ QtObject {
         required property color glass
     }
     readonly property Colours light: Colours {
-        bg: "#ffffff"
-        surface: "#eeeff2"
-        surface2: "#e4e5e9"
-        textPrimary: "#010205"
-        textContrastLow: "#d8d8db"
-        textContrastMedium: "#6b6d70"
-        textContrastHigh: "#535457"
-        accent: "#010205"
-        textOnAccent: "#ffffff"
+        bg: "#faf8f4"
+        surface: "#efeae1"
+        surface2: "#e5dfd3"
+        textPrimary: "#1f1a14"
+        textContrastLow: "#d8d0c3"
+        textContrastMedium: "#6a6258"
+        textContrastHigh: "#554e45"
+        accent: "#1f1a14"
+        textOnAccent: "#faf8f4"
         statusInfoFull: "#2762ec"
         statusInfoSoft: "#d3e1ff"
         statusInfoTile: "#7da1f4"
@@ -66,28 +68,28 @@ QtObject {
         statusWarningTile: "#f8d866"
         statusErrorFull: "#aa0013"
         statusErrorSoft: "#ffe2e4"
-        statusErrorTile: "#c86065"
+        statusErrorTile: "#cb6267"
         contentTeal: "#56a8a7"
         contentSteel: "#89a2b5"
         contentViolet: "#9177b8"
         contentPlum: "#c897ca"
         contentRose: "#efb8d1"
-        focus: "#1a44ea"
+        focus: accent
         hover: "#2e949598"
         disabled: "#949598"
-        shading: "#ab010205"
-        glass: tokens.reducedTransparency ? bg : "#d1ffffff"
+        shading: "#ab1f1a14"
+        glass: tokens.reducedTransparency ? bg : "#d1faf8f4"
     }
     readonly property Colours dark: Colours {
-        bg: "#0e0e12"
-        surface: "#212225"
-        surface2: "#2a2b2f"
-        textPrimary: "#fbfcff"
-        textContrastLow: "#404044"
-        textContrastMedium: "#88898c"
-        textContrastHigh: "#afb0b3"
-        accent: "#fbfcff"
-        textOnAccent: "#0e0e12"
+        bg: "#1b1916"
+        surface: "#2a2723"
+        surface2: "#34302b"
+        textPrimary: "#f5f1ea"
+        textContrastLow: "#4b463e"
+        textContrastMedium: "#9a9285"
+        textContrastHigh: "#b8b0a4"
+        accent: "#f5f1ea"
+        textOnAccent: "#1b1916"
         statusInfoFull: "#178bff"
         statusInfoSoft: "#04294e"
         statusInfoTile: "#244592"
@@ -97,7 +99,7 @@ QtObject {
         statusWarningFull: "#f7cb47"
         statusWarningSoft: "#362b0a"
         statusWarningTile: "#6e5900"
-        statusErrorFull: "#fc4040"
+        statusErrorFull: "#ff4d49"
         statusErrorSoft: "#3a0f0f"
         statusErrorTile: "#76171f"
         contentTeal: "#055959"
@@ -105,87 +107,153 @@ QtObject {
         contentViolet: "#665283"
         contentPlum: "#633d65"
         contentRose: "#7d415f"
-        focus: "#178bff"
+        focus: accent
         hover: "#2e949598"
         disabled: "#7e7f82"
-        shading: "#ab262629"
-        glass: tokens.reducedTransparency ? bg : "#d10e0e12"
+        shading: "#ab292622"
+        glass: tokens.reducedTransparency ? bg : "#d11b1916"
     }
     readonly property Colours lightContrast: Colours {
-        bg: "#ffffff"
-        surface: "#eeeff2"
-        surface2: "#e4e5e9"
-        textPrimary: "#010205"
-        textContrastLow: "#d8d8db"
-        textContrastMedium: "#4d4e51"
-        textContrastHigh: "#424346"
-        accent: "#010205"
-        textOnAccent: "#ffffff"
+        bg: "#faf8f4"
+        surface: "#efeae1"
+        surface2: "#e5dfd3"
+        textPrimary: "#1f1a14"
+        textContrastLow: "#d8d0c3"
+        textContrastMedium: "#534c42"
+        textContrastHigh: "#494239"
+        accent: "#1f1a14"
+        textOnAccent: "#faf8f4"
         statusInfoFull: "#2762ec"
         statusInfoSoft: "#d3e1ff"
-        statusInfoTile: "#7da1f4"
+        statusInfoTile: "#83a7fa"
         statusSuccessFull: "#007b5d"
         statusSuccessSoft: "#e1fff2"
-        statusSuccessTile: "#74d8b0"
+        statusSuccessTile: "#7ce0b8"
         statusWarningFull: "#a37e00"
         statusWarningSoft: "#fff4d2"
         statusWarningTile: "#f8d866"
         statusErrorFull: "#aa0013"
         statusErrorSoft: "#ffe2e4"
-        statusErrorTile: "#dd7b7b"
-        contentTeal: "#eeeff2"
-        contentSteel: "#eeeff2"
-        contentViolet: "#eeeff2"
-        contentPlum: "#eeeff2"
-        contentRose: "#eeeff2"
-        focus: "#1a44ea"
+        statusErrorTile: "#ed8a89"
+        contentTeal: "#efeae1"
+        contentSteel: "#efeae1"
+        contentViolet: "#efeae1"
+        contentPlum: "#efeae1"
+        contentRose: "#efeae1"
+        focus: accent
         hover: "#2e949598"
         disabled: "#949598"
-        shading: "#ab010205"
-        glass: tokens.reducedTransparency ? bg : "#ffffff"
+        shading: "#ab1f1a14"
+        glass: tokens.reducedTransparency ? bg : "#faf8f4"
     }
     readonly property Colours darkContrast: Colours {
-        bg: "#0e0e12"
-        surface: "#212225"
-        surface2: "#2a2b2f"
-        textPrimary: "#fbfcff"
-        textContrastLow: "#404044"
-        textContrastMedium: "#aeafb1"
-        textContrastHigh: "#c2c3c5"
-        accent: "#fbfcff"
-        textOnAccent: "#0e0e12"
+        bg: "#1b1916"
+        surface: "#2a2723"
+        surface2: "#34302b"
+        textPrimary: "#f5f1ea"
+        textContrastLow: "#4b463e"
+        textContrastMedium: "#bab2a4"
+        textContrastHigh: "#d1c9bc"
+        accent: "#f5f1ea"
+        textOnAccent: "#1b1916"
         statusInfoFull: "#178bff"
         statusInfoSoft: "#04294e"
         statusInfoTile: "#244592"
         statusSuccessFull: "#00ce9d"
         statusSuccessSoft: "#003324"
-        statusSuccessTile: "#245f5b"
+        statusSuccessTile: "#1e5a56"
         statusWarningFull: "#f7cb47"
         statusWarningSoft: "#362b0a"
-        statusWarningTile: "#6c5310"
-        statusErrorFull: "#fc4040"
+        statusWarningTile: "#664d06"
+        statusErrorFull: "#ff4d49"
         statusErrorSoft: "#3a0f0f"
         statusErrorTile: "#690615"
-        contentTeal: "#212225"
-        contentSteel: "#212225"
-        contentViolet: "#212225"
-        contentPlum: "#212225"
-        contentRose: "#212225"
-        focus: "#178bff"
+        contentTeal: "#2a2723"
+        contentSteel: "#2a2723"
+        contentViolet: "#2a2723"
+        contentPlum: "#2a2723"
+        contentRose: "#2a2723"
+        focus: accent
         hover: "#2e949598"
         disabled: "#7e7f82"
-        shading: "#ab262629"
-        glass: tokens.reducedTransparency ? bg : "#0e0e12"
+        shading: "#ab292622"
+        glass: tokens.reducedTransparency ? bg : "#1b1916"
     }
-    readonly property Colours color: theme === "dark" ? (moreContrast ? darkContrast : dark) : (moreContrast ? lightContrast : light)
+    readonly property Colours black: Colours {
+        bg: "#000000"
+        surface: "#2a2723"
+        surface2: "#34302b"
+        textPrimary: "#f5f1ea"
+        textContrastLow: "#4b463e"
+        textContrastMedium: "#9a9285"
+        textContrastHigh: "#b8b0a4"
+        accent: "#f5f1ea"
+        textOnAccent: "#000000"
+        statusInfoFull: "#178bff"
+        statusInfoSoft: "#04294e"
+        statusInfoTile: "#244592"
+        statusSuccessFull: "#00ce9d"
+        statusSuccessSoft: "#003324"
+        statusSuccessTile: "#337a62"
+        statusWarningFull: "#f7cb47"
+        statusWarningSoft: "#362b0a"
+        statusWarningTile: "#6e5900"
+        statusErrorFull: "#ff4d49"
+        statusErrorSoft: "#3a0f0f"
+        statusErrorTile: "#76171f"
+        contentTeal: "#055959"
+        contentSteel: "#425565"
+        contentViolet: "#665283"
+        contentPlum: "#633d65"
+        contentRose: "#7d415f"
+        focus: accent
+        hover: "#2e949598"
+        disabled: "#7e7f82"
+        shading: "#ab292622"
+        glass: tokens.reducedTransparency ? bg : "#000000"
+    }
+    readonly property Colours blackContrast: Colours {
+        bg: "#000000"
+        surface: "#2a2723"
+        surface2: "#34302b"
+        textPrimary: "#f5f1ea"
+        textContrastLow: "#4b463e"
+        textContrastMedium: "#bab2a4"
+        textContrastHigh: "#d1c9bc"
+        accent: "#f5f1ea"
+        textOnAccent: "#000000"
+        statusInfoFull: "#178bff"
+        statusInfoSoft: "#04294e"
+        statusInfoTile: "#244592"
+        statusSuccessFull: "#00ce9d"
+        statusSuccessSoft: "#003324"
+        statusSuccessTile: "#1e5a56"
+        statusWarningFull: "#f7cb47"
+        statusWarningSoft: "#362b0a"
+        statusWarningTile: "#664d06"
+        statusErrorFull: "#ff4d49"
+        statusErrorSoft: "#3a0f0f"
+        statusErrorTile: "#690615"
+        contentTeal: "#2a2723"
+        contentSteel: "#2a2723"
+        contentViolet: "#2a2723"
+        contentPlum: "#2a2723"
+        contentRose: "#2a2723"
+        focus: accent
+        hover: "#2e949598"
+        disabled: "#7e7f82"
+        shading: "#ab292622"
+        glass: tokens.reducedTransparency ? bg : "#000000"
+    }
+    readonly property Colours color: theme !== "dark" ? (moreContrast ? lightContrast : light) : ground === "black" ? (moreContrast ? blackContrast : black) : (moreContrast ? darkContrast : dark)
     readonly property var accents: ({
-        "ink": { light: { accent: "#010205", textOnAccent: "#ffffff" }, dark: { accent: "#fbfcff", textOnAccent: "#0e0e12" }, lightContrast: { accent: "#010205", textOnAccent: "#ffffff" }, darkContrast: { accent: "#fbfcff", textOnAccent: "#0e0e12" } },
-        "teal": { light: { accent: "#049896", textOnAccent: "#010205" }, dark: { accent: "#00aba9", textOnAccent: "#0e0e12" }, lightContrast: { accent: "#005f5e", textOnAccent: "#ffffff" }, darkContrast: { accent: "#0daeac", textOnAccent: "#0e0e12" } },
-        "steel": { light: { accent: "#637586", textOnAccent: "#ffffff" }, dark: { accent: "#6c7e8f", textOnAccent: "#0e0e12" }, lightContrast: { accent: "#495a6a", textOnAccent: "#ffffff" }, darkContrast: { accent: "#8d9fb1", textOnAccent: "#0e0e12" } },
-        "violet": { light: { accent: "#65389f", textOnAccent: "#ffffff" }, dark: { accent: "#c2a7f4", textOnAccent: "#0e0e12" }, lightContrast: { accent: "#65389f", textOnAccent: "#ffffff" }, darkContrast: { accent: "#c2a7f4", textOnAccent: "#0e0e12" } },
-        "mauve": { light: { accent: "#756089", textOnAccent: "#ffffff" }, dark: { accent: "#7a648e", textOnAccent: "#fbfcff" }, lightContrast: { accent: "#655078", textOnAccent: "#ffffff" }, darkContrast: { accent: "#aa93c0", textOnAccent: "#0e0e12" } },
-        "pink": { light: { accent: "#d858b6", textOnAccent: "#010205" }, dark: { accent: "#f472d0", textOnAccent: "#0e0e12" }, lightContrast: { accent: "#9e1c81", textOnAccent: "#ffffff" }, darkContrast: { accent: "#f472d0", textOnAccent: "#0e0e12" } },
-        "magenta": { light: { accent: "#d70473", textOnAccent: "#ffffff" }, dark: { accent: "#d70473", textOnAccent: "#fbfcff" }, lightContrast: { accent: "#95004e", textOnAccent: "#ffffff" }, darkContrast: { accent: "#ff9bbb", textOnAccent: "#0e0e12" } }
+        "ink": { light: { accent: "#1f1a14", textOnAccent: "#faf8f4" }, dark: { accent: "#f5f1ea", textOnAccent: "#1b1916" }, lightContrast: { accent: "#1f1a14", textOnAccent: "#faf8f4" }, darkContrast: { accent: "#f5f1ea", textOnAccent: "#1b1916" }, black: { accent: "#f5f1ea", textOnAccent: "#000000" }, blackContrast: { accent: "#f5f1ea", textOnAccent: "#000000" } },
+        "teal": { light: { accent: "#009694", textOnAccent: "#010205" }, dark: { accent: "#00aba9", textOnAccent: "#0e0e12" }, lightContrast: { accent: "#005f5e", textOnAccent: "#ffffff" }, darkContrast: { accent: "#0daeac", textOnAccent: "#0e0e12" }, black: { accent: "#00aba9", textOnAccent: "#0e0e12" }, blackContrast: { accent: "#0daeac", textOnAccent: "#0e0e12" } },
+        "steel": { light: { accent: "#637586", textOnAccent: "#ffffff" }, dark: { accent: "#6c7e8f", textOnAccent: "#0e0e12" }, lightContrast: { accent: "#495a6a", textOnAccent: "#ffffff" }, darkContrast: { accent: "#8d9fb1", textOnAccent: "#0e0e12" }, black: { accent: "#6c7e8f", textOnAccent: "#0e0e12" }, blackContrast: { accent: "#8d9fb1", textOnAccent: "#0e0e12" } },
+        "violet": { light: { accent: "#65389f", textOnAccent: "#ffffff" }, dark: { accent: "#c2a7f4", textOnAccent: "#0e0e12" }, lightContrast: { accent: "#65389f", textOnAccent: "#ffffff" }, darkContrast: { accent: "#c2a7f4", textOnAccent: "#0e0e12" }, black: { accent: "#c2a7f4", textOnAccent: "#0e0e12" }, blackContrast: { accent: "#c2a7f4", textOnAccent: "#0e0e12" } },
+        "mauve": { light: { accent: "#756089", textOnAccent: "#ffffff" }, dark: { accent: "#7e6892", textOnAccent: "#fbfcff" }, lightContrast: { accent: "#655078", textOnAccent: "#ffffff" }, darkContrast: { accent: "#aa93c0", textOnAccent: "#0e0e12" }, black: { accent: "#7e6892", textOnAccent: "#fbfcff" }, blackContrast: { accent: "#aa93c0", textOnAccent: "#0e0e12" } },
+        "pink": { light: { accent: "#d556b4", textOnAccent: "#010205" }, dark: { accent: "#f472d0", textOnAccent: "#0e0e12" }, lightContrast: { accent: "#9e1c81", textOnAccent: "#ffffff" }, darkContrast: { accent: "#f472d0", textOnAccent: "#0e0e12" }, black: { accent: "#f472d0", textOnAccent: "#0e0e12" }, blackContrast: { accent: "#f472d0", textOnAccent: "#0e0e12" } },
+        "magenta": { light: { accent: "#d70473", textOnAccent: "#ffffff" }, dark: { accent: "#d90a74", textOnAccent: "#fbfcff" }, lightContrast: { accent: "#95004e", textOnAccent: "#ffffff" }, darkContrast: { accent: "#ff9bbb", textOnAccent: "#0e0e12" }, black: { accent: "#d90a74", textOnAccent: "#fbfcff" }, blackContrast: { accent: "#ff9bbb", textOnAccent: "#0e0e12" } }
     })
 
     component Density: QtObject {
@@ -252,6 +320,8 @@ QtObject {
     readonly property real touchTarget: 44
     readonly property real paneMin: 240
     readonly property real tipGap: 6
+    readonly property real scrollbarThickness: 6
+    readonly property real scrollbarGripMin: 11
     readonly property real dayCell: 36
     readonly property real tileIcon: 48
     readonly property real tileIconLarge: 96

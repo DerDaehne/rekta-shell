@@ -8,6 +8,8 @@ TestCase {
     function cleanup() {
         Tokens.theme = "light";
         Tokens.moreContrast = false;
+        Tokens.ground = "normal";
+        Tokens.light.accent = Tokens.accents.ink.light.accent;
         Tokens.density = "compact";
         Tokens.reducedMotion = false;
     }
@@ -68,16 +70,37 @@ TestCase {
         verify(!Qt.colorEqual(Tokens.darkContrast.textContrastMedium, Tokens.dark.textContrastMedium));
     }
 
-    function test_every_named_accent_has_a_pair_for_each_theme_and_contrast_set() {
+    function test_every_named_accent_has_a_pair_for_each_theme_ground_and_contrast_set() {
         const names = Object.keys(Tokens.accents);
         verify(names.includes("ink"));
         for (const name of names) {
-            for (const set of ["light", "dark", "lightContrast", "darkContrast"]) {
+            for (const set of ["light", "dark", "lightContrast", "darkContrast", "black", "blackContrast"]) {
                 const pair = Tokens.accents[name][set];
                 verify(/^#[0-9a-f]{6}$/.test(pair.accent) && /^#[0-9a-f]{6}$/.test(pair.textOnAccent), `${name} ${set}`);
             }
         }
         verify(Qt.colorEqual(Tokens.accents.ink.light.accent, Tokens.light.accent), "ink is the themes' own accent");
+    }
+
+    function test_the_black_ground_puts_the_dark_theme_on_its_own_colours_and_leaves_the_light_theme_alone() {
+        Tokens.ground = "black";
+        compare(Tokens.color, Tokens.light, "the light theme keeps its own ground");
+        Tokens.theme = "dark";
+        compare(Tokens.color, Tokens.black);
+        verify(!Qt.colorEqual(Tokens.color.bg, Tokens.dark.bg));
+        verify(Qt.colorEqual(Tokens.color.surface, Tokens.dark.surface), "surfaces stay the dark theme's");
+        verify(Qt.colorEqual(Tokens.color.glass, Tokens.color.bg), "glass is the ground");
+        Tokens.moreContrast = true;
+        compare(Tokens.color, Tokens.blackContrast);
+        Tokens.ground = "normal";
+        compare(Tokens.color, Tokens.darkContrast);
+    }
+
+    function test_the_focus_ring_is_the_accent_of_its_theme_and_follows_one_the_product_sets() {
+        for (const set of ["light", "dark", "lightContrast", "darkContrast", "black", "blackContrast"])
+            verify(Qt.colorEqual(Tokens[set].focus, Tokens[set].accent), set);
+        Tokens.light.accent = "#1f5fd1";
+        verify(Qt.colorEqual(Tokens.light.focus, "#1f5fd1"));
     }
 
     function test_density_switches_control_and_row_sizes() {

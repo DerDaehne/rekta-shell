@@ -59,20 +59,40 @@ test('a new kind of typography token stops the generator', () => {
 	assertRefused((t) => (t.typography['letter-spacing-kicker'] = 0.02), /typography: no mapping for letter-spacing-kicker/);
 });
 
-test('a theme beyond light, dark and their contrast sets stops the generator', () => {
-	assertRefused((t) => (t.themes.sepia = t.themes.light), /themes: expected light, dark, light-contrast, dark-contrast, got/);
+test('a theme beyond light, dark, black and their contrast sets stops the generator', () => {
+	assertRefused((t) => (t.themes.sepia = t.themes.light), /themes: expected light, dark, light-contrast, dark-contrast, black, black-contrast, got/);
 });
 
 test('a named accent without a pair for every theme stops the generator', () => {
-	assertRefused((t) => delete t.accents.teal['dark-contrast'], /accents\.teal: expected light, dark, light-contrast, dark-contrast, got/);
+	assertRefused((t) => delete t.accents.teal['dark-contrast'], /accents\.teal: expected light, dark, light-contrast, dark-contrast, black, black-contrast, got/);
 });
 
 test('a named accent reaches the module with its pair for each theme', () => {
 	const pair = { accent: '#123456', 'on-accent': '#ffffff' };
 	const { tokens } = generate((t) => {
-		t.accents.probe = { description: 'A probe.', light: pair, dark: pair, 'light-contrast': pair, 'dark-contrast': pair };
+		t.accents.probe = { description: 'A probe.', light: pair, dark: pair, 'light-contrast': pair, 'dark-contrast': pair, black: pair, 'black-contrast': pair };
 	});
-	assert.match(tokens, /"probe": \{ light: \{ accent: "#123456", textOnAccent: "#ffffff" \}, dark: .*, darkContrast: \{ accent: "#123456", textOnAccent: "#ffffff" \} \}/);
+	assert.match(tokens, /"probe": \{ light: \{ accent: "#123456", textOnAccent: "#ffffff" \}, dark: .*, blackContrast: \{ accent: "#123456", textOnAccent: "#ffffff" \} \}/);
+});
+
+test('the black ground takes the dark theme onto its own colours, with or without more contrast', () => {
+	const { tokens } = generate(() => {});
+	assert.match(tokens, /^    property string ground: "normal"$/m);
+	assert.match(tokens, /^    readonly property Colours color: theme !== "dark" \? \(moreContrast \? lightContrast : light\) : ground === "black" \? \(moreContrast \? blackContrast : black\) : \(moreContrast \? darkContrast : dark\)$/m);
+	for (const [name, theme] of [['black', 'black'], ['blackContrast', 'black-contrast']]) {
+		const block = tokens.match(new RegExp(`^    readonly property Colours ${name}: Colours \\{\\n([^}]*)\\n    \\}`, 'm'));
+		assert.ok(block, name);
+		assert.match(block[1], new RegExp(`^        bg: "${originalTokens.themes[theme].bg}"$`, 'm'));
+	}
+});
+
+test('the focus ring is the accent of its theme, so it follows an accent the product sets', () => {
+	const { tokens } = generate(() => {});
+	assert.equal([...tokens.matchAll(/^        focus: accent$/gm)].length, 6);
+});
+
+test('a focus ring that is no longer the accent stops the generator', () => {
+	assertRefused((t) => (t.themes.dark.focus = '#178bff'), /dark: focus is no longer accent/);
 });
 
 test('a malformed accent colour stops the generator', () => {
@@ -97,7 +117,7 @@ test('under reduced transparency glass takes the ground of every theme, and only
 	const reduced = [...tokens.matchAll(/^        (\w+): tokens\.reducedTransparency \? (\w+) : "(#\w+)"$/gm)];
 	assert.deepEqual(
 		reduced.map(([, name, taken, colour]) => [name, taken, colour]),
-		['light', 'dark', 'light-contrast', 'dark-contrast'].map((theme) => ['glass', 'bg', qtColour(originalTokens.themes[theme].glass)]),
+		['light', 'dark', 'light-contrast', 'dark-contrast', 'black', 'black-contrast'].map((theme) => ['glass', 'bg', qtColour(originalTokens.themes[theme].glass)]),
 	);
 	assert.match(tokens, /^    property bool reducedTransparency: false$/m);
 });
