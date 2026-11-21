@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import org.kde.taskmanager as TaskManager
+import State
 
 // The running windows, one model for every surface that shows them: libtaskmanager's TasksModel over KWin's window
 // management, every window on its own row, sorted by when the shell saw each activated: after the shell starts only the
@@ -30,12 +31,12 @@ Scope {
         return found;
     }
 
-    // Whether the window that has the keyboard fills the screen: the bar and the toasts give way to it, the display
-    // stands alone.
-    // ponytail: only the active window counts; a full-screen window on this screen that lost the keyboard to another
-    // screen stays above the bar anyway. Follow every screen's front window when that shows wrongly.
+    // Whether the window in front on this screen fills it: the bar and the toasts give way to it, the display stands
+    // alone. It stays in front while a surface of the shell has the keyboard: a bar or Start mapped over it would then
+    // be the window under the pointer that KWin hands the keyboard back to (mouse precedence), which takes none, and the
+    // window would stay below the bar.
     function fullScreenOn(shellScreen: ShellScreen): bool {
-        return (active?.fullScreen && active.isOn(shellScreen)) ?? false;
+        return Front.windowOn(Array.from(all), shellScreen, desktopInfo.currentDesktop)?.fullScreen ?? false;
     }
 
     // One window as the surfaces need it.
@@ -46,6 +47,9 @@ Scope {
         readonly property bool isWindow: model.IsWindow === true
         readonly property bool active: model.IsActive === true
         readonly property bool minimized: model.IsMinimized === true
+        readonly property bool onAllDesktops: model.IsOnAllVirtualDesktops === true
+        // The ids of the virtual desktops it stands on.
+        readonly property var desktops: model.VirtualDesktops ?? []
         readonly property string app: model.AppName || model.AppId || ""
         // The ID of its app's desktop entry, as "org.kde.konsole".
         readonly property string appId: model.AppId ?? ""
@@ -74,6 +78,10 @@ Scope {
         function activate() {
             tasks.requestActivate(tasks.makeModelIndex(index));
         }
+    }
+
+    TaskManager.VirtualDesktopInfo {
+        id: desktopInfo
     }
 
     TaskManager.TasksModel {
