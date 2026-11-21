@@ -173,7 +173,7 @@ Rectangle {
             anchors.margins: Tokens.spaceXl
 
             // What is going on as figures and words, right-aligned, new messages before what is playing
-            // (site/index.html:720); it takes no room while it holds nothing. Unsized, the figures stand in one row.
+            // (site/index.html:726); it takes no room while it holds nothing. Unsized, the figures stand in one row.
             Figures {
                 objectName: "status"
                 x: parent.width - width

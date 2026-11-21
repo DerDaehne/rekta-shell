@@ -26,7 +26,7 @@ Tile {
     property string shownLine
 
     opens: true
-    // The name is read first, then the count, then the line in sight (tiles.md:154–156; site/index.html:883).
+    // The name is read first, then the count, then the line in sight (tiles.md:154–156; site/index.html:889).
     Accessible.name: [name, shown > 0 ? `${shown} ungelesen` : "", lineText.visible ? shownLine : ""].filter(part => part !== "").join(", ")
     Accessible.description: best ? "bester treffer" : ""
     held: hovered || activeFocus

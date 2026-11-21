@@ -4,9 +4,9 @@ import QtQuick
 
 // Two to five options seen at a glance (forms.md, "Inputs"; rekta.css:540–562): joined buttons, the chosen one in ink
 // whatever the accent (colour.md:170–177). On a choice made here the ink block slides over from the old one and the
-// chosen label turns light halfway (motion.md, segments). Disabled, the frames and words grey and the chosen one is a grey block with `bg`
-// words, and the reason stands beside it on the words' line while it fits the width, else below, wrapped within the
-// width (the hint is inline after the control, forms.md, "Disabled controls say why").
+// chosen label turns light halfway (motion.md, segments). Disabled, the frames and words grey and the chosen one is a
+// grey block with `bg` words, and the reason stands beside it on the words' line while it fits the width, else below,
+// wrapped within the width (the hint is inline after the control, forms.md, "Disabled controls say why").
 Item {
     id: segments
 
