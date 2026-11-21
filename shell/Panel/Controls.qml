@@ -180,7 +180,7 @@ Column {
     }
 
     // What a stream's row shows: the program's icon and "program · what it plays", both as the program writes them
-    // (states.md:143–145), and the stream's volume.
+    // (states.md:148–150), and the stream's volume.
     function streamLook(node: var): var {
         const program = node.properties["application.name"] || node.name;
         return {
@@ -680,11 +680,11 @@ Column {
     }
 
     // The states switched most, each a toggle button (forms.md:54–56: wireless, do not disturb, dark appearance), in two
-    // columns space-s apart as a row of buttons is (rekta.css:353). Unlike Rekta's groups (states.md:186) they have no
+    // columns space-s apart as a row of buttons is (rekta.css:363). Unlike Rekta's groups (states.md:194) they have no
     // heading and stand at the edge nearest the app bar, so the way from "steuerung" in the bar to them stays short. One
     // whose device is missing is gone. The details of wlan and bluetooth are their lists in verbindungen, unfolded with
     // the focus on them; those of "nicht stören" are how long it lasts, unfolded below the buttons. Escape folds them and
-    // gives the focus back to the button (behaviour.md:826).
+    // gives the focus back to the button (behaviour.md:836).
     Column {
         objectName: "edgeSettings"
         parent: controls.edge
@@ -814,7 +814,7 @@ Column {
 
         present: node !== null
 
-        // A field's label above its control, space-xs apart (forms.md:5; rekta.css:386–387).
+        // A field's label above its control, space-xs apart (forms.md:5; rekta.css:396–397).
         Column {
             spacing: Tokens.spaceXs
 
@@ -827,7 +827,7 @@ Column {
                 id: picker
 
                 objectName: `${deviceRow.kind}Device`
-                // As wide as the row (rekta.css:388, an input is 100% wide).
+                // As wide as the row (rekta.css:398, an input is 100% wide).
                 implicitWidth: deviceRow.width
                 label: deviceRow.name
                 options: deviceRow.devices.map(node => ({ text: controls.deviceName(node), value: node }))
@@ -918,7 +918,7 @@ Column {
         required property string glyph
         required property real volume
         required property bool muted
-        // What a press does, as the button's tip; its name says what it sets too (forms.md:287–292).
+        // What a press does, as the button's tip; its name says what it sets too (forms.md:309–314).
         readonly property string pressWord: muted ? "ton an" : "stumm schalten"
 
         implicitHeight: Math.max(muteButton.implicitHeight, volumeSlider.implicitHeight)
@@ -939,7 +939,7 @@ Column {
             }
         }
 
-        // The rest of the line, space-m after the button as the value is after the track (rekta.css:527).
+        // The rest of the line, space-m after the button as the value is after the track (rekta.css:537).
         Slider {
             id: volumeSlider
 

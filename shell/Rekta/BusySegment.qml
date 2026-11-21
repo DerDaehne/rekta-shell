@@ -1,6 +1,6 @@
 import QtQuick
 
-// The segment that runs along the loading line and an unknown progress (rekta.css:873–886); under reduced motion it
+// The segment that runs along the loading line and an unknown progress (rekta.css:884–897); under reduced motion it
 // stands still across the whole width.
 Item {
     id: track

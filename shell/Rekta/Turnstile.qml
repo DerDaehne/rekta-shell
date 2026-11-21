@@ -7,7 +7,7 @@ import QtQuick
 // leading edge of that box as Rekta's parts do, or with the edge "bottom" about its own bottom edge in reading order,
 // which Rekta does not know: the Start comes up from the edge a swipe starts at, each part folding up as Metro's did.
 QtObject {
-    // How heavy a part is against Rekta's reference tile, heft-reference square (motion.md:51–52), whatever size the
+    // How heavy a part is against Rekta's reference tile, heft-reference square (motion.md:57–58), whatever size the
     // product's tiles are: light parts turn first and quickest, heavy ones later and slower.
     function heft(width: real, height: real): real {
         const tiles = Math.max(1, width * height) / (Tokens.heftReference * Tokens.heftReference);

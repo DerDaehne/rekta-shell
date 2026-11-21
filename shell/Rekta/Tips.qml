@@ -1,7 +1,7 @@
 pragma Singleton
 import QtQuick
 
-// Which control's tip shows, one at a time (navigation.md, "Tooltips"; rekta.js tips(), :2993–3103). A tip shows after
+// Which control's tip shows, one at a time (navigation.md, "Tooltips"; rekta.js tips(), :3022–3132). A tip shows after
 // the pointer has rested on its control for tip-delay, at once when focus arrives by keyboard or when moving on from
 // another tip; controls report only a mouse or pen, and a tap of a finger on a disabled app-bar control shows its
 // reason at once and leaves it standing. Escape (key layer 45), a press, scrolling or leaving hide it; a host lays
@@ -17,7 +17,7 @@ QtObject {
     property string waitingText
     // When a tip last hid: a pointer that moves on within tip-delay shows the next one at once.
     property double hiddenAt: -Infinity
-    // Set by a tap: the tip stays when its control reports leaving, until a press or hide() (rekta.js:3076, :3084).
+    // Set by a tap: the tip stays when its control reports leaving, until a press or hide() (rekta.js:3105, :3113).
     // An item reference, so it clears itself when the control is destroyed.
     property Item tappedControl: null
 

@@ -2,7 +2,7 @@ import QtQuick
 import Rekta
 
 // An app in the Start, pinned, in "alle apps" or found by a search, as Rekta's launch tile (tiles.md:141–156;
-// rekta.css:176–187): its icon at the top leading corner, the count of its unseen notifications at the top trailing one,
+// rekta.css:180–191): its icon at the top leading corner, the count of its unseen notifications at the top trailing one,
 // its name at the foot, and on a tile two units or more wide the app's newest line between them. It stays neutral, as a
 // count is no status; a press starts the app. The best hit of a search is wide and says which key starts it
 // (navigation.md, "a command shows its key").
@@ -40,13 +40,13 @@ Tile {
         shownLine = line;
     }
 
-    // A tile peeks one part, as a page marks one (rekta.js:4200): the one with the news.
+    // A tile peeks one part, as a page marks one (rekta.js:4229): the one with the news.
     function tell(part: Body, replaces: bool, change: var) {
         peekPart = part;
         news(replaces ? "peek" : "", change);
     }
 
-    // About a third of the tile's height, at its padding (tiles.md:147–150; rekta.css:179–180).
+    // About a third of the tile's height, at its padding (tiles.md:147–150; rekta.css:183–184).
     PictureIcon {
         objectName: "icon"
         parent: tile
@@ -70,7 +70,7 @@ Tile {
         visible: tile.glyph !== ""
     }
 
-    // None at zero (tiles.md:143–144; rekta.css:181).
+    // None at zero (tiles.md:143–144; rekta.css:185).
     Body {
         id: count
 
@@ -88,7 +88,7 @@ Tile {
         wrapMode: Text.NoWrap
     }
 
-    // In s, two lines at most, space-s above the name (rekta.css:89–94, :182–186). By hand, not in the tile's column: a
+    // In s, two lines at most, space-s above the name (rekta.css:93–98, :186–190). By hand, not in the tile's column: a
     // column lays out at the next polish, and a new line has to rise where it will stand.
     Body {
         id: lineText
@@ -112,7 +112,7 @@ Tile {
         width: parent.width
         height: nameText.height
 
-        // As the app writes it, in the tile's type and semibold (rekta.css:94, :187); one line, cut at its end.
+        // As the app writes it, in the tile's type and semibold (rekta.css:98, :191); one line, cut at its end.
         Body {
             id: nameText
 

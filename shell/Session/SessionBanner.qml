@@ -4,19 +4,19 @@ import QtQuick
 import Rekta
 
 // The session's actions as a banner over the shading: across the top in a status banner's geometry and its neutral
-// look, on surface with a hairline below (rekta.css:1238–1266), the word "sitzung" large and light in the first tile
+// look, on surface with a hairline below (rekta.css:1270–1298), the word "sitzung" large and light in the first tile
 // column, the actions as buttons from the second, sharing its baseline.
 // It comes in once with a fade and 8px over duration-short, as a banner state does (motion.md, "Status banner"), the
 // shaded and blurred screen fading in with it as one; it leaves the same way in 0.8 × that with ease-out, as a sheet
-// leaves (motion.md, "Sheets"; rekta.css:1073–1075, rekta.js:1828). An action that clears the shading takes shading
+// leaves (motion.md, "Sheets"; rekta.css:1092–1094, rekta.js:1837). An action that clears the shading takes shading
 // and blur away at once as it is chosen, and the banner leaves alone. Escape, Back, a press on the shading and the close
 // button at its top corner send it away; ← → go from action to action, Tab also to the close button, Enter or Space
 // acts. Once it has gone the focus goes back.
 // An action that ends the session (endsSession) first counts down duration-toast in whole seconds in the buttons' place,
-// "ausschalten in 5 · abbrechen", under Rekta's undo line (behaviour.md, "Undo"; rekta.css:1218–1226). Enter acts at once;
+// "ausschalten in 5 · abbrechen", under Rekta's undo line (behaviour.md, "Undo"; rekta.css:1250–1258). Enter acts at once;
 // Escape, Back, "abbrechen" and a press on the shading take it back to the actions with nothing done. Rekta asks a
-// confirm sheet for what cannot be undone (live.md:109–111); this window replaces it.
-// ponytail: Rekta 0.6.0's session bar (shell.md:132–167) asks nothing more before restart and power off; this one keeps
+// confirm sheet for what cannot be undone (live.md:114–116); this window replaces it.
+// ponytail: Rekta 0.6.0's session bar (shell.md:133–169) asks nothing more before restart and power off; this one keeps
 // the countdown. Sign out and power off stand without an icon, as in Rekta's example, until its set has one for them.
 FocusScope {
     id: sessionBanner
@@ -156,7 +156,7 @@ FocusScope {
 
     function gone() {
         open = false;
-        // The focus goes back only to something that still shows (rekta.js:2887).
+        // The focus goes back only to something that still shows (rekta.js:2916).
         if (memo.focused?.visible)
             memo.focused.forceActiveFocus();
         closed();
@@ -284,7 +284,7 @@ FocusScope {
             objectName: "actions"
             x: sessionBanner.padX + sessionBanner.headWidth + Tokens.spaceS
             y: sessionBanner.padY + sessionBanner.firstBaseline - sessionBanner.buttonBaseline
-            // The close button's corner stays free (rekta.css:1086).
+            // The close button's corner stays free (rekta.css:1105).
             width: sessionBanner.width - x - sessionBanner.padX - Tokens.touchTarget
             opacity: sessionBanner.counting ? 0 : 1
             enabled: !sessionBanner.counting
@@ -340,8 +340,8 @@ FocusScope {
             }
         }
 
-        // `.rk-sheet-close { position: absolute; top: space-xs; right: space-xs }` (rekta.css:1091), last in the focus
-        // chain as in Rekta's example (shell.md:164).
+        // `.rk-sheet-close { position: absolute; top: space-xs; right: space-xs }` (rekta.css:1110), last in the focus
+        // chain as in Rekta's example (shell.md:166).
         IconButton {
             objectName: "close"
             x: parent.width - Tokens.spaceXs - width

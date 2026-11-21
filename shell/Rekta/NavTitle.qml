@@ -4,7 +4,7 @@ import QtQuick
 TextRole {
     property real placeWidth: Window.width
     property bool active: true
-    // On glass an inactive title takes text-contrast-high, nothing lower (colour.md:65–75).
+    // On glass an inactive title takes text-contrast-high, nothing lower (colour.md:74–84).
     property bool onGlass: false
 
     font.pixelSize: Tokens.fluid(active ? Tokens.fontSizeNavActive : Tokens.fontSizeNavInactive, placeWidth)

@@ -154,9 +154,9 @@ QtObject {
     }
 
     // Over the place leaving, from the turn's start to its hand-over: its parts take no pointer press and no hover, as
-    // rekta.css gives them `pointer-events: none` (:1284), the parts not yet started too. A handler that grabs on press
+    // rekta.css gives them `pointer-events: none` (:1316), the parts not yet started too. A handler that grabs on press
     // stops the press for touch and mouse alike, a blocking HoverHandler the hover and the hand cursor; keys, the wheel
-    // and the mouse's back and forward buttons pass. The pressed tile keeps its tint itself (Tile.keepPressed, rekta.js:589).
+    // and the mouse's back and forward buttons pass. The pressed tile keeps its tint itself (Tile.keepPressed, rekta.js:590).
     // ponytail: a press that began before the turn still acts on release during it; upgrade: cancel the presses on the
     // parts when their turn starts, keeping the Start's swipe grabs.
     property Component pressBlocker: Component {

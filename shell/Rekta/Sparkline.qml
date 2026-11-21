@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 
-// A sparkline (tiles.md, "Tile content patterns"; data.md, "Sparklines"; rekta.css:215–227): a trend at a glance, one
+// A sparkline (tiles.md, "Tile content patterns"; data.md, "Sparklines"; rekta.css:225–237): a trend at a glance, one
 // series, no axis. It is drawn in a box 200 : 28 as wide as it is given, but its line stays 2px on the screen at any
 // width, in the tile's text colour; a finished (success) tile drops it, since stillness means done. It draws in when
 // its place arrives, uncovered from the leading edge; new values on as many points move the line to them (motion.md,
@@ -48,7 +48,7 @@ Item {
     }
 
     // As many points as before travel to their new places, eased from wherever the line is now; any other count is
-    // drawn again at once (rekta.js sparkTo(), :4232–4247).
+    // drawn again at once (rekta.js sparkTo(), :4261–4276).
     function moveTo(next: var) {
         const now = between(morph.from, morph.to, morph.progress);
         morphRun.stop();
@@ -144,7 +144,7 @@ Item {
         easing.bezierCurve: Tokens.easeIn
     }
 
-    // `clip-path: inset(-2px)` grows from the leading edge, 2px over all around (rekta.css:223, :227).
+    // `clip-path: inset(-2px)` grows from the leading edge, 2px over all around (rekta.css:233, :237).
     Item {
         objectName: "wipe"
         x: -Geometry.sparkWipeOverhang

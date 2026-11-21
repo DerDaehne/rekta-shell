@@ -1,11 +1,11 @@
 import QtQuick
 
-// The whole of a text its box cuts off, as the text's tip (navigation.md:445–447, behaviour.md:1082–1083; rekta.js
-// :3020–3023). Declared in a text that elides or stops at maximumLineCount, it offers all of the text's words while the
+// The whole of a text its box cuts off, as the text's tip (navigation.md:475–477, behaviour.md:1098–1099; rekta.js
+// :3049–3052). Declared in a text that elides or stops at maximumLineCount, it offers all of the text's words while the
 // text is cut: under a resting mouse or pen as every tip comes, and at once on show(), which a control whose one text
 // this is calls when the keyboard brings it focus. Cut or not counts while the tip shows or waits: it follows new
 // words and goes once they fit. It offers only inside a host that sets `overflowTips` (the side panel, states.md
-// :179–180); elsewhere no tooltip draws it, and a tip held there would take the Escape meant for what holds the text.
+// :186–187); elsewhere no tooltip draws it, and a tip held there would take the Escape meant for what holds the text.
 Item {
     id: overflow
 

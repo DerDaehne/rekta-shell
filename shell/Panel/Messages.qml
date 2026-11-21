@@ -7,7 +7,7 @@ import Rekta
 // The facet "meldungen", the notification centre: the board's list, newest first, a row each (live.md, "A growing
 // list"). In sight, it has seen them all. A press on a row does what a press on its toast does, and the panel goes. A
 // row pulled away past half its width, Delete on it, or its "entfernen" button is removed, and the focus goes to the
-// next row; "alle entfernen", a quiet button at the end of the list, removes them all (live.md:96–101). A head above
+// next row; "alle entfernen", a quiet button at the end of the list, removes them all (live.md:101–106). A head above
 // the rows counts them. The board offers undo for each removal. Rows that leave drift and fade, then the rest close the
 // gap; rows that arrive or come back slide in from above while the rest make room (motion.md, "Arriving, leaving",
 // "Reordering"). Home and End go to the first and the last row. The times in the rows are told against `now`, which is
@@ -174,7 +174,7 @@ Column {
         }
     }
 
-    // What is empty, in a sentence on the first hairline (states.md, "Data states"; rekta.css:890).
+    // What is empty, in a sentence on the first hairline (states.md, "Data states"; rekta.css:901).
     Item {
         objectName: "empty"
         width: messages.width

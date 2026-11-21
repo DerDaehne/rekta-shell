@@ -1,23 +1,23 @@
 import QtQuick
 
-// One row of a menu (states.md, "Floating surfaces"; rekta.css:1013–1021): a lowercase verb or option at the density's
+// One row of a menu (states.md, "Floating surfaces"; rekta.css:1026–1034): a lowercase verb or option at the density's
 // row height; a checkbox or radio option starts with a 10px square, filled when chosen; an option of a list that picks
-// a field's value keeps a 10 × 6px room at the start for the tick it carries when chosen (rekta.css:464–465); a key
+// a field's value keeps a 10 × 6px room at the start for the tick it carries when chosen (rekta.css:474–475); a key
 // hint sits at the end.
 // A disabled item stays in the list, greyed, and says why in its label ("print (needs a printer)"). The menu moves the
 // focus between rows; the focused row shows the ring inside and the hover colour, and an enabled row under the pointer
-// takes the hover colour too (rekta.css:1017, :1338). In a row narrower than its words they are cut.
+// takes the hover colour too (rekta.css:1030, :1370). In a row narrower than its words they are cut.
 Item {
     id: item
 
     property string text
     // item | checkbox | radio | option
     property string kind: "item"
-    // The option the keys are on in a list whose focus stays in its field: it looks focused (rekta.css:463).
+    // The option the keys are on in a list whose focus stays in its field: it looks focused (rekta.css:473).
     property bool active: false
     property bool checked: false
     // An image at the front of the row, 20px; when one row of a menu has one, every row's text starts at the same edge
-    // (rekta.css:1024–1025).
+    // (rekta.css:1035–1044).
     property url icon
     // The same, by the name of a Rekta icon.
     property string glyph
@@ -30,15 +30,15 @@ Item {
     property string disabledReason
     // Off with no reason to give: a foreign menu's entry that the app has turned off.
     property bool dimmed: false
-    // The room before and after the row's content: space-m inside a bordered menu (rekta.css:1014), none for rows that
-    // stand on a surface (`.rk-rows`, rekta.css:73–74).
+    // The room before and after the row's content: space-m inside a bordered menu (rekta.css:1027), none for rows that
+    // stand on a surface (`.rk-rows`, rekta.css:77–78).
     property real inset: Tokens.spaceM
     // Keeps the icon's room also for a row without one, so every text of a list starts at one edge.
     property bool iconSlot: false
     // Choosing it opens a deeper level the host swaps in, so the menu stays open. The row ends in a chevron pointing on
-    // (rekta.css:1029–1032).
+    // (rekta.css:1048–1051).
     property bool opensLevel: false
-    // The back row of a level (rekta.css:1033–1037): a chevron pointing back instead of an icon, words in text-contrast-high
+    // The back row of a level (rekta.css:1052–1056): a chevron pointing back instead of an icon, words in text-contrast-high
     // and semibold, a hairline below. It is no row with an icon, so it takes no part in the edge the others share.
     property bool isBack: false
     readonly property bool disabled: disabledReason !== "" || dimmed
@@ -57,7 +57,7 @@ Item {
     // would read the whole list again whenever a row comes or goes.
     readonly property var column: parent
     readonly property bool menuHasIcons: column?.menuHasIcons ?? menuRows().some(row => row.hasIcon === true)
-    // A row with a box and an icon has the box first (states.md:138–141); every row keeps the box's room, so all texts
+    // A row with a box and an icon has the box first (states.md:139–146); every row keeps the box's room, so all texts
     // start at one edge.
     readonly property bool menuHasCheckWithIcon: column?.menuHasCheckWithIcon ?? menuRows().some(row => row.hasIcon === true && row.checkable === true)
     // Otherwise, in a menu with icons, a row without one has its box where the icons stand, so every text starts at one
@@ -70,12 +70,12 @@ Item {
     readonly property real onwardSpace: hasOnward ? Tokens.spaceS + Geometry.chevronSize : 0
     readonly property real textEdge: inset + chevronSpace + checkSpace + iconSpace + leadSpace
     readonly property string spoken: lead !== "" ? `${lead} ${label}` : label
-    // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:1014, :1021)
+    // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:1027, :1034)
     readonly property real keyGap: keyHint !== "" ? Tokens.spaceS + Tokens.spaceL : 0
     readonly property real keySpace: keyGap + key.width
     readonly property real endSpace: end.implicitWidth > 0 ? Tokens.spaceS + end.implicitWidth : 0
     // ponytail: Rekta does not yet say how a key hint and the chevron on share the row's end (both `margin-left: auto`,
-    // rekta.css:1021, :1032); its proposal stands meanwhile: the hint before the chevron, space-s between, the hint
+    // rekta.css:1034, :1051); its proposal stands meanwhile: the hint before the chevron, space-s between, the hint
     // shortened with an ellipsis so the chevron stays. Follow Rekta's answer once it comes.
     readonly property real keyRoom: width - textEdge - words.implicitWidth - endSpace - keyGap - onwardSpace - inset
 
@@ -86,7 +86,7 @@ Item {
     Accessible.name: spoken
     Accessible.checkable: checkable
     Accessible.checked: checked
-    // aria-selected: the option the keys are on, while the focus stays in the field (rekta.js:4318).
+    // aria-selected: the option the keys are on, while the focus stays in the field (rekta.js:4347).
     Accessible.selected: active
 
     function menuRows(): var {
@@ -94,7 +94,7 @@ Item {
     }
 
     // Focus the keyboard gives shows the whole of a cut label at once; focus a pointer gave does not (`:focus-visible`,
-    // rekta.js:3081).
+    // rekta.js:3110).
     onActiveFocusChanged: {
         if (activeFocus && !ring.hiddenByHost)
             labelTip.show();
@@ -251,7 +251,7 @@ Item {
         color: Tokens.color.textContrastHigh
     }
 
-    // Inside a row with room of its own, outside one that has none (rekta.css:44, :463).
+    // Inside a row with room of its own, outside one that has none (rekta.css:44, :473).
     FocusRing {
         id: ring
 

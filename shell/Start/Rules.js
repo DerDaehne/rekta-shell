@@ -284,7 +284,7 @@ function wordLineOf(app) {
 
 // The installed apps that match what was typed, the most often started first, then the best match, A–Z among equals:
 // by name, or by a word of their generic name, keywords or program. `starts` counts the starts by app id. Space around
-// the text does not count (rekta.js:2604).
+// the text does not count (rekta.js:2633).
 function hits(apps, text, starts) {
     const typed = text.trim();
     const ranked = Rekta.Match.ranked(apps, app => Rekta.Match.scoreLine(app.name, wordLineOf(app), typed));
@@ -294,7 +294,7 @@ function hits(apps, text, starts) {
 }
 
 // The hits as the search shows them: tiles for the apps whose name has a word each typed word starts (Rekta's filter,
-// navigation.md:300–301), as many as one row of `units` holds beside the wide best hit, and rows for the rest, the apps
+// navigation.md:329–330), as many as one row of `units` holds beside the wide best hit, and rows for the rest, the apps
 // that match only by their generic name, keywords or program or hold the text inside a word of their name, and the
 // names past that row, in the hits' order.
 function appHits(apps, text, starts, units) {
@@ -380,7 +380,7 @@ function twoLetters(name) {
 // The sections of "alle apps" over `names`, in the app model's order: one per initial (initialOf), as many tile units
 // wide as its apps need in `rows` rows, at most six. Neighbouring initials whose apps together fill no more than the
 // rows share one section, named by its first and last initial ("a–c"), so that a short letter leaves no rows empty
-// (layout.md:146–148). An initial with more apps than six units hold splits into near equal parts, the larger first,
+// (layout.md:198–200). An initial with more apps than six units hold splits into near equal parts, the larger first,
 // each named by the first two letters of its first and its last app ("ka–km"). Each is {title, first, count, units},
 // `first` and `count` counted in `names`. With `rows` Infinity (stacked) none joins or splits and each is one unit
 // wide, as one column holds all its apps.
@@ -609,7 +609,7 @@ function providerQuery(grepped, files, locale) {
 
 // Rekta writes a combination one way: the modifiers in the order Ctrl, Alt, Shift, Meta, then the key, joined by "+".
 // Meta is "Super" off Apple and Windows, Escape "Esc", the arrows glyphs, a letter a capital and any other key its web
-// name (navigation.md:481–494; rekta.js:3000–3018).
+// name (navigation.md:511–525; rekta.js:3029–3047).
 const keyModifiers = [[0x04000000, "Ctrl"], [0x08000000, "Alt"], [0x02000000, "Shift"], [0x10000000, "Super"]];
 // A modifier that is the whole shortcut, as Meta is the Start's, by its flag.
 const modifierKeys = {

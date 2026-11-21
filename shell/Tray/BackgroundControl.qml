@@ -3,7 +3,7 @@ import Rekta
 
 // "im hintergrund N" in the app bar: a glyph, the word and the number of apps (navigation.md, "App bar"), opening the menu
 // of the background apps. With no app in the background the control is gone from the bar until one comes. A new number
-// peeks in, and the bar glides when it widens or narrows (navigation.md:400, :375–380).
+// peeks in, and the bar glides when it widens or narrows (navigation.md:429, :404–409).
 AppBarButton {
     id: background
 

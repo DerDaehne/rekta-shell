@@ -4,10 +4,10 @@ import QtQuick
 import Rekta
 import Start
 
-// The shell's keyboard shortcuts, listed in the shell itself as Rekta lists an app's (navigation.md:478–479): a sheet
+// The shell's keyboard shortcuts, listed in the shell itself as Rekta lists an app's (navigation.md:508–509): a sheet
 // with a row per shortcut, its words and its key, and "schließen" (Rekta's showcase, site/index.html:918–941). The
 // keys of the session's shortcuts are read from kglobalaccel as it opens, so what the user bound shows; a shortcut with
-// no key bound has no row. `?` outside a text field asks for it (navigation.md:473).
+// no key bound has no row. `?` outside a text field asks for it (navigation.md:503).
 Sheet {
     id: keyMap
 
@@ -122,7 +122,7 @@ Sheet {
 
     Component.onDestruction: removeLayer()
 
-    // `.rk-rows`: each row a hairline above, the last one below too (rekta.css:73–75).
+    // `.rk-rows`: each row a hairline above, the last one below too (rekta.css:77–79).
     Column {
         id: rowList
 
@@ -151,7 +151,7 @@ Sheet {
         }
     }
 
-    // `.rk-rows > li { justify-content: space-between; padding: space-s 0 }` (rekta.css:74), the key centred beside
+    // `.rk-rows > li { justify-content: space-between; padding: space-s 0 }` (rekta.css:78), the key centred beside
     // the words (site.css:61).
     component ShortcutRow: Item {
         id: row

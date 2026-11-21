@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A month to look at, after rekta-core's (core/src/controls.c:887–1020): the month and year over the weekdays, the
+// A month to look at, after rekta-core's (core/src/controls.c:880–1014): the month and year over the weekdays, the
 // weeks the month touches below with their ISO week numbers in front, only the month's own days, today on the accent;
 // the week starts on Monday. ← → go by day, ↑ ↓ by week, Page Up and Page Down by month (with Shift by year),
 // Home and End to the month's first and last day; Escape hides a standing tip first, then asks the host to close it.
@@ -197,7 +197,7 @@ Item {
             }
 
             // On the cell's edge, as rekta-core rings the keys' day (`rk__focus_ring(c, cell, 0)`,
-            // core/src/controls.c:932).
+            // core/src/controls.c:926).
             FocusRing {
                 offset: 0
                 shown: month.activeFocus && month.showsFocus && Calendar.sameDay(parent.day, month.cursor)

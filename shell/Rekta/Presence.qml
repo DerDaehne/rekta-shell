@@ -3,12 +3,12 @@ pragma ComponentBehavior: Bound
 import QtQuick
 
 // Things coming and going in a list or a grid (motion.md, "Arriving, leaving" and "Reordering"; rekta.js presence(),
-// enter(), leave(), :4078–4128). Those that go leave first; then the change is made, the ones that stay glide from where
+// enter(), leave(), :4107–4157). Those that go leave first; then the change is made, the ones that stay glide from where
 // they were to where they are now, and those that come arrive. A tile leaves shrinking to 90% and arrives rising from
 // 96% while the others glide; anything else moves as a row, leaving towards its trailing edge and arriving from just
 // above. A row that comes waits unseen until nothing glides any more, the mirror of leaving, as a bar control waits for
 // its neighbours to make room, so nothing lies over anything. A tile that changed size scales from its old size while
-// its content shows again over the last 45% (motion.md, "Resize and re-flow"; rekta.js reflow(), :4058–4078). A newer
+// its content shows again over the last 45% (motion.md, "Resize and re-flow"; rekta.js reflow(), :4087–4107). A newer
 // change makes at once the change still waiting for its items to leave; more than sixty changes, or no motion, apply
 // at once.
 QtObject {
@@ -243,7 +243,7 @@ QtObject {
     }
 
     // From where it showed before the change to where it rests now (FLIP); a glide still running gives way. A tile also
-    // scales from the size it showed (rekta.js:4069–4071).
+    // scales from the size it showed (rekta.js:4098–4100).
     function glide(item: Item, was: rect) {
         moving.filter(running => running.item === item && !running.fades).forEach(release);
         const now = item.mapToItem(null, 0, 0, item.width, item.height);

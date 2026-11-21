@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// One of many from a list you know, where Rekta draws the list (forms.md:76–93; rekta.css:425–437; rekta-core
+// One of many from a list you know, where Rekta draws the list (forms.md:80–97; rekta.css:435–447; rekta-core
 // controls.c, "Select"): a field's box with the chosen option, cut where it is too long, and the combobox's chevron at
 // its end. Enter, Space, Alt+↓ or a press open the combobox's list: a menu that floats under the field (above it when
 // there is no room below), at least as wide as it, the chosen option marked by a tick without a box; nothing below it
@@ -114,7 +114,7 @@ Item {
             close();
     }
     // Focus the keyboard gives shows the whole of a cut choice at once; focus a pointer gave does not (`:focus-visible`,
-    // rekta.js:3081).
+    // rekta.js:3110).
     onActiveFocusChanged: {
         if (activeFocus && !ring.hiddenByHost)
             choiceTip.show();
@@ -132,7 +132,7 @@ Item {
         radius: Tokens.radiusS
         color: Tokens.color.bg
         border.width: Geometry.inputBorder
-        // Hover only with a pointer that hovers (rekta.css:1335); dark while its list is open, as rekta-core draws it.
+        // Hover only with a pointer that hovers (rekta.css:1367); dark while its list is open, as rekta-core draws it.
         border.color: {
             if (select.disabled)
                 return Tokens.color.disabled;
@@ -234,7 +234,7 @@ Item {
         }
     }
 
-    // Above everything in its window, as wide as the field at least (forms.md:81–82).
+    // Above everything in its window, as wide as the field at least (forms.md:85–86).
     Menu {
         id: list
 

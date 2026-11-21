@@ -2,8 +2,8 @@ pragma Singleton
 import QtQuick
 
 // How far the windows have stepped back, 0 in front and 1 all the way back, and how a window looks that far back.
-// Behind the Start they step back with ease-in and come forward with ease-out (motion.md:125–135), at the Start's tempo;
-// as the session is left they step back with ease-out at Rekta's own (shell.md:172) and come forward with ease-in. A
+// Behind the Start they step back with ease-in and come forward with ease-out (motion.md:131–141), at the Start's tempo;
+// as the session is left they step back with ease-out at Rekta's own (shell.md:174) and come forward with ease-in. A
 // change on the way turns them round from where they are, with the curve of the new way. After login the splash fades
 // onto the ground as they step back, at Rekta's tempo.
 QtObject {
@@ -39,7 +39,7 @@ QtObject {
 
     // How much of the splash still shows `elapsed` ms after it closed: all of it as it closes, nothing once gone.
     // ponytail: ease-out, as the windows once stepped back, is the shell's from before Rekta had this transition; 0.6.0
-    // fades the loading screen to the ground with ease-in (motion.md:118).
+    // fades the loading screen to the ground with ease-in (motion.md:124).
     function splashOpacity(elapsed: real): real {
         return 1 - along(0, 1, elapsed, Tokens.durationModerate, easeOut);
     }

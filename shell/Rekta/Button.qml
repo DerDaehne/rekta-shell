@@ -1,7 +1,7 @@
 import QtQuick
 import "Status.js" as Status
 
-// A button (forms.md, "One size of control"; rekta.css:320–352). One height per density; the kind ranks it, not its
+// A button (forms.md, "One size of control"; rekta.css:330–362). One height per density; the kind ranks it, not its
 // size: the primary takes the accent, a quiet one has no frame, a destructive one is framed in the error colour and
 // never filled. A running action says what it does at the same width and runs the line under it (states.md, "Pending
 // actions"); a button that cannot act stays focusable and says why beside it (forms.md, "Disabled controls say why").
@@ -20,12 +20,12 @@ Row {
     // The words of its tooltip (navigation.md, "Tooltips"): a name the glyph stands for, or a shortcut.
     property string tip
     // In a list row or a table an icon button takes the row's height; there the row says why it cannot act, below its
-    // controls, as a hairline row wraps (rekta.css:74), so the reason is not said again beside each button.
+    // controls, as a hairline row wraps (rekta.css:78), so the reason is not said again beside each button.
     property bool inRow: false
-    // A running action refuses clicks but keeps its colours (rekta.css:332–334).
+    // A running action refuses clicks but keeps its colours (rekta.css:342–344).
     readonly property bool refuses: pending || disabledReason !== ""
     readonly property bool disabled: disabledReason !== "" && !pending
-    // In an actions row the row says why, after its controls (rekta.css:420).
+    // In an actions row the row says why, after its controls (rekta.css:430).
     readonly property bool inActions: (parent?.parent as Actions) !== null
     readonly property bool hovered: hover.hovered
     readonly property bool pressed: tap.pressed
@@ -35,7 +35,7 @@ Row {
         switch (variant) {
         case "primary":
             return Tokens.color.textOnAccent;
-        // Under more contrast its words take ink inside the error frame (rekta.css:1553).
+        // Under more contrast its words take ink inside the error frame (rekta.css:1584).
         case "destructive":
             return Tokens.moreContrast ? Tokens.color.textPrimary : Tokens.color.statusErrorFull;
         case "quiet":
@@ -63,7 +63,7 @@ Row {
     Accessible.onPressAction: click()
 
     // Focus the keyboard gives shows the tip at once; focus a pointer gave, behind hidden rings, does not
-    // (`:focus-visible`, rekta.js:3081).
+    // (`:focus-visible`, rekta.js:3110).
     onActiveFocusChanged: {
         if (tip === "")
             return;
@@ -196,14 +196,14 @@ Row {
             font: label.font
         }
 
-        // `inset: auto 0 -6px` on the padding box (rekta.css:896): under the button, as wide as inside its frame.
+        // `inset: auto 0 -6px` on the padding box (rekta.css:907): under the button, as wide as inside its frame.
         BusyLine {
             objectName: "pendingLine"
             x: Geometry.buttonBorder
             y: box.height - Geometry.buttonBorder + Geometry.pendingLineBelow - height
             width: box.width - 2 * Geometry.buttonBorder
             busy: button.pending
-            // pending() takes the line away with the label (rekta.js:1992–2010): no busy-min under a button, and a
+            // pending() takes the line away with the label (rekta.js:2021–2039): no busy-min under a button, and a
             // new run waits busy-delay again.
             onBusyChanged: {
                 if (!busy)
@@ -211,7 +211,7 @@ Row {
             }
         }
 
-        // On a status fill the ring takes the text colour, which clears AA there (rekta.css:1260).
+        // On a status fill the ring takes the text colour, which clears AA there (rekta.css:1292).
         FocusRing {
             id: ring
 

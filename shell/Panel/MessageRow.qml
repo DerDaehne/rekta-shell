@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 
-// One notification in the centre, a row on a hairline (rekta.css:73–75): the picture or the app's icon, square with a
+// One notification in the centre, a row on a hairline (rekta.css:77–79): the picture or the app's icon, square with a
 // tile's corners, the summary in semibold, the sender's name and how long ago ("Kalender · 3 min", the name left out
 // when none is known) and a quiet "entfernen" button at the end, one line of the body, cut, and under it up to two of
 // the notification's actions as quiet buttons. A click, Enter or Space presses the row, tinted on hover and press like a
@@ -45,7 +45,7 @@ Item {
     // Runs from 0 to 1 as it leaves.
     property real leaving: 0
     readonly property bool going: leaving > 0 || goingOut.running
-    // Pulled past half its width: let go, it leaves the rest of its width (rekta.js:3539–3542).
+    // Pulled past half its width: let go, it leaves the rest of its width (rekta.js:3568–3571).
     readonly property bool pulledAway: pulled > Geometry.rowPullAway * width
     readonly property real leaveDistance: pulledAway ? width - pulled : Geometry.rowLeaveDrift
 
@@ -187,7 +187,7 @@ Item {
             id: when
 
             objectName: "time"
-            // The parts of a row stand space-m apart (rekta.css:74).
+            // The parts of a row stand space-m apart (rekta.css:78).
             x: (row.removable ? remove.x - Tokens.spaceM : row.width) - width
             anchors.baseline: heading.baseline
             text: row.time
@@ -211,7 +211,7 @@ Item {
             OverflowTip {}
         }
 
-        // Hover and press lay `hover` over the row, as over a toast's text (rekta.css:1215).
+        // Hover and press lay `hover` over the row, as over a toast's text (rekta.css:1247).
         Rectangle {
             objectName: "tint"
             anchors.fill: parent

@@ -2,11 +2,11 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A control of the app bar (navigation.md, "App bar"; rekta.css:802–813, :1336): a glyph and a word, never a glyph
+// A control of the app bar (navigation.md, "App bar"; rekta.css:813–824, :1368): a glyph and a word, never a glyph
 // alone, at least 48px square in every density, no frame; hover and press lay `hover` under it. A click gives no focus,
 // so the ring shows only for the keyboard. A control that cannot act stays focusable and is read with its reason; the
 // reason shows as its tooltip (on touch when it is tapped) and moves into "more" with it, as Rekta has it in the
-// bar (forms.md:304–313). A count follows the word ("meldungen 3"); a new count peeks in as a live tile's news
+// bar (forms.md:327–337). A count follows the word ("meldungen 3"); a new count peeks in as a live tile's news
 // does (motion.md, "Live tile news"; rekta.js tileUpdate()): the old one leaves upwards over 0.6 ×
 // duration-moderate while the new one rises from below over 0.8 ×, after 0.2 ×; with news on other tiles at once, one
 // after another (Greet).
@@ -38,7 +38,7 @@ Item {
     property bool held: false
     // Gives way to what rises from it, such as a toast it counts: the face (glyph, word and count) leaves upwards as the
     // old count of a peek does and comes back with the second half of a flip, as a live tile's news (motion.md:26;
-    // rekta.js:4211, :4197). The width stays and the control takes no press while away; a count that changes meanwhile
+    // rekta.js:4240, :4226). The width stays and the control takes no press while away; a count that changes meanwhile
     // comes back with the face, without a peek of its own.
     property bool away: false
     // The floating surface the control opens, if any. A press that finds it open only closes it.
@@ -98,7 +98,7 @@ Item {
             fadeRun.complete();
     }
 
-    // The last fade, in or out (rekta.js enter(), :4078–4088, and leave(), :4089–4100): phase runs 0 to 1, linear, over
+    // The last fade, in or out (rekta.js enter(), :4107–4117, and leave(), :4118–4129): phase runs 0 to 1, linear, over
     // the fade's time, and each way eases its own curve from its far end, as Rekta's keyframes do.
     QtObject {
         id: fade

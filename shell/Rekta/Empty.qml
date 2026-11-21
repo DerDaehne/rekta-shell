@@ -2,8 +2,8 @@ import QtQuick
 
 // An empty region says what is empty and why in one sentence below its first hairline, and the way on, if there is
 // one, below the sentence, space-s apart, with space-m of room above and below them (states.md, "Empty";
-// rekta.css:890–891). A failed one says cause and remedy the same way, in text-primary after the error square, and the
-// way on is its retry (states.md, "Failed"; rekta.css:892–893).
+// rekta.css:901–902). A failed one says cause and remedy the same way, in text-primary after the error square, and the
+// way on is its retry (states.md, "Failed"; rekta.css:903–904).
 Item {
     id: empty
 

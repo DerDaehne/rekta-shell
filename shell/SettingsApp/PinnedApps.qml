@@ -9,7 +9,7 @@ import Start
 // for apps that are not installed. Each row has its grip, the app's icon and name, its size and a quiet "lösen"; below
 // them a combobox picks an app and "anheften" pins it at the end. Delete in a row, or pulling it towards the trailing
 // edge, unpin it too (collections.md:158–181); the grip orders the list (collections.md:183–192). Every change but a
-// move shows a toast with undo (live.md:107–121). The file is read and written only through `file`, so a change made
+// move shows a toast with undo (live.md:112–126). The file is read and written only through `file`, so a change made
 // in the Start shows here at once and one made here in the Start. A broken file shows the defaults with everything
 // disabled and is never written.
 Column {

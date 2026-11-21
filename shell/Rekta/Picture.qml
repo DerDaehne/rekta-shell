@@ -1,8 +1,8 @@
 import QtQuick
 
 // A picture in the icon's 20px field, cropped square and keeping its colours: a sender's own picture (an avatar, an
-// album cover) or another program's icon (states.md:92–98, rekta.css:1192–1193). One smaller than the field is never
-// stretched up: it stands at its own size in the field's middle (shell.md:42–46). Its corners are the tile's, a
+// album cover) or another program's icon (states.md:93–99, rekta.css:1224–1225). One smaller than the field is never
+// stretched up: it stands at its own size in the field's middle (shell.md:42–47). Its corners are the tile's, a
 // deliberate deviation from Rekta's square crop: a ring in the ground it stands on, whose inner edge is the picture's
 // rounded outline (its radius is the outer radius less the ring's width).
 Item {

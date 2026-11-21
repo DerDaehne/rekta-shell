@@ -3,7 +3,7 @@ import QtQuick
 // A status region (tiles.md, "Status region"): the figures of the one thing a place is about, with the controls that
 // act on it below, on the ground. It is not a tile: no fill, no press, no focus; its status is a tag in the kicker.
 // It takes the width it is given, like a block. Its parts stand a section's space-m apart, the figures space-s under
-// the kicker as in a tile (`.rk-status-region`, rekta.css:115–116).
+// the kicker as in a tile (`.rk-status-region`, rekta.css:119–120).
 Column {
     id: region
 

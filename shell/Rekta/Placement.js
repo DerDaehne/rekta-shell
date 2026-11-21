@@ -4,7 +4,7 @@
 // Where floating things go, as pure functions of rectangles in window coordinates. Each returns { x, y, side }; the
 // side ("below" or "above") tells the motion which way to come in.
 
-// A floating surface (states.md, "Floating surfaces"; rekta.js place(), :2012–2034): space-xs from its control and
+// A floating surface (states.md, "Floating surfaces"; rekta.js place(), :2041–2063): space-xs from its control and
 // space-m from the window's edges; below it when it fits there, else above when it fits there, else on the side with
 // more room, kept inside the window where it may cover its control. Aligned to the control's leading edge, or centred
 // on it with align "centre".
@@ -20,7 +20,7 @@ function float(control, size, window, align = "start") {
     return { x: Math.round(x), y: Math.round(y), side: side };
 }
 
-// A tooltip (navigation.md, "Tooltips"; rekta.js placeTip(), :3025–3033): centred above its control, below it when
+// A tooltip (navigation.md, "Tooltips"; rekta.js placeTip(), :3054–3062): centred above its control, below it when
 // there is no room above, kept from the window's sides.
 function tip(control, size, window) {
     const gap = Rekta.Tokens.tipGap;
@@ -44,7 +44,7 @@ function leadingX(control, size, window) {
     return fits ? Math.max(edge, control.left) : Math.max(edge, Math.min(control.right, window.width - edge) - size.width);
 }
 
-// A context menu at a point (rekta.js placeAt(), :3107–3114): its top leading corner there, turned to the other side
+// A context menu at a point (rekta.js placeAt(), :3136–3143): its top leading corner there, turned to the other side
 // of the point on each axis where it would come within space-m of the window's edge.
 function at(point, size, window) {
     const edge = Rekta.Tokens.spaceM;

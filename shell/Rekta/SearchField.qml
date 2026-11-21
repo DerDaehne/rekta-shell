@@ -1,6 +1,6 @@
 import QtQuick
 
-// A search field (collections.md, "Search and filters"; `.rk-search`, rekta.css:930–932): Rekta's input with the
+// A search field (collections.md, "Search and filters"; `.rk-search`, rekta.css:941–943): Rekta's input with the
 // magnifier `search` before the text. A press or a tap puts the focus in it, which also calls up an on-screen keyboard.
 Rectangle {
     id: field

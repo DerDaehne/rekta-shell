@@ -1,8 +1,8 @@
 import QtQuick
 
-// Another program's icon as a picture in its field, 20px in rows and menus, never stretched up (shell.md:42–46). One
+// Another program's icon as a picture in its field, 20px in rows and menus, never stretched up (shell.md:42–47). One
 // smaller than the field stands at its own size in the field's middle, where Rekta's stylesheet places a picture in its
-// box (rekta.css:585); a larger one is fitted into the field, its proportions kept. Its own size counts in logical px,
+// box (rekta.css:595); a larger one is fitted into the field, its proportions kept. Its own size counts in logical px,
 // as a picture's pixels count on the web.
 Item {
     id: field

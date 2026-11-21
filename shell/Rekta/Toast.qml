@@ -2,22 +2,22 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import "Status.js" as Status
 
-// One toast, made and taken away by its Toaster (rekta.css:1164–1236; rekta.js toaster()). An ink strip for something
+// One toast, made and taken away by its Toaster (rekta.css:1195–1268; rekta.js toaster()). An ink strip for something
 // that just happened; with a status, that fill, for a failure whose control has gone (states.md, "Pending actions").
 // It stays its window, duration-toast, which holds while it is hovered or has focus. With undo, the window closes as a
 // 2px line, stepped once a second. A deliberate deviation: Rekta also shows the seconds as a figure beside the action
-// (rekta.js:1550 `.rk-toast-count`, rekta.css:1217), which beside the verb ("undo 4") reads as a quantity, so only the
+// (rekta.js:1559 `.rk-toast-count`, rekta.css:1249), which beside the verb ("undo 4") reads as a quantity, so only the
 // line is seen and the seconds are only spoken (`announcement`). The window runs against a deadline in wall-clock
 // time, and reduced motion leaves it alone (motion.md, "Reduced motion").
 //
-// A notification from another program (states.md:78–103; rekta.css:1181–1196) brings a title over its text, the
+// A notification from another program (states.md:79–104; rekta.css:1213–1228) brings a title over its text, the
 // sender's icon or its own picture at the start, and a text that is a button. Deliberate deviation: Rekta has the sender's
-// name in the title or the text (states.md:97–98); here it stands in a line of its own above the title, in the small
+// name in the title or the text (states.md:98–99); here it stands in a line of its own above the title, in the small
 // size of a meta, where the program may have put it nowhere.
 //
 // A toast that stays has no window, so it ends in a quiet icon button that sends it away and runs nothing, after its
 // action, as high as the toast and tinted and ringed as the action is. Rekta 0.6.0 has no such button
-// (rekta.css:1164–1236); this follows the rule Rekta has settled for its next release.
+// (rekta.css:1195–1268); this follows the rule Rekta has settled for its next release.
 FocusScope {
     id: toast
 
@@ -25,9 +25,9 @@ FocusScope {
     property string key
     property string text
     // Semibold above the text. Title and text each keep to Geometry.toastMaxLines and end in an ellipsis (rekta.css
-    // :1196); the reader still gets all of it (states.md:89–91). The title's cut is ahead of the pinned stylesheet, which
-    // lets it run on (:1195); the text's cut without a title is ahead of the pinned docs, which tie it to the title
-    // (states.md:91, behaviour.md:678–679). Rekta has since decided that a foreign notification's toast always keeps to a
+    // :1228); the reader still gets all of it (states.md:90–92). The title's cut is ahead of the pinned stylesheet, which
+    // lets it run on (:1227); the text's cut without a title is ahead of the pinned docs, which tie it to the title
+    // (states.md:92, behaviour.md:688–689). Rekta has since decided that a foreign notification's toast always keeps to a
     // known height. Any other toast's text stands whole.
     property string title
     // The name of the program a notification comes from: one line above the title, cut at its end with an ellipsis; the
@@ -36,8 +36,8 @@ FocusScope {
     // The word of a neutral tag at the end of the text, before the action (`.rk-tag` without a status). It stands last
     // but is said first, so that a reader hears it before the text it qualifies.
     property string tag
-    // { run }: the text is a button, tinted on hover and press and ringed on focus as the action is (rekta.css:1185–1190,
-    // :1343; states.md:99–101); pressing it calls run and ends the toast as "acted". What the press does is the host's:
+    // { run }: the text is a button, tinted on hover and press and ringed on focus as the action is (rekta.css:1217–1222,
+    // :1375; states.md:100–102); pressing it calls run and ends the toast as "acted". What the press does is the host's:
     // a notification's default action or, a deliberate deviation, bringing its app forward. Without it the text is only
     // text, as in a toast of the product's own.
     property var open: null
@@ -46,8 +46,8 @@ FocusScope {
     // info | success | warning | error, or "" for the ink strip; a success says it without a status (states.md).
     property string status
     // The sender's icon or the notification's own picture, cropped square at the front of the strip in the icon's 20px
-    // field (rekta.css:1182–1183, :1192–1193). Deliberate deviations: an app's icon keeps its colours where Rekta takes a
-    // single-colour one first (states.md:92–95), and the picture keeps the tile's corners (see Picture).
+    // field (rekta.css:1214–1215, :1224–1225). Deliberate deviations: an app's icon keeps its colours where Rekta takes a
+    // single-colour one first (states.md:93–96), and the picture keeps the tile's corners (see Picture).
     property url icon
     // "undo", "redo" or the label of another action with a window.
     property string action: "undo"
@@ -83,12 +83,12 @@ FocusScope {
     readonly property string announcement: undoAction ? `${spoken}, ${seconds} ${seconds === 1 ? "second" : "seconds"} to ${action}` : spoken
     // Runs from 0, its travel below its place and unseen, to 1 at rest, linear in time. A toast of the product's own goes
     // down by running it back, so it plays the same curve backwards, as the stylesheet's reversed keyframes do
-    // (rekta.css:1169, :1172, :1235).
+    // (rekta.css:1200, :1203, :1267).
     property real phase: 0
     readonly property easingCurve easeIn: ({ type: Easing.Bezier, bezierCurve: Tokens.easeIn })
     readonly property real entry: easeIn.valueForProgress(phase)
     // A notification came from outside: its toast travels whole from the bottom edge and back, without a fade
-    // (rekta.css:1197–1203, :1407). The host's surface ends at the bar, which hides it behind the bar.
+    // (rekta.css:1229–1235, :1439). The host's surface ends at the bar, which hides it behind the bar.
     readonly property real travel: notification ? height + Tokens.appbarHeight + Tokens.spaceS : Geometry.toastRise
     // A notification's way down, from 0 at rest to 1 out of sight.
     property real down: 0
@@ -211,7 +211,7 @@ FocusScope {
         destroy();
     }
 
-    // A toast on its way out takes no press (rekta.css:1172).
+    // A toast on its way out takes no press (rekta.css:1203).
     function press() {
         if (done)
             return;
@@ -257,8 +257,8 @@ FocusScope {
             run();
     }
 
-    // Flush with the trailing edge it is given, space-m inside the region's sides (rekta.css:1159), space-s above the bar;
-    // hung from the top, centred space-m below the region's top and coming down from above (rekta.css:1156–1158, :1417).
+    // Flush with the trailing edge it is given, space-m inside the region's sides (rekta.css:1190), space-s above the bar;
+    // hung from the top, centred space-m below the region's top and coming down from above (rekta.css:1187–1189, :1449).
     x: toaster.hangsFromTop ? (toaster.width - width) / 2 : Math.max(Tokens.spaceM, Math.min(toaster.trailingEdge, toaster.width - Tokens.spaceM) - width)
     y: toaster.hangsFromTop ? Tokens.spaceM - below * travel : toaster.height - Tokens.spaceS - height + below * travel
     opacity: notification ? 1 : entry
@@ -298,7 +298,7 @@ FocusScope {
         onFinished: toast.goAway()
     }
 
-    // A notification's toast leaves back out the way it came, over 0.6 × duration-short on ease-out (rekta.css:1201).
+    // A notification's toast leaves back out the way it came, over 0.6 × duration-short on ease-out (rekta.css:1233).
     NumberAnimation {
         id: gliding
 
@@ -316,7 +316,7 @@ FocusScope {
         id: hover
     }
 
-    // Hover and press lay `hover` over a part of the strip (rekta.css:1215, :1343).
+    // Hover and press lay `hover` over a part of the strip (rekta.css:1247, :1375).
     component Tint: Rectangle {
         property bool lit
 
@@ -447,16 +447,16 @@ FocusScope {
             wrapMode: Text.Wrap
             elide: Text.ElideRight
             maximumLineCount: heading.visible || toast.notification ? Geometry.toastMaxLines : 2147483647
-            // The icon field and the words are the text's row, space-s apart (rekta.css:1191).
+            // The icon field and the words are the text's row, space-s apart (rekta.css:1223).
             leftPadding: front.width > 0 ? Tokens.spaceS : Tokens.spaceM
-            // A tag after the words stands the gap of the text's row away (rekta.css:1191).
+            // A tag after the words stands the gap of the text's row away (rekta.css:1223).
             rightPadding: toast.tag !== "" ? Tokens.spaceS : Tokens.spaceM
             topPadding: heading.visible || byline.visible ? lineBoxTop : Tokens.spaceS + Tokens.spaceXs + lineBoxTop
             bottomPadding: Tokens.spaceS + Tokens.spaceXs + lineBoxBottom
         }
     }
 
-    // At the end of the text, before the action; the text's row keeps space-m at its end (rekta.css:1180, :1191).
+    // At the end of the text, before the action; the text's row keeps space-m at its end (rekta.css:1212, :1223).
     Item {
         id: tagBox
 
@@ -505,7 +505,7 @@ FocusScope {
             lit: openHover.hovered || openTap.pressed
         }
 
-        // Closer to the edge than the action's (rekta.css:1190, :1216).
+        // Closer to the edge than the action's (rekta.css:1222, :1248).
         FocusRing {
             onFill: true
             ink: toast.ink
@@ -527,7 +527,7 @@ FocusScope {
     }
 
     // A control at the toast's trailing end: hover and press lay `hover` over it, up to the toast's rounded end when it
-    // is last, and its focus ring sits 10px inside (rekta.css:1215–1216, :1343).
+    // is last, and its focus ring sits 10px inside (rekta.css:1247–1248, :1375).
     component EndControl: Item {
         id: control
 
@@ -611,7 +611,7 @@ FocusScope {
         }
     }
 
-    // Square at control-height, never below the touch target on a touch system, its glyph 20px (forms.md:283–289).
+    // Square at control-height, never below the touch target on a touch system, its glyph 20px (forms.md:305–311).
     EndControl {
         id: closeBox
 

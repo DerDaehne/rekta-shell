@@ -4,7 +4,7 @@ import QtQuick
 import Rekta
 import Settings
 
-// The settings app's window content: the places as a strip along the top (navigation.md, "Pivot"; rekta.css:230–278),
+// The settings app's window content: the places as a strip along the top (navigation.md, "Pivot"; rekta.css:240–288),
 // each place a page of groups in two columns, one on a narrow window. A place change turns like Rekta's, and back goes
 // one place back through the places visited (navigation.md, "Places, history and back").
 FocusScope {
@@ -394,7 +394,7 @@ FocusScope {
         }
     }
 
-    // The app has no app bar: its toasts hang from the top centre, as Rekta's do sideways (rekta.css:1156–1170, :1417).
+    // The app has no app bar: its toasts hang from the top centre, as Rekta's do sideways (rekta.css:1187–1201, :1449).
     Toaster {
         id: toaster
 

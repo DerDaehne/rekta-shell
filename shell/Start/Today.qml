@@ -6,7 +6,7 @@ import Panel
 import Rekta
 import State
 
-// "heute" in the Start: what plays, then the newest three notifications, each a row as in the centre (live.md:78–82),
+// "heute" in the Start: what plays, then the newest three notifications, each a row as in the centre (live.md:83–87),
 // on hairlines. It is a view of them, not a second centre: no ×, no actions, and nothing is seen here. A press
 // brings the player's window to the front, or does what a press on the centre's row does. A new notification enters at
 // the top and the oldest of the three leaves (motion.md, "Arriving, leaving"); a new track peeks in (motion.md, "Live
@@ -40,7 +40,7 @@ Column {
     readonly property bool held: hover.hovered || holdsFocus
     readonly property bool idle: shownTrack === "" && shown.count === 0
     // How many updates wait while it is held, one per notification that came, changed or closed, and one for the track
-    // (rekta.js:3760: the same key replaces a waiting update).
+    // (rekta.js:3789: the same key replaces a waiting update).
     readonly property int waiting: held ? waitingCount() : 0
 
     // An entry was pressed: what it brought forward has the screen now.
@@ -217,7 +217,7 @@ Column {
             text: "läuft gerade"
         }
 
-        // The figures stand space-s under the kicker, as in a status region (rekta.css:115–116); the news peeks within.
+        // The figures stand space-s under the kicker, as in a status region (rekta.css:119–120); the news peeks within.
         Item {
             id: line
 
@@ -226,7 +226,7 @@ Column {
             height: words.height
             clip: true
 
-            // On the Start's glass a ring in `bg` would show: the cover keeps Rekta's square crop (states.md:92–98).
+            // On the Start's glass a ring in `bg` would show: the cover keeps Rekta's square crop (states.md:93–99).
             Picture {
                 id: cover
 

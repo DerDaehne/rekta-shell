@@ -1,6 +1,6 @@
 import QtQuick
 
-// Live tile news (motion.md, "Live tile news"; rekta.js tileUpdate(), :4181–4215), over duration-moderate. A peek, for a
+// Live tile news (motion.md, "Live tile news"; rekta.js tileUpdate(), :4210–4244), over duration-moderate. A peek, for a
 // new number: the part that peeks as it was leaves upwards over 0.6 × that while the new one rises from below over 0.8 ×,
 // after 0.2 ×. A flip, for a new status: the tile turns away around its horizontal axis over the first half, changes, and
 // turns back. A continuous reading is no news and changes in place. While held, news waits, and comes in one step when
@@ -10,7 +10,7 @@ Item {
 
     // The tile's content; its first visible stat is what a peek moves, unless the tile marks a part.
     required property Item content
-    // The part the tile marks to peek (rekta.js:4200), a count.
+    // The part the tile marks to peek (rekta.js:4229), a count.
     property TextRole marked: null
     property bool held: false
     // How long the news waits for its step among the tiles with news at once, in ms.
@@ -225,7 +225,7 @@ Item {
         }
     }
 
-    // The new one, rising where it now stands (rekta.js:4212); the part itself stays where its tile puts it.
+    // The new one, rising where it now stands (rekta.js:4241); the part itself stays where its tile puts it.
     ShaderEffectSource {
         objectName: "incoming"
         visible: news.peeking

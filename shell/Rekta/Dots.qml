@@ -14,7 +14,7 @@ Item {
     // Set false, the dots are gone but keep their room; set again, they fly in from the start.
     property bool running: true
 
-    // As tall as a dot while they fly (`.rk-dots { height: 4px }`, rekta.css:728), as the words when they stand.
+    // As tall as a dot while they fly (`.rk-dots { height: 4px }`, rekta.css:739), as the words when they stand.
     implicitHeight: Tokens.reducedMotion ? Math.max(Geometry.dotSize, words.implicitHeight) : Geometry.dotSize
     Accessible.role: Accessible.ProgressBar
     Accessible.name: text

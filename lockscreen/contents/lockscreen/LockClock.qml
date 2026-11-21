@@ -1,7 +1,7 @@
 import QtQuick
 import Rekta
 
-// The lock screen's clock: the time in Rekta's display step, light, with the title's line height (typography.md:94–101).
+// The lock screen's clock: the time in Rekta's display step, light, with the title's line height (typography.md:95–102).
 // On a monitor that is not the active one it is the inactive title (pivot-inactive, text-contrast-high), scaled down
 // around its baseline, and it grows as a pivot title does when the monitor becomes the active one (motion.md, pivot strip).
 NavTitle {

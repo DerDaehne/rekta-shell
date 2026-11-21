@@ -3,10 +3,10 @@ import Rekta
 import State
 
 // Where the notifications the server receives go: the list of the notification centre, newest first, and a toast as
-// each arrives, which takes the place of the toast open (live.md:83–85; behaviour.md `toaster()`). No toast waits for
+// each arrives, which takes the place of the toast open (live.md:88–90; behaviour.md `toaster()`). No toast waits for
 // another, so none follows one that has gone. A toast runs duration-toast, whatever timeout its app gives; a critical
 // one stays until it is pressed or sent away, and what arrives meanwhile, a critical one too, goes into the list only
-// (live.md:86–88). A low one goes to the list only, open and without a toast (live.md:86), and is never unseen; a
+// (live.md:91–93). A low one goes to the list only, open and without a toast (live.md:91), and is never unseen; a
 // transient one toasts but stays out of the list, as Plasma's defaults have it. While `quiet` only critical ones toast;
 // the others go into the list unseen, and none follows as a toast later. A toast that ran out unseen stays in the list
 // too, without its actions, as Plasma keeps an expired one in its history; one whose app gives it no timeout (0) never
@@ -14,7 +14,7 @@ import State
 // the unseen ones; opening the list sees them all, and what comes into the list while it is in sight is seen there.
 // Rows removed from the list leave it at once and offer undo in a toast; their notifications close only once that
 // window has run out, as a closed notification cannot come back. A toast that takes the undo toast's place leaves the
-// window running, and Ctrl+Z still brings the rows back until it ends (states.md:67–69; live.md:115–116).
+// window running, and Ctrl+Z still brings the rows back until it ends (states.md:68–70; live.md:120–121).
 // A notification here is the server's: appName, appIcon, summary, body, urgency, actions ({ identifier, text,
 // invoke() }), image, desktopEntry, transient, expireTimeout, lastGeneration, expire(), dismiss() and closed(reason).
 QtObject {
@@ -192,7 +192,7 @@ QtObject {
         row?.notification?.actions.find(action => action.identifier === identifier)?.invoke();
     }
 
-    // While `quiet` only critical ones toast, and behind a critical toast that stands none does (live.md:87–88).
+    // While `quiet` only critical ones toast, and behind a critical toast that stands none does (live.md:92–93).
     function silenced(notification: var): bool {
         const critical = notification.urgency === NoticeBoard.Critical;
         return (quiet && !critical) || showing?.notification?.urgency === NoticeBoard.Critical;
@@ -208,7 +208,7 @@ QtObject {
         rows = rows.slice();
     }
 
-    // A critical one says so in a neutral tag, without a status colour: urgency is not a status (live.md:86–91).
+    // A critical one says so in a neutral tag, without a status colour: urgency is not a status (live.md:91–96).
     function show(record: var) {
         const notification = record.notification;
         const act = actionOf(notification, false);
@@ -241,7 +241,7 @@ QtObject {
 
     // A pressed text or action has done its work by the time its toast ends, and a run-out one expires unless its app
     // says it never does. Sending a toast away takes only the toast: the list keeps its notification open and unseen, as
-    // it does one whose toast another replaced or one collected quietly (live.md:83–84); one the list never holds closes.
+    // it does one whose toast another replaced or one collected quietly (live.md:88–89); one the list never holds closes.
     function ended(record: var, reason: string) {
         if (showing === record)
             showing = null;

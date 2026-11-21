@@ -41,7 +41,7 @@ TestCase {
         }
     }
 
-    // A count the tile marks to peek, as a page marks one `data-rk-peek` (rekta.js:4200).
+    // A count the tile marks to peek, as a page marks one `data-rk-peek` (rekta.js:4229).
     Component {
         id: countTile
 
