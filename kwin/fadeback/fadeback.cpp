@@ -4,6 +4,7 @@
 #include "effect/effect.h"
 #include "effect/effecthandler.h"
 #include "effect/effectwindow.h"
+#include "options.h"
 #include "wayland/clientconnection.h"
 #include "wayland/layershell_v1.h"
 #include "wayland/surface.h"
@@ -127,6 +128,11 @@ struct Splash {
 // surface that stops asking for the keyboard while it stays, as the toasts' does as a toast the key reached leaves,
 // would keep it: KWin moves it on only from a window that goes. The effect moves it on as if that surface went.
 //
+// Under KWin's mouse precedence (next focus prefers mouse) the next window, as one goes and on a desktop switch, is the
+// topmost under the pointer, mostly a surface of the shell that takes no keys, and KWin then activates none. The effect
+// then activates the window under the pointer as if the shell's surfaces were not there, else the next in the focus
+// chain.
+//
 // The shell's popups come with their own fade and go at once, as Rekta's floating surfaces do: the effect holds each
 // from KWin's other effects, which would fade it in and out once more.
 class FadeBackEffect : public Effect
@@ -193,6 +199,9 @@ private:
     void holdSplash(EffectWindow *w);
     void keepKeyboardOnStart(EffectWindow *w);
     void handKeyboardOn(LayerSurfaceV1Interface *layer);
+    void lookPastShell();
+    void activatePastShell();
+    Window *windowUnderPointer() const;
     void holdShellPopup(EffectWindow *w);
     void fadeSplash(std::chrono::nanoseconds presentation);
     bool fading() const;
@@ -246,6 +255,13 @@ FadeBackEffect::FadeBackEffect()
             this, &FadeBackEffect::watch);
     connect(effects, &EffectsHandler::windowClosed, this, &FadeBackEffect::holdSplash);
     connect(effects, &EffectsHandler::windowClosed, this, &FadeBackEffect::keepKeyboardOnStart);
+    connect(effects, &EffectsHandler::windowActivated, this, [this](EffectWindow *active) {
+        if (!active) {
+            lookPastShell();
+        }
+    });
+    // Back on a desktop from one where none was active, KWin settles on none once more and says nothing.
+    connect(effects, &EffectsHandler::desktopChanged, this, &FadeBackEffect::lookPastShell);
     connect(effects, &EffectsHandler::windowAdded, this, &FadeBackEffect::holdShellPopup);
     takeEdge(m_bottomEdge, &FadeBackEffect::fingerLetGo);
     takeEdge(m_rightEdge, &FadeBackEffect::edgeFingerLetGo);
@@ -505,6 +521,46 @@ void FadeBackEffect::handKeyboardOn(LayerSurfaceV1Interface *layer)
     }
     keepKeyboardOnStart(window->effectWindow());
     workspace()->activateNextWindow(window);
+}
+
+// KWin settles on none in Workspace::activateNextWindow and activateWindowOnDesktop, as its candidate under the pointer
+// takes no keys. It is still telling others, so the effect looks once that is done.
+void FadeBackEffect::lookPastShell()
+{
+    if (options->isNextFocusPrefersMouse()) {
+        QMetaObject::invokeMethod(this, &FadeBackEffect::activatePastShell, Qt::QueuedConnection);
+    }
+}
+
+// KWin's focus chain is not exported to plugins: for the next in it, the effect has KWin choose as without mouse
+// precedence.
+void FadeBackEffect::activatePastShell()
+{
+    if (workspace()->activeWindow() || !options->isNextFocusPrefersMouse()) {
+        return;
+    }
+    Window *under = windowUnderPointer();
+    if (under && workspace()->requestFocus(under)) {
+        return;
+    }
+    options->setNextFocusPrefersMouse(false);
+    workspace()->activateNextWindow(nullptr);
+    options->setNextFocusPrefersMouse(true);
+}
+
+// As Workspace::windowUnderMouse finds it, through the shell's surfaces.
+Window *FadeBackEffect::windowUnderPointer() const
+{
+    const QList<Window *> &order = workspace()->stackingOrder();
+    for (auto it = order.crbegin(); it != order.crend(); ++it) {
+        Window *window = *it;
+        const bool ofShell = window->surface() && window->surface()->client() == m_shell;
+        const bool shown = window->isClient() && window->isShown() && window->isOnCurrentDesktop() && window->isOnCurrentActivity();
+        if (!ofShell && shown && window->frameGeometry().contains(effects->cursorPos())) {
+            return window;
+        }
+    }
+    return nullptr;
 }
 
 // fadingpopups, glide, fade and scale animate no window another effect holds, and drop an animation they have begun
