@@ -5,6 +5,7 @@ import QtTest
 import Rekta
 import Settings
 import SettingsApp
+import "ContactSheets.js" as ContactSheets
 
 TestCase {
     id: testCase
@@ -124,6 +125,24 @@ TestCase {
 
     function groupAt(name: string): var {
         return findChild(view, `group-${name}`);
+    }
+
+    // Every place in both themes, sideways and stacked.
+    function test_contact_sheet() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            for (const columns of [2, 1]) {
+                host.width = columns === 2 ? 900 : Tokens.bpSidewaysScrollMin - 1;
+                for (let place = 0; place < 3; place++) {
+                    pivot().select(place);
+                    tryVerify(() => page(place).visible && !turner().running);
+                    waitForRendering(view);
+                    grabImage(view).save(`settingsapp-sheet-${theme}-${columns}-${place}.png`);
+                }
+            }
+        }
     }
 
     function test_the_places_are_aussehen_start_and_sitzung_in_a_nav_strip() {
@@ -257,8 +276,31 @@ TestCase {
         tryVerify(() => groupAt("fläche").x === 0 && groupAt("fläche").y > groupAt("farben").y);
     }
 
+    function test_a_group_stands_space_xl_from_its_top_and_bottom_and_its_title_space_l_from_its_fields() {
+        const group = groupAt("farben");
+        const heading = group.children[0];
+        compare(group.topPadding, Tokens.spaceXl);
+        compare(group.bottomPadding, Tokens.spaceXl);
+        compare(heading.y, Tokens.spaceXl);
+        compare(group.children[1].y - (heading.y + heading.height), Tokens.spaceL);
+        compare(group.height, group.children[1].y + group.children[1].height + Tokens.spaceXl);
+    }
+
+    function test_the_page_starts_at_its_first_group_and_sideways_groups_stand_space_xl_apart() {
+        compare(page(0).topMargin, 0);
+        compare(groupAt("farben").y, 0);
+        tryVerify(() => groupAt("fläche").x > 0);
+        compare(groupAt("fläche").x - (groupAt("farben").x + groupAt("farben").width), Tokens.spaceXl);
+    }
+
+    function test_stacked_groups_follow_each_other_with_the_space_of_their_own_padding_only() {
+        view.parent.width = Tokens.bpSidewaysScrollMin - 1;
+        tryVerify(() => groupAt("fläche").y > groupAt("farben").y);
+        compare(groupAt("fläche").y, groupAt("farben").y + groupAt("farben").height);
+    }
+
     function test_the_minimum_width_leaves_room_for_two_columns_of_two_tile_units() {
-        const columnWidth = (view.minimumWidth - 2 * Tokens.spaceXl - Tokens.spaceL) / 2;
+        const columnWidth = (view.minimumWidth - 2 * Tokens.spaceXl - Tokens.spaceXl) / 2;
         verify(columnWidth >= 2 * Tokens.tileUnit);
         verify(view.minimumWidth >= Tokens.bpSidewaysScrollMin);
         verify(view.minimumHeight > Tokens.bpShortHeight);

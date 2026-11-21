@@ -42,7 +42,7 @@ FocusScope {
     // The same rule as the pivot's: sideways when wide and tall enough, else compact.
     readonly property int columns: Prefs.sizeClass(width, height) === "sideways" ? 2 : 1
     // Two columns of two tile units, with the gap between and the pivot's inset on both sides.
-    readonly property real minimumWidth: 4 * Tokens.tileUnit + Tokens.spaceL + 2 * Tokens.spaceXl
+    readonly property real minimumWidth: 4 * Tokens.tileUnit + Tokens.spaceXl + 2 * Tokens.spaceXl
     // Taller than Rekta's short viewport, so the window stays sideways (layout.md, size classes), with a space-xl of
     // margin.
     readonly property real minimumHeight: Tokens.bpShortHeight + Tokens.spaceXl
@@ -345,7 +345,7 @@ FocusScope {
 
             required property var modelData
             required property int index
-            readonly property real columnWidth: (width - (view.columns - 1) * Tokens.spaceL) / view.columns
+            readonly property real columnWidth: (width - (view.columns - 1) * Tokens.spaceXl) / view.columns
 
             objectName: `page-${index}`
             x: Tokens.spaceXl
@@ -354,8 +354,6 @@ FocusScope {
             height: view.height - y
             visible: index === 0
             clip: true
-            topMargin: Tokens.spaceL
-            bottomMargin: Tokens.spaceL
             contentHeight: grid.height
             flickableDirection: Flickable.VerticalFlick
             boundsBehavior: Flickable.StopAtBounds
@@ -364,8 +362,9 @@ FocusScope {
                 id: grid
 
                 columns: view.columns
-                columnSpacing: Tokens.spaceL
-                rowSpacing: Tokens.spaceL
+                // Each group carries its own space-xl above and below (rekta.css:1155); sideways they stand space-xl apart (layout.md:92).
+                columnSpacing: Tokens.spaceXl
+                rowSpacing: 0
 
                 Repeater {
                     model: page.modelData.groups
@@ -377,7 +376,10 @@ FocusScope {
 
                         objectName: `group-${modelData}`
                         width: page.columnWidth
-                        spacing: Tokens.spaceXs
+                        // A section: space-xl above and below, its title space-l above what follows (layout.md:76–96; rekta.css:1155, :1158).
+                        topPadding: Tokens.spaceXl
+                        bottomPadding: Tokens.spaceXl
+                        spacing: Tokens.spaceL
 
                         GroupHeading {
                             width: group.width
