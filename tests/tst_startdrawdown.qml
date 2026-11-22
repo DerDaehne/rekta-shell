@@ -35,6 +35,7 @@ TestCase {
 
     function fakeWindow(title: string, active: bool): var {
         return {
+            uuid: title,
             title: title,
             icon: "",
             lastActivated: 1,

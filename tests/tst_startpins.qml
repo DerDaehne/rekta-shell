@@ -38,6 +38,7 @@ TestCase {
 
     function fakeWindow(title: string, lastActivated: real, appId: string): var {
         return {
+            uuid: title,
             title: title,
             appId: appId,
             icon: testCase.pinkIcon,
@@ -477,14 +478,163 @@ TestCase {
 
     function test_a_running_window_offers_its_apps_menu_and_without_a_known_app_says_why_not() {
         openNow();
-        rightClick(tilesIn("running").find(tile => tile.title === "konsole: build"), 30, 40);
-        compare(rowsShown(), ["lösen"], "Konsole is pinned");
+        rightClick(runningTile("konsole: build"), 30, 40);
+        compare(rowsShown(), ["lösen", "fenster"], "Konsole is pinned");
         menu.close(false);
-        rightClick(tilesIn("running").find(tile => tile.title === "a window"), 30, 40);
-        compare(rowsShown(), ["anheften (keine app bekannt)"]);
+        rightClick(runningTile("a window"), 30, 40);
+        compare(rowsShown(), ["anheften (keine app bekannt)", "fenster"]);
         verify(menu.items()[0].disabled);
         mouseClick(menu.items()[0]);
         compare(file.text, usersFile, "a disabled item does nothing");
+    }
+
+    // KWin's window menu
+
+    function runningTile(title: string): var {
+        return tilesIn("running").find(tile => tile.title === title);
+    }
+
+    function windowRow(): var {
+        return menu.items().find(item => item.objectName === "window");
+    }
+
+    function test_fenster_ends_in_the_chevron_of_a_level_and_is_there_without_a_known_app() {
+        openNow();
+        rightClick(runningTile("a window"), 30, 40);
+        verify(windowRow().hasOnward, "the chevron pointing on");
+        verify(!windowRow().disabled);
+    }
+
+    function test_fenster_closes_the_menu_and_asks_for_kwins_menu_for_that_window_where_the_menu_stood() {
+        openNow();
+        const spy = createTemporaryObject(spyComponent, testCase, { target: start, signalName: "windowMenuAsked" });
+        rightClick(runningTile("konsole: build"), 30, 40);
+        const stood = menu.mapToItem(null, 0, 0);
+        choose("fenster");
+        compare(spy.count, 1);
+        compare(spy.signalArguments[0][0].title, "konsole: build", "the tile's own window");
+        compare(spy.signalArguments[0][1], stood);
+        verify(!menu.open, "KWin's menu takes its place");
+        verify(start.wanted, "the Start stays open");
+        compare(calls, [], "and activates nothing");
+        compare(file.text, usersFile);
+    }
+
+    function test_fenster_chosen_by_keys_after_the_menu_key_or_shift_f10_leaves_the_focus_on_the_tile_data() {
+        return [
+            { tag: "menu key", key: Qt.Key_Menu, modifiers: Qt.NoModifier },
+            { tag: "shift f10", key: Qt.Key_F10, modifiers: Qt.ShiftModifier }
+        ];
+    }
+
+    function test_fenster_chosen_by_keys_after_the_menu_key_or_shift_f10_leaves_the_focus_on_the_tile(data) {
+        openNow();
+        const spy = createTemporaryObject(spyComponent, testCase, { target: start, signalName: "windowMenuAsked" });
+        const tile = runningTile("a window");
+        tile.forceActiveFocus();
+        keyClick(data.key, data.modifiers);
+        verify(menu.open);
+        keyClick(Qt.Key_End);
+        verify(windowRow().activeFocus, "End to fenster");
+        keyClick(Qt.Key_Return);
+        compare(spy.count, 1);
+        compare(spy.signalArguments[0][0].title, "a window");
+        verify(!menu.open);
+        verify(tile.activeFocus, "the focus waits on the tile for KWin's menu to close");
+    }
+
+    function test_a_long_press_on_a_running_tile_offers_fenster_and_a_tap_on_it_asks_for_kwins_menu() {
+        openNow();
+        const spy = createTemporaryObject(spyComponent, testCase, { target: start, signalName: "windowMenuAsked" });
+        const tile = runningTile("konsole: build");
+        const touch = touchEvent(tile);
+        touch.press(0, tile, 50, 60).commit();
+        tryVerify(() => menu.open, Tokens.durationLongPress * 2);
+        touch.release(0, tile, 50, 60).commit();
+        compare(rowsShown(), ["lösen", "fenster"]);
+        const row = windowRow();
+        touchEvent(row).press(0, row, row.width / 2, row.height / 2).commit().release(0, row, row.width / 2, row.height / 2).commit();
+        compare(spy.count, 1);
+        compare(calls, []);
+    }
+
+    Component {
+        id: spyComponent
+
+        SignalSpy {}
+    }
+
+    // Windows coming and going
+
+    function runningTitles(): var {
+        return tilesIn("running").map(tile => tile.title);
+    }
+
+    function runningMotion(tile: var): var {
+        return named("runningPresence").moving.find(motion => motion.item === tile);
+    }
+
+    function test_a_window_that_closes_while_the_start_shows_takes_only_its_tile_out_and_the_others_close_the_gap() {
+        openNow();
+        const kept = start.windows.find(window => window.title === "konsole: build");
+        const closing = runningTile("a window");
+        const staying = runningTile("konsole: build");
+        compare(runningTitles(), ["a window", "konsole: build"]);
+        start.windows = [kept];
+        const leaving = runningMotion(closing);
+        verify(leaving, "it leaves");
+        compare(leaving.to.scale, Geometry.leaveTileScale);
+        compare(leaving.to.opacity, 0);
+        compare(leaving.duration, Geometry.leaveShare * Tokens.durationShort);
+        compare(leaving.curve, Tokens.easeOut);
+        tryVerify(() => runningMotion(staying) !== undefined, 1000, "then konsole glides into the gap");
+        compare(runningMotion(staying).duration, Tokens.durationModerate);
+        tryVerify(() => !named("runningPresence").running, 2000);
+        compare(runningTitles(), ["konsole: build"]);
+        verify(runningTile("konsole: build") === staying, "the tile that stays is the same tile");
+        verify(start.wanted, "the Start stays open");
+    }
+
+    function test_the_focus_on_a_tile_whose_window_closes_goes_to_the_next_at_the_end_to_the_one_before() {
+        openNow();
+        const build = start.windows.find(window => window.title === "konsole: build");
+        start.windows = [...start.windows, fakeWindow("notes", 5, "org.kde.kate")];
+        tryVerify(() => !named("runningPresence").running, 2000);
+        compare(runningTitles(), ["a window", "konsole: build", "notes"]);
+        runningTile("a window").forceActiveFocus();
+        start.windows = start.windows.filter(window => window.title !== "a window");
+        verify(runningTile("konsole: build").activeFocus, "the next");
+        tryVerify(() => !named("runningPresence").running, 2000);
+        runningTile("notes").forceActiveFocus();
+        start.windows = [build];
+        verify(runningTile("konsole: build").activeFocus, "at the end the one before");
+    }
+
+    function test_a_window_that_opens_while_the_start_shows_brings_its_tile_in() {
+        openNow();
+        start.windows = [...start.windows, fakeWindow("notes", 30, "org.kde.kate")];
+        const notes = runningTile("notes");
+        compare(runningTitles()[0], "notes", "the most recent first");
+        const arrival = runningMotion(notes);
+        verify(arrival, "it arrives");
+        compare(arrival.from.scale, Geometry.arriveTileScale);
+        compare(arrival.duration, Tokens.durationModerate);
+    }
+
+    function test_the_menu_on_a_tile_whose_window_closes_closes_with_it() {
+        openNow();
+        rightClick(runningTile("a window"), 30, 40);
+        verify(menu.open);
+        start.windows = start.windows.filter(window => window.title !== "a window");
+        verify(!menu.open);
+    }
+
+    function test_under_reduced_motion_a_closed_windows_tile_goes_at_once() {
+        openNow();
+        Prefs.motion = "off";
+        start.windows = start.windows.filter(window => window.title !== "a window");
+        verify(!named("runningPresence").running);
+        compare(runningTitles(), ["konsole: build"]);
     }
 
     // Pin

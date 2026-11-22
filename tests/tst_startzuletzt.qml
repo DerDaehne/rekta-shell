@@ -227,6 +227,7 @@ TestCase {
     function test_with_a_window_open_at_1920_by_1080_the_panorama_runs_past_the_window_and_scrolls_sideways() {
         start.windows = [{
                 appId: "org.kde.konsole",
+                uuid: "konsole",
                 title: "konsole",
                 icon: "",
                 lastActivated: 1,

@@ -346,7 +346,7 @@ TestCase {
         StartPlace {
             width: testCase.width
             height: testCase.height
-            windows: [{ title: "Chat: lunch", appId: "org.example.chat", icon: testCase.pinkIcon, lastActivated: 1, stackingOrder: 0, active: false, activate: () => {} }]
+            windows: [{ uuid: "chat", title: "Chat: lunch", appId: "org.example.chat", icon: testCase.pinkIcon, lastActivated: 1, stackingOrder: 0, active: false, activate: () => {} }]
             pinned: [{ id: "org.example.chat", name: "Chat", icon: testCase.pinkIcon, columns: 1, rows: 1, launch: () => {} }, { id: "org.example.mail", name: "Mail", icon: testCase.pinkIcon, columns: 1, rows: 1, launch: () => {} }]
         }
     }

@@ -18,11 +18,12 @@ import State
 // start place shows Rekta's search field, "suchen", at the end of the pivot's row (stacked, under it), the way in for
 // a pointer, a finger and an on-screen keyboard. The title is a line edited as a field is; Escape there closes the
 // Start. An app's tile has a context menu that pins or unpins the app and, in "angeheftet", sizes its tile; each change
-// offers undo in a toast, and Delete unpins the focused pinned tile.
+// offers undo in a toast, and Delete unpins the focused pinned tile. A running window's menu also opens KWin's own menu
+// for the window ("fenster"). A window that comes or goes while the Start shows brings its tile in or takes it out.
 FocusScope {
     id: start
 
-    // The open windows: {title, icon, lastActivated, stackingOrder, active, minimized, activate()}.
+    // The open windows: {uuid, title, icon, lastActivated, stackingOrder, active, minimized, activate()}.
     property var windows: []
     // The window that had the keyboard when the Start opened; it gets it back unless a press chose where to go.
     property var returnTo: null
@@ -45,6 +46,8 @@ FocusScope {
     // What the context menu acts on: {id, name, index, columns, rows, sized}; `id` is "" when no app is known, `index`
     // -1 when the app is not pinned, and `sized` holds in "angeheftet", where the sizes are offered.
     property var menuApp: null
+    // The window of the menu's tile in "läuft", null on an app's tile.
+    property var menuWindow: null
     // Where the menu's tile stood as the menu opened; a scroll that moves it closes the menu.
     property point menuTileAt
     // The scrollers that hold the menu's tile, followed while the menu is open.
@@ -103,6 +106,8 @@ FocusScope {
     readonly property bool leavesWithKeyboard: Window.active && (phase === "closing" || handingBack)
     readonly property bool turning: turner.running || waitForWindows.running
     readonly property var running: Rules.recentFirst(windows)
+    // The windows as "läuft" shows them: `running` once its change has been made.
+    property var shownRunning: []
     // The time of the last wheel event, to tell one gesture from the next.
     property double lastWheel: 0
     readonly property Item focusItem: Window.activeFocusItem
@@ -178,6 +183,8 @@ FocusScope {
     signal windowsAt(real time, int pace)
     // The same on the way the windows come forward as the Start closes, from all the way back.
     signal windowsOutAt(real time, int pace)
+    // KWin's own menu for a running window is asked for, its top left corner at `at` in the Start's window.
+    signal windowMenuAsked(var window, point at)
 
     // The rows of tiles a section of `place` holds under its heading; stacked, as many as it has.
     function rowsHeld(place: Panorama): real {
@@ -189,7 +196,7 @@ FocusScope {
     function fittedPinnedUnits(): int {
         // Not runningSection.visible: that is false while the Start is hidden, and the width would change as it shows.
         // Rekta's own gap, not panorama.gap: that one follows from the sections' widths, this one's among them.
-        const before = running.length > 0 ? runningSection.sectionWidth + Tokens.spaceXl : 0;
+        const before = shownRunning.length > 0 ? runningSection.sectionWidth + Tokens.spaceXl : 0;
         const after = todaySection.sectionWidth + Tokens.spaceXl + (showRecent ? recentSection.sectionWidth + Tokens.spaceXl : 0);
         const room = Math.floor((panorama.width - 2 * panorama.inset - before - after) / unitStep);
         const rows = rowsHeld(panorama);
@@ -986,25 +993,74 @@ FocusScope {
         presence.change(going, tiles.filter(tile => kept.has(tile.appId)), () => showPins(next), () => pinTiles().filter(tile => coming.includes(tile.appId)), coming.length);
     }
 
-    // Brings the tiles in line with `list`, step by step, so that a tile that stays is the same tile.
     function showPins(list: var) {
         shownPins = list;
-        for (const step of Rules.steps(pinTiles().map(tile => tile.appId), list.map(app => app.id))) {
-            if (step.remove !== undefined)
-                pinnedModel.remove(step.remove);
-            else if (step.move !== undefined)
-                pinnedModel.move(step.move, step.to, 1);
-            else
-                pinnedModel.insert(step.insert, { appId: step.id });
-        }
+        stepTo(pinnedModel, pinTiles().map(tile => tile.appId), list.map(app => app.id), "appId");
         pinnedGrid.order = pinTiles();
         if (focusEmptyPins && pinnedModel.count === 0)
             toAllApps.forceActiveFocus();
         focusEmptyPins = false;
     }
 
+    // Brings `model` in line with the keys `to` of `role`, step by step, so that an item that stays is the same item.
+    function stepTo(model: ListModel, from: var, to: var, role: string) {
+        for (const step of Rules.steps(from, to)) {
+            if (step.remove !== undefined)
+                model.remove(step.remove);
+            else if (step.move !== undefined)
+                model.move(step.move, step.to, 1);
+            else
+                model.insert(step.insert, {
+                    [role]: step.id
+                });
+        }
+    }
+
+    // The tiles of "läuft", in its order.
+    function runningTiles(): var {
+        return Array.from({
+            length: runningRepeater.count
+        }, (_, k) => runningRepeater.itemAt(k));
+    }
+
+    // A window comes or goes: as for the pinned apps, the tiles of windows gone leave, the others glide to their places
+    // and those of new windows arrive (motion.md:115–116); at once while the Start is hidden or turns.
+    function followRunning() {
+        runningPresence.finish();
+        const next = running;
+        const tiles = runningTiles();
+        const kept = new Set(next.map(window => window.uuid));
+        const before = new Set(tiles.map(tile => tile.uuid));
+        const coming = next.filter(window => !before.has(window.uuid)).map(window => window.uuid);
+        const going = tiles.filter(tile => !kept.has(tile.uuid));
+        const staying = tiles.filter(tile => kept.has(tile.uuid));
+        keepFocusPast(tiles, going, staying);
+        if (going.includes(menu.control))
+            menu.close(false);
+        if (!shown || turning) {
+            showRunning(next);
+            return;
+        }
+        runningPresence.change(going, staying, () => showRunning(next), () => runningTiles().filter(tile => coming.includes(tile.uuid)), coming.length);
+    }
+
+    // The focus on a tile that leaves goes to the next one that stays, at the end to the one before (collections.md,
+    // "Removing entries").
+    function keepFocusPast(tiles: var, going: var, staying: var) {
+        const at = tiles.findIndex(tile => tile.activeFocus && going.includes(tile));
+        if (at >= 0)
+            (staying.find(tile => tiles.indexOf(tile) > at) ?? staying[staying.length - 1])?.forceActiveFocus();
+    }
+
+    function showRunning(list: var) {
+        shownRunning = list;
+        stepTo(runningModel, runningTiles().map(tile => tile.uuid), list.map(window => window.uuid), "uuid");
+        runningGrid.order = runningTiles();
+    }
+
     // A tile asks for its context menu at `at`, in the tile. `id` is its app's, "" when none is known; `inPinned` offers
-    // the sizes too. The menu opens at that point, turned to stay in the Start, with the first item it may choose in focus.
+    // the sizes too; a running window's tile offers KWin's menu for its window. The menu opens at that point, turned to
+    // stay in the Start, with the first item it may choose in focus.
     function openMenu(tile: Tile, at: point, id: string, inPinned: bool) {
         const app = (apps ?? []).find(known => Rules.sameApp(known.id, id)) ?? null;
         const pin = pinned.find(known => Rules.sameApp(known.id, id)) ?? null;
@@ -1016,6 +1072,7 @@ FocusScope {
             rows: pin?.rows ?? 1,
             sized: inPinned && pin !== null
         };
+        menuWindow = (tile as RunningTile)?.window ?? null;
         sizeRows().forEach((row, k) => row.checked = Rules.pinSizes[k].columns === menuApp.columns && Rules.pinSizes[k].rows === menuApp.rows);
         menu.close(false);
         menu.control = tile;
@@ -1063,12 +1120,23 @@ FocusScope {
     function choose(item: MenuItem) {
         const app = menuApp;
         const size = sizeRows().indexOf(item);
-        if (size >= 0)
+        if (item === windowRow)
+            openKWinMenu();
+        else if (size >= 0)
             resizeApp(app, Rules.pinSizes[size]);
         else if (app.index >= 0)
             unpinApp(app, menu.control);
         else
             pinApp(app);
+    }
+
+    // KWin's menu stands where this one stood, as a level would, and the focus waits on the tile as it would after a
+    // choice: Escape in KWin's menu gives the Start the keyboard back.
+    function openKWinMenu() {
+        const at = menu.mapToItem(null, 0, 0);
+        const window = menuWindow;
+        menu.close(menu.focusedIndex() >= 0);
+        windowMenuAsked(window, at);
     }
 
     // A change to start.json shows a toast that offers to undo it.
@@ -1582,6 +1650,7 @@ FocusScope {
 
     onFocusItemChanged: reveal(focusItem)
     onPinnedChanged: followPinned()
+    onRunningChanged: followRunning()
     onWantedChanged: menu.close(false)
     onHasKeyboardChanged: {
         if (hasKeyboard)
@@ -1612,7 +1681,10 @@ FocusScope {
         menu.close(false);
         standWithFinger();
     }
-    Component.onCompleted: showPins(pinned)
+    Component.onCompleted: {
+        showPins(pinned);
+        showRunning(running);
+    }
     onQueryChanged: followQuery()
     onSearchUnitsChanged: refresh()
     onAppsChanged: {
@@ -1724,6 +1796,12 @@ FocusScope {
         id: presence
 
         objectName: "presence"
+    }
+
+    Presence {
+        id: runningPresence
+
+        objectName: "runningPresence"
     }
 
     // A change of place, or a turn to the other one, closes the menu.
@@ -1904,7 +1982,7 @@ FocusScope {
                     sectionWidth: 2 * start.unitStep
                     headingToken: Tokens.fontSizeXl
                     placeWidth: start.width
-                    visible: start.running.length > 0
+                    visible: runningModel.count > 0
                     enabled: start.wanted
 
                     TileGrid {
@@ -1916,22 +1994,28 @@ FocusScope {
                         placeWidth: start.width
                         viewportHeight: start.height
 
+                        // A tile for each window as long as it is open, so a change moves the tiles it keeps.
                         Repeater {
-                            model: start.running
+                            id: runningRepeater
+
+                            model: ListModel {
+                                id: runningModel
+                            }
 
                             delegate: RunningTile {
                                 id: runningTile
 
-                                required property var modelData
+                                required property string uuid
+                                readonly property var shownWindow: start.shownRunning.find(window => window.uuid === uuid) ?? null
 
-                                title: modelData.title
-                                icon: modelData.icon
+                                title: shownWindow?.title ?? ""
+                                icon: shownWindow?.icon ?? ""
                                 // Its preview streams only while the Start shows, from its opening until it has gone.
-                                window: start.shown ? modelData : null
+                                window: start.shown ? shownWindow : null
                                 preview: start.preview
                                 hasMenu: start.pinFile !== null
-                                onActivated: start.press(runningTile, () => runningTile.modelData.activate())
-                                onMenuAsked: at => start.openMenu(runningTile, at, runningTile.modelData.appId ?? "", false)
+                                onActivated: start.press(runningTile, () => runningTile.shownWindow?.activate())
+                                onMenuAsked: at => start.openMenu(runningTile, at, runningTile.shownWindow?.appId ?? "", false)
                             }
                         }
                     }
@@ -2457,8 +2541,9 @@ FocusScope {
     }
 
     // An app tile's context menu (collections.md, "Context menus"): pin or unpin the app, and in "angeheftet" a group
-    // of the sizes its tile may take under a hairline, the current one chosen (states.md:132–138). It stands in the
-    // Start's surface, over everything in it.
+    // of the sizes its tile may take under a hairline, the current one chosen (states.md:132–138); on a running window's
+    // tile, "fenster" opens KWin's own menu for the window in its place. It stands in the Start's surface, over
+    // everything in it.
     Menu {
         id: menu
 
@@ -2481,6 +2566,16 @@ FocusScope {
             objectName: "pin"
             text: (start.menuApp?.index ?? -1) >= 0 ? "lösen" : "anheften"
             disabledReason: start.menuBlocked()
+        }
+
+        // KWin's own menu for a running window, which stands in place of this one.
+        MenuItem {
+            id: windowRow
+
+            objectName: "window"
+            text: "fenster"
+            opensLevel: true
+            visible: start.menuWindow !== null
         }
 
         MenuSeparator {

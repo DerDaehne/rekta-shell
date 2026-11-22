@@ -21,6 +21,7 @@ TestCase {
 
     function fakeWindow(title: string, lastActivated: real): var {
         return {
+            uuid: title,
             title: title,
             icon: testCase.pinkIcon,
             lastActivated: lastActivated,

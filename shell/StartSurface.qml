@@ -172,6 +172,8 @@ PanelWindow {
         }
         onWindowsAt: (time, pace) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setStartAt", [time, pace], "di")
         onWindowsOutAt: (time, pace) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setStartOutAt", [time, pace], "di")
+        // KWin places its menu on the screens as a whole; the Start covers its screen.
+        onWindowMenuAsked: (window, at) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "showWindowMenu", [window.uuid, Math.round(surface.primaryScreen.x + at.x), Math.round(surface.primaryScreen.y + at.y)], "sii")
         onKeyboardTaken: surface.keyboardTaken()
     }
 

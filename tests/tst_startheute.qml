@@ -133,6 +133,7 @@ TestCase {
 
     function fakeWindow(appId: string): var {
         return {
+            uuid: appId,
             appId: appId,
             title: appId,
             icon: testCase.pinkIcon,
