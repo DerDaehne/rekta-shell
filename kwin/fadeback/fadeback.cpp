@@ -13,10 +13,13 @@
 #include "workspace.h"
 
 #include <QAction>
+#include <QApplication>
 #include <QDBusConnection>
 #include <QHash>
+#include <QMenu>
 #include <QPointer>
 #include <QQmlEngine>
+#include <QUuid>
 #include <QVector2D>
 
 #include <algorithm>
@@ -135,6 +138,9 @@ struct Splash {
 //
 // The shell's popups come with their own fade and go at once, as Rekta's floating surfaces do: the effect holds each
 // from KWin's other effects, which would fade it in and out once more.
+//
+// The Start opens KWin's own window menu for a window it shows. KWin's surfaces, that menu among them, stand over the
+// windows as the shell's do and never step back.
 class FadeBackEffect : public Effect
 {
     Q_OBJECT
@@ -162,6 +168,8 @@ public Q_SLOTS:
     Q_SCRIPTABLE void setSheetOpacity(const QString &scope, double opacity);
     // The side panel shows, on any screen.
     Q_SCRIPTABLE void setPanelShown(bool shown);
+    // KWin's window menu for the window with the UUID `window`, its top left corner at (`x`, `y`) on the screens.
+    Q_SCRIPTABLE void showWindowMenu(const QString &window, int x, int y);
 
 Q_SIGNALS:
     // A finger on the bottom edge of the primary screen is `distance` px above where it set down.
@@ -203,6 +211,7 @@ private:
     void activatePastShell();
     Window *windowUnderPointer() const;
     void holdShellPopup(EffectWindow *w);
+    void handOverOnMoveOrResize(QMenu *menu, Window *window);
     void fadeSplash(std::chrono::nanoseconds presentation);
     bool fading() const;
     void holdEdges();
@@ -457,6 +466,36 @@ void FadeBackEffect::setPanelShown(bool shown)
     holdEdges();
 }
 
+void FadeBackEffect::showWindowMenu(const QString &window, int x, int y)
+{
+    Window *target = workspace()->findWindow(QUuid::fromString(window));
+    if (!target) {
+        return;
+    }
+    const QPoint at(x, y);
+    workspace()->showWindowMenu(Rect(at, at), target);
+    if (auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget())) {
+        handOverOnMoveOrResize(menu, target);
+    }
+}
+
+// KWin moves or resizes a window from its menu without activating it, and blocks activation while it does. Chosen here,
+// the window is activated first, so the Start closes forward and hands it over: KWin queues the operation as the menu
+// triggers. The menu hides before it triggers, so the hand-over is forgotten only on the next turn of the event loop.
+void FadeBackEffect::handOverOnMoveOrResize(QMenu *menu, Window *window)
+{
+    auto *handOver = new QObject(this);
+    connect(menu, &QMenu::triggered, handOver, [window = QPointer(window)](QAction *chosen) {
+        const auto operation = chosen->data().toInt();
+        const bool inHand = operation == Options::MoveOp || operation == Options::UnrestrictedMoveOp
+            || operation == Options::ResizeOp || operation == Options::UnrestrictedResizeOp;
+        if (inHand && window) {
+            workspace()->activateWindow(window);
+        }
+    });
+    connect(menu, &QMenu::aboutToHide, handOver, &QObject::deleteLater, Qt::QueuedConnection);
+}
+
 // The window's own opacity, as for the Start: KWin's blur follows it, by its square.
 void FadeBackEffect::fadeSheet(const QString &scope) const
 {
@@ -472,7 +511,7 @@ bool FadeBackEffect::stepsBack(const EffectWindow *w) const
 {
     const bool layer = w->window()->inherits("KWin::LayerShellV1Window");
     const bool behind = w->screen() && (w->screen() == primaryScreen() || m_leave.active());
-    return !layer && !w->isLockScreen() && !w->isInputMethod() && behind;
+    return !layer && !w->window()->isInternal() && !w->isLockScreen() && !w->isInputMethod() && behind;
 }
 
 bool FadeBackEffect::moving() const
