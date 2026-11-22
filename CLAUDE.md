@@ -343,7 +343,13 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   tags with the notes as message (format in the script's header); it never pushes, it prints the two pushes.
   Stable releases (`1.0.0` and later) are set by the maintainer only.
 - The shell knows its version from the spec's `Version` alone: CMake takes the base for `project(VERSION)` and the
-  tag-form string for `REKTA_VERSION` (the flake appends `+<commit>` or `+<commit>-dirty` through
-  `REKTA_VERSION_SUFFIX`, as its build has no `.git`); the starters put it into `rekta-shell --version` and into the
-  environment, the shell logs `rekta-shell <version>` at start and offers it as the property `ShellVersion` of
+  tag-form string for `REKTA_VERSION`, which the starters use for `rekta-shell --version` and put into the
+  environment; the shell logs `rekta-shell <version>` at start and offers it as the property `ShellVersion` of
   `rekta.Actions1`. A checkout run through `qs` reports `unknown`.
+- The flake keeps the commit out of the build. `rekta-shell-unversioned` is the cached package, which the checks, the
+  QML tests and qmllint build against and which a commit that leaves the sources alone does not change. The flake
+  outputs `rekta-shell` and `default` are `nix/with-version.nix`, a thin layer over it: wrappers that set
+  `REKTA_VERSION` to the base plus `+<commit>` or `+<commit>-dirty` (the build has no `.git`), and a copy of
+  `rekta-shell.service` in `lib/systemd/user` whose `ExecStart` runs the wrapper, so the session reports the same
+  version as the command. The modules apply the layer through the internal option `versionSuffix`, which the flake
+  sets; imported without the flake they leave the package as built.
