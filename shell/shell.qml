@@ -48,6 +48,18 @@ ShellRoot {
         value: settingsFiles.value("density")
     }
 
+    Binding {
+        target: Prefs
+        property: "ground"
+        value: settingsFiles.value("ground")
+    }
+
+    Binding {
+        target: Prefs
+        property: "theme"
+        value: settingsFiles.value("theme")
+    }
+
     Windows {
         id: running
     }

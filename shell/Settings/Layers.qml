@@ -20,8 +20,10 @@ QtObject {
             background: "solid",
             contrast: "system",
             density: "auto",
+            ground: "normal",
             searchEscape: "close",
             showRecent: true,
+            theme: "system",
             transparency: "system"
         })
     readonly property var nixValues: parsed(defaultsText) ?? {}

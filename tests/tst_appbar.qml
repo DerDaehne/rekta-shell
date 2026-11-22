@@ -111,7 +111,16 @@ TestCase {
         Greet.runs = new Map();
     }
 
+    // The theme, ground and contrast of a contact sheet's colour set.
+    function useColours(set: string) {
+        Prefs.theme = set === "light" ? "light" : "dark";
+        Prefs.ground = set.startsWith("black") ? "black" : "normal";
+        Prefs.contrast = set === "black-contrast" ? "more" : "system";
+    }
+
     function cleanup() {
+        Prefs.ground = "normal";
+        Prefs.contrast = "system";
         Tips.hide();
         Tips.hiddenAt = -Infinity;
         Prefs.theme = "system";
@@ -1487,8 +1496,8 @@ TestCase {
     function test_contact_sheet() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
-        for (const theme of ["light", "dark"]) {
-            Prefs.theme = theme;
+        for (const theme of ContactSheets.colourSets) {
+            useColours(theme);
             const sheet = createTemporaryObject(sheetComponent, testCase);
             mouseClick(findChild(sheet, "narrow").more, 10, 10);
             const back = findChild(findChild(sheet, "wide"), "back");

@@ -62,6 +62,18 @@ TestCase {
                 value: shellSettings.value("transparency")
             }
 
+            Binding {
+                target: Prefs
+                property: "ground"
+                value: shellSettings.value("ground")
+            }
+
+            Binding {
+                target: Prefs
+                property: "theme"
+                value: shellSettings.value("theme")
+            }
+
             Layers {
                 id: shellSettings
             }
@@ -110,7 +122,7 @@ TestCase {
         Prefs.motion = "system";
         Prefs.systemMoreContrast = false;
         Prefs.systemReducedTransparency = false;
-        Prefs.theme = "system";
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
     }
 
     function pivot(): var {
@@ -129,12 +141,14 @@ TestCase {
         return findChild(view, `group-${name}`);
     }
 
-    // Every place in both themes, sideways and stacked.
+    // Every place in light, dark, black and black with more contrast, sideways and stacked.
     function test_contact_sheet() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
-        for (const theme of ["light", "dark"]) {
-            Prefs.theme = theme;
+        for (const theme of ["light", "dark", "black", "black-contrast"]) {
+            host.app.set("theme", theme === "light" ? "light" : "dark");
+            host.app.set("ground", theme.startsWith("black") ? "black" : "normal");
+            host.app.set("contrast", theme === "black-contrast" ? "more" : "normal");
             for (const columns of [2, 1]) {
                 host.width = columns === 2 ? 900 : Tokens.bpSidewaysScrollMin - 1;
                 for (let place = 0; place < 3; place++) {
@@ -379,6 +393,66 @@ TestCase {
         compare(control("echo").label, "kachel-echo");
     }
 
+    function test_the_aussehen_place_offers_the_theme_as_hell_dunkel_and_schwarz_in_farben_above_more_contrast() {
+        const segments = control("theme");
+        compare(segments.options.join(" "), "hell dunkel schwarz");
+        verify(isInside(segments, groupAt("farben")));
+        verify(segments.parent.parent.y + segments.parent.parent.height < control("contrast").parent.parent.y);
+    }
+
+    function test_the_theme_shows_the_step_the_shell_has() {
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        compare(control("theme").currentIndex, 0, "a light system");
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
+        compare(control("theme").currentIndex, 1, "a dark system");
+        host.app.userText = '{"version":1,"ground":"black"}';
+        compare(control("theme").currentIndex, 2, "black over a dark system");
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        compare(control("theme").currentIndex, 0, "black waits under a light theme");
+    }
+
+    function test_choosing_schwarz_writes_the_dark_theme_and_the_black_ground_and_the_shell_follows_at_once() {
+        control("theme").choose(2);
+        compare(written().theme, "dark");
+        compare(written().ground, "black");
+        verify(Prefs.black);
+        compare(Tokens.color, Tokens.black);
+        compare(control("theme").currentIndex, 2);
+    }
+
+    function test_choosing_dunkel_after_schwarz_brings_the_normal_ground_back() {
+        control("theme").choose(2);
+        control("theme").choose(1);
+        compare(written().theme, "dark");
+        compare(written().ground, "normal");
+        compare(Tokens.color, Tokens.dark);
+    }
+
+    function test_choosing_hell_writes_the_light_theme_on_the_normal_ground() {
+        control("theme").choose(2);
+        control("theme").choose(0);
+        compare(written().theme, "light");
+        compare(written().ground, "normal");
+        compare(Tokens.color, Tokens.light);
+    }
+
+    function test_more_contrast_in_the_app_under_schwarz_takes_the_black_contrast_colours() {
+        control("theme").choose(2);
+        control("contrast").activate();
+        compare(Tokens.color, Tokens.blackContrast);
+    }
+
+    function test_with_schwarz_set_in_nix_the_theme_shows_it_and_the_hint_names_that_default() {
+        host.app.defaultsText = '{"ground":"black","theme":"dark"}';
+        compare(control("theme").currentIndex, 2);
+        verify(!hintOf("theme").includes("vorgabe"));
+        control("theme").choose(1);
+        verify(hintOf("theme").endsWith("vorgabe: schwarz."));
+        host.app.defaultsText = "";
+        host.app.userText = '{"version":1,"theme":"dark"}';
+        verify(hintOf("theme").endsWith("vorgabe: wie das system."));
+    }
+
     function test_the_aussehen_place_offers_more_contrast_in_farben_off_by_default() {
         const toggle = control("contrast");
         compare(toggle.label, "mehr kontrast");
@@ -526,7 +600,7 @@ TestCase {
         host.app.userText = "{ not json";
         let writes = 0;
         host.app.writeRequested.connect(() => writes++);
-        for (const name of ["searchEscape", "echo", "contrast", "transparency"]) {
+        for (const name of ["searchEscape", "echo", "contrast", "transparency", "theme"]) {
             verify(control(name).disabled, name);
             compare(control(name).disabledReason, "datei nicht lesbar", name);
             verify(hintOf(name).includes("kein gültiges json") && hintOf(name).includes("korrigiere oder lösche"), name);
@@ -550,7 +624,7 @@ TestCase {
     }
 
     function test_a_usable_file_leaves_the_fields_enabled() {
-        for (const name of ["searchEscape", "echo", "contrast", "transparency"])
+        for (const name of ["searchEscape", "echo", "contrast", "transparency", "theme"])
             verify(!control(name).disabled, name);
     }
 

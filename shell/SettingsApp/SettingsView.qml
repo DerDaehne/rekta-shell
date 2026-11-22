@@ -60,7 +60,7 @@ FocusScope {
     ]
     // The fields of the groups that have any, by group; a group without one says its fields are still to come.
     readonly property var contents: ({
-            "farben": contrastField,
+            "farben": colourFields,
             "fläche": surfaceFields,
             "suche": escapeField,
             "angeheftet": pinnedField,
@@ -114,6 +114,26 @@ FocusScope {
                 reduce: "an",
                 normal: "aus"
             })[value] ?? "wie das system";
+    }
+
+    readonly property var themeSteps: ["hell", "dunkel", "schwarz"]
+
+    // The step the shell shows for a theme and ground: black only under the dark theme (platforms.md:75).
+    function themeStep(theme: string, ground: string): int {
+        if (Prefs.resolvedThemeFor(theme) === "light")
+            return 0;
+        return ground === "black" ? 2 : 1;
+    }
+
+    // The default in words: the step it shows as, or the system's while it follows the system.
+    function themeWord(theme: string, ground: string): string {
+        return theme === "system" && ground !== "black" ? "wie das system" : themeSteps[themeStep(theme, ground)];
+    }
+
+    // "schwarz" is the dark theme on the black ground, two settings as in Rekta; the others leave the ground.
+    function chooseTheme(step: int) {
+        settings.set("theme", step === 0 ? "light" : "dark");
+        settings.set("ground", step === 2 ? "black" : "normal");
     }
 
     function echoOn(): bool {
@@ -200,25 +220,50 @@ FocusScope {
         }
     }
 
+    // Two fields, a default block gap apart (the token space-m).
     Component {
-        id: contrastField
+        id: colourFields
 
-        Setting {
-            hint: "jeder text hebt sich stärker ab, statuskacheln tragen einen rahmen in ihrer farbe, glas wird deckend."
-            problem: view.problem
-            presetWord: view.settings.differs("contrast") ? view.contrastWord(view.settings.preset("contrast")) : ""
+        Column {
+            spacing: Tokens.spaceM
 
-            Toggle {
-                objectName: "contrast"
+            Setting {
                 width: parent.width
-                disabledReason: view.disabledReason
-                label: "mehr kontrast"
-                onWord: "an"
-                offWord: "aus"
-                checked: view.contrastOn()
-                onToggled: {
-                    view.settings.set("contrast", checked ? "more" : "normal");
-                    checked = Qt.binding(() => view.contrastOn());
+                label: "thema"
+                hint: "schwarz legt das dunkle thema auf #000000, für oled-bildschirme; im hellen thema bleibt der eigene grund."
+                problem: view.problem
+                presetWord: view.settings.differs("theme") || view.settings.differs("ground") ? view.themeWord(view.settings.preset("theme"), view.settings.preset("ground")) : ""
+
+                Segments {
+                    objectName: "theme"
+                    disabledReason: view.disabledReason
+                    options: view.themeSteps
+                    currentIndex: view.themeStep(view.settings.value("theme"), view.settings.value("ground"))
+                    onActivated: index => {
+                        view.chooseTheme(index);
+                        currentIndex = Qt.binding(() => view.themeStep(view.settings.value("theme"), view.settings.value("ground")));
+                    }
+                }
+            }
+
+            Setting {
+                width: parent.width
+                hint: "jeder text hebt sich stärker ab, statuskacheln tragen einen rahmen in ihrer farbe, glas wird deckend."
+                problem: view.problem
+                presetWord: view.settings.differs("contrast") ? view.contrastWord(view.settings.preset("contrast")) : ""
+
+                Toggle {
+                    objectName: "contrast"
+                    width: parent.width
+                    disabledReason: view.disabledReason
+                    label: "mehr kontrast"
+                    onWord: "an"
+                    offWord: "aus"
+                    checked: view.contrastOn()
+                    onToggled: {
+                        view.settings.set("contrast", checked ? "more" : "normal");
+                        checked = Qt.binding(() => view.contrastOn());
+                    }
                 }
             }
         }

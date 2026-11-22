@@ -12,6 +12,7 @@ TestCase {
 
     function cleanup() {
         Prefs.theme = "system";
+        Prefs.ground = "normal";
         Prefs.density = "auto";
         Prefs.motion = "system";
         Prefs.contrast = "system";
@@ -37,6 +38,58 @@ TestCase {
         Prefs.systemColorScheme = Qt.ColorScheme.Light;
         Prefs.theme = "dark";
         compare(Tokens.theme, "dark");
+    }
+
+    function test_the_ground_is_normal_until_the_person_chooses_black_and_no_system_source_asks_for_it() {
+        compare(Tokens.ground, "normal");
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
+        Prefs.systemMoreContrast = true;
+        Prefs.systemReducedTransparency = true;
+        compare(Tokens.ground, "normal");
+        verify(!Prefs.black);
+    }
+
+    function test_the_black_ground_puts_the_dark_theme_on_black_and_back() {
+        Prefs.theme = "dark";
+        Prefs.ground = "black";
+        compare(Tokens.ground, "black");
+        verify(Prefs.black);
+        verify(Qt.colorEqual(Tokens.color.bg, "#000000"));
+        Prefs.ground = "normal";
+        verify(!Prefs.black);
+        verify(!Qt.colorEqual(Tokens.color.bg, "#000000"));
+    }
+
+    function test_the_light_theme_keeps_its_own_ground_under_the_black_choice() {
+        Prefs.theme = "light";
+        Prefs.ground = "black";
+        verify(!Prefs.black);
+        compare(Tokens.color, Tokens.light);
+    }
+
+    function test_the_black_choice_holds_under_a_system_that_is_dark_and_waits_while_it_is_light() {
+        Prefs.ground = "black";
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        verify(!Prefs.black);
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
+        verify(Prefs.black);
+        compare(Tokens.color, Tokens.black);
+    }
+
+    function test_more_contrast_on_the_black_ground_takes_the_black_contrast_set() {
+        Prefs.theme = "dark";
+        Prefs.ground = "black";
+        Prefs.contrast = "more";
+        compare(Tokens.color, Tokens.blackContrast);
+        Prefs.contrast = "normal";
+        compare(Tokens.color, Tokens.black);
+    }
+
+    function test_a_theme_that_is_none_of_light_and_dark_follows_the_system() {
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
+        compare(Prefs.resolvedThemeFor("system"), "dark");
+        compare(Prefs.resolvedThemeFor("black"), "dark");
+        compare(Prefs.resolvedThemeFor("light"), "light");
     }
 
     function test_reduced_motion_follows_the_system_live() {

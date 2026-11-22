@@ -271,6 +271,34 @@ in
     touch $out
   '';
 
+  # The lock screen stays dark whatever the ground is: its process never reads the settings, so nothing there may.
+  lockscreen-ignores-the-ground = pkgs.runCommand "rekta-shell-lockscreen-ignores-the-ground" { } ''
+    if grep -rnE --include='*.qml' 'Prefs\.ground|Tokens\.ground|property: "ground"|SettingsFiles' ${../lockscreen}; then
+      echo "the lock screen reads the ground, which it must ignore" >&2
+      exit 1
+    fi
+    touch $out
+  '';
+
+  # The black ground takes the blur from glass only; the surfaces that blur behind a shading must say so.
+  shading-surfaces-keep-their-blur =
+    pkgs.runCommand "rekta-shell-shading-surfaces-keep-their-blur" { }
+      ''
+        for surface in KeyMapSurface SessionSurface; do
+          grep -qF 'shading: true' ${../shell}/$surface.qml || {
+            echo "$surface blurs behind a shading but does not say so, so the black ground would take its blur" >&2
+            exit 1
+          }
+        done
+        for surface in Bar StartSurface ReadoutSurface; do
+          if grep -qF 'shading: true' ${../shell}/$surface.qml; then
+            echo "$surface blurs behind glass but says shading, so the black ground would keep its blur" >&2
+            exit 1
+          fi
+        done
+        touch $out
+      '';
+
   # Lint and tests stay green with a forgotten debug line; only `info`, `warn` and `error` are meant to reach the journal.
   no-debug-logging = pkgs.runCommand "rekta-shell-no-debug-logging" { } ''
     if grep -rnE --include='*.qml' --include='*.js' \
@@ -453,20 +481,23 @@ in
         { programs.rekta-shell.density = "comfortable"; }
       ]
     ) "the density option changed a system that does not enable the module";
-    assert lib.assertMsg (
-      toplevel [ plasma ] == toplevel [
-        plasma
-        module
-        {
-          programs.rekta-shell = {
-            searchEscape = "back";
-            showRecent = false;
-            contrast = "more";
-            transparency = "reduce";
-          };
-        }
-      ]
-    ) "the Start, contrast or transparency options changed a system that does not enable the module";
+    assert lib.assertMsg
+      (
+        toplevel [ plasma ] == toplevel [
+          plasma
+          module
+          {
+            programs.rekta-shell = {
+              searchEscape = "back";
+              showRecent = false;
+              contrast = "more";
+              transparency = "reduce";
+              ground = "black";
+            };
+          }
+        ]
+      )
+      "the Start, contrast, transparency or ground options changed a system that does not enable the module";
     assert lib.assertMsg (
       toplevel [ plasma ] == toplevel [
         plasma
@@ -518,8 +549,8 @@ in
         exit 1
       }
       defaults=${enabled.programs.rekta-shell.package}/share/rekta-shell/defaults.json
-      if grep -q -e searchEscape -e showRecent -e contrast -e transparency $defaults; then
-        echo "the module names a search escape, showRecent, contrast or transparency without being asked to" >&2
+      if grep -q -e searchEscape -e showRecent -e contrast -e transparency -e '"ground"' $defaults; then
+        echo "the module names a search escape, showRecent, contrast, transparency or ground without being asked to" >&2
         exit 1
       fi
       chosen=${
@@ -528,10 +559,11 @@ in
           showRecent = false;
           contrast = "more";
           transparency = "reduce";
+          ground = "black";
         }).programs.rekta-shell.package
       }/share/rekta-shell/defaults.json
-      grep -qF '"searchEscape":"back"' $chosen && grep -qF '"showRecent":false' $chosen && grep -qF '"contrast":"more"' $chosen && grep -qF '"transparency":"reduce"' $chosen || {
-        echo "the search escape, showRecent, contrast or transparency option is not in the package defaults" >&2
+      grep -qF '"searchEscape":"back"' $chosen && grep -qF '"showRecent":false' $chosen && grep -qF '"contrast":"more"' $chosen && grep -qF '"transparency":"reduce"' $chosen && grep -qF '"ground":"black"' $chosen || {
+        echo "the search escape, showRecent, contrast, transparency or ground option is not in the package defaults" >&2
         exit 1
       }
       # With both modules on, whichever rekta-settings comes first in PATH names the same defaults.

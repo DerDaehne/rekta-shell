@@ -2,13 +2,14 @@ pragma Singleton
 import QtQuick
 
 // The inputs that pick Rekta's values (platforms.md, "Switching"): theme, density, motion, contrast and transparency each
-// follow a system source unless overridden; the window-size class follows the place. Prefs feeds the first five to
-// Tokens.
+// follow a system source unless overridden, the ground is the person's choice alone; the window-size class follows
+// the place. Prefs feeds the first six to Tokens.
 QtObject {
     id: prefs
 
     // Overrides; the override wins over the system.
     property string theme: "system" // system | light | dark
+    property string ground: "normal" // normal | black; the person's choice, no system source (colour.md:132–135)
     property string density: "auto" // auto | comfortable | compact
     property string motion: "system" // system | on | off
     property string contrast: "system" // system | more | normal
@@ -25,7 +26,9 @@ QtObject {
     // ponytail: no touch detection yet, so "auto" is compact (a fine pointer); detect touch screens when one appears.
     property bool systemHasTouch: false
 
-    readonly property string resolvedTheme: theme !== "system" ? theme : systemColorScheme === Qt.ColorScheme.Dark ? "dark" : "light"
+    readonly property string resolvedTheme: resolvedThemeFor(theme)
+    // The black ground lies under the dark theme only; the light theme keeps its own (platforms.md:75).
+    readonly property bool black: resolvedTheme === "dark" && ground === "black"
     readonly property string resolvedDensity: density === "comfortable" || density === "compact" ? density : systemHasTouch ? "comfortable" : "compact"
     readonly property bool reducedMotion: motion === "off" || (motion === "system" && systemReducedMotion)
     readonly property bool moreContrast: moreContrastFor(contrast)
@@ -36,6 +39,11 @@ QtObject {
             target: Tokens
             property: "theme"
             value: prefs.resolvedTheme
+        },
+        Binding {
+            target: Tokens
+            property: "ground"
+            value: prefs.ground
         },
         Binding {
             target: Tokens
@@ -58,6 +66,13 @@ QtObject {
             value: prefs.reducedTransparency
         }
     ]
+
+    // The theme a setting resolves to; anything but light and dark follows the system.
+    function resolvedThemeFor(setting: string): string {
+        if (setting === "light" || setting === "dark")
+            return setting;
+        return systemColorScheme === Qt.ColorScheme.Dark ? "dark" : "light";
+    }
 
     // Whether a contrast setting means more contrast; anything but more and normal follows the system.
     function moreContrastFor(setting: string): bool {

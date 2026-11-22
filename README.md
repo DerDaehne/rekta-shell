@@ -165,7 +165,7 @@ what you see on screen.
 
 ### Make it yours
 
-- "rekta einstellungen", the settings app: more contrast, less transparency, the tile
+- "rekta einstellungen", the settings app: the theme (light, dark or black), more contrast, less transparency, the tile
   echo on the background, what Escape does in the search, the pinned apps and whether
   "zuletzt" shows.
 - More contrast makes every text pair 7:1 and the glass opaque; less transparency turns
@@ -296,6 +296,7 @@ Both modules offer the same options, all under `programs.rekta-shell`:
 | `background` | `"rekta"` (Rekta's tile echo in a corner) or `"solid"` (the plain ground colour) | `"solid"` |
 | `contrast` | `"more"` (every text pair 7:1, opaque glass, framed status tiles) or `"normal"` | follow the system |
 | `transparency` | `"reduce"` (glass turns solid, nothing behind it blurs) or `"normal"` | `"normal"` |
+| `ground` | `"black"` (the dark theme on black for OLED screens, glass is the ground and the app bar does not blur; the lock screen stays dark) or `"normal"` | `"normal"` |
 | `density` | `"comfortable"` or `"compact"` | compact |
 | `searchEscape` | `"close"` (clear the search and close the Start) or `"back"` (clear it and go back) | `"close"` |
 | `showRecent` | `false` hides "zuletzt" and reads nothing of what was opened | shown |

@@ -35,6 +35,17 @@
       description = "Rekta's more contrast: \"more\" takes the contrast colours (every text pair at 7:1, opaque glass) and frames each status tile, \"normal\" keeps the regular colours. Null follows the system's contrast preference where the platform reports one. It takes effect with the default package once the module is enabled, as the default that a \"contrast\" in the user's ~/.config/rekta-shell/settings.json overrides.";
     };
 
+    ground = lib.mkOption {
+      type = lib.types.nullOr (
+        lib.types.enum [
+          "normal"
+          "black"
+        ]
+      );
+      default = null;
+      description = "Rekta's black ground, for OLED screens: \"black\" puts the dark theme on #000000, with glass the ground colour and no blur behind the app bar, the Start or the volume display, \"normal\" keeps the dark theme's own ground. The light theme keeps its own ground either way, and no system setting asks for black. The lock screen stays as it is. Null leaves it normal. It takes effect with the default package once the module is enabled, as the default that a \"ground\" in the user's ~/.config/rekta-shell/settings.json overrides.";
+    };
+
     density = lib.mkOption {
       type = lib.types.nullOr (
         lib.types.enum [
@@ -94,6 +105,7 @@
       inherit (cfg)
         contrast
         density
+        ground
         searchEscape
         showRecent
         transparency

@@ -145,7 +145,16 @@ TestCase {
         takenSpy.clear();
     }
 
+    // The theme, ground and contrast of a contact sheet's colour set.
+    function useColours(set: string) {
+        Prefs.theme = set === "light" ? "light" : "dark";
+        Prefs.ground = set.startsWith("black") ? "black" : "normal";
+        Prefs.contrast = set === "black-contrast" ? "more" : "system";
+    }
+
     function cleanup() {
+        Prefs.ground = "normal";
+        Prefs.contrast = "system";
         testCase.width = 1600;
         testCase.height = 900;
         Prefs.motion = "system";
@@ -2482,9 +2491,9 @@ TestCase {
     function test_contact_sheet() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
-        for (const theme of ["light", "dark"]) {
+        for (const theme of ContactSheets.colourSets) {
             for (const density of ["compact", "comfortable"]) {
-                Prefs.theme = theme;
+                useColours(theme);
                 Prefs.density = density;
                 const backdrop = createTemporaryObject(backdropComponent, testCase);
                 const sheet = sheetStart(backdrop);
