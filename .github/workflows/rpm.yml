@@ -89,12 +89,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
+          sh packaging/fedora/ci-safe-names.sh rpms
           cd rpms
           srpms=(*.src.rpm)
           srpm=${srpms[-1]} # the newest Fedora release sorts last
           binaries=()
           for f in *.rpm; do [[ $f == *.src.rpm ]] || binaries+=("$f"); done
           sha256sum "${binaries[@]}" "$srpm" > SHA256SUMS
+          sha256sum --check SHA256SUMS
           # versions 0.x.y are pre-releases; the first stable one is 1.0.0
           flags=()
           [[ $GITHUB_REF_NAME == v0.* ]] && flags+=(--prerelease)

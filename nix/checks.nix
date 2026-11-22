@@ -627,57 +627,75 @@ in
         ];
       }
       ''
-        export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.invalid
-        export GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.invalid
-        git init -q --bare origin.git
-        git init -q -b main repo && cd repo
-        mkdir -p scripts packaging/fedora bin
-        cp ${../scripts/release.sh} scripts/release.sh
-        cp ${../packaging/version.sh} packaging/version.sh
-        cp ${../packaging/fedora/ci-check-tag.sh} packaging/fedora/ci-check-tag.sh
-        cp ${../packaging/fedora/rekta-shell.spec} packaging/fedora/rekta-shell.spec
-        chmod +x scripts/release.sh
-        printf '#!/bin/sh\nexit 0\n' > scripts/scan-secrets.sh && chmod +x scripts/scan-secrets.sh
-        printf 'notes\n' > "$TMPDIR/notes"
-        # gh as a stand-in that reports every workflow green
-        printf '#!/bin/sh\nprintf "privacy completed success\\nnix completed success\\nrpm completed success\\n"\n' > "$TMPDIR/gh"
-        chmod +x "$TMPDIR/gh"; export PATH=$TMPDIR:$PATH
-        git add -A && git commit -qm base && git remote add origin ../origin.git && git push -q origin main
+                export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.invalid
+                export GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.invalid
+                git init -q --bare origin.git
+                git init -q -b main repo && cd repo
+                mkdir -p scripts packaging/fedora bin
+                cp ${../scripts/release.sh} scripts/release.sh
+                cp ${../packaging/version.sh} packaging/version.sh
+                cp ${../packaging/fedora/ci-check-tag.sh} packaging/fedora/ci-check-tag.sh
+                cp ${../packaging/fedora/ci-safe-names.sh} packaging/fedora/ci-safe-names.sh
+                cp ${../packaging/fedora/rekta-shell.spec} packaging/fedora/rekta-shell.spec
+                chmod +x scripts/release.sh
+                printf '#!/bin/sh\nexit 0\n' > scripts/scan-secrets.sh && chmod +x scripts/scan-secrets.sh
+                printf 'notes\n' > "$TMPDIR/notes"
+                # gh as a stand-in that reports every workflow green
+                printf '#!/bin/sh\nprintf "privacy completed success\\nnix completed success\\nrpm completed success\\n"\n' > "$TMPDIR/gh"
+                chmod +x "$TMPDIR/gh"; export PATH=$TMPDIR:$PATH
+                git add -A && git commit -qm base && git remote add origin ../origin.git && git push -q origin main
 
-        version() { sh packaging/version.sh "$1"; }
-        newer() { test "$(rpm --eval "%{lua: print(rpm.vercmp('$1', '$2'))}")" = 1; }
-        release() { git push -q origin main; bash scripts/release.sh "$@"; }
+                version() { sh packaging/version.sh "$1"; }
+                newer() { test "$(rpm --eval "%{lua: print(rpm.vercmp('$1', '$2'))}")" = 1; }
+                release() { git push -q origin main; bash scripts/release.sh "$@"; }
 
-        base=$(version base)
-        RELEASE_STAMP=20261122.1830 release "$TMPDIR/notes" >/dev/null
-        first=$(version rpm)
-        test "$(version base)" = "$base"
-        test "$(version tag)" = "$base+20261122.1830.$(git rev-parse --short=7 HEAD~1)"
-        git tag -l "v$(version tag)" | grep -Fx "v$(version tag)"
-        git check-ref-format "refs/tags/v$(version tag)"
-        sh packaging/fedora/ci-check-tag.sh "v$(version tag)"
+                base=$(version base)
+                RELEASE_STAMP=20261122.1830 release "$TMPDIR/notes" >/dev/null
+                first=$(version rpm)
+                test "$(version base)" = "$base"
+                test "$(version tag)" = "$base+20261122.1830.$(git rev-parse --short=7 HEAD~1)"
+                git tag -l "v$(version tag)" | grep -Fx "v$(version tag)"
+                git check-ref-format "refs/tags/v$(version tag)"
+                sh packaging/fedora/ci-check-tag.sh "v$(version tag)"
 
-        git commit -q --allow-empty -m work
-        RELEASE_STAMP=20261122.1900 release "$TMPDIR/notes" >/dev/null
-        second=$(version rpm)
-        git commit -q --allow-empty -m more
-        RELEASE_STAMP=20261123.0900 release "$TMPDIR/notes" >/dev/null
-        third=$(version rpm)
-        git commit -q --allow-empty -m newer
-        release 0.9.0 "$TMPDIR/notes" >/dev/null
-        newbase=$(version rpm)
-        test "$newbase" = 0.9.0
-        test "$(version tag)" = 0.9.0
+                git commit -q --allow-empty -m work
+                RELEASE_STAMP=20261122.1900 release "$TMPDIR/notes" >/dev/null
+                second=$(version rpm)
+                git commit -q --allow-empty -m more
+                RELEASE_STAMP=20261123.0900 release "$TMPDIR/notes" >/dev/null
+                third=$(version rpm)
+                git commit -q --allow-empty -m newer
+                release 0.9.0 "$TMPDIR/notes" >/dev/null
+                newbase=$(version rpm)
+                test "$newbase" = 0.9.0
+                test "$(version tag)" = 0.9.0
 
-        newer "$first" "$base"
-        newer "$second" "$first"
-        newer "$third" "$second"
-        newer "$newbase" "$third"
-        newer 0.1.6 "$third"
+                newer "$first" "$base"
+                newer "$second" "$first"
+                newer "$third" "$second"
+                newer "$newbase" "$third"
+                newer 0.1.6 "$third"
 
-        git commit -q --allow-empty -m lower
-        if release 0.2.0 "$TMPDIR/notes" 2>/dev/null; then echo "a lower base was accepted" >&2; exit 1; fi
-        touch $out
+                git commit -q --allow-empty -m lower
+                if release 0.2.0 "$TMPDIR/notes" 2>/dev/null; then echo "a lower base was accepted" >&2; exit 1; fi
+
+                git commit -q --allow-empty -m same
+                if release 0.9.0 "$TMPDIR/notes" 2>"$TMPDIR/err"; then echo "the current base was accepted again" >&2; exit 1; fi
+                grep -F "not above" "$TMPDIR/err"
+                git commit -q --allow-empty -m tenth
+                release 0.10.0 "$TMPDIR/notes" >/dev/null
+                test "$(version base)" = 0.10.0
+                newer 0.10.0 0.9.0
+
+                # release assets keep to characters GitHub leaves alone, and SHA256SUMS then names files that exist
+                mkdir assets && cd assets
+                touch "rekta-shell-0.1.5^20261122.1830gitabc1234-1.fc45.x86_64.rpm" "rekta-shell-0.1.5^20261122.1830gitabc1234-1.fc45.src.rpm"
+                sh ../packaging/fedora/ci-safe-names.sh .
+                ls > "$TMPDIR/names"
+                test "$(cat "$TMPDIR/names")" = "rekta-shell-0.1.5.20261122.1830gitabc1234-1.fc45.src.rpm
+        rekta-shell-0.1.5.20261122.1830gitabc1234-1.fc45.x86_64.rpm"
+                sha256sum *.rpm > SHA256SUMS && sha256sum --check SHA256SUMS >/dev/null
+                touch $out
       '';
 
   formatting = pkgs.runCommand "rekta-shell-nixfmt" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''

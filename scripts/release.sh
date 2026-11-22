@@ -119,7 +119,7 @@ main() {
 	notes=$(absolute "$notes")
 	cd "$(git rev-parse --show-toplevel)"
 	current=$(sh packaging/version.sh base)
-	if [ -n "$requested_base" ] && [ "$(printf '%s\n%s\n' "$current" "$requested_base" | sort -V | tail -n 1)" != "$requested_base" ]; then
+	if [ -n "$requested_base" ] && { [ "$requested_base" = "$current" ] || [ "$(printf '%s\n%s\n' "$current" "$requested_base" | sort -V | tail -n 1)" != "$requested_base" ]; }; then
 		die "the new base $requested_base is not above $current"
 	fi
 	check_clean_main
