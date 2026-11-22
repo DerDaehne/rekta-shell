@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import Start
+import Rekta
 import "ManyApps.js" as ManyApps
 
 TestCase {
@@ -482,13 +483,13 @@ TestCase {
 
     function test_a_typed_key_jumps_to_the_next_name_it_starts_whatever_the_case_round_past_the_end() {
         const names = ["ark", "Dateien", "Dolphin", "Elisa", "dragon"];
-        compare(Rules.jumpTarget(names, -1, "d"), 1, "from nothing, the first");
-        compare(Rules.jumpTarget(names, 1, "D"), 2, "after the one in focus");
-        compare(Rules.jumpTarget(names, 4, "d"), 1, "round past the end");
-        compare(Rules.jumpTarget(names, 1, "a"), 0);
-        compare(Rules.jumpTarget(names, 0, "a"), 0, "the only one stays");
-        compare(Rules.jumpTarget(names, 2, "q"), -1, "none starts with it");
-        compare(Rules.jumpTarget([], -1, "a"), -1);
+        compare(TileFocus.jumpTarget(names, -1, "d"), 1, "from nothing, the first");
+        compare(TileFocus.jumpTarget(names, 1, "D"), 2, "after the one in focus");
+        compare(TileFocus.jumpTarget(names, 4, "d"), 1, "round past the end");
+        compare(TileFocus.jumpTarget(names, 1, "a"), 0);
+        compare(TileFocus.jumpTarget(names, 0, "a"), 0, "the only one stays");
+        compare(TileFocus.jumpTarget(names, 2, "q"), -1, "none starts with it");
+        compare(TileFocus.jumpTarget([], -1, "a"), -1);
     }
 
     function names(prefix: string, count: int): var {
@@ -589,24 +590,24 @@ TestCase {
     ]
 
     function test_an_arrow_moves_to_the_nearest_tile_that_way_in_the_same_row_or_column() {
-        compare(Rules.neighbour(rects[0], rects, "right"), 1);
-        compare(Rules.neighbour(rects[2], rects, "left"), 1);
-        compare(Rules.neighbour(rects[1], rects, "down"), 3, "the wide tile lies under b too");
-        compare(Rules.neighbour(rects[3], rects, "up"), 0, "of a and b, the one in line with its start");
-        compare(Rules.neighbour(rects[4], rects, "left"), 3);
+        compare(TileFocus.neighbour(rects[0], rects, "right"), 1);
+        compare(TileFocus.neighbour(rects[2], rects, "left"), 1);
+        compare(TileFocus.neighbour(rects[1], rects, "down"), 3, "the wide tile lies under b too");
+        compare(TileFocus.neighbour(rects[3], rects, "up"), 0, "of a and b, the one in line with its start");
+        compare(TileFocus.neighbour(rects[4], rects, "left"), 3);
     }
 
     function test_an_arrow_passes_a_nearer_tile_outside_its_row_or_column() {
         const from = { x: 0, y: 0, width: 150, height: 150 };
         const aside = { x: 790, y: 158, width: 150, height: 150 };
         const below = { x: 0, y: 474, width: 150, height: 150 };
-        compare(Rules.neighbour(from, [from, aside, below], "down"), 2);
+        compare(TileFocus.neighbour(from, [from, aside, below], "down"), 2);
     }
 
         function test_past_the_last_tile_that_way_an_arrow_finds_none() {
-        compare(Rules.neighbour(rects[2], rects, "right"), -1);
-        compare(Rules.neighbour(rects[0], rects, "up"), -1);
-        compare(Rules.neighbour(rects[4], rects, "down"), -1);
+        compare(TileFocus.neighbour(rects[2], rects, "right"), -1);
+        compare(TileFocus.neighbour(rects[0], rects, "up"), -1);
+        compare(TileFocus.neighbour(rects[4], rects, "down"), -1);
     }
 
     function test_only_desktop_entries_named_kcm_are_settings_pages() {

@@ -41,6 +41,7 @@ LiveMore 1.0 LiveMore.qml
 IconButton 1.0 IconButton.qml
 Tile 1.0 Tile.qml
 TileGrid 1.0 TileGrid.qml
+OpenerTile 1.0 OpenerTile.qml
 Pivot 1.0 Pivot.qml
 Facets 1.0 Facets.qml
 Stat 1.0 Stat.qml
@@ -51,6 +52,7 @@ StatusRegion 1.0 StatusRegion.qml
 singleton KeyLayers 1.0 KeyLayers.qml
 singleton Tips 1.0 Tips.qml
 Placement 1.0 Placement.js
+TileFocus 1.0 TileFocus.js
 Calendar 1.0 Calendar.js
 Match 1.0 Match.js
 ForeignPicture 1.0 ForeignPicture.js

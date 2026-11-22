@@ -1342,7 +1342,7 @@ FocusScope {
     function jump(key: string) {
         turner.finish();
         const tiles = letterTiles();
-        const at = Rules.jumpTarget(tiles.map(tile => tile.name), tiles.findIndex(tile => tile.activeFocus), key);
+        const at = TileFocus.jumpTarget(tiles.map(tile => tile.name), tiles.findIndex(tile => tile.activeFocus), key);
         if (at < 0)
             return;
         appsPanorama.goTo(sectionOf(at), false, !appsPanorama.sideways);
@@ -1420,7 +1420,7 @@ FocusScope {
             return;
         }
         const rects = tiles.map(tile => tile.mapToItem(start, 0, 0, tile.width, tile.height));
-        const next = Rules.neighbour(rects[tiles.indexOf(from)], rects, direction);
+        const next = TileFocus.neighbour(rects[tiles.indexOf(from)], rects, direction);
         if (next >= 0)
             tiles[next].forceActiveFocus();
         else

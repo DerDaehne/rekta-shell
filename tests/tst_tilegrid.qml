@@ -58,6 +58,41 @@ TestCase {
         }
     }
 
+    // A side panel's grid of opener tiles, one tab stop between a control before it and one after: two across, a wide
+    // tile on the third row (| ton | netz | over | bluetooth wide | over | anzeige | sitzung |).
+    Component {
+        id: oneStopComponent
+
+        Column {
+            property alias grid: openers
+
+            Button {
+                objectName: "before"
+                text: "dunkel"
+            }
+
+            TileGrid {
+                id: openers
+
+                width: 2.5 * Tokens.tileUnit + Tokens.spaceS
+                placeWidth: width
+                viewportHeight: 900
+                oneTabStop: true
+
+                OpenerTile { objectName: "ton"; name: "ton" }
+                OpenerTile { objectName: "netz"; name: "netz" }
+                OpenerTile { objectName: "bluetooth"; name: "bluetooth"; columns: 2 }
+                OpenerTile { objectName: "anzeige"; name: "anzeige" }
+                OpenerTile { objectName: "sitzung"; name: "sitzung" }
+            }
+
+            Button {
+                objectName: "after"
+                text: "sperren"
+            }
+        }
+    }
+
     property TileGrid grid
 
     function init() {
@@ -254,5 +289,88 @@ TestCase {
         compare(grid.across, 4);
         compare(findChild(grid, "small1").width, Tokens.tileUnit);
         compare(findChild(grid, "big").width, 2 * Tokens.tileUnit + Tokens.spaceS);
+    }
+
+    function key(code: int, text = ""): var {
+        return { key: code, text: text, modifiers: Qt.NoModifier };
+    }
+
+    function test_a_grid_that_is_one_tab_stop_is_reached_by_tab_at_the_tile_last_focused_and_left_by_the_next() {
+        const column = createTemporaryObject(oneStopComponent, testCase);
+        const tile = name => findChild(column, name);
+        tile("before").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Tab);
+        verify(tile("ton").activeFocus, "the first tile, to begin with");
+        keyClick(Qt.Key_Tab);
+        verify(tile("after").activeFocus, "the next Tab leaves the grid");
+        compare(["ton", "netz", "bluetooth", "anzeige", "sitzung"].filter(name => tile(name).activeFocusOnTab), ["ton"]);
+        tile("anzeige").forceActiveFocus();
+        tile("after").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Tab, Qt.ShiftModifier);
+        verify(tile("anzeige").activeFocus, "Shift+Tab comes back to the tile last focused");
+        keyClick(Qt.Key_Tab, Qt.ShiftModifier);
+        verify(tile("before").activeFocus, "and leaves the other way");
+        tile("anzeige").visible = false;
+        keyClick(Qt.Key_Tab);
+        verify(tile("ton").activeFocus, "a tile that went leaves the stop to the first");
+    }
+
+    function test_in_a_grid_that_is_one_tab_stop_the_arrows_go_to_the_nearest_tile_that_way_and_stay_at_its_edge() {
+        const column = createTemporaryObject(oneStopComponent, testCase);
+        const tile = name => findChild(column, name);
+        const grid = column.grid;
+        tile("ton").forceActiveFocus();
+        verify(grid.handleKey(key(Qt.Key_Right)), "→ is the grid's");
+        verify(tile("netz").activeFocus);
+        verify(grid.handleKey(key(Qt.Key_Right)), "at the edge the grid still takes it");
+        verify(tile("netz").activeFocus, "and the focus stays");
+        verify(grid.handleKey(key(Qt.Key_Down)));
+        verify(tile("bluetooth").activeFocus, "↓ to the wide tile below");
+        verify(grid.handleKey(key(Qt.Key_Down)));
+        verify(tile("anzeige").activeFocus, "of the two below, the one in line with its start");
+        verify(grid.handleKey(key(Qt.Key_Right)));
+        verify(tile("sitzung").activeFocus);
+        verify(grid.handleKey(key(Qt.Key_Down)));
+        verify(tile("sitzung").activeFocus, "the last row's ↓ stays");
+        verify(grid.handleKey(key(Qt.Key_Up)));
+        verify(tile("bluetooth").activeFocus);
+        verify(grid.handleKey(key(Qt.Key_Up)));
+        verify(tile("ton").activeFocus);
+        verify(grid.handleKey(key(Qt.Key_Left)));
+        verify(grid.handleKey(key(Qt.Key_Up)));
+        verify(tile("ton").activeFocus, "the first row's ↑ and the first column's ← stay");
+        keyClick(Qt.Key_Right);
+        verify(tile("netz").activeFocus, "a real key goes the same way");
+    }
+
+    function test_in_a_grid_that_is_one_tab_stop_home_and_end_go_to_the_first_and_last_tile_and_a_letter_jumps() {
+        const column = createTemporaryObject(oneStopComponent, testCase);
+        const tile = name => findChild(column, name);
+        const grid = column.grid;
+        tile("bluetooth").forceActiveFocus();
+        verify(grid.handleKey(key(Qt.Key_End)));
+        verify(tile("sitzung").activeFocus, "End: the last");
+        verify(grid.handleKey(key(Qt.Key_Home)));
+        verify(tile("ton").activeFocus, "Home: the first");
+        verify(grid.handleKey(key(Qt.Key_A, "a")));
+        verify(tile("anzeige").activeFocus, "a letter: the next tile it starts");
+        verify(grid.handleKey(key(Qt.Key_T, "T")));
+        verify(tile("ton").activeFocus, "whatever the case, round past the end");
+        verify(grid.handleKey(key(Qt.Key_Q, "q")), "a letter no tile starts with is taken too");
+        verify(tile("ton").activeFocus, "and the focus stays");
+        verify(!grid.handleKey(key(Qt.Key_Escape, "\u001b")), "Escape is left to what holds the grid");
+        verify(!grid.handleKey(key(Qt.Key_Tab, "\t")), "and Tab");
+        verify(!grid.handleKey(key(Qt.Key_Space, " ")), "and Space");
+        verify(!grid.handleKey({ key: Qt.Key_A, text: "a", modifiers: Qt.ControlModifier }), "and Ctrl with a letter");
+    }
+
+    function test_a_grid_that_is_no_tab_stop_of_its_own_leaves_the_keys_and_the_tab_stops_to_its_tiles() {
+        const column = createTemporaryObject(oneStopComponent, testCase);
+        const tile = name => findChild(column, name);
+        column.grid.oneTabStop = false;
+        tile("ton").forceActiveFocus();
+        verify(!column.grid.handleKey(key(Qt.Key_Right)));
+        verify(!column.grid.handleKey(key(Qt.Key_End)));
+        verify(tile("ton").activeFocus);
     }
 }
