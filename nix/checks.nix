@@ -150,6 +150,7 @@ in
         grep -qF "${rekta-shell}/share/rekta-settings" ${rekta-shell}/bin/.rekta-settings-wrapped
         grep -qx "//@ pragma AppId rekta-settings" ${rekta-shell}/share/rekta-settings/shell.qml
         grep -q "no-duplicate" ${rekta-shell}/bin/.rekta-settings-wrapped
+        grep -qF 'export REKTA_SHELL_LAUNCH="''${REKTA_SHELL_LAUNCH:-systemd}"' ${rekta-shell}/bin/.rekta-settings-wrapped
         touch $out
       '';
 

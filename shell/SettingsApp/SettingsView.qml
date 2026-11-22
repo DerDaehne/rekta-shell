@@ -138,10 +138,10 @@ FocusScope {
     // dark scheme on the black ground; the others leave the ground.
     function chooseTheme(step: int) {
         const dark = step !== 0;
-        const changesScheme = dark !== (Prefs.resolvedTheme === "dark");
-        chosenStep = changesScheme ? step : -1;
-        if (changesScheme)
+        // Against the step already asked for, so a change of mind before Plasma has switched is sent too.
+        if (dark !== (shownStep !== 0))
             run(LookAndFeel.command(dark, kdeglobals));
+        chosenStep = dark !== (Prefs.resolvedTheme === "dark") ? step : -1;
         settings.set("ground", step === 2 ? "black" : "normal");
     }
 

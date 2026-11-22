@@ -481,6 +481,24 @@ TestCase {
         compare(control("theme").currentIndex, 0, "once Plasma has switched the system decides again");
     }
 
+    function test_a_change_of_mind_before_plasma_has_switched_is_sent_too() {
+        host.daemon = false;
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        control("theme").choose(1);
+        control("theme").choose(0);
+        compare(host.runs.length, 2);
+        compare(host.runs[1][2], "org.kde.breeze.desktop");
+        compare(control("theme").currentIndex, 0);
+    }
+
+    function test_when_plasma_does_not_switch_the_step_goes_back_to_the_systems_after_the_wait() {
+        host.daemon = false;
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        control("theme").choose(1);
+        compare(control("theme").currentIndex, 1);
+        tryCompare(control("theme"), "currentIndex", 0, 6000);
+    }
+
     function test_the_panels_dunkel_and_the_segments_are_one_setting_and_black_survives_the_round_trip() {
         Prefs.systemColorScheme = Qt.ColorScheme.Dark;
         control("theme").choose(2);
