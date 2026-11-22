@@ -327,9 +327,18 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
 - Every push to `main` leaves the RPM and SRPM as a workflow artifact named
   `rekta-shell-<version>-fc<release>-<sha7>` (30 days; pull requests 7 days):
   `gh run download <run-id> -n <artifact name>`.
-- Tags `v<version>` must equal `v` plus the spec's `Version`. A tag publishes the GitHub release with
-  RPMs, SRPM and `SHA256SUMS`; its notes are the annotated tag's message, and every `0.x.y` is a pre-release.
-- The coordinator sets a pre-release `v0.1.N` at the end of a session, on main with green CI (standing
-  instruction of the maintainer). Stable releases (`1.0.0` and later) are set by the maintainer only.
-- `scripts/release.sh <version> <notes-file> [--dry-run]` checks main and CI, bumps the spec, commits, scans and
+- Tags are `v` plus the spec's `Version` in tag form (`packaging/version.sh tag`; `ci-check-tag.sh` checks it). A tag
+  publishes the GitHub release with RPMs, SRPM and `SHA256SUMS`; its notes are the annotated tag's message, and every
+  `0.x.y` is a pre-release.
+- Release schema (superseding the earlier 0.1.N one, which raised the patch number with every release, 0.1.1 to 0.1.5): the
+  SemVer base stays until the maintainer raises it (a beta, 1.0, a large step). At the end of each session the
+  coordinator sets one pre-release that only appends date, time and commit: spec `Version: 0.1.5^20261122.1830gitabc1234`
+  (Fedora Packaging Guidelines, "Versioning": the caret marks a post-release snapshot, so it sorts after
+  `0.1.5` and before `0.1.6`), tag `v0.1.5+20261122.1830.abc1234` (git tags cannot hold `^`, so SemVer build metadata
+  spells the same version). Date and time are UTC, so two releases of one day still sort by time. The hash is main's head
+  before the release commit. The `release-schema` check proves the order base < session < next session < new base
+  with rpm's own comparison.
+- `scripts/release.sh [<base>] <notes-file> [--dry-run]` checks main and CI, sets the spec's `Version` (a session
+  release without `<base>`, a new base `x.y.z` with it, which must be above the current one), commits, scans and
   tags with the notes as message (format in the script's header); it never pushes, it prints the two pushes.
+  Stable releases (`1.0.0` and later) are set by the maintainer only.

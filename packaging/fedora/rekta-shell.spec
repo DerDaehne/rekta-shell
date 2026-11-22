@@ -1,11 +1,13 @@
 Name:           rekta-shell
 Version:        0.1.5
+# A snapshot's Version is base^date.timegithash (Fedora's post-release snapshot); the git tag spells it base+date.time.hash
+%global tag_version %(echo %{version} | sed -e 's/\^/+/' -e 's/git/./')
 Release:        1%{?dist}
 Summary:        Desktop shell for KDE Plasma 6 that follows Rekta Design
 
 License:        MIT AND CC-BY-4.0
 URL:            https://github.com/DerDaehne/rekta-shell
-Source0:        https://github.com/DerDaehne/rekta-shell/archive/v%{version}/rekta-shell-%{version}.tar.gz
+Source0:        https://github.com/DerDaehne/rekta-shell/archive/v%{tag_version}/rekta-shell-%{version}.tar.gz
 
 ExclusiveArch:  x86_64
 

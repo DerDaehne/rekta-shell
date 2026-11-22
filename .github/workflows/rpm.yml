@@ -40,7 +40,7 @@ jobs:
       - name: Name the artifact
         id: name
         run: |
-          version=$(sed -n 's/^Version:[[:space:]]*//p' packaging/fedora/rekta-shell.spec)
+          version=$(sh packaging/version.sh tag)
           echo "value=rekta-shell-${version}-fc${{ matrix.fedora }}-$(echo "$GITHUB_SHA" | cut -c1-7)" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

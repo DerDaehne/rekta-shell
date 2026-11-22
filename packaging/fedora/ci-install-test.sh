@@ -23,3 +23,5 @@ rpm -V rekta-shell
 rpm -q quickshell | grep -E '^quickshell-0\.3\.'
 # The effects load only in the KWin they were built against.
 rpm -q --requires rekta-shell | grep -Fx "kwin-libs(x86-64) = $(rpm -q --qf '%{version}' kwin-libs)"
+# The package is the spec's version, snapshot included.
+test "$(rpm -q --qf '%{version}' rekta-shell)" = "$(sh packaging/version.sh rpm)"
