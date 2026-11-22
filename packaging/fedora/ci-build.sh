@@ -4,7 +4,7 @@
 set -eu
 out=${1:?usage: ci-build.sh <output directory>}
 spec=packaging/fedora/rekta-shell.spec
-version=$(sh packaging/version.sh rpm)
+version=$(sh packaging/version.sh safe)
 
 # Plasma 6.8 is in updates-testing only. Drop --enablerepo=updates-testing once the
 # targeted Fedora release ships Plasma 6.8 as a stable update.

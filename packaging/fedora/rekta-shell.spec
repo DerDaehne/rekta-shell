@@ -2,12 +2,14 @@ Name:           rekta-shell
 Version:        0.1.5^20261122.1844git70775ee
 # A snapshot's Version is base^date.timegithash (Fedora's post-release snapshot); the git tag spells it base+date.time.hash
 %global tag_version %(echo %{version} | sed -e 's/\^/+/' -e 's/git/./')
+# The build directory and tarball keep to characters QUrl leaves alone: it encodes the "^" of a snapshot, so a path holding one no longer names the file
+%global safe_version %(echo %{version} | sed 's/[^A-Za-z0-9._-]/./g')
 Release:        1%{?dist}
 Summary:        Desktop shell for KDE Plasma 6 that follows Rekta Design
 
 License:        MIT AND CC-BY-4.0
 URL:            https://github.com/DerDaehne/rekta-shell
-Source0:        https://github.com/DerDaehne/rekta-shell/archive/v%{tag_version}/rekta-shell-%{version}.tar.gz
+Source0:        https://github.com/DerDaehne/rekta-shell/archive/v%{tag_version}/rekta-shell-%{safe_version}.tar.gz
 
 ExclusiveArch:  x86_64
 
@@ -64,7 +66,7 @@ rekta-shell in its place. The window manager effects of the shell are loaded
 only in that session.
 
 %prep
-%autosetup
+%autosetup -n rekta-shell-%{safe_version}
 
 %build
 %cmake_kf6 -DREKTA_DEFAULTS_FILE=%{_sysconfdir}/rekta-shell/defaults.json

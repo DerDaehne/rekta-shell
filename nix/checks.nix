@@ -701,6 +701,7 @@ in
                 cp ${../scripts/release.sh} scripts/release.sh
                 cp ${../packaging/version.sh} packaging/version.sh
                 cp ${../packaging/fedora/ci-check-tag.sh} packaging/fedora/ci-check-tag.sh
+                cp ${../packaging/fedora/ci-build.sh} packaging/fedora/ci-build.sh
                 cp ${../packaging/fedora/ci-safe-names.sh} packaging/fedora/ci-safe-names.sh
                 cp ${../packaging/fedora/rekta-shell.spec} packaging/fedora/rekta-shell.spec
                 chmod +x scripts/release.sh
@@ -723,6 +724,15 @@ in
                 git tag -l "v$(version tag)" | grep -Fx "v$(version tag)"
                 git check-ref-format "refs/tags/v$(version tag)"
                 sh packaging/fedora/ci-check-tag.sh "v$(version tag)"
+
+                # a snapshot's build directory and tarball keep to characters a QUrl leaves alone, as the tests build file URLs from the path
+                safe=rekta-shell-$(version safe)
+                rpmspec -P packaging/fedora/rekta-shell.spec 2>/dev/null > "$TMPDIR/expanded"
+                grep -Fx "cd '$safe'" "$TMPDIR/expanded"
+                grep -F "/$safe.tar.gz" "$TMPDIR/expanded"
+                grep -Fx 'version=$(sh packaging/version.sh safe)' packaging/fedora/ci-build.sh
+                grep -F -- '--prefix="rekta-shell-$version/" -o "$top/SOURCES/rekta-shell-$version.tar.gz"' packaging/fedora/ci-build.sh
+                printf %s "$safe" | grep -Ex '[A-Za-z0-9._-]+'
 
                 git commit -q --allow-empty -m work
                 RELEASE_STAMP=20261122.1900 release "$TMPDIR/notes" >/dev/null
