@@ -729,6 +729,7 @@ in
                 safe=rekta-shell-$(version safe)
                 rpmspec -P packaging/fedora/rekta-shell.spec 2>/dev/null > "$TMPDIR/expanded"
                 grep -Fx "cd '$safe'" "$TMPDIR/expanded"
+                grep -F "/archive/v$(version tag)/$safe.tar.gz" "$TMPDIR/expanded"
                 grep -F "/$safe.tar.gz" "$TMPDIR/expanded"
                 grep -Fx 'version=$(sh packaging/version.sh safe)' packaging/fedora/ci-build.sh
                 grep -F -- '--prefix="rekta-shell-$version/" -o "$top/SOURCES/rekta-shell-$version.tar.gz"' packaging/fedora/ci-build.sh

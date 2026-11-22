@@ -1,7 +1,7 @@
 Name:           rekta-shell
 Version:        0.1.5^20261122.1844git70775ee
 # A snapshot's Version is base^date.timegithash (Fedora's post-release snapshot); the git tag spells it base+date.time.hash
-%global tag_version %(echo %{version} | sed -e 's/\^/+/' -e 's/git/./')
+%global tag_version %(echo %{version} | tr '^' + | sed 's/git/./')
 # The build directory and tarball keep to characters QUrl leaves alone: it encodes the "^" of a snapshot, so a path holding one no longer names the file
 %global safe_version %(echo %{version} | sed 's/[^A-Za-z0-9._-]/./g')
 Release:        1%{?dist}
