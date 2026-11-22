@@ -534,8 +534,7 @@ TestCase {
         tile.forceActiveFocus();
         keyClick(data.key, data.modifiers);
         verify(menu.open);
-        keyClick(Qt.Key_End);
-        verify(windowRow().activeFocus, "End to fenster");
+        verify(windowRow().activeFocus, "the first row it may choose, as anheften says why it cannot");
         keyClick(Qt.Key_Return);
         compare(spy.count, 1);
         compare(spy.signalArguments[0][0].title, "a window");

@@ -1082,7 +1082,10 @@ FocusScope {
         sizeRows().forEach((row, k) => row.checked = Rules.pinSizes[k].columns === menuApp.columns && Rules.pinSizes[k].rows === menuApp.rows);
         menu.close(false);
         menu.control = tile;
-        menu.openAt(Math.max(0, menu.items().findIndex(item => !item.disabled)));
+        menu.openAt(0);
+        // Only an open menu's rows are shown, so the first one it may choose is found once it is open.
+        if (menu.focusedIndex() >= 0)
+            menu.focusAt(Math.max(0, menu.items().findIndex(item => !item.disabled)));
         const place = Placement.at(tile.mapToItem(start, at.x, at.y), menu.measured(), Qt.size(width, height));
         menu.x = place.x;
         menu.y = place.y;
