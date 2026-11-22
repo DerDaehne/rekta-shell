@@ -85,13 +85,6 @@ TestCase {
         compare(Tokens.color, Tokens.black);
     }
 
-    function test_a_theme_that_is_none_of_light_and_dark_follows_the_system() {
-        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
-        compare(Prefs.resolvedThemeFor("system"), "dark");
-        compare(Prefs.resolvedThemeFor("black"), "dark");
-        compare(Prefs.resolvedThemeFor("light"), "light");
-    }
-
     function test_reduced_motion_follows_the_system_live() {
         Prefs.systemReducedMotion = true;
         verify(Tokens.reducedMotion);

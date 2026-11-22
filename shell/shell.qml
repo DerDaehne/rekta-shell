@@ -54,12 +54,6 @@ ShellRoot {
         value: settingsFiles.value("ground")
     }
 
-    Binding {
-        target: Prefs
-        property: "theme"
-        value: settingsFiles.value("theme")
-    }
-
     Windows {
         id: running
     }

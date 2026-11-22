@@ -26,7 +26,7 @@ QtObject {
     // ponytail: no touch detection yet, so "auto" is compact (a fine pointer); detect touch screens when one appears.
     property bool systemHasTouch: false
 
-    readonly property string resolvedTheme: resolvedThemeFor(theme)
+    readonly property string resolvedTheme: theme !== "system" ? theme : systemColorScheme === Qt.ColorScheme.Dark ? "dark" : "light"
     // The black ground lies under the dark theme only; the light theme keeps its own (platforms.md:75).
     readonly property bool black: resolvedTheme === "dark" && ground === "black"
     readonly property string resolvedDensity: density === "comfortable" || density === "compact" ? density : systemHasTouch ? "comfortable" : "compact"
@@ -66,13 +66,6 @@ QtObject {
             value: prefs.reducedTransparency
         }
     ]
-
-    // The theme a setting resolves to; anything but light and dark follows the system.
-    function resolvedThemeFor(setting: string): string {
-        if (setting === "light" || setting === "dark")
-            return setting;
-        return systemColorScheme === Qt.ColorScheme.Dark ? "dark" : "light";
-    }
 
     // Whether a contrast setting means more contrast; anything but more and normal follows the system.
     function moreContrastFor(setting: string): bool {

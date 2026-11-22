@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 import Settings
+import "../Panel/LookAndFeel.js" as LookAndFeel
 
 // The settings app's window content: the places as a strip along the top (navigation.md, "Pivot"; rekta.css:240–288),
 // each place a page of groups in two columns, one on a narrow window. A place change turns like Rekta's, and back goes
@@ -16,6 +17,8 @@ FocusScope {
     required property var startFile
     // The installed apps as the Start lists them, {id, name, icon}; null until they have been read.
     property var apps: null
+    // The text of kdeglobals, which names Plasma's pair of light and dark global themes.
+    property string kdeglobals
     readonly property alias toaster: toaster
     // A name a row cuts off shows whole as its tip (OverflowTip).
     readonly property bool overflowTips: true
@@ -81,6 +84,8 @@ FocusScope {
     property int shownPlace: 0
     property var trail: []
 
+    // What the host runs: Plasma's tool for the colour scheme, a list of words.
+    signal run(var command)
     signal closeRequested
 
     function choiceIndex(key: string, choices: var): int {
@@ -117,22 +122,26 @@ FocusScope {
     }
 
     readonly property var themeSteps: ["hell", "dunkel", "schwarz"]
+    // The step the shell shows, or the one just chosen while Plasma has not yet switched its scheme.
+    readonly property int shownStep: chosenStep >= 0 ? chosenStep : themeStep()
+    property int chosenStep: -1
 
-    // The step the shell shows for a theme and ground: black only under the dark theme (platforms.md:75).
-    function themeStep(theme: string, ground: string): int {
-        if (Prefs.resolvedThemeFor(theme) === "light")
+    // The step of the system's scheme and the ground: black counts only while the scheme is dark, as the black ground
+    // lies under the dark theme alone (platforms.md:75).
+    function themeStep(): int {
+        if (Prefs.resolvedTheme === "light")
             return 0;
-        return ground === "black" ? 2 : 1;
+        return settings.value("ground") === "black" ? 2 : 1;
     }
 
-    // The default in words: the step it shows as, or the system's while it follows the system.
-    function themeWord(theme: string, ground: string): string {
-        return theme === "system" && ground !== "black" ? "wie das system" : themeSteps[themeStep(theme, ground)];
-    }
-
-    // "schwarz" is the dark theme on the black ground, two settings as in Rekta; the others leave the ground.
+    // The scheme is Plasma's, the same switch as the panel's "dunkel": the shell follows the system. "schwarz" is the
+    // dark scheme on the black ground; the others leave the ground.
     function chooseTheme(step: int) {
-        settings.set("theme", step === 0 ? "light" : "dark");
+        const dark = step !== 0;
+        const changesScheme = dark !== (Prefs.resolvedTheme === "dark");
+        chosenStep = changesScheme ? step : -1;
+        if (changesScheme)
+            run(LookAndFeel.command(dark, kdeglobals));
         settings.set("ground", step === 2 ? "black" : "normal");
     }
 
@@ -232,16 +241,16 @@ FocusScope {
                 label: "thema"
                 hint: "schwarz legt das dunkle thema auf #000000, für oled-bildschirme; im hellen thema bleibt der eigene grund."
                 problem: view.problem
-                presetWord: view.settings.differs("theme") || view.settings.differs("ground") ? view.themeWord(view.settings.preset("theme"), view.settings.preset("ground")) : ""
+                presetWord: view.settings.differs("ground") ? (view.settings.preset("ground") === "black" ? "schwarz" : "nicht schwarz") : ""
 
                 Segments {
                     objectName: "theme"
                     disabledReason: view.disabledReason
                     options: view.themeSteps
-                    currentIndex: view.themeStep(view.settings.value("theme"), view.settings.value("ground"))
+                    currentIndex: view.shownStep
                     onActivated: index => {
                         view.chooseTheme(index);
-                        currentIndex = Qt.binding(() => view.themeStep(view.settings.value("theme"), view.settings.value("ground")));
+                        currentIndex = Qt.binding(() => view.shownStep);
                     }
                 }
             }
@@ -360,6 +369,22 @@ FocusScope {
         Hint {
             text: "kommt"
         }
+    }
+
+    // The step stands until Plasma has switched, or for as long as a switch may take.
+    Connections {
+        target: Prefs
+
+        function onResolvedThemeChanged() {
+            view.chosenStep = -1;
+        }
+    }
+
+    Timer {
+        // Plasma applies a global theme in about a second; a refused switch leaves the shown step as the system has it.
+        interval: 3000
+        running: view.chosenStep >= 0
+        onTriggered: view.chosenStep = -1
     }
 
     PlaceTurn {

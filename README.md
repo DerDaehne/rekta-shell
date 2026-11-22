@@ -165,7 +165,7 @@ what you see on screen.
 
 ### Make it yours
 
-- "rekta einstellungen", the settings app: the theme (light, dark or black), more contrast, less transparency, the tile
+- "rekta einstellungen", the settings app: the theme (light, dark or black; light and dark switch Plasma's colour scheme like the panel's "dark"), more contrast, less transparency, the tile
   echo on the background, what Escape does in the search, the pinned apps and whether
   "zuletzt" shows.
 - More contrast makes every text pair 7:1 and the glass opaque; less transparency turns

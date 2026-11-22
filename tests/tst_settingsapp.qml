@@ -31,10 +31,16 @@ TestCase {
         id: hostComponent
 
         Item {
+            id: hostRoot
+
             property alias view: inner
             property alias app: appSettings
             property alias shell: shellSettings
             property alias backdrop: ground
+            property var runs: []
+            property string kdeglobals: ""
+            // Plasma as it answers the tool: the system's scheme follows the theme asked for.
+            property bool daemon: true
 
             width: 900
             height: 600
@@ -68,12 +74,6 @@ TestCase {
                 value: shellSettings.value("ground")
             }
 
-            Binding {
-                target: Prefs
-                property: "theme"
-                value: shellSettings.value("theme")
-            }
-
             Layers {
                 id: shellSettings
             }
@@ -95,6 +95,12 @@ TestCase {
                 anchors.fill: parent
                 settings: appSettings
                 startFile: pins
+                kdeglobals: hostRoot.kdeglobals
+                onRun: command => {
+                    hostRoot.runs.push(command);
+                    if (hostRoot.daemon)
+                        Prefs.systemColorScheme = command[2].includes("dark") ? Qt.ColorScheme.Dark : Qt.ColorScheme.Light;
+                }
             }
         }
     }
@@ -146,7 +152,7 @@ TestCase {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
         for (const theme of ["light", "dark", "black", "black-contrast"]) {
-            host.app.set("theme", theme === "light" ? "light" : "dark");
+            Prefs.systemColorScheme = theme === "light" ? Qt.ColorScheme.Light : Qt.ColorScheme.Dark;
             host.app.set("ground", theme.startsWith("black") ? "black" : "normal");
             host.app.set("contrast", theme === "black-contrast" ? "more" : "normal");
             for (const columns of [2, 1]) {
@@ -400,7 +406,7 @@ TestCase {
         verify(segments.parent.parent.y + segments.parent.parent.height < control("contrast").parent.parent.y);
     }
 
-    function test_the_theme_shows_the_step_the_shell_has() {
+    function test_the_theme_shows_the_step_the_system_and_the_ground_make() {
         Prefs.systemColorScheme = Qt.ColorScheme.Light;
         compare(control("theme").currentIndex, 0, "a light system");
         Prefs.systemColorScheme = Qt.ColorScheme.Dark;
@@ -408,49 +414,109 @@ TestCase {
         host.app.userText = '{"version":1,"ground":"black"}';
         compare(control("theme").currentIndex, 2, "black over a dark system");
         Prefs.systemColorScheme = Qt.ColorScheme.Light;
-        compare(control("theme").currentIndex, 0, "black waits under a light theme");
+        compare(control("theme").currentIndex, 0, "black waits under a light system: the ground applies only while dark");
     }
 
-    function test_choosing_schwarz_writes_the_dark_theme_and_the_black_ground_and_the_shell_follows_at_once() {
+    function test_the_theme_follows_a_scheme_change_from_outside_live() {
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
+        compare(control("theme").currentIndex, 1);
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        compare(control("theme").currentIndex, 0);
+        compare(host.runs.length, 0, "a change from outside runs nothing");
+    }
+
+    function test_choosing_dunkel_on_a_light_system_asks_plasma_for_the_dark_theme_and_writes_the_normal_ground() {
+        host.kdeglobals = "[KDE]\nDefaultDarkLookAndFeel=org.example.dark-night\nDefaultLightLookAndFeel=org.example.light-day\n";
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        control("theme").choose(1);
+        compare(host.runs.length, 1);
+        compare(host.runs[0], ["plasma-apply-lookandfeel", "--apply", "org.example.dark-night"]);
+        compare(written().ground, "normal");
+        compare(Tokens.theme, "dark", "the shell follows the system");
+        compare(control("theme").currentIndex, 1);
+    }
+
+    function test_choosing_the_step_the_system_already_has_runs_nothing() {
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
         control("theme").choose(2);
-        compare(written().theme, "dark");
+        compare(host.runs.length, 0);
+        compare(written().ground, "black");
+        control("theme").choose(1);
+        compare(host.runs.length, 0);
+        compare(written().ground, "normal");
+    }
+
+    function test_choosing_schwarz_on_a_light_system_asks_for_dark_and_writes_the_black_ground() {
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        control("theme").choose(2);
+        compare(host.runs.length, 1);
+        compare(host.runs[0][2], "org.kde.breezedark.desktop");
         compare(written().ground, "black");
         verify(Prefs.black);
         compare(Tokens.color, Tokens.black);
         compare(control("theme").currentIndex, 2);
     }
 
-    function test_choosing_dunkel_after_schwarz_brings_the_normal_ground_back() {
-        control("theme").choose(2);
-        control("theme").choose(1);
-        compare(written().theme, "dark");
-        compare(written().ground, "normal");
-        compare(Tokens.color, Tokens.dark);
-    }
-
-    function test_choosing_hell_writes_the_light_theme_on_the_normal_ground() {
+    function test_choosing_hell_asks_for_the_light_theme_and_turns_the_black_ground_off() {
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
         control("theme").choose(2);
         control("theme").choose(0);
-        compare(written().theme, "light");
+        compare(host.runs.length, 1);
+        compare(host.runs[0][2], "org.kde.breeze.desktop");
         compare(written().ground, "normal");
+        verify(!Prefs.black);
         compare(Tokens.color, Tokens.light);
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
+        compare(Tokens.color, Tokens.dark, "the ground stays off when dark returns");
+    }
+
+    function test_the_chosen_step_stands_while_plasma_has_not_yet_switched() {
+        host.daemon = false;
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        control("theme").choose(1);
+        compare(control("theme").currentIndex, 1, "no snap back while the switch is on its way");
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
+        compare(control("theme").currentIndex, 1);
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        compare(control("theme").currentIndex, 0, "once Plasma has switched the system decides again");
+    }
+
+    function test_the_panels_dunkel_and_the_segments_are_one_setting_and_black_survives_the_round_trip() {
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
+        control("theme").choose(2);
+        Prefs.systemColorScheme = Qt.ColorScheme.Light;
+        compare(control("theme").currentIndex, 0, "dark to light shows hell");
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
+        compare(control("theme").currentIndex, 2, "back to dark shows the kept black ground, only while dark and black");
+        compare(Tokens.color, Tokens.black);
+        compare(host.runs.length, 0, "the panel is the one that switched, the segments ran nothing");
+    }
+
+    function test_the_segments_write_no_theme_key() {
+        control("theme").choose(2);
+        control("theme").choose(0);
+        control("contrast").activate();
+        verify(!("theme" in written()));
     }
 
     function test_more_contrast_in_the_app_under_schwarz_takes_the_black_contrast_colours() {
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
         control("theme").choose(2);
         control("contrast").activate();
+        compare(written().contrast, "more");
         compare(Tokens.color, Tokens.blackContrast);
     }
 
     function test_with_schwarz_set_in_nix_the_theme_shows_it_and_the_hint_names_that_default() {
-        host.app.defaultsText = '{"ground":"black","theme":"dark"}';
+        Prefs.systemColorScheme = Qt.ColorScheme.Dark;
+        host.app.defaultsText = '{"ground":"black"}';
         compare(control("theme").currentIndex, 2);
         verify(!hintOf("theme").includes("vorgabe"));
         control("theme").choose(1);
         verify(hintOf("theme").endsWith("vorgabe: schwarz."));
         host.app.defaultsText = "";
-        host.app.userText = '{"version":1,"theme":"dark"}';
-        verify(hintOf("theme").endsWith("vorgabe: wie das system."));
+        host.app.userText = '{"version":1,"ground":"black"}';
+        verify(hintOf("theme").endsWith("vorgabe: nicht schwarz."));
     }
 
     function test_the_aussehen_place_offers_more_contrast_in_farben_off_by_default() {
