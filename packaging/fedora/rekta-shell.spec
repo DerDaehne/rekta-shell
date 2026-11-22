@@ -1,5 +1,5 @@
 Name:           rekta-shell
-Version:        0.1.5
+Version:        0.1.5^20261122.1844git70775ee
 # A snapshot's Version is base^date.timegithash (Fedora's post-release snapshot); the git tag spells it base+date.time.hash
 %global tag_version %(echo %{version} | sed -e 's/\^/+/' -e 's/git/./')
 Release:        1%{?dist}
@@ -158,6 +158,8 @@ QMLTESTRUNNER=%{_qt6_bindir}/qmltestrunner $src/tests/run-qml-tests.sh $src
 %config(noreplace) %{_sysconfdir}/rekta-shell/defaults.json
 
 %changelog
+* Sun Nov 22 2026 rekta-shell maintainers - 0.1.5^20261122.1844git70775ee-1
+- Release 0.1.5+20261122.1844.70775ee
 * Sat Nov 21 2026 rekta-shell maintainers - 0.1.5-1
 - Release 0.1.5
 * Sat Nov 21 2026 rekta-shell maintainers - 0.1.4-1
