@@ -7,6 +7,13 @@ import Settings
 import "services"
 
 ShellRoot {
+    id: shell
+
+    // Set by the starter; a checkout run through qs alone has none.
+    readonly property string version: Quickshell.env("REKTA_VERSION") || "unknown"
+
+    Component.onCompleted: console.info(`rekta-shell ${version}`)
+
     SystemMotion {}
 
     // The splash fades onto the ground, the Start's surface ready over it; then the bar and the Start come in.
@@ -254,6 +261,7 @@ ShellRoot {
     }
 
     ActionsInterface {
+        shellVersion: shell.version
         sessionDesktop: Quickshell.env("XDG_SESSION_DESKTOP") ?? ""
         entries: actionRegistry.list
     }

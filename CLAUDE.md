@@ -342,3 +342,8 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   release without `<base>`, a new base `x.y.z` with it, which must be above the current one), commits, scans and
   tags with the notes as message (format in the script's header); it never pushes, it prints the two pushes.
   Stable releases (`1.0.0` and later) are set by the maintainer only.
+- The shell knows its version from the spec's `Version` alone: CMake takes the base for `project(VERSION)` and the
+  tag-form string for `REKTA_VERSION` (the flake appends `+<commit>` or `+<commit>-dirty` through
+  `REKTA_VERSION_SUFFIX`, as its build has no `.git`); the starters put it into `rekta-shell --version` and into the
+  environment, the shell logs `rekta-shell <version>` at start and offers it as the property `ShellVersion` of
+  `rekta.Actions1`. A checkout run through `qs` reports `unknown`.

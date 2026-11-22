@@ -2,6 +2,13 @@
 { lib }:
 {
   options = {
+    versionSuffix = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      internal = true;
+      description = "Build metadata behind the version the package reports, such as +abc1234; the flake sets it to its own commit.";
+    };
+
     installFont = lib.mkOption {
       type = lib.types.bool;
       default = true;

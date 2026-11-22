@@ -21,20 +21,28 @@
         "x86_64-linux"
         "aarch64-linux"
       ];
+      # The flake has no .git inside its build: the commit comes from here.
+      versionSuffix = "+${self.shortRev or self.dirtyShortRev or "unknown"}";
       eachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
       # Builds against the importing configuration's nixpkgs, so Quickshell shares Qt with its Plasma.
       overlays.default = final: _prev: {
-        rekta-shell = final.callPackage ./nix/package.nix { };
+        rekta-shell = final.callPackage ./nix/package.nix { inherit versionSuffix; };
       };
 
       # Opt-in: importing either module changes nothing until programs.rekta-shell.enable is set.
-      nixosModules.default = ./nix/nixos-module.nix;
-      homeManagerModules.default = ./nix/home-module.nix;
+      nixosModules.default = {
+        imports = [ ./nix/nixos-module.nix ];
+        programs.rekta-shell.versionSuffix = nixpkgs.lib.mkDefault versionSuffix;
+      };
+      homeManagerModules.default = {
+        imports = [ ./nix/home-module.nix ];
+        programs.rekta-shell.versionSuffix = nixpkgs.lib.mkDefault versionSuffix;
+      };
 
       packages = eachSystem (pkgs: {
-        rekta-shell = pkgs.callPackage ./nix/package.nix { };
+        rekta-shell = pkgs.callPackage ./nix/package.nix { inherit versionSuffix; };
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
         rekta-design-dist = pkgs.callPackage ./nix/rekta-design-dist.nix { src = rekta-design; };
         # The QML tests once more, keeping the contact sheets they render; never part of the flake check.

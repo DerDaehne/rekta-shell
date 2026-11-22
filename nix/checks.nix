@@ -617,6 +617,21 @@ in
         touch $out
       '';
 
+  # The built version comes from the spec's base plus the commit, and both starters hand it to the shell.
+  built-version-follows-the-spec = pkgs.runCommand "rekta-shell-built-version-follows-the-spec" { } ''
+    base=$(sh ${../packaging/version.sh} base ${../packaging/fedora/rekta-shell.spec})
+    test -n "$base"
+    version=$(${rekta-shell}/bin/rekta-shell --version)
+    echo "$version"
+    case $version in
+      "rekta-shell $base+"?*) ;;
+      *) echo "expected 'rekta-shell $base+<commit>', got '$version'" >&2; exit 1 ;;
+    esac
+    grep -F "REKTA_VERSION=\"${"$"}{version#rekta-shell }\"" ${rekta-shell}/bin/.rekta-shell-wrapped
+    grep -F "REKTA_VERSION=\"${"$"}{version#rekta-shell }\"" ${rekta-shell}/bin/.rekta-settings-wrapped
+    touch $out
+  '';
+
   # The release script keeps the base and orders session releases for dnf; rpm's own comparison is the judge.
   release-schema =
     pkgs.runCommand "rekta-shell-release-schema"

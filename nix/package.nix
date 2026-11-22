@@ -9,6 +9,8 @@
   gnugrep,
   # Settings from the Nix configuration, which the shell takes as its defaults; the user's settings.json wins over them.
   defaults ? { },
+  # The build's commit, as build metadata behind the spec's base: "+abc1234", "+abc1234-dirty".
+  versionSuffix ? "",
 }:
 
 # The QML is written against Quickshell 0.3; a new minor or major must be adopted on purpose.
@@ -36,6 +38,8 @@ stdenv.mkDerivation {
     root = ../.;
     fileset = lib.fileset.unions [
       ../CMakeLists.txt
+      ../packaging/version.sh
+      ../packaging/fedora/rekta-shell.spec
       ../shell
       ../session
       ../settings
@@ -54,6 +58,7 @@ stdenv.mkDerivation {
   dontWrapQtApps = true;
 
   cmakeFlags = [
+    "-DREKTA_VERSION_SUFFIX=${versionSuffix}"
     "-DQUICKSHELL=${lib.getExe quickshell}"
     "-DKWIN_WAYLAND_WRAPPER=${kdePackages.kwin}/bin/kwin_wayland_wrapper"
     "-DKDED6=${kdePackages.kded}/bin/kded6"

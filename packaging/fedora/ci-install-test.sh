@@ -25,3 +25,5 @@ rpm -q quickshell | grep -E '^quickshell-0\.3\.'
 rpm -q --requires rekta-shell | grep -Fx "kwin-libs(x86-64) = $(rpm -q --qf '%{version}' kwin-libs)"
 # The package is the spec's version, snapshot included.
 test "$(rpm -q --qf '%{version}' rekta-shell)" = "$(sh packaging/version.sh rpm)"
+# The shell reports the package's version, in the form of the tag.
+test "$(rekta-shell --version)" = "rekta-shell $(sh packaging/version.sh tag)"

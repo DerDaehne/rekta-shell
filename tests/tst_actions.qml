@@ -135,6 +135,7 @@ TestCase {
         ActionsInterface {
             sessionDesktop: ""
             entries: testCase.registry?.list ?? []
+            shellVersion: "0.1.5+20261122.1830.abc1234"
         }
     }
 
@@ -1060,6 +1061,16 @@ TestCase {
         stopProvider();
     }
 
+    function test_shell_version_is_the_one_the_shell_was_started_with_and_can_only_be_read() {
+        exportFor("rekta");
+        compare(callShell("org.freedesktop.DBus.Properties", "Get", [iface, "ShellVersion"]), {
+            signature: "v",
+            values: ["0.1.5+20261122.1830.abc1234"],
+            error: ""
+        });
+        compare(callShell("org.freedesktop.DBus.Properties", "Set", [iface, "ShellVersion", "x"]).error, "org.freedesktop.DBus.Error.PropertyReadOnly");
+    }
+
     function test_version_is_one_and_can_only_be_read() {
         exportFor("rekta");
         compare(callShell("org.freedesktop.DBus.Properties", "Get", [iface, "Version"]), {
@@ -1070,10 +1081,12 @@ TestCase {
         const all = callShell("org.freedesktop.DBus.Properties", "GetAll", [iface]);
         compare(all.signature, "a{sv}");
         compare(all.values, [{
-                Version: 1
+                Version: 1,
+                ShellVersion: "0.1.5+20261122.1830.abc1234"
             }]);
         compare(counterpart.replyVariantTypes, {
-            Version: "uint"
+            Version: "uint",
+            ShellVersion: "QString"
         });
         const xml = callShell("org.freedesktop.DBus.Introspectable", "Introspect", []).values[0];
         verify(/<property name="Version" type="u" access="read">\s*<annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="const"\/>/.test(xml), xml);

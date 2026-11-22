@@ -13,6 +13,8 @@ QtObject {
     required property string sessionDesktop
     // As the registry (Actions.list) has them.
     required property var entries
+    // The shell's version as its starter was built with it.
+    property string shellVersion: ""
     property bool exported: false
     // What ListActions answered when ActionsChanged was last sent, as JSON.
     property string announced: ""
@@ -87,6 +89,8 @@ QtObject {
             return invoke(args[0], args[1]);
         case "Version":
             return version;
+        case "ShellVersion":
+            return shellVersion;
         }
         throw new Error(`${member} is not part of ${interfaceName}`);
     }
@@ -117,6 +121,9 @@ QtObject {
               </method>
               <signal name="ActionsChanged"/>
               <property name="Version" type="u" access="read">
+                <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="const"/>
+              </property>
+              <property name="ShellVersion" type="s" access="read">
                 <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="const"/>
               </property>
             </interface>`);
