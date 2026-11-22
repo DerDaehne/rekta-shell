@@ -4130,6 +4130,11 @@ TestCase {
         scene.height = 400;
         showSettled(0);
         const scroller = named("scroller");
+        const branch = control("bluetoothBranch");
+        control("chooseBluetoothDevice").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Return);
+        verify(branch.expanded, "the devices unfolded");
+        tryVerify(() => !branch.revealing, 1000, "and scrolled into view");
         const dark = control("dark");
         const ton = control("soundTile");
         ton.forceActiveFocus(Qt.TabFocusReason);
@@ -4162,6 +4167,7 @@ TestCase {
         compare(ton.mapToItem(scene, 0, 0), tonAt, "the same place");
         compare(dark.mapToItem(scene, 0, 0), darkAt);
         verify(scroller.enabled && dark.enabled);
+        verify(branch.expanded, "and what it covered as it was: the devices still unfolded");
     }
 
     function test_a_level_longer_than_its_room_scrolls() {

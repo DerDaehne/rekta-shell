@@ -90,10 +90,10 @@ Item {
     }
 
     // Unfolded by a pointer it may hold no focus, yet Escape folds it before anything behind it sees the key, and the
-    // focus stays where it is; a sheet or menu over it is nearer (navigation.md, "Who gets a key"). Untyped, so a test
-    // can hand it a key.
+    // focus stays where it is; a sheet, a menu or a level over it is nearer (navigation.md, "Who gets a key"): covered,
+    // it is disabled. Untyped, so a test can hand it a key.
     function foldOnEscape(event: var, focusItem: Item): bool {
-        if (!expanded || event.key !== Qt.Key_Escape || KeyLayers.surfaces.length > 0 || focusItem?.Window.window !== Window.window)
+        if (!expanded || !enabled || event.key !== Qt.Key_Escape || KeyLayers.surfaces.length > 0 || focusItem?.Window.window !== Window.window)
             return false;
         collapse();
         return true;
