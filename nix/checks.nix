@@ -1,7 +1,9 @@
 { pkgs, self }:
 
 let
-  rekta-shell = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
+  rekta-shell = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell-unversioned;
+  # The package users get: the same build with the commit behind its version.
+  versioned = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
   rekta-qmllint = pkgs.callPackage ./qmllint.nix { inherit rekta-shell; };
   # The tests import the shell's directories by relative path, so both stand side by side here.
   qml = lib.fileset.toSource {
@@ -491,6 +493,7 @@ in
       a: !a.assertion && lib.hasInfix "plasma6" a.message
     ) withoutPlasma.assertions) "the NixOS module accepts a system without Plasma 6";
     pkgs.runCommand "rekta-shell-nixos-module" { } ''
+      test "$(${enabled.programs.rekta-shell.package}/bin/rekta-shell --version)" = "$(${versioned}/bin/rekta-shell --version)"
       # The wrapper names the package's defaults file, and the option's value stands in it.
       names_defaults() {
         if ! grep -q "REKTA_DEFAULTS=.$1/share/rekta-shell/defaults.json." "$1/bin/.rekta-shell-wrapped" ||
@@ -504,8 +507,8 @@ in
           enabled.environment.etc."systemd/user".source
         }/$unit || { echo "the enabled module leaves $unit out of /etc/systemd/user" >&2; exit 1; }
       done
-      names_defaults ${enabled.programs.rekta-shell.package} solid
-      names_defaults ${(withBackground "rekta").programs.rekta-shell.package} rekta
+      names_defaults ${(enabled.programs.rekta-shell.package).unversioned} solid
+      names_defaults ${((withBackground "rekta").programs.rekta-shell.package).unversioned} rekta
       if grep -q density ${enabled.programs.rekta-shell.package}/share/rekta-shell/defaults.json; then
         echo "the module names a density without being asked to" >&2
         exit 1
@@ -535,9 +538,9 @@ in
       profile=${
         (homeConfig [
           { programs.rekta-shell.enable = true; }
-        ]).programs.rekta-shell.package
+        ]).programs.rekta-shell.package.unversioned
       }
-      system=${enabled.programs.rekta-shell.package}
+      system=${enabled.programs.rekta-shell.package.unversioned}
       for package in $profile $system; do
         grep -q "REKTA_DEFAULTS=.$system/share/rekta-shell/defaults.json." $package/bin/.rekta-settings-wrapped || {
           echo "$package/bin/rekta-settings does not name the system's defaults.json" >&2
@@ -588,7 +591,10 @@ in
     assert lib.assertMsg (
       !removedOptionStops (homeConfig [ ]).assertions
     ) "the home-manager module stops a build that sets no start tempo";
-    pkgs.runCommand "rekta-shell-home-module" { } "touch $out";
+    pkgs.runCommand "rekta-shell-home-module" { } ''
+      test "$(${enabled.programs.rekta-shell.package}/bin/rekta-shell --version)" = "$(${versioned}/bin/rekta-shell --version)"
+      touch $out
+    '';
 
   # The Fedora VM's source ISO must list exactly the tracked files, whatever else lies in the checkout.
   fedora-source-iso =
@@ -617,18 +623,30 @@ in
         touch $out
       '';
 
-  # The built version comes from the spec's base plus the commit, and both starters hand it to the shell.
+  # The built version comes from the spec's base plus the commit, in the package's name, its programs and the shell's
+  # unit alike; the cached build under it knows only the spec.
   built-version-follows-the-spec = pkgs.runCommand "rekta-shell-built-version-follows-the-spec" { } ''
     base=$(sh ${../packaging/version.sh} base ${../packaging/fedora/rekta-shell.spec})
     test -n "$base"
-    version=$(${rekta-shell}/bin/rekta-shell --version)
+    version=$(${versioned}/bin/rekta-shell --version)
     echo "$version"
     case $version in
       "rekta-shell $base+"?*) ;;
       *) echo "expected 'rekta-shell $base+<commit>', got '$version'" >&2; exit 1 ;;
     esac
-    grep -F "REKTA_VERSION=\"${"$"}{version#rekta-shell }\"" ${rekta-shell}/bin/.rekta-shell-wrapped
-    grep -F "REKTA_VERSION=\"${"$"}{version#rekta-shell }\"" ${rekta-shell}/bin/.rekta-settings-wrapped
+    case ${versioned} in
+      *"-rekta-shell-$base+"?*) ;;
+      *) echo "the store name ${versioned} does not carry $base and the commit" >&2; exit 1 ;;
+    esac
+    case ${rekta-shell} in
+      *"-rekta-shell-$base"|*"-rekta-shell-$base+"*) ;;
+      *) echo "the store name ${rekta-shell} does not carry $base" >&2; exit 1 ;;
+    esac
+    grep -F "REKTA_VERSION='${"$"}{version#rekta-shell }'" ${versioned}/bin/rekta-shell
+    grep -F "REKTA_VERSION='${"$"}{version#rekta-shell }'" ${versioned}/bin/rekta-settings
+    grep -Fx "ExecStart=${versioned}/bin/rekta-shell" ${versioned}/lib/systemd/user/rekta-shell.service
+    # The cached build, started by hand, reports the spec's version alone.
+    test "$(${rekta-shell}/bin/rekta-shell --version)" = "rekta-shell $(sh ${../packaging/version.sh} tag ${../packaging/fedora/rekta-shell.spec})"
     touch $out
   '';
 

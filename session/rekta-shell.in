@@ -1,7 +1,9 @@
 #!/bin/sh
 # Only this starter lets the shell start apps for real; run from a checkout it only logs them.
-[ "${1:-}" = --version ] && { echo "rekta-shell @REKTA_VERSION@"; exit 0; }
+# A wrapper around it may set REKTA_VERSION to add what the build does not know, such as the flake's commit.
+REKTA_VERSION="${REKTA_VERSION:-@REKTA_VERSION@}"
+[ "${1:-}" = --version ] && { echo "rekta-shell $REKTA_VERSION"; exit 0; }
 export QML_IMPORT_PATH="@REKTA_SHELL_DIR@${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
-export REKTA_VERSION="@REKTA_VERSION@"
+export REKTA_VERSION
 export REKTA_SHELL_LAUNCH="${REKTA_SHELL_LAUNCH:-systemd}"@REKTA_DEFAULTS_EXPORT@
 exec @QUICKSHELL@ --path "@REKTA_SHELL_DIR@" "$@"

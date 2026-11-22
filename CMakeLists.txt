@@ -1,18 +1,12 @@
 cmake_minimum_required(VERSION 3.25)
 
-# The version has one source, the spec's Version (packaging/version.sh). A build outside a release, such as the flake's,
-# appends its commit to the base through REKTA_VERSION_SUFFIX.
-set(REKTA_VERSION_SUFFIX "" CACHE STRING "Build metadata behind the base, e.g. +abc1234, when the spec's version is not the build's")
+# The version has one source, the spec's Version (packaging/version.sh); the flake adds its commit outside this build.
 execute_process(COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/packaging/version.sh base
     OUTPUT_VARIABLE REKTA_VERSION_BASE OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
 execute_process(COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/packaging/version.sh tag
     OUTPUT_VARIABLE REKTA_VERSION_TAG OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
 project(rekta-shell VERSION ${REKTA_VERSION_BASE} LANGUAGES CXX)
-if(REKTA_VERSION_SUFFIX)
-    set(REKTA_VERSION ${REKTA_VERSION_BASE}${REKTA_VERSION_SUFFIX})
-else()
-    set(REKTA_VERSION ${REKTA_VERSION_TAG})
-endif()
+set(REKTA_VERSION ${REKTA_VERSION_TAG})
 
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})

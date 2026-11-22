@@ -20,9 +20,9 @@ in
       type = lib.types.package;
       # Built with this configuration's nixpkgs, so Quickshell shares Qt with Plasma. The same options and defaults as the
       # NixOS module's, so the profile's rekta-settings, which comes first in PATH, sees the same defaults.json.
-      default = pkgs.callPackage ./package.nix {
-        defaults = shared.defaultsOf cfg;
-        versionSuffix = cfg.versionSuffix;
+      default = pkgs.callPackage ./with-version.nix {
+        rekta-shell = pkgs.callPackage ./package.nix { defaults = shared.defaultsOf cfg; };
+        suffix = cfg.versionSuffix;
       };
       defaultText = lib.literalExpression "rekta-shell built with this configuration's pkgs";
       description = "The rekta-shell package.";

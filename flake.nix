@@ -28,7 +28,10 @@
     {
       # Builds against the importing configuration's nixpkgs, so Quickshell shares Qt with its Plasma.
       overlays.default = final: _prev: {
-        rekta-shell = final.callPackage ./nix/package.nix { inherit versionSuffix; };
+        rekta-shell = final.callPackage ./nix/with-version.nix {
+          rekta-shell = final.callPackage ./nix/package.nix { };
+          suffix = versionSuffix;
+        };
       };
 
       # Opt-in: importing either module changes nothing until programs.rekta-shell.enable is set.
@@ -42,7 +45,11 @@
       };
 
       packages = eachSystem (pkgs: {
-        rekta-shell = pkgs.callPackage ./nix/package.nix { inherit versionSuffix; };
+        rekta-shell-unversioned = pkgs.callPackage ./nix/package.nix { };
+        rekta-shell = pkgs.callPackage ./nix/with-version.nix {
+          rekta-shell = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell-unversioned;
+          suffix = versionSuffix;
+        };
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-shell;
         rekta-design-dist = pkgs.callPackage ./nix/rekta-design-dist.nix { src = rekta-design; };
         # The QML tests once more, keeping the contact sheets they render; never part of the flake check.

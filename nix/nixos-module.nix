@@ -18,9 +18,9 @@ in
     package = lib.mkOption {
       type = lib.types.package;
       # Built with this system's nixpkgs, so Quickshell shares Qt with its Plasma.
-      default = pkgs.callPackage ./package.nix {
-        defaults = shared.defaultsOf cfg;
-        versionSuffix = cfg.versionSuffix;
+      default = pkgs.callPackage ./with-version.nix {
+        rekta-shell = pkgs.callPackage ./package.nix { defaults = shared.defaultsOf cfg; };
+        suffix = cfg.versionSuffix;
       };
       defaultText = lib.literalExpression "rekta-shell built with this system's pkgs";
       description = "The rekta-shell package; it carries the session, its user units and the plasmashell drop-in.";
