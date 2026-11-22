@@ -13,8 +13,9 @@ import Rekta
 // of the facet in sight, Tab and ↑ ↓ move through the controls, and once the panel has gone the focus goes back. A sheet
 // a facet opens lies over the panel's ground (`sheets`); while one is open the panel keeps still. A press anywhere in
 // it hides a tip, as scrolling does.
-// What a facet keeps at hand stands at the panel's edge nearest the app bar (`edge`), below its scroll: the app bar is
-// at the bottom, so that is the bottom edge.
+// An area's level, which its opener tile in a facet opens, covers the panel below its head on the ground (`levels`): the
+// facet under it keeps its place and its scroll and takes no focus, press, hover or wheel. The back row, Escape and ←
+// from inside it, a change of facet and the panel going close it (states.md:260–275).
 FocusScope {
     id: sidePanel
 
@@ -45,8 +46,9 @@ FocusScope {
     default property alias facets: facetHolder.content
     // Where a facet's sheets stand: over the whole ground, pivot included.
     readonly property Item sheets: sheetHolder
-    // Where a facet's quick settings stand: out of its scroll, at the edge nearest the app bar.
-    readonly property Item edge: edgeHolder
+    // Where the levels of a facet's areas stand: the panel below its head, the room the facet's scroll fills.
+    readonly property Item levels: levelHolder
+    readonly property AreaLevel openLevel: Array.from(levelHolder.children).find(child => (child as AreaLevel)?.open) ?? null
     readonly property bool sheetOpen: Array.from(sheetHolder.children).some(child => child.open === true)
 
     // It has gone.
@@ -69,12 +71,17 @@ FocusScope {
         focusFirst();
     }
 
-    // Scrolls the facet so an item of it stands at the top, or to the top without one, and puts the focus on the item's
+    // Opens the level of an area, which stands as the panel comes in with it, as a first display does (motion.md:17); or
+    // scrolls the facet so an item of it stands at the top, or to the top without one, and puts the focus on the item's
     // first control. The facet lays itself out when it first shows, which moves the item and grows the content: the item
     // is kept at the top through the frames that change the content, and let go after two frames without a change or when
-    // a hand moves the view. An item that does not show leaves the view at the top; one at the edge is always in view and
-    // only takes the focus.
+    // a hand moves the view. An item that does not show leaves the view at the top.
     function reveal(item: Item) {
+        if (within(levelHolder, item)) {
+            closeLevels();
+            (item as AreaLevel).show();
+            return;
+        }
         const shown = item?.visible ?? false;
         revealed = shown && within(scroller, item) ? item : null;
         settledHeight = scroller.contentHeight;
@@ -222,10 +229,10 @@ FocusScope {
         item.Keys.forwardTo = [keyHook];
     }
 
-    // Focus that lands in the facet's scroll brings its control whole into view, ring included (rekta.css:50: focus
-    // scrolls clear of what is pinned; the scroll ends space-m above the edge).
+    // Focus that lands in the facet's scroll or a level brings its control whole into view, ring included (rekta.css:49–50:
+    // focus never lands under what is pinned).
     function revealFocus(item: Item) {
-        if (within(scroller, item))
+        if (within(scroller, item) || within(levelHolder, item))
             Reveal.intoView(item, item.height, Geometry.focusRingOffset + Geometry.focusRingWidth);
     }
 
@@ -238,10 +245,20 @@ FocusScope {
     function gone() {
         open = false;
         revealed = null;
+        closeLevels();
         // The focus goes back only to something that still shows (rekta.js:2916).
         if (memo.focused?.visible)
             memo.focused.forceActiveFocus();
         closed();
+    }
+
+    // Where the panel goes or the facet changes: the level is gone at once and leaves the focus where it is.
+    function closeLevels() {
+        for (const child of levelHolder.children) {
+            const level = child as AreaLevel;
+            if (level)
+                level.open = false;
+        }
     }
 
     function holds(item: Item): bool {
@@ -268,7 +285,9 @@ FocusScope {
             event.accepted = event.key === Qt.Key_Up || event.key === Qt.Key_Down;
             return;
         }
-        if (event.key === Qt.Key_Escape)
+        if ((event.key === Qt.Key_Escape || event.key === Qt.Key_Left) && within(openLevel, Window.activeFocusItem))
+            openLevel.leave();
+        else if (event.key === Qt.Key_Escape)
             close();
         else if (event.key === Qt.Key_Down || event.key === Qt.Key_Up)
             moveFocus(event.key === Qt.Key_Down);
@@ -375,7 +394,7 @@ FocusScope {
             height: parent.height
             color: Tokens.color.bg
             // Nothing in it paints over the hairline, as a sheet cuts its content off at its padding box (rekta.css:1085,
-            // :1120), not even the quick settings at the edge on their way in with a facet.
+            // :1120), not even a facet on its way in.
             clip: true
 
             // A place's strip, the nav level; at this width it takes the facet sizes (Pivot, compact).
@@ -391,6 +410,7 @@ FocusScope {
                 titles: sidePanel.titles
                 placeWidth: sidePanel.contentWidth
                 viewportHeight: sidePanel.height
+                onCurrentIndexChanged: sidePanel.closeLevels()
             }
 
             // A compact place's strip has a hairline below it (rekta.css:1166–1170).
@@ -408,10 +428,15 @@ FocusScope {
                 objectName: "scroller"
                 y: pivot.y + pivot.height + Geometry.hairline
                 width: parent.width
-                // Above the edge's quick settings, space-m from them as a sheet's parts are (rekta.css:1095).
-                height: (edgeHolder.height > 0 ? edgeHolder.y - Tokens.spaceM : parent.height - Tokens.spaceL) - y
+                // To the bottom edge: the sheet's padding there scrolls with its content (rekta.css:1085, :1119).
+                height: parent.height - y
                 contentWidth: width
-                contentHeight: facetHolder.height
+                contentHeight: facetHolder.height + Tokens.spaceL
+                // Under an open level the facet takes no focus, press or wheel, and a screen reader finds it unavailable.
+                // ponytail: unavailable, not hidden, as Qt Quick has no inert and a hidden facet would fold its branches
+                // and close its levels; a screen reader's review still lists it. Hide it once those close on the panel
+                // going rather than on hiding.
+                enabled: sidePanel.openLevel === null
                 interactive: contentHeight > height
                 boundsBehavior: Flickable.StopAtBounds
                 onContentHeightChanged: sidePanel.keepRevealedIfAny()
@@ -430,22 +455,20 @@ FocusScope {
                 }
             }
 
-            // On the sheet's padding at the bottom (rekta.css:1119); as tall as what shows in it. What stands here belongs to
-            // the facet in sight, so it comes in with it.
-            Item {
-                id: edgeHolder
+            // Over the facet's scroll, on the ground (`.rk-levels > * { background-color: bg }`, rekta.css:1140).
+            Rectangle {
+                id: levelHolder
 
-                readonly property Item shown: Array.from(children).find(child => child.visible) ?? null
+                objectName: "levels"
+                y: scroller.y
+                width: parent.width
+                height: parent.height - y
+                visible: sidePanel.openLevel !== null
+                color: Tokens.color.bg
 
-                objectName: "edge"
-                x: Tokens.spaceM
-                y: parent.height - Tokens.spaceL - height
-                width: sidePanel.contentWidth
-                height: shown?.implicitHeight ?? 0
-                opacity: facetHolder.entryOpacity
-                transform: Translate {
-                    objectName: "edgeShift"
-                    x: facetHolder.entryShift
+                // The facet under it is disabled, but Qt still hands a disabled item's hover handlers the pointer.
+                HoverHandler {
+                    blocking: true
                 }
             }
 

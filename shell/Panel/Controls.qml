@@ -4,17 +4,19 @@ import QtQuick
 import Rekta
 import State
 
-// The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons, never as
-// tiles (tiles.md: a tile never changes data). What a media player plays stands at the top while it plays; the groups
-// follow in a fixed order, ton, verbindungen, anzeige, sitzung; one without rows falls away. The states switched most,
-// "wlan", "bluetooth", "nicht stören" and "dunkel", are toggle buttons at the panel's edge nearest the app bar
-// (`edge`). The host runs what the rows ask for and feeds back the state they show. In ton each kind has two rows, a
-// select of its devices, then a button that mutes before the volume slider; between the output and the input each
-// stream another program plays has a row with a button and a slider of its own; in anzeige each display that can be
-// dimmed has a slider; in verbindungen the paired Bluetooth devices and the strongest wireless networks unfold below
-// their rows, up to five, and a level lists them all. A secured network the system does not know asks for its password
-// in a sheet.
-Column {
+// The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons. Its areas
+// are opener tiles in one grid at its foot, in a fixed order, ton then anzeige: a tile says how its area stands and
+// opens the area's level, which covers the panel below its head (states.md:224–275); a tile never changes data. What is
+// used most stands above the grid, from the top: what a media player plays while it plays, the output's mute button and
+// volume, each display's brightness, the states switched most ("wlan", "bluetooth", "nicht stören", "dunkel") as toggle
+// buttons, then the groups that have no tile, verbindungen and sitzung; one without rows falls away. The free space lies
+// between the two, and a panel taller than its room scrolls as one, the grid last. The host runs what the rows ask for
+// and feeds back the state they show. In ton each kind has two rows, a select of its devices, then a button that mutes
+// before the volume slider; between the output and the input each stream another program plays has a row with a button
+// and a slider of its own; in anzeige each display that can be dimmed has a slider; in verbindungen the paired
+// Bluetooth devices and the strongest wireless networks unfold below their rows, up to five, and a level lists them
+// all. A secured network the system does not know asks for its password in a sheet.
+Item {
     id: controls
 
     // Quickshell's BluetoothAdapterState and BluetoothDeviceState, as this module goes without Quickshell.
@@ -89,8 +91,8 @@ Column {
     property var wiredDevice: null
     // Where sheets stand: the host's surface over the panel.
     property Item sheets
-    // Where the quick settings stand: the host's edge nearest the app bar.
-    property Item edge
+    // Where the areas' levels stand: the host's panel below its head, the room this facet fills.
+    property Item levels
     readonly property bool bluetoothOn: bluetooth?.enabled ?? false
     readonly property bool wifiOn: networking?.wifiEnabled ?? false
     readonly property var networkList: wifiDevice?.networks.values ?? []
@@ -113,6 +115,11 @@ Column {
     property DoNotDisturb quiet: DoNotDisturb {}
     // The density as the shell has it: auto, comfortable or compact.
     property string density: "auto"
+    readonly property list<string> densityWords: ["automatisch", "bequem", "kompakt"]
+    // What each area's tile says of it (states.md:237–242): ton the output's name, "stumm" while it is muted, the input's
+    // without an output; anzeige the density.
+    readonly property string soundWord: output ? (output.audio?.muted ? "stumm" : deviceName(output)) : deviceName(input)
+    readonly property string displayWord: `dichte ${densityWords[Math.max(0, densities.indexOf(density))]}`
 
     // A command for the host to run on the session.
     signal run(var command)
@@ -209,7 +216,7 @@ Column {
         const rows = streamRows();
         const going = rows.filter(row => !ids.includes(row.nodeId));
         const coming = ids.filter(id => !rows.some(row => row.nodeId === id));
-        const staying = [...Array.from(soundGroup.rows), ...Array.from(controls.children)].filter(item => item instanceof Item && !going.includes(item));
+        const staying = Array.from(soundLevel.rows).filter(item => item instanceof Item && !going.includes(item));
         streamPresence.change(going, staying, () => showStreams(ids), () => streamRows().filter(row => coming.includes(row.nodeId)), coming.length);
     }
 
@@ -220,8 +227,7 @@ Column {
         }
         const shown = Array.from({ length: shownStreams.count }, (_, index) => shownStreams.get(index).nodeId);
         ids.filter(id => !shown.includes(id)).forEach(id => shownStreams.append({ nodeId: id }));
-        soundGroup.layOutNow();
-        controls.forceLayout();
+        soundLevel.layOutNow();
     }
 
     // On its way between connected and not; a connection that fails takes the device back to where it was.
@@ -301,13 +307,16 @@ Column {
     readonly property list<string> densities: ["auto", "comfortable", "compact"]
     // Where a status word of the app bar leads, by name; the energy profile, where it is offered, else its group.
     readonly property var places: ({
-            sound: soundGroup,
+            sound: soundLevel,
             connections: connectionsGroup,
             doNotDisturb: quietButton,
             power: powerRow.present ? powerRow : sessionGroup
         })
 
     width: parent ? parent.width : 0
+    // The room below the panel's head less the sheet's padding at its foot (rekta.css:1119): what stands above the grid,
+    // at least space-m free, then the grid (rekta.css:1141–1142).
+    implicitHeight: Math.max((levels?.height ?? 0) - Tokens.spaceL, above.height + Tokens.spaceM + areaGrid.height)
     onPlayingChanged: followStreams()
     Component.onCompleted: followStreams()
 
@@ -321,16 +330,416 @@ Column {
         objectName: "streamPresence"
     }
 
-    NowPlaying {
-        objectName: "nowPlaying"
-        choice: controls.choice
+    // What stands above the grid, from the top (states.md:252–259).
+    Column {
+        id: above
+
+        objectName: "above"
+        width: parent.width
+
+        NowPlaying {
+            objectName: "nowPlaying"
+            choice: controls.choice
+        }
+
+        // The sliders used most and the states switched most, a section without a heading (layout.md:76–96): space-xl
+        // above and below, space-m between its parts.
+        Column {
+            objectName: "quick"
+            width: parent.width
+            topPadding: Tokens.spaceXl
+            bottomPadding: Tokens.spaceXl
+            spacing: Tokens.spaceM
+
+            VolumeRow {
+                node: controls.output
+                kind: "output"
+                name: "ausgang"
+                glyph: "speaker"
+            }
+
+            Repeater {
+                model: controls.displays
+
+                BrightnessRow {}
+            }
+
+            // Each a toggle button (forms.md:54–69: wireless, do not disturb, dark appearance), in two columns space-s
+            // apart as a row of buttons is (rekta.css:363). One whose device is missing is gone. The details of wlan and
+            // bluetooth are their lists in verbindungen, unfolded with the focus on them; those of "nicht stören" are how
+            // long it lasts, unfolded below the buttons. Escape folds them and gives the focus back to the button
+            // (behaviour.md:836).
+            Column {
+                objectName: "toggles"
+                width: parent.width
+                spacing: Tokens.spaceS
+
+                Grid {
+                    id: quickSettings
+
+                    readonly property real cellWidth: (width - spacing) / 2
+
+                    objectName: "quickSettings"
+                    width: parent ? parent.width : 0
+                    columns: 2
+                    spacing: Tokens.spaceS
+
+                    ToggleButton {
+                        id: wifiButton
+
+                        objectName: "wifi"
+                        width: quickSettings.cellWidth
+                        visible: controls.networking !== null && controls.wifiDevice !== null
+                        icon: "wireless"
+                        text: "wlan"
+                        onWord: "an"
+                        offWord: "aus"
+                        value: controls.connectedNetwork?.name ?? ""
+                        checked: controls.wifiOn
+                        disabledReason: controls.networking?.wifiHardwareEnabled === false ? "funk gesperrt" : ""
+                        details: controls.wifiOn
+                        // It shows what the system has: a switch it did not take springs back.
+                        onToggled: {
+                            controls.wifiChosen(checked);
+                            checked = Qt.binding(() => controls.wifiOn);
+                        }
+                        onDetailsAsked: wifiBranch.expandFocused(wifiButton)
+                    }
+
+                    ToggleButton {
+                        id: bluetoothButton
+
+                        objectName: "bluetooth"
+                        width: quickSettings.cellWidth
+                        visible: controls.bluetooth !== null
+                        icon: "bluetooth"
+                        text: "bluetooth"
+                        onWord: "an"
+                        offWord: "aus"
+                        checked: controls.bluetoothOn
+                        disabledReason: controls.bluetooth?.state === Controls.Blocked ? "funk gesperrt" : ""
+                        details: true
+                        // It shows what the adapter has: a switch the system did not take springs back.
+                        onToggled: {
+                            controls.bluetoothChosen(checked);
+                            checked = Qt.binding(() => controls.bluetoothOn);
+                        }
+                        onDetailsAsked: bluetoothBranch.expandFocused(bluetoothButton)
+                    }
+
+                    // A plain press switches it on without an end; the details choose how long it lasts.
+                    ToggleButton {
+                        id: quietButton
+
+                        objectName: "doNotDisturb"
+                        width: quickSettings.cellWidth
+                        icon: "bell"
+                        text: "nicht stören"
+                        onWord: "an"
+                        offWord: "aus"
+                        value: controls.quiet.endWord
+                        checked: controls.quiet.on
+                        details: true
+                        onToggled: {
+                            controls.setDoNotDisturb(checked);
+                            checked = Qt.binding(() => controls.quiet.on);
+                        }
+                        onDetailsAsked: quietBranch.expandFocused(quietButton)
+                    }
+
+                    ToggleButton {
+                        id: darkButton
+
+                        objectName: "dark"
+                        width: quickSettings.cellWidth
+                        icon: "theme"
+                        text: "dunkel"
+                        onWord: "an"
+                        offWord: "aus"
+                        checked: controls.dark
+                        onToggled: controls.setDark(checked)
+                    }
+                }
+
+                // A press on a length switches it on at once with that end.
+                PanelBranch {
+                    id: quietBranch
+
+                    objectName: "quietBranch"
+                    opener: quietLength
+
+                    Segments {
+                        id: quietLength
+
+                        objectName: "quietLength"
+                        options: ["bis aus", "1 stunde", "bis morgen"]
+                        currentIndex: controls.quiet.chosen
+                        onActivated: index => {
+                            controls.quiet.choose(controls.quiet.choices[index]);
+                            currentIndex = Qt.binding(() => controls.quiet.chosen);
+                        }
+                    }
+                }
+            }
+        }
+
+        PanelGroup {
+            id: connectionsGroup
+
+            objectName: "connections"
+            title: "verbindungen"
+            levels: [
+                PanelLevel {
+                    id: networksLevel
+
+                    objectName: "networks"
+                    name: "netze"
+                    onActivated: row => controls.pressNetwork(row)
+
+                    Repeater {
+                        model: controls.ranked
+
+                        NetworkItem {}
+                    }
+                },
+                PanelLevel {
+                    id: bluetoothLevel
+
+                    objectName: "bluetoothDevices"
+                    name: "geräte"
+                    onActivated: row => controls.pressBluetooth(row)
+
+                    Repeater {
+                        model: controls.bluetoothDevices
+
+                        BluetoothDeviceItem {}
+                    }
+
+                    PairItem {
+                        objectName: "pairDevice"
+                    }
+                }
+            ]
+
+            PanelRow {
+                label: controls.connectedNetwork ? `netz · ${controls.connectedNetwork.name}` : "netz"
+                present: controls.wifiOn && controls.wifiDevice !== null
+
+                Keys.onPressed: event => event.accepted = wifiBranch.handleKey(event)
+
+                Item {
+                    implicitWidth: wifiState.implicitWidth + Tokens.spaceS + networksOpener.implicitWidth
+                    implicitHeight: networksOpener.implicitHeight
+
+                    StatusTag {
+                        id: wifiState
+
+                        objectName: "wifiState"
+                        anchors.verticalCenter: parent.verticalCenter
+                        status: controls.joining ? "warning" : controls.connectedNetwork ? "info" : ""
+                        word: controls.joining ? "wartet" : controls.connectedNetwork ? "verbunden" : "getrennt"
+                    }
+
+                    Button {
+                        id: networksOpener
+
+                        objectName: "chooseNetwork"
+                        x: wifiState.implicitWidth + Tokens.spaceS
+                        text: "wählen"
+                        Accessible.name: "netze wählen"
+
+                        ExpandedState {
+                            target: networksOpener
+                            expanded: wifiBranch.expanded
+                        }
+                        onClicked: wifiBranch.toggle()
+                    }
+                }
+            }
+
+            PanelBranch {
+                id: wifiBranch
+
+                objectName: "wifiBranch"
+                opener: networksOpener
+                onActivated: row => {
+                    if (row === allNetworksRow)
+                        networksLevel.show(networksOpener);
+                    else
+                        controls.pressNetwork(row);
+                }
+
+                Empty {
+                    objectName: "noNetworks"
+                    visible: controls.ranked.length === 0
+                    width: parent.width
+                    text: "keine netze gefunden, die suche läuft"
+                }
+
+                Repeater {
+                    model: controls.networksInline
+
+                    NetworkItem {}
+                }
+
+                MenuItem {
+                    id: allNetworksRow
+
+                    objectName: "allNetworks"
+                    visible: controls.ranked.length > controls.inlineNetworkLimit
+                    text: "alle netze …"
+                    opensLevel: true
+                    activeFocusOnTab: true
+                }
+            }
+
+            PanelRow {
+                label: "kabel"
+                present: controls.wiredDevice !== null
+
+                StatusTag {
+                    objectName: "wiredState"
+                    status: controls.wiredDevice?.connected ? "info" : ""
+                    word: controls.wiredDevice?.connected ? "verbunden" : "getrennt"
+                }
+            }
+
+            PanelRow {
+                label: `geräte · ${controls.bluetoothDevices.filter(device => device.connected).length} verbunden`
+                present: controls.bluetooth !== null
+
+                Keys.onPressed: event => event.accepted = bluetoothBranch.handleKey(event)
+
+                Button {
+                    id: devicesOpener
+
+                    objectName: "chooseBluetoothDevice"
+                    text: "wählen"
+                    Accessible.name: "geräte wählen"
+
+                    ExpandedState {
+                        target: devicesOpener
+                        expanded: bluetoothBranch.expanded
+                    }
+                    onClicked: bluetoothBranch.toggle()
+                }
+            }
+
+            PanelBranch {
+                id: bluetoothBranch
+
+                objectName: "bluetoothBranch"
+                opener: devicesOpener
+                onActivated: row => {
+                    if (row === allDevicesRow)
+                        bluetoothLevel.show(devicesOpener);
+                    else
+                        controls.pressBluetooth(row);
+                }
+
+                Repeater {
+                    model: controls.devicesInline
+
+                    BluetoothDeviceItem {}
+                }
+
+                MenuItem {
+                    id: allDevicesRow
+
+                    objectName: "allDevices"
+                    visible: controls.bluetoothDevices.length > controls.inlineDeviceLimit
+                    text: "alle geräte …"
+                    opensLevel: true
+                    activeFocusOnTab: true
+                }
+
+                PairItem {
+                    objectName: "pairDeviceInline"
+                }
+            }
+        }
+
+        PanelGroup {
+            id: sessionGroup
+
+            objectName: "session"
+            title: "sitzung"
+
+            PanelRow {
+                id: powerRow
+
+                label: "energieprofil"
+                present: controls.hasPowerProfiles
+
+                Segments {
+                    id: profiles
+
+                    objectName: "powerProfile"
+                    options: controls.hasPerformanceProfile ? ["sparen", "ausgewogen", "leistung"] : ["sparen", "ausgewogen"]
+                    currentIndex: controls.powerProfile
+                    onActivated: index => controls.powerProfileChosen(index)
+                }
+            }
+
+            PanelRow {
+                Button {
+                    objectName: "lock"
+                    text: "sperren"
+                    onClicked: controls.lockAsked()
+                }
+            }
+
+            PanelRow {
+                Button {
+                    objectName: "sessionActions"
+                    text: "sitzung …"
+                    onClicked: controls.sessionAsked()
+                }
+            }
+        }
     }
 
-    PanelGroup {
-        id: soundGroup
+    // One tab stop at the foot, inside the sheet's padding (states.md:246–251), two columns of half the content's width.
+    TileGrid {
+        id: areaGrid
+
+        objectName: "areas"
+        y: controls.height - height
+        width: parent.width
+        placeWidth: width
+        viewportHeight: controls.levels?.height ?? 0
+        oneTabStop: true
+
+        OpenerTile {
+            id: soundTile
+
+            objectName: "soundTile"
+            visible: controls.output !== null || controls.input !== null
+            glyph: "speaker"
+            name: "ton"
+            stateWord: controls.soundWord
+            onActivated: soundLevel.show()
+        }
+
+        // ponytail: `window` stands in for the display until Rekta has an icon for it; take Rekta's once it does.
+        OpenerTile {
+            id: displayTile
+
+            objectName: "displayTile"
+            glyph: "window"
+            name: "anzeige"
+            stateWord: controls.displayWord
+            onActivated: displayLevel.show()
+        }
+    }
+
+    AreaLevel {
+        id: soundLevel
 
         objectName: "sound"
-        title: "ton"
+        parent: controls.levels
+        name: "ton"
+        tile: soundTile
 
         DeviceRow {
             node: controls.output
@@ -369,185 +778,13 @@ Column {
         }
     }
 
-    PanelGroup {
-        id: connectionsGroup
+    AreaLevel {
+        id: displayLevel
 
-        objectName: "connections"
-        title: "verbindungen"
-        levels: [
-            PanelLevel {
-                id: networksLevel
-
-                objectName: "networks"
-                name: "netze"
-                onActivated: row => controls.pressNetwork(row)
-
-                Repeater {
-                    model: controls.ranked
-
-                    NetworkItem {}
-                }
-            },
-            PanelLevel {
-                id: bluetoothLevel
-
-                objectName: "bluetoothDevices"
-                name: "geräte"
-                onActivated: row => controls.pressBluetooth(row)
-
-                Repeater {
-                    model: controls.bluetoothDevices
-
-                    BluetoothDeviceItem {}
-                }
-
-                PairItem {
-                    objectName: "pairDevice"
-                }
-            }
-        ]
-
-        PanelRow {
-            label: controls.connectedNetwork ? `netz · ${controls.connectedNetwork.name}` : "netz"
-            present: controls.wifiOn && controls.wifiDevice !== null
-
-            Keys.onPressed: event => event.accepted = wifiBranch.handleKey(event)
-
-            Item {
-                implicitWidth: wifiState.implicitWidth + Tokens.spaceS + networksOpener.implicitWidth
-                implicitHeight: networksOpener.implicitHeight
-
-                StatusTag {
-                    id: wifiState
-
-                    objectName: "wifiState"
-                    anchors.verticalCenter: parent.verticalCenter
-                    status: controls.joining ? "warning" : controls.connectedNetwork ? "info" : ""
-                    word: controls.joining ? "wartet" : controls.connectedNetwork ? "verbunden" : "getrennt"
-                }
-
-                Button {
-                    id: networksOpener
-
-                    objectName: "chooseNetwork"
-                    x: wifiState.implicitWidth + Tokens.spaceS
-                    text: "wählen"
-                    Accessible.name: "netze wählen"
-
-                    ExpandedState {
-                        target: networksOpener
-                        expanded: wifiBranch.expanded
-                    }
-                    onClicked: wifiBranch.toggle()
-                }
-            }
-        }
-
-        PanelBranch {
-            id: wifiBranch
-
-            objectName: "wifiBranch"
-            opener: networksOpener
-            onActivated: row => {
-                if (row === allNetworksRow)
-                    networksLevel.show(networksOpener);
-                else
-                    controls.pressNetwork(row);
-            }
-
-            Empty {
-                objectName: "noNetworks"
-                visible: controls.ranked.length === 0
-                width: parent.width
-                text: "keine netze gefunden, die suche läuft"
-            }
-
-            Repeater {
-                model: controls.networksInline
-
-                NetworkItem {}
-            }
-
-            MenuItem {
-                id: allNetworksRow
-
-                objectName: "allNetworks"
-                visible: controls.ranked.length > controls.inlineNetworkLimit
-                text: "alle netze …"
-                opensLevel: true
-                activeFocusOnTab: true
-            }
-        }
-
-        PanelRow {
-            label: "kabel"
-            present: controls.wiredDevice !== null
-
-            StatusTag {
-                objectName: "wiredState"
-                status: controls.wiredDevice?.connected ? "info" : ""
-                word: controls.wiredDevice?.connected ? "verbunden" : "getrennt"
-            }
-        }
-
-        PanelRow {
-            label: `geräte · ${controls.bluetoothDevices.filter(device => device.connected).length} verbunden`
-            present: controls.bluetooth !== null
-
-            Keys.onPressed: event => event.accepted = bluetoothBranch.handleKey(event)
-
-            Button {
-                id: devicesOpener
-
-                objectName: "chooseBluetoothDevice"
-                text: "wählen"
-                Accessible.name: "geräte wählen"
-
-                ExpandedState {
-                    target: devicesOpener
-                    expanded: bluetoothBranch.expanded
-                }
-                onClicked: bluetoothBranch.toggle()
-            }
-        }
-
-        PanelBranch {
-            id: bluetoothBranch
-
-            objectName: "bluetoothBranch"
-            opener: devicesOpener
-            onActivated: row => {
-                if (row === allDevicesRow)
-                    bluetoothLevel.show(devicesOpener);
-                else
-                    controls.pressBluetooth(row);
-            }
-
-            Repeater {
-                model: controls.devicesInline
-
-                BluetoothDeviceItem {}
-            }
-
-            MenuItem {
-                id: allDevicesRow
-
-                objectName: "allDevices"
-                visible: controls.bluetoothDevices.length > controls.inlineDeviceLimit
-                text: "alle geräte …"
-                opensLevel: true
-                activeFocusOnTab: true
-            }
-
-            PairItem {
-                objectName: "pairDeviceInline"
-            }
-        }
-    }
-
-    PanelGroup {
         objectName: "display"
-        title: "anzeige"
+        parent: controls.levels
+        name: "anzeige"
+        tile: displayTile
 
         Repeater {
             model: controls.displays
@@ -560,52 +797,13 @@ Column {
 
             Segments {
                 objectName: "density"
-                options: ["automatisch", "bequem", "kompakt"]
+                options: controls.densityWords
                 currentIndex: controls.densities.indexOf(controls.density)
                 // The choice ends the binding; it comes back, so a refused write shows what the shell has.
                 onActivated: index => {
                     controls.densityChosen(controls.densities[index]);
                     currentIndex = Qt.binding(() => controls.densities.indexOf(controls.density));
                 }
-            }
-        }
-    }
-
-    PanelGroup {
-        id: sessionGroup
-
-        objectName: "session"
-        title: "sitzung"
-
-        PanelRow {
-            id: powerRow
-
-            label: "energieprofil"
-            present: controls.hasPowerProfiles
-
-            Segments {
-                id: profiles
-
-                objectName: "powerProfile"
-                options: controls.hasPerformanceProfile ? ["sparen", "ausgewogen", "leistung"] : ["sparen", "ausgewogen"]
-                currentIndex: controls.powerProfile
-                onActivated: index => controls.powerProfileChosen(index)
-            }
-        }
-
-        PanelRow {
-            Button {
-                objectName: "lock"
-                text: "sperren"
-                onClicked: controls.lockAsked()
-            }
-        }
-
-        PanelRow {
-            Button {
-                objectName: "sessionActions"
-                text: "sitzung …"
-                onClicked: controls.sessionAsked()
             }
         }
     }
@@ -679,126 +877,6 @@ Column {
         onSubmitted: (network, password) => controls.passwordChosen(network, password)
     }
 
-    // The states switched most, each a toggle button (forms.md:54–56: wireless, do not disturb, dark appearance), in two
-    // columns space-s apart as a row of buttons is (rekta.css:363). Unlike Rekta's groups (states.md:194) they have no
-    // heading and stand at the edge nearest the app bar, so the way from "steuerung" in the bar to them stays short. One
-    // whose device is missing is gone. The details of wlan and bluetooth are their lists in verbindungen, unfolded with
-    // the focus on them; those of "nicht stören" are how long it lasts, unfolded below the buttons. Escape folds them and
-    // gives the focus back to the button (behaviour.md:836).
-    Column {
-        objectName: "edgeSettings"
-        parent: controls.edge
-        width: parent ? parent.width : 0
-        visible: controls.visible
-        spacing: Tokens.spaceS
-
-        Grid {
-            id: quickSettings
-
-            readonly property real cellWidth: (width - spacing) / 2
-
-            objectName: "quickSettings"
-            width: parent ? parent.width : 0
-            columns: 2
-            spacing: Tokens.spaceS
-
-            ToggleButton {
-                id: wifiButton
-
-                objectName: "wifi"
-                width: quickSettings.cellWidth
-                visible: controls.networking !== null && controls.wifiDevice !== null
-                icon: "wireless"
-                text: "wlan"
-                onWord: "an"
-                offWord: "aus"
-                value: controls.connectedNetwork?.name ?? ""
-                checked: controls.wifiOn
-                disabledReason: controls.networking?.wifiHardwareEnabled === false ? "funk gesperrt" : ""
-                details: controls.wifiOn
-                // It shows what the system has: a switch it did not take springs back.
-                onToggled: {
-                    controls.wifiChosen(checked);
-                    checked = Qt.binding(() => controls.wifiOn);
-                }
-                onDetailsAsked: wifiBranch.expandFocused(wifiButton)
-            }
-
-            ToggleButton {
-                id: bluetoothButton
-
-                objectName: "bluetooth"
-                width: quickSettings.cellWidth
-                visible: controls.bluetooth !== null
-                icon: "bluetooth"
-                text: "bluetooth"
-                onWord: "an"
-                offWord: "aus"
-                checked: controls.bluetoothOn
-                disabledReason: controls.bluetooth?.state === Controls.Blocked ? "funk gesperrt" : ""
-                details: true
-                // It shows what the adapter has: a switch the system did not take springs back.
-                onToggled: {
-                    controls.bluetoothChosen(checked);
-                    checked = Qt.binding(() => controls.bluetoothOn);
-                }
-                onDetailsAsked: bluetoothBranch.expandFocused(bluetoothButton)
-            }
-
-            // A plain press switches it on without an end; the details choose how long it lasts.
-            ToggleButton {
-                id: quietButton
-
-                objectName: "doNotDisturb"
-                width: quickSettings.cellWidth
-                icon: "bell"
-                text: "nicht stören"
-                onWord: "an"
-                offWord: "aus"
-                value: controls.quiet.endWord
-                checked: controls.quiet.on
-                details: true
-                onToggled: {
-                    controls.setDoNotDisturb(checked);
-                    checked = Qt.binding(() => controls.quiet.on);
-                }
-                onDetailsAsked: quietBranch.expandFocused(quietButton)
-            }
-
-            ToggleButton {
-                id: darkButton
-
-                objectName: "dark"
-                width: quickSettings.cellWidth
-                icon: "theme"
-                text: "dunkel"
-                onWord: "an"
-                offWord: "aus"
-                checked: controls.dark
-                onToggled: controls.setDark(checked)
-            }
-        }
-
-        // A press on a length switches it on at once with that end.
-        PanelBranch {
-            id: quietBranch
-
-            objectName: "quietBranch"
-            opener: quietLength
-
-            Segments {
-                id: quietLength
-
-                objectName: "quietLength"
-                options: ["bis aus", "1 stunde", "bis morgen"]
-                currentIndex: controls.quiet.chosen
-                onActivated: index => {
-                    controls.quiet.choose(controls.quiet.choices[index]);
-                    currentIndex = Qt.binding(() => controls.quiet.chosen);
-                }
-            }
-        }
-    }
 
     // The default device of one kind in a select of the devices of that kind; choosing one asks for it as the default.
     // The select always shows the default PipeWire has, so a change from elsewhere shows at once. Its label stands above

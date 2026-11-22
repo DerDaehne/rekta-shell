@@ -3,6 +3,7 @@ SidePanel 1.0 SidePanel.qml
 PanelGroup 1.0 PanelGroup.qml
 PanelRow 1.0 PanelRow.qml
 PanelLevel 1.0 PanelLevel.qml
+AreaLevel 1.0 AreaLevel.qml
 Controls 1.0 Controls.qml
 NowPlaying 1.0 NowPlaying.qml
 LookAndFeel 1.0 LookAndFeel.js

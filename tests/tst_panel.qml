@@ -105,7 +105,7 @@ TestCase {
             onConnectionChosen: (device, connect) => connect ? device.connect() : device.disconnect()
             onPairingAsked: testCase.pairingAsked += 1
             sheets: panel.sheets
-            edge: panel.edge
+            levels: panel.levels
             // As the host has it, with the networks' own calls.
             onWifiChosen: on => {
                 testCase.wifiSwitches = [...testCase.wifiSwitches, on];
@@ -643,6 +643,25 @@ TestCase {
         waitForFrame(side);
     }
 
+    // The side panel settled on steuerung with an area's level open, as a press on its tile opens it, and drawn.
+    function showLevel(name: string): var {
+        showSettled(0);
+        const level = findChild(controls, name);
+        side.reveal(level);
+        verify(level.open, name);
+        waitForFrame(side);
+        return level;
+    }
+
+    // A control in the level of an area; the output's mute button and volume stand above the grid too.
+    function inLevel(level: string, name: string): var {
+        return findChild(findChild(controls, level), name);
+    }
+
+    function inSound(name: string): var {
+        return inLevel("sound", name);
+    }
+
     // The level panel, open and drawn.
     function showLevelPanel(): var {
         const panel = createTemporaryObject(levelPanelComponent, testCase);
@@ -693,12 +712,11 @@ TestCase {
         compare(facets.width, contentWidth);
         const scroller = findChild(side, "scroller");
         compare(scroller.width, panel.width - Geometry.hairline, "they scroll across the ground, so no focus ring at their edge is cut off");
-        const edge = findChild(side, "edge");
-        compare(edge.y + edge.height, 640 - Tokens.spaceL, "and at the bottom, below the quick settings");
-        compare(scroller.y + scroller.height, edge.y - Tokens.spaceM, "which stand space-m below the facet's scroll");
+        compare(scroller.y + scroller.height, 640, "down to the bottom edge");
+        compare(scroller.contentHeight, facets.height + Tokens.spaceL, "the sheet's padding at its foot scrolls with the facet");
         side.show(1);
-        compare(edge.height, 0, "meldungen keeps nothing at the edge");
-        compare(scroller.y + scroller.height, 640 - Tokens.spaceL, "and scrolls down to the padding");
+        compare(scroller.y + scroller.height, 640, "meldungen too");
+        compare(scroller.contentHeight, facets.height + Tokens.spaceL);
         scene.height = 400;
         compare(panel.height, 400);
     }
@@ -880,7 +898,7 @@ TestCase {
         pullSideways(0.4 * side.panelWidth, true)();
         tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
         verify(side.open, "it stays");
-        verify(control("density").activeFocus, "with the focus where it was");
+        verify(control("doNotDisturb").activeFocus, "with the focus where it was");
     }
 
     function test_a_finger_moved_towards_the_leading_edge_leaves_the_panel_at_its_place() {
@@ -978,8 +996,8 @@ TestCase {
         tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
         verify(side.open);
         compare(side.currentIndex, 0);
-        verify(control("density").activeFocus, "the first control holds the focus");
-        compare(ringsShowing(control("density")), 0, "without a ring, as after a pointer");
+        verify(control("doNotDisturb").activeFocus, "the first control holds the focus");
+        compare(ringsShowing(control("doNotDisturb")), 0, "without a ring, as after a pointer");
     }
 
     function test_a_swipe_let_go_before_half_its_width_has_the_panel_go_and_give_the_focus_back() {
@@ -1017,7 +1035,7 @@ TestCase {
         side.drawIn(0.2);
         side.show(0);
         compare(side.entry, 1);
-        verify(control("density").activeFocus);
+        verify(control("doNotDisturb").activeFocus);
         side.letGoIn();
         verify(side.open);
         compare(side.entry, 1);
@@ -1116,7 +1134,7 @@ TestCase {
         verify(findChild(side, "comingIn").running, "it comes back");
         tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
         verify(side.open);
-        verify(control("density").activeFocus, "with the focus where it was");
+        verify(control("doNotDisturb").activeFocus, "with the focus where it was");
     }
 
     function test_each_swipe_is_let_go_only_by_its_own_letting_go() {
@@ -1172,7 +1190,7 @@ TestCase {
     }
 
     function test_escape_closes_it_from_every_control() {
-        for (const name of ["dark", "doNotDisturb", "density", "powerProfile", "lock", "sessionActions"]) {
+        for (const name of ["dark", "doNotDisturb", "powerProfile", "lock", "sessionActions", "displayTile"]) {
             side.show(0);
             control(name).forceActiveFocus();
             keyClick(Qt.Key_Escape);
@@ -1223,26 +1241,12 @@ TestCase {
         verify(findChild(side, "shift").x > 0, "forward, from the trailing edge");
     }
 
-    function test_going_to_steuerung_its_quick_settings_at_the_edge_come_in_with_it() {
-        Prefs.motion = "on";
-        showSettled(1);
-        side.show(0);
-        const edge = findChild(side, "edge");
-        compare(findChild(side, "shift").x, -Tokens.slideDistance, "the facet comes back from the leading edge");
-        compare(edge.opacity, 0, "the quick settings fade in with it");
-        const edgeShift = findChild(side, "edgeShift");
-        compare(edgeShift.x, -Tokens.slideDistance, "and travel with it");
-        tryVerify(() => !findChild(findChild(side, "facets"), "enter").running, Tokens.durationModerate * 4, "the facet has come in");
-        compare(edge.opacity, 1);
-        compare(edgeShift.x, 0);
-    }
-
-    function test_under_reduced_motion_the_quick_settings_stand_at_once_with_steuerung() {
-        Prefs.motion = "off";
-        showSettled(1);
-        side.show(0);
-        compare(findChild(side, "edgeShift").x, 0);
-        compare(findChild(side, "edge").opacity, 1);
+    function test_the_toggle_buttons_and_the_grid_stand_in_the_facets_scroll_and_the_panel_has_no_edge_of_its_own() {
+        showSettled(0);
+        const facets = findChild(side, "facets");
+        verify(side.within(facets, control("toggles")), "the toggle buttons");
+        verify(side.within(facets, control("areas")), "the grid");
+        compare(side.edge, undefined, "no holder at the edge");
     }
 
     function test_on_their_way_in_the_quick_settings_are_cut_off_at_the_ground_and_leave_the_hairline_a_hairline() {
@@ -1291,7 +1295,7 @@ TestCase {
 
     function test_focus_starts_at_the_first_control_and_on_an_empty_facet_at_the_pivot() {
         side.show(0);
-        verify(control("density").activeFocus, "the first control in steuerung");
+        verify(control("doNotDisturb").activeFocus, "the first control in steuerung");
         side.close();
         side.show(1);
         verify(findChild(side, "pivot").activeFocus, "meldungen has none yet");
@@ -1303,11 +1307,11 @@ TestCase {
 
     function test_opened_by_a_pointer_no_control_shows_a_focus_ring_until_a_key_is_pressed() {
         side.show(0, true);
-        verify(control("density").activeFocus, "the focus is on the first control all the same");
-        compare(ringsShowing(control("density")), 0);
+        verify(control("doNotDisturb").activeFocus, "the focus is on the first control all the same");
+        compare(ringsShowing(control("doNotDisturb")), 0);
         keyClick(Qt.Key_Tab);
-        verify(control("powerProfile").activeFocus);
-        compare(ringsShowing(control("powerProfile")), 1, "the keyboard brings the ring");
+        verify(control("dark").activeFocus);
+        compare(ringsShowing(control("dark")), 1, "the keyboard brings the ring");
     }
 
     // The focus rings that show inside an item.
@@ -1403,15 +1407,15 @@ TestCase {
 
     function test_opened_by_the_keyboard_the_first_control_shows_its_focus_ring() {
         side.show(0, false);
-        compare(ringsShowing(control("density")), 1);
+        compare(ringsShowing(control("doNotDisturb")), 1);
     }
 
-    // The quick settings at the bottom edge come last, as they stand, then the close button.
+    // As they stand: the toggle buttons, the groups, the grid at the foot as one stop, then the close button.
     function test_tab_and_the_arrows_reach_every_control_in_order() {
         giveBluetooth(controls);
         side.show(0);
-        const names = ["chooseBluetoothDevice", "density", "powerProfile", "lock", "sessionActions", "bluetooth", "doNotDisturb", "dark"];
-        const order = names.map(name => control(name));
+        const names = ["bluetooth", "doNotDisturb", "dark", "chooseBluetoothDevice", "powerProfile", "lock", "sessionActions", "displayTile", "close"];
+        const order = names.map(name => findChild(side, name));
         verify(order[0].activeFocus);
         for (let k = 1; k < order.length; k++) {
             keyClick(Qt.Key_Tab);
@@ -1428,32 +1432,24 @@ TestCase {
         verify(findChild(side, "pivot").activeFocus, "↑ from the first to the pivot");
         keyClick(Qt.Key_Down);
         verify(order[0].activeFocus, "↓ from the pivot to the first");
-        order[4].forceActiveFocus();
+        order[6].forceActiveFocus();
         keyClick(Qt.Key_Down);
-        verify(order[5].activeFocus, "↓ from the last row into the quick settings");
+        verify(order[7].activeFocus, "↓ from the last row into the grid");
         keyClick(Qt.Key_Down);
-        verify(order[6].activeFocus, "and through them");
-        keyClick(Qt.Key_Up);
-        verify(order[5].activeFocus, "↑ to the one before");
-        order[7].forceActiveFocus();
-        keyClick(Qt.Key_Down);
-        verify(findChild(side, "close").activeFocus, "↓ from the last quick setting to the close button");
+        verify(order[7].activeFocus, "the grid's arrows stay at its edge");
+        keyClick(Qt.Key_Tab);
         keyClick(Qt.Key_Down);
         verify(findChild(side, "close").activeFocus, "the arrows never leave the panel");
     }
 
-    // Whole in sight with its ring: in the scroll, and clear of the quick settings by space-m, or among them.
-    function shownWhole(item: var): bool {
+    // Whole in sight with its ring, in the facet's scroll or a level's.
+    function shownWhole(item: var, scroller = named("scroller")): bool {
         const ring = Geometry.focusRingOffset + Geometry.focusRingWidth;
-        const scroller = named("scroller");
-        if (!side.within(scroller, item))
-            return side.within(side.edge, item);
         const top = item.mapToItem(scroller, 0, 0).y - ring;
-        const bottom = item.mapToItem(side.edge, 0, item.height).y + ring;
-        return top >= -0.5 && top + item.height + 2 * ring <= scroller.height + 0.5 && bottom <= -Tokens.spaceM + 0.5;
+        return side.within(scroller, item) && top >= -0.5 && top + item.height + 2 * ring <= scroller.height + 0.5;
     }
 
-    function test_in_a_short_panel_tab_and_shift_tab_bring_every_stop_whole_into_sight_above_the_quick_settings() {
+    function test_in_a_short_panel_tab_and_shift_tab_bring_every_stop_whole_into_sight() {
         giveSound(controls);
         giveBluetooth(controls);
         scene.height = 360;
@@ -1461,7 +1457,7 @@ TestCase {
         const names = [];
         for (const modifier of [Qt.NoModifier, Qt.ShiftModifier]) {
             if (modifier === Qt.ShiftModifier) {
-                control("dark").forceActiveFocus();
+                control("soundTile").forceActiveFocus();
                 named("scroller").contentY = 0;
             }
             for (let k = 0; k < 40; k++) {
@@ -1474,7 +1470,7 @@ TestCase {
                 verify(focused === findChild(side, "close") || shownWhole(focused), `${focused.objectName} in sight`);
             }
         }
-        for (const name of ["outputVolume", "inputDevice", "density", "lock", "sessionActions", "dark"])
+        for (const name of ["outputVolume", "dark", "chooseBluetoothDevice", "lock", "sessionActions", "soundTile"])
             verify(names.includes(name), `Tab reached ${name}`);
         verify(named("scroller").contentY > 0, "the view followed the focus");
     }
@@ -1482,13 +1478,12 @@ TestCase {
     function test_a_focus_that_scrolls_its_control_into_sight_keeps_the_tip_it_brought() {
         giveSound(controls);
         scene.height = 360;
-        showSettled(0);
-        const scroller = named("scroller");
-        scroller.contentY = scroller.contentHeight - scroller.height;
-        const mute = control("outputMute");
-        verify(!shownWhole(mute), "above the view");
+        const scroller = showLevel("sound");
+        verify(scroller.interactive, "a level longer than its room");
+        const mute = inSound("inputMute");
+        verify(!shownWhole(mute, scroller), "below the view");
         mute.forceActiveFocus(Qt.TabFocusReason);
-        verify(shownWhole(mute));
+        verify(shownWhole(mute, scroller));
         verify(named("tip").visible, "its tip stays");
         compare(findChild(named("tip"), "words").text, "stumm schalten");
     }
@@ -1497,9 +1492,12 @@ TestCase {
         controls.hasPerformanceProfile = true;
         controls.kdeglobals = "";
         side.show(0);
-        verify(control("density").activeFocus);
-        keyClick(Qt.Key_Right);
-        compare(chosenDensities, ["comfortable"], "dichte, where the arrows choose");
+        verify(control("doNotDisturb").activeFocus);
+        keyClick(Qt.Key_Space);
+        verify(controls.doNotDisturb, "nicht stören");
+        keyClick(Qt.Key_Tab);
+        keyClick(Qt.Key_Return);
+        compare(commands, [["plasma-apply-lookandfeel", "--apply", "org.kde.breezedark.desktop"]], "dunkel");
         keyClick(Qt.Key_Tab);
         verify(control("powerProfile").activeFocus);
         keyClick(Qt.Key_Right);
@@ -1511,11 +1509,10 @@ TestCase {
         keyClick(Qt.Key_Return);
         compare(sessionAsked, 1, "sitzung …");
         keyClick(Qt.Key_Tab);
-        keyClick(Qt.Key_Space);
-        verify(controls.doNotDisturb, "nicht stören");
-        keyClick(Qt.Key_Tab);
         keyClick(Qt.Key_Return);
-        compare(commands, [["plasma-apply-lookandfeel", "--apply", "org.kde.breezedark.desktop"]], "dunkel");
+        verify(control("density").activeFocus, "anzeige's level, its first control");
+        keyClick(Qt.Key_Right);
+        compare(chosenDensities, ["comfortable"], "dichte, where the arrows choose");
     }
 
     function test_dunkel_applies_the_dark_theme_of_plasmas_pair_and_the_light_one_back() {
@@ -1651,37 +1648,34 @@ TestCase {
     function test_each_device_has_two_rows_its_select_then_its_mute_button_before_the_volume_slider() {
         const sound = giveSound(controls);
         sound.speakers.audio.volume = 0.62;
-        side.show(0);
-        waitForRendering(side);
-        const group = findChild(controls, "sound");
-        compare(findChild(group, "heading").text, "ton");
-        tryCompare(group, "y", 0, 1000, "the first group");
-        compare(shownRows(group), [rowOf(control("outputDevice")), rowOf(control("outputVolume")), rowOf(control("inputDevice")), rowOf(control("inputVolume"))], "no row of its own for stumm");
+        const group = showLevel("sound");
+        compare(findChild(group, "back").text, "zurück · ton", "under its back row, without a heading");
+        compare(shownRows(group), [rowOf(inSound("outputDevice")), rowOf(inSound("outputVolume")), rowOf(inSound("inputDevice")), rowOf(inSound("inputVolume"))], "no row of its own for stumm");
         for (const kind of ["output", "input"]) {
-            const select = control(`${kind}Device`);
+            const select = inSound(`${kind}Device`);
             verify(!findChild(rowOf(select), "words").visible, `${kind}: no words before the select`);
             compare(select.mapToItem(rowOf(select), 0, 0).x, 0, kind);
             compare(select.width, rowOf(select).width, `${kind}: the select as wide as the row`);
-            const row = rowOf(control(`${kind}Volume`));
-            const box = findChild(control(`${kind}Mute`), "box");
-            compare(rowOf(control(`${kind}Mute`)), row, `${kind}: the button stands in the volume's row`);
+            const row = rowOf(inSound(`${kind}Volume`));
+            const box = findChild(inSound(`${kind}Mute`), "box");
+            compare(rowOf(inSound(`${kind}Mute`)), row, `${kind}: the button stands in the volume's row`);
             compare(box.mapToItem(row, 0, 0).x, 0, `${kind}: the button at the start`);
             compare(box.width, Tokens.controlHeight, `${kind}: a square icon button`);
-            const slider = control(`${kind}Volume`);
+            const slider = inSound(`${kind}Volume`);
             compare(slider.mapToItem(row, 0, 0).x, box.width + Tokens.spaceM, `${kind}: the slider space-m after it`);
             compare(slider.mapToItem(row, slider.width, 0).x, row.width, `${kind}: to the end of the row`);
             compare(row.height, Tokens.controlHeight, `${kind}: on one line`);
         }
-        compare(glyphOf("outputMute"), "speaker");
-        compare(glyphOf("inputMute"), "microphone");
-        compare(control("outputDevice").currentText, "Speakers");
-        compare(control("inputDevice").currentText, "Microphone");
-        compare(findChild(control("outputVolume"), "output").text, "62%");
-        compare(findChild(control("outputVolume"), "output").font.features, { "tnum": 1 }, "in tabular figures");
-        compare(control("outputDevice").Accessible.name, "ausgang Speakers", "the kind is read with the select");
-        compare(control("inputDevice").Accessible.name, "eingang Microphone");
-        compare(control("outputVolume").Accessible.name, "lautstärke ausgang");
-        compare(control("inputVolume").Accessible.name, "lautstärke eingang");
+        compare(findChild(inSound("outputMute"), "glyph").name, "speaker");
+        compare(findChild(inSound("inputMute"), "glyph").name, "microphone");
+        compare(inSound("outputDevice").currentText, "Speakers");
+        compare(inSound("inputDevice").currentText, "Microphone");
+        compare(findChild(inSound("outputVolume"), "output").text, "62%");
+        compare(findChild(inSound("outputVolume"), "output").font.features, { "tnum": 1 }, "in tabular figures");
+        compare(inSound("outputDevice").Accessible.name, "ausgang Speakers", "the kind is read with the select");
+        compare(inSound("inputDevice").Accessible.name, "eingang Microphone");
+        compare(inSound("outputVolume").Accessible.name, "lautstärke ausgang");
+        compare(inSound("inputVolume").Accessible.name, "lautstärke eingang");
     }
 
     function test_each_device_select_has_its_visible_field_label_above_it_space_xs_apart() {
@@ -1723,11 +1717,11 @@ TestCase {
     function test_the_button_mutes_its_device_strikes_its_glyph_through_and_rests_the_slider_whose_value_says_stumm() {
         const sound = giveSound(controls);
         sound.speakers.audio.volume = 0.62;
-        showSettled(0);
-        const slider = control("outputVolume");
-        mouseClick(findChild(control("outputMute"), "box"));
+        showLevel("sound");
+        const slider = inSound("outputVolume");
+        mouseClick(findChild(inSound("outputMute"), "box"));
         verify(sound.speakers.audio.muted, "a press mutes the device");
-        compare(glyphOf("outputMute"), "speaker-muted");
+        compare(findChild(inSound("outputMute"), "glyph").name, "speaker-muted");
         verify(slider.disabled, "the slider rests");
         compare(findChild(slider, "output").text, "stumm", "its value says why");
         compare(findChild(slider, "output").color, Tokens.color.disabled, "in grey");
@@ -1737,15 +1731,15 @@ TestCase {
         slider.forceActiveFocus();
         keyClick(Qt.Key_Right);
         compare(sound.speakers.audio.volume, 0.62, "a resting slider takes no step");
-        mouseClick(findChild(control("outputMute"), "box"));
+        mouseClick(findChild(inSound("outputMute"), "box"));
         verify(!sound.speakers.audio.muted, "a second press brings the sound back");
-        compare(glyphOf("outputMute"), "speaker");
+        compare(findChild(inSound("outputMute"), "glyph").name, "speaker");
         verify(!slider.disabled);
         compare(findChild(slider, "output").text, "62%");
-        mouseClick(findChild(control("inputMute"), "box"));
+        mouseClick(findChild(inSound("inputMute"), "box"));
         verify(sound.microphone.audio.muted, "the microphone the same");
-        compare(glyphOf("inputMute"), "microphone-muted");
-        verify(control("inputVolume").disabled);
+        compare(findChild(inSound("inputMute"), "glyph").name, "microphone-muted");
+        verify(inSound("inputVolume").disabled);
         verify(!sound.speakers.audio.muted, "only its own device");
     }
 
@@ -1785,12 +1779,12 @@ TestCase {
 
     function test_the_panel_draws_the_tip_of_its_control_above_it_and_scrolling_hides_it() {
         giveSound(controls);
-        showSettled(0);
+        const level = showLevel("sound");
         const tip = named("tip");
         const words = findChild(tip, "words");
-        const box = findChild(control("outputMute"), "box");
+        const box = findChild(inSound("outputMute"), "box");
         verify(!tip.visible);
-        control("outputMute").forceActiveFocus();
+        inSound("outputMute").forceActiveFocus();
         verify(tip.visible, "the panel's window draws its own tips");
         compare(words.text, "stumm schalten");
         const at = box.mapToItem(tip.parent, 0, 0);
@@ -1802,7 +1796,7 @@ TestCase {
         keyClick(Qt.Key_Space);
         verify(tip.visible);
         compare(words.text, "ton an", "it says what the next press does");
-        named("scroller").contentY = 1;
+        level.contentY = 1;
         verify(!tip.visible, "scrolling hides it");
     }
 
@@ -1843,31 +1837,31 @@ TestCase {
     function test_ton_works_from_the_keyboard() {
         const sound = giveSound(controls);
         sound.speakers.audio.volume = 0.6;
-        side.show(0);
-        verify(control("outputDevice").activeFocus, "the first control");
+        showLevel("sound");
+        verify(inSound("outputDevice").activeFocus, "the first control");
         keyClick(Qt.Key_Tab);
-        verify(control("outputMute").activeFocus, "Tab to the button");
+        verify(inSound("outputMute").activeFocus, "Tab to the button");
         keyClick(Qt.Key_Space);
         verify(sound.speakers.audio.muted, "Space mutes");
         keyClick(Qt.Key_Down);
-        verify(control("outputVolume").activeFocus, "↓ to the slider, which a keyboard still reaches while it rests");
+        verify(inSound("outputVolume").activeFocus, "↓ to the slider, which a keyboard still reaches while it rests");
         keyClick(Qt.Key_Right);
         compare(sound.speakers.audio.volume, 0.6);
         keyClick(Qt.Key_Tab, Qt.ShiftModifier);
-        verify(control("outputMute").activeFocus, "Shift+Tab back to the button");
+        verify(inSound("outputMute").activeFocus, "Shift+Tab back to the button");
         keyClick(Qt.Key_Return);
         verify(!sound.speakers.audio.muted, "Enter brings the sound back");
         keyClick(Qt.Key_Tab);
         keyClick(Qt.Key_Right);
         compare(sound.speakers.audio.volume, 0.61, "then the slider steps");
         keyClick(Qt.Key_Tab);
-        verify(control("inputDevice").activeFocus, "Tab on to the input's select");
+        verify(inSound("inputDevice").activeFocus, "Tab on to the input's select");
         keyClick(Qt.Key_Tab);
-        verify(control("inputMute").activeFocus);
+        verify(inSound("inputMute").activeFocus);
         keyClick(Qt.Key_Enter);
         verify(sound.microphone.audio.muted, "the microphone the same");
         keyClick(Qt.Key_Up);
-        verify(control("inputDevice").activeFocus, "↑ back to its select");
+        verify(inSound("inputDevice").activeFocus, "↑ back to its select");
     }
 
     function test_rows_follow_another_default_device() {
@@ -1943,9 +1937,10 @@ TestCase {
     }
 
     function test_without_a_display_that_can_be_dimmed_anzeige_has_no_brightness_slider_and_keeps_its_other_rows() {
-        side.show(0);
+        showLevel("display");
         verify(!control("display0Brightness"));
         verify(findChild(controls, "display").visible);
+        verify(control("displayTile").visible);
         giveDisplays(controls).clear();
         verify(!control("display0Brightness"));
         verify(rowOf(control("density")).visible);
@@ -1953,22 +1948,21 @@ TestCase {
 
     function test_without_audio_devices_ton_falls_away_and_without_an_input_only_its_rows_go() {
         const sound = giveSound(controls);
-        side.show(0);
+        showLevel("sound");
         controls.input = null;
-        verify(findChild(controls, "sound").visible);
-        verify(!rowOf(control("inputDevice")).visible);
-        verify(!rowOf(control("inputVolume")).visible);
+        verify(control("soundTile").visible);
+        verify(!rowOf(inSound("inputDevice")).visible);
+        verify(!rowOf(inSound("inputVolume")).visible);
         controls.output = null;
-        verify(!findChild(controls, "sound").visible);
+        verify(!control("soundTile").visible, "its tile falls away");
     }
 
     function test_each_stream_another_program_plays_has_a_row_in_ton_between_the_output_and_the_input() {
         giveSound(controls);
         giveStreams(controls);
-        showSettled(0);
-        const group = findChild(controls, "sound");
+        const group = showLevel("sound");
         const rows = streamRows();
-        compare(shownRows(group), [rowOf(control("outputDevice")), rowOf(control("outputVolume")), ...rows, rowOf(control("inputDevice")), rowOf(control("inputVolume"))]);
+        compare(shownRows(group), [rowOf(inSound("outputDevice")), rowOf(inSound("outputVolume")), ...rows, rowOf(inSound("inputDevice")), rowOf(inSound("inputVolume"))]);
         compare(rows.map(row => row.label), ["Firefox · AudioStream", "Firefox · AudioStream", "Elisa · Gymnopédie No. 1"], "one row per stream, in the order they came, as the programs write them");
         for (const row of rows) {
             const words = findChild(row, "words");
@@ -1995,7 +1989,7 @@ TestCase {
     function test_a_stream_without_media_name_or_icons_shows_the_program_alone_with_its_words_at_the_start() {
         giveSound(controls);
         controls.streams = [stream(61, { "application.name": "mpv" }, 0.5), stream(62, {}, 0.5)];
-        side.show(0);
+        showLevel("sound");
         const rows = streamRows();
         compare(rows.map(row => row.label), ["mpv", "node-62"], "the node's name where the program gives none");
         compare(findChild(rows[0], "words").x, 0, "without an icon in the list, no room for one");
@@ -2015,7 +2009,7 @@ TestCase {
             Object.assign(stream(76, {}, 0.5), { properties: {} }),
             stream(77, { "application.name": "Player" }, 0.5)
         ];
-        side.show(0);
+        showLevel("sound");
         compare(streamRows().map(row => row.label), ["Player"], "no recording, monitor, video, own, device, untracked or event stream");
     }
 
@@ -2023,7 +2017,7 @@ TestCase {
         const sound = giveSound(controls);
         sound.speakers.audio.volume = 0.6;
         const streams = giveStreams(controls);
-        showSettled(0);
+        showLevel("sound");
         const row = streamRows()[1];
         const slider = findChild(row, "streamVolume");
         mouseClick(findChild(findChild(row, "streamMute"), "box"));
@@ -2050,7 +2044,7 @@ TestCase {
     function test_a_streams_controls_are_named_by_its_words_and_what_a_press_does() {
         giveSound(controls);
         const streams = giveStreams(controls);
-        side.show(0);
+        showLevel("sound");
         const row = streamRow("Elisa · Gymnopédie No. 1");
         const button = findChild(row, "streamMute");
         compare(button.Accessible.name, "Elisa · Gymnopédie No. 1 stumm schalten");
@@ -2066,8 +2060,8 @@ TestCase {
     function test_the_keyboard_reaches_each_streams_button_and_slider_between_the_output_and_the_input() {
         giveSound(controls);
         const streams = giveStreams(controls);
-        side.show(0);
-        control("outputVolume").forceActiveFocus();
+        showLevel("sound");
+        inSound("outputVolume").forceActiveFocus();
         for (const row of streamRows()) {
             keyClick(Qt.Key_Tab);
             verify(findChild(row, "streamMute").activeFocus, `Tab to the button of ${row.label}`);
@@ -2077,7 +2071,7 @@ TestCase {
         keyClick(Qt.Key_Left);
         compare(streams.music.audio.volume, 0.69, "the slider steps its stream");
         keyClick(Qt.Key_Tab);
-        verify(control("inputDevice").activeFocus, "then on to the input");
+        verify(inSound("inputDevice").activeFocus, "then on to the input");
         keyClick(Qt.Key_Tab, Qt.ShiftModifier);
         verify(findChild(streamRows()[2], "streamVolume").activeFocus, "Shift+Tab back");
     }
@@ -2085,10 +2079,10 @@ TestCase {
     function test_a_stream_that_comes_is_appended_and_once_the_rows_below_have_made_room_arrives_from_above_with_a_fade() {
         giveSound(controls);
         const streams = giveStreams(controls);
-        showSettled(0);
+        showLevel("sound");
         Prefs.motion = "on";
         const presence = findChild(controls, "streamPresence");
-        const input = rowOf(control("inputDevice"));
+        const input = rowOf(inSound("inputDevice"));
         const player = stream(54, { "application.name": "Haruna", "media.name": "clip.mkv" }, 0.9);
         controls.streams = [streams.tab, streams.otherTab, streams.music, player];
         const rows = streamRows();
@@ -2116,7 +2110,7 @@ TestCase {
         giveSound(controls);
         const streams = giveStreams(controls);
         streams.tab.audio.muted = true;
-        showSettled(0);
+        showLevel("sound");
         Prefs.motion = "on";
         const presence = findChild(controls, "streamPresence");
         const leaving = streamRows()[0];
@@ -2141,7 +2135,7 @@ TestCase {
     function test_a_stream_that_names_a_new_track_while_another_leaves_shows_it_and_the_leaving_goes_on() {
         giveSound(controls);
         const streams = giveStreams(controls);
-        showSettled(0);
+        showLevel("sound");
         Prefs.motion = "on";
         const presence = findChild(controls, "streamPresence");
         const leaving = streamRows()[0];
@@ -2161,7 +2155,7 @@ TestCase {
     function test_under_reduced_motion_streams_come_and_go_at_once() {
         giveSound(controls);
         const streams = giveStreams(controls);
-        side.show(0);
+        showLevel("sound");
         controls.streams = [streams.music];
         compare(streamRows().map(row => row.label), ["Elisa · Gymnopédie No. 1"]);
         controls.streams = [streams.music, streams.tab];
@@ -2171,16 +2165,16 @@ TestCase {
 
     function test_without_streams_ton_shows_its_device_rows_alone() {
         giveSound(controls);
-        side.show(0);
+        showLevel("sound");
         compare(streamRows(), []);
         compare(shownRows(findChild(controls, "sound")).length, 4);
     }
 
     function test_the_output_select_opens_a_list_floating_over_the_rows_below_and_a_click_asks_for_another_default() {
         const sound = giveSound(controls);
-        showSettled(0);
-        const select = control("outputDevice");
-        const volumeRow = rowOf(control("outputVolume"));
+        showLevel("sound");
+        const select = inSound("outputDevice");
+        const volumeRow = rowOf(inSound("outputVolume"));
         const before = volumeRow.mapToItem(controls, 0, 0).y;
         mouseClick(findChild(select, "box"));
         verify(select.expanded);
@@ -2200,8 +2194,8 @@ TestCase {
 
     function test_the_input_select_lists_the_inputs() {
         const sound = giveSound(controls);
-        showSettled(0);
-        const select = control("inputDevice");
+        showLevel("sound");
+        const select = inSound("inputDevice");
         mouseClick(findChild(select, "box"));
         const options = optionRows(select);
         compare(options.map(row => row.text), ["Microphone", "Headset Microphone"]);
@@ -2212,9 +2206,9 @@ TestCase {
 
     function test_from_the_keyboard_its_list_opens_a_device_is_chosen_and_the_focus_stays() {
         const sound = giveSound(controls);
-        side.show(0);
-        const select = control("outputDevice");
-        verify(select.activeFocus, "the first control in steuerung");
+        showLevel("sound");
+        const select = inSound("outputDevice");
+        verify(select.activeFocus, "the first control of ton");
         keyClick(Qt.Key_Return);
         verify(select.expanded);
         const options = optionRows(select);
@@ -2233,8 +2227,8 @@ TestCase {
 
     function test_closed_the_arrows_on_the_select_ask_for_another_device_without_opening_it() {
         const sound = giveSound(controls);
-        side.show(0);
-        const select = control("outputDevice");
+        showLevel("sound");
+        const select = inSound("outputDevice");
         verify(select.activeFocus);
         keyClick(Qt.Key_Down);
         compare(chosenDevices, [sound.headphones]);
@@ -2252,10 +2246,10 @@ TestCase {
         compare(chosenDevices, [sound.headphones, sound.speakers]);
     }
 
-    function test_escape_closes_the_list_and_leaves_the_panel_open() {
+    function test_escape_closes_the_list_and_leaves_the_level_and_the_panel_open() {
         giveSound(controls);
-        side.show(0);
-        const select = control("outputDevice");
+        showLevel("sound");
+        const select = inSound("outputDevice");
         keyClick(Qt.Key_Return);
         verify(select.expanded);
         keyClick(Qt.Key_Escape);
@@ -2264,13 +2258,16 @@ TestCase {
         verify(select.activeFocus);
         compare(chosenDevices, []);
         keyClick(Qt.Key_Escape);
-        verify(!side.open, "the next Escape closes the panel");
+        verify(!findChild(controls, "sound").open, "the next leaves the level");
+        verify(control("soundTile").activeFocus);
+        keyClick(Qt.Key_Escape);
+        verify(!side.open, "and the one after closes the panel");
     }
 
-    function test_escape_closes_a_list_a_pointer_opened_and_only_a_second_escape_closes_the_panel() {
+    function test_escape_closes_a_list_a_pointer_opened_then_the_level_and_only_then_the_panel() {
         giveSound(controls);
-        showSettled(0);
-        const select = control("inputDevice");
+        showLevel("sound");
+        const select = inSound("inputDevice");
         mouseClick(findChild(select, "box"));
         verify(select.expanded);
         verify(!select.activeFocus, "a press gives no focus");
@@ -2278,7 +2275,10 @@ TestCase {
         verify(!select.expanded, "Escape folds the list first");
         verify(side.open, "the panel stays");
         keyClick(Qt.Key_Escape);
-        verify(!side.open, "a second Escape closes the panel");
+        verify(!findChild(controls, "sound").open, "a second leaves the level");
+        verify(side.open);
+        keyClick(Qt.Key_Escape);
+        verify(!side.open, "a third, on its tile, closes the panel");
     }
 
     // The opener lies below the sound group's labelled selects: scrolled to the view's start it is whole in the view.
@@ -2335,23 +2335,21 @@ TestCase {
 
     function test_the_selects_list_closes_with_the_panel() {
         giveSound(controls);
-        side.show(0);
+        showLevel("sound");
         keyClick(Qt.Key_Return);
-        verify(control("outputDevice").expanded);
+        verify(inSound("outputDevice").expanded);
         side.close();
         verify(!side.open);
-        verify(!control("outputDevice").expanded);
+        verify(!inSound("outputDevice").expanded);
         side.show(0);
-        verify(!control("outputDevice").expanded, "and stays collapsed when it comes back");
+        verify(!inSound("outputDevice").expanded, "and stays collapsed when it comes back");
     }
 
     function test_the_selects_list_floats_in_the_panels_window_over_the_panel_and_follows_its_scroller() {
         giveSound(controls);
-        scene.height = 360;
-        side.show(0);
-        waitForRendering(side);
-        const scroller = findChild(side, "scroller");
-        const select = control("inputDevice");
+        scene.height = 300;
+        const scroller = showLevel("sound");
+        const select = inSound("inputDevice");
         select.forceActiveFocus();
         keyClick(Qt.Key_Return);
         const list = findChild(select, "list");
@@ -2372,6 +2370,7 @@ TestCase {
             return list.side === "below" ? top - field.y - field.height : field.y - top - list.height;
         };
         fuzzyCompare(gap(), Tokens.spaceXs, 1, "space-xs from its field");
+        verify(scroller.contentY > 0, "the focus scrolled the level");
         const before = list.y;
         scroller.contentY = 0;
         verify(list.y !== before, "the list moves with the view");
@@ -2462,16 +2461,17 @@ TestCase {
         tryVerify(() => findChild(side, "outputDevice").activeFocus || side.within(controls.places.sound, scene.Window.activeFocusItem));
     }
 
-    function test_revealing_a_quick_setting_puts_the_focus_on_it_and_scrolls_the_facet_to_the_top() {
+    function test_revealing_nicht_stoeren_puts_the_focus_on_its_button_at_the_top_of_the_view() {
         giveSound(controls);
         scene.height = 360;
         side.show(0);
         const scroller = findChild(side, "scroller");
-        scroller.contentY = 40;
         side.reveal(controls.places.doNotDisturb);
-        verify(control("doNotDisturb").activeFocus, "the button itself, at the edge and always in view");
-        compare(side.revealed, null, "there is nothing to hold in view");
-        compare(scroller.contentY, 0);
+        const button = control("doNotDisturb");
+        verify(button.activeFocus, "the button itself");
+        compare(side.revealed, button, "held in view");
+        tryVerify(() => atTopOfView(button, scroller));
+        verify(scroller.contentY > 0);
     }
 
     function test_the_place_is_let_go_once_the_facet_has_laid_out() {
@@ -2726,14 +2726,14 @@ TestCase {
     function test_a_cut_device_name_shows_whole_in_a_tip_over_the_select_and_over_its_option_and_scrolling_hides_it() {
         const long = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) of the monitor on the left";
         giveSound(controls).speakers.description = long;
-        showSettled(0);
-        const select = control("outputDevice");
+        const level = showLevel("sound");
+        const select = inSound("outputDevice");
         const chosen = findChild(select, "chosen");
         compare(tipOver(chosen), long, "over the select");
         compare(findChild(named("tip"), "words").text, long, "drawn in the panel");
-        named("scroller").contentY = 1;
+        level.contentY = 1;
         compare(Tips.target, null, "scrolling hides it");
-        named("scroller").contentY = 0;
+        level.contentY = 0;
         mouseClick(findChild(select, "box"));
         waitForRendering(side);
         const options = optionRows(select);
@@ -2745,12 +2745,12 @@ TestCase {
     function test_keyboard_focus_on_a_select_shows_its_cut_choice_at_once_and_its_options_and_pointer_focus_show_none() {
         const long = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo (HDMI 3) of the monitor on the left";
         giveSound(controls).speakers.description = long;
-        showSettled(0);
-        const select = control("outputDevice");
+        showLevel("sound");
+        const select = inSound("outputDevice");
         verify(select.activeFocus, "the first control, from the keyboard");
         compare(Tips.target, findChild(select, "chosen"));
         compare(Tips.text, long);
-        control("density").forceActiveFocus();
+        inSound("back").forceActiveFocus();
         compare(Tips.target, null, "the focus leaving takes it away");
         select.forceActiveFocus();
         compare(Tips.target, findChild(select, "chosen"), "and coming back by keyboard brings it again");
@@ -2764,6 +2764,7 @@ TestCase {
         side.close();
         tryVerify(() => !side.open);
         side.show(0, true);
+        side.reveal(findChild(controls, "sound"));
         verify(select.activeFocus);
         compare(Tips.target, null, "focus a pointer gave shows none");
     }
@@ -2785,7 +2786,7 @@ TestCase {
 
     function test_the_cut_words_of_a_row_show_whole_in_a_tip_and_keyboard_focus_on_its_control_shows_none() {
         const long = "the density of every surface of the shell, from comfortable to compact";
-        showSettled(0);
+        showLevel("display");
         const density = control("density");
         const words = findChild(rowOf(density), "words");
         compare(tipOver(words), "", "dichte fits");
@@ -2839,7 +2840,7 @@ TestCase {
         showSettled(0);
         const opener = control("chooseBluetoothDevice");
         const branch = control("bluetoothBranch");
-        const below = findChild(controls, "display");
+        const below = findChild(controls, "session");
         compare(findChild(rowOf(opener), "words").text, "geräte · 1 verbunden");
         verify(!branch.visible, "folded it takes no room");
         waitForRendering(side);
@@ -2926,6 +2927,7 @@ TestCase {
     function test_with_reduced_motion_the_devices_show_their_end_state_at_once() {
         giveBluetooth(controls);
         side.show(0);
+        control("chooseBluetoothDevice").forceActiveFocus(Qt.TabFocusReason);
         const branch = control("bluetoothBranch");
         keyClick(Qt.Key_Return);
         compare(branch.unfolded, 1);
@@ -2937,11 +2939,12 @@ TestCase {
         const bluetooth = giveBluetooth(controls);
         side.show(0);
         const opener = control("chooseBluetoothDevice");
-        verify(opener.activeFocus);
+        opener.forceActiveFocus(Qt.TabFocusReason);
         const branch = control("bluetoothBranch");
         keyClick(Qt.Key_Escape);
         verify(!side.open, "folded, Escape leaves the panel");
         side.show(0);
+        opener.forceActiveFocus(Qt.TabFocusReason);
         keyClick(Qt.Key_Return);
         verify(branch.expanded, "Enter unfolds");
         keyClick(Qt.Key_Return);
@@ -3192,7 +3195,7 @@ TestCase {
         giveNetworks(controls);
         showSettled(0);
         const opener = control("chooseNetwork");
-        const below = findChild(controls, "display");
+        const below = findChild(controls, "session");
         const before = below.y;
         mouseClick(opener);
         waitForRendering(side);
@@ -3503,7 +3506,7 @@ TestCase {
         compare(networks.home.calls, ["disconnect"]);
         compare(control("wifiState").word, "wartet");
         compare(findChild(rowsOf("wifiBranch")[0], "joining").word, "wartet");
-        mouseClick(control("chooseBluetoothDevice"));
+        pressBluetoothOpener();
         waitForRendering(side);
         bluetooth.speaker.connect();
         compare(findChild(branchRows()[1], "state").word, "wartet");
@@ -3587,35 +3590,50 @@ TestCase {
         compare(scans, [true, false]);
     }
 
-    function test_the_groups_stand_in_order_with_headings_and_a_group_without_rows_falls_away() {
+    // Above the grid, from the top (states.md:252–259): the output's volume, each display's brightness, the toggle buttons,
+    // then the groups that have no tile; at the foot the tiles of ton and anzeige.
+    function test_above_the_grid_stand_volume_brightness_toggle_buttons_verbindungen_and_sitzung_in_order() {
+        giveSound(controls);
+        giveDisplays(controls);
+        giveBluetooth(controls);
+        showSettled(0);
+        const parts = [rowOf(control("outputVolume")), rowOf(control("display0Brightness")), rowOf(control("display1Brightness")), control("toggles"), findChild(controls, "connections"), findChild(controls, "session")];
+        const tops = parts.map(part => part.mapToItem(controls, 0, 0).y);
+        for (let k = 1; k < parts.length; k++)
+            verify(tops[k] > tops[k - 1], `part ${k} below part ${k - 1}`);
+        verify(side.within(control("quick"), parts[0]) && side.within(control("quick"), parts[2]), "volume and brightness above the grid, out of their groups");
+        compare(findChild(findChild(controls, "connections"), "heading").text, "verbindungen");
+        compare(findChild(findChild(controls, "session"), "heading").text, "sitzung");
+        const grid = control("areas");
+        const session = findChild(controls, "session");
+        verify(grid.mapToItem(controls, 0, 0).y >= session.mapToItem(controls, 0, session.height).y + Tokens.spaceM, "the grid last");
+        compare(grid.shownTiles(), [control("soundTile"), control("displayTile")], "ton, then anzeige");
+    }
+
+    function test_a_group_without_rows_falls_away_and_ton_without_audio_devices_has_no_tile() {
         side.show(0);
-        const groups = ["sound", "connections", "display", "session"].map(name => findChild(controls, name));
-        verify(!groups[0].visible, "ton without audio devices");
-        verify(!groups[1].visible, "verbindungen has no rows yet");
-        verify(groups[2].visible);
-        verify(groups[3].visible);
-        compare(findChild(groups[2], "heading").text, "anzeige");
-        compare(findChild(groups[3], "heading").text, "sitzung");
-        tryCompare(groups[2], "y", 0, 1000, "the first in sight at the top");
-        verify(groups[3].y > groups[2].y);
+        verify(!findChild(controls, "connections").visible, "verbindungen has no rows yet");
+        verify(findChild(controls, "session").visible);
+        verify(!control("soundTile").visible, "ton without audio devices");
+        compare(control("areas").shownTiles(), [control("displayTile")]);
     }
 
     // Its rows are a form's controls, not a list (forms.md); groups stand apart by their headings and space.
     function test_the_rows_of_a_group_stand_space_m_apart_on_no_hairline_and_no_hairline_divides_the_groups() {
         giveSound(controls);
-        side.show(0);
-        waitForRendering(side);
-        for (const name of ["sound", "display", "session"]) {
+        giveBluetooth(controls);
+        showLevel("sound");
+        for (const name of ["connections", "session"]) {
             const group = findChild(controls, name);
             verify(group.visible, name);
             compare(hairlinesIn(group).length, 0, name);
         }
-        const device = rowOf(control("outputDevice"));
-        const volume = rowOf(control("outputVolume"));
-        compare(volume.y - (device.y + device.height), Tokens.spaceM, "a section's parts are space-m apart");
-        const display = findChild(controls, "display");
+        const device = rowOf(inSound("outputDevice"));
+        const volume = rowOf(inSound("outputVolume"));
+        compare(volume.y - (device.y + device.height), Tokens.spaceM, "a level's parts are space-m apart");
+        const connections = findChild(controls, "connections");
         const session = findChild(controls, "session");
-        compare(session.y - (display.y + display.height), 0, "the groups' own space-l above and below parts them");
+        compare(session.y - (connections.y + connections.height), 0, "the groups' own space-xl above and below parts them");
     }
 
     function test_a_group_whose_rows_are_all_absent_falls_away() {
@@ -3627,7 +3645,7 @@ TestCase {
 
     function test_a_group_takes_space_xl_above_and_below_and_its_heading_stands_space_l_above_its_rows() {
         side.show(0);
-        const group = findChild(controls, "display");
+        const group = findChild(controls, "session");
         const heading = findChild(group, "heading");
         const rows = findChild(group, "rows");
         waitForRendering(side);
@@ -3667,18 +3685,18 @@ TestCase {
     }
 
     // The way from "steuerung" in the app bar at the bottom to them stays short.
-    function test_the_quick_settings_stand_in_two_columns_at_the_bottom_edge_above_the_app_bar_without_a_heading() {
+    function test_the_toggle_buttons_stand_in_two_columns_above_the_grid_in_the_scroll_without_a_heading() {
         giveNetworks(controls);
         giveBluetooth(controls);
         showSettled(0);
-        const edge = findChild(side, "edge");
+        const toggles = control("toggles");
         const ground = findChild(side, "ground");
         const buttons = ["wifi", "bluetooth", "doNotDisturb", "dark"].map(name => control(name));
         const cell = (side.contentWidth - Tokens.spaceS) / 2;
         const at = button => button.mapToItem(ground, 0, 0);
         for (const button of buttons) {
             verify(button instanceof ToggleButton);
-            verify(side.within(edge, button), `${button.objectName} at the edge`);
+            verify(side.within(toggles, button), `${button.objectName} among the toggle buttons`);
             compare(button.width, cell, `${button.objectName}: half the width, space-s between`);
         }
         compare(buttons.map(button => button.text), ["wlan", "bluetooth", "nicht stören", "dunkel"]);
@@ -3689,9 +3707,9 @@ TestCase {
         compare(at(buttons[2]).x, Tokens.spaceM);
         compare(at(buttons[2]).y, at(buttons[0]).y + buttons[0].height + Tokens.spaceS);
         compare(at(buttons[3]).y, at(buttons[2]).y);
-        compare(at(buttons[3]).y + buttons[3].height, ground.height - Tokens.spaceL, "on the panel's padding at the bottom");
-        verify(!findChild(edge, "heading"), "no heading over them");
-        verify(!side.within(findChild(side, "scroller"), buttons[0]), "out of the scroll");
+        verify(at(buttons[3]).y + buttons[3].height < at(control("areas")).y, "above the grid");
+        verify(!findChild(control("quick"), "heading"), "no heading over them");
+        verify(side.within(findChild(side, "scroller"), buttons[0]), "in the scroll");
     }
 
     function test_a_quick_setting_whose_device_is_missing_is_gone_and_the_rest_close_up() {
@@ -3702,8 +3720,7 @@ TestCase {
         const dark = control("dark");
         compare(dark.y, quiet.y, "nicht stören and dunkel share the first line");
         compare(dark.x, quiet.width + Tokens.spaceS);
-        const edge = findChild(side, "edge");
-        compare(edge.height, quiet.height);
+        compare(control("quickSettings").height, quiet.height, "one line");
         giveBluetooth(controls);
         verify(control("bluetooth").visible);
         waitForRendering(side);
@@ -3724,7 +3741,7 @@ TestCase {
         for (const word of ["wlan", "bluetooth", "nicht stören", "dunkel"])
             verify(!labels.includes(word), `no row ${word} in a group`);
         for (const name of ["wifi", "bluetooth", "doNotDisturb", "dark"])
-            verify(!side.within(findChild(side, "scroller"), control(name)), name);
+            verify(side.within(control("toggles"), control(name)) && !side.within(findChild(controls, "connections"), control(name)), name);
     }
 
     function test_nicht_stoeren_switches_with_a_press_and_follows_a_switch_from_elsewhere() {
@@ -3839,8 +3856,8 @@ TestCase {
         verify(lengths.activeFocus, "the focus on the lengths");
         compare(lengths.options, ["bis aus", "1 stunde", "bis morgen"]);
         compare(lengths.currentIndex, -1, "none chosen while off");
-        const buttons = findChild(controls.edge, "quickSettings");
-        tryVerify(() => Math.abs(control("quietBranch").mapToItem(controls.edge, 0, 0).y - buttons.height - Tokens.spaceS) < 0.01, 1000, "below the buttons, space-s apart");
+        const buttons = control("quickSettings");
+        tryVerify(() => Math.abs(control("quietBranch").mapToItem(control("toggles"), 0, 0).y - buttons.height - Tokens.spaceS) < 0.01, 1000, "below the buttons, space-s apart");
         waitForFrame(side);
         mouseClick(quietOptions()[1]);
         verify(controls.doNotDisturb, "on at once");
@@ -3877,7 +3894,330 @@ TestCase {
         compare(commands, []);
     }
 
-    // The dense case of ton: three streams between the output and the input, so the eye finds where the input begins.
+    // The grid of opener tiles at the foot of steuerung and the levels its tiles open (states.md:224–275).
+
+    function arrow(code: int): var {
+        return { key: code, text: "", modifiers: Qt.NoModifier };
+    }
+
+    function stateOf(name: string): string {
+        return findChild(control(name), "state").text;
+    }
+
+    function test_the_grid_is_the_last_part_its_foot_space_l_above_the_floor_and_the_free_space_above_it() {
+        giveSound(controls);
+        scene.height = 1000;
+        showSettled(0);
+        const ground = findChild(side, "ground");
+        const grid = control("areas");
+        const above = control("above");
+        verify(!named("scroller").interactive, "it all fits");
+        compare(grid.mapToItem(ground, 0, grid.height).y, ground.height - Tokens.spaceL, "on the sheet's padding at its foot");
+        compare(controls.height, grid.y + grid.height, "nothing below it");
+        const free = grid.mapToItem(ground, 0, 0).y - above.mapToItem(ground, 0, above.height).y;
+        verify(free > Tokens.spaceM, "the free space lies between what stands above and the grid");
+        compare(above.y, 0, "what stands above it from the top");
+    }
+
+    function test_a_panel_taller_than_its_room_scrolls_as_one_with_the_grid_last_space_m_after_what_stands_above() {
+        giveSound(controls);
+        giveDisplays(controls);
+        giveBluetooth(controls);
+        scene.height = 400;
+        showSettled(0);
+        const scroller = named("scroller");
+        const grid = control("areas");
+        verify(scroller.interactive, "one scroll for all");
+        compare(grid.y, control("above").height + Tokens.spaceM, "space-m after what stands above it");
+        verify(side.within(scroller, grid) && side.within(scroller, control("toggles")), "the toggle buttons and the grid scroll along");
+        compare(grid.mapToItem(scroller.contentItem, 0, grid.height).y + Tokens.spaceL, scroller.contentHeight, "the grid last, then the sheet's padding");
+    }
+
+    function test_the_grid_has_two_columns_of_half_the_content_width_space_s_apart_and_rows_a_tile_unit_high() {
+        giveSound(controls);
+        showSettled(0);
+        const grid = control("areas");
+        const ton = control("soundTile");
+        const display = control("displayTile");
+        const half = (side.contentWidth - Tokens.spaceS) / 2;
+        compare(grid.width, side.contentWidth);
+        compare(grid.mapToItem(findChild(side, "ground"), 0, 0).x, Tokens.spaceM, "at the content's edge");
+        for (const tile of [ton, display]) {
+            compare(tile.width, half, `${tile.name}: half the content`);
+            compare(tile.height, Tokens.tileUnit, `${tile.name}: a tile unit high`);
+        }
+        compare(ton.x, 0);
+        compare(display.x, half + Tokens.spaceS, "space-s apart");
+        compare(display.y, ton.y, "on one row");
+    }
+
+    function test_the_grid_is_one_tab_stop_its_arrows_go_to_the_next_tile_and_stay_at_its_edge_and_home_and_end_go_to_its_ends() {
+        giveSound(controls);
+        showSettled(0);
+        const grid = control("areas");
+        const ton = control("soundTile");
+        const display = control("displayTile");
+        control("sessionActions").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Tab);
+        verify(ton.activeFocus, "Tab reaches the first tile");
+        verify(grid.handleKey(arrow(Qt.Key_Right)), "→ is the grid's");
+        verify(display.activeFocus, "the next tile that way");
+        verify(grid.handleKey(arrow(Qt.Key_Right)), "at the edge the grid still takes it");
+        verify(display.activeFocus, "and the focus stays");
+        verify(grid.handleKey(arrow(Qt.Key_Down)));
+        verify(grid.handleKey(arrow(Qt.Key_Up)));
+        verify(display.activeFocus, "no row above or below: ↑ and ↓ stay");
+        verify(grid.handleKey(arrow(Qt.Key_Home)));
+        verify(ton.activeFocus, "Home: the first tile");
+        verify(grid.handleKey(arrow(Qt.Key_End)));
+        verify(display.activeFocus, "End: the last");
+        keyClick(Qt.Key_Tab);
+        verify(findChild(side, "close").activeFocus, "the next Tab leaves the grid");
+        keyClick(Qt.Key_Tab, Qt.ShiftModifier);
+        verify(display.activeFocus, "Shift+Tab comes back to the tile last focused");
+        keyClick(Qt.Key_Tab, Qt.ShiftModifier);
+        verify(control("sessionActions").activeFocus, "and the next leaves it the other way");
+        ton.forceActiveFocus();
+        keyClick(Qt.Key_Up);
+        verify(ton.activeFocus, "a real ↑ on the first row stays in the grid");
+        keyClick(Qt.Key_Left);
+        verify(ton.activeFocus);
+        verify(side.open);
+    }
+
+    function test_the_ton_tile_names_the_output_says_stumm_while_it_is_muted_and_without_an_output_the_input() {
+        const sound = giveSound(controls);
+        showSettled(0);
+        const ton = control("soundTile");
+        compare(ton.name, "ton");
+        compare(ton.glyph, "speaker");
+        compare(stateOf("soundTile"), "Speakers");
+        compare(ton.Accessible.name, "ton, Speakers");
+        sound.speakers.audio.muted = true;
+        compare(stateOf("soundTile"), "stumm", "the output muted");
+        compare(ton.Accessible.name, "ton, stumm");
+        sound.speakers.audio.muted = false;
+        controls.output = sound.headphones;
+        compare(stateOf("soundTile"), "Headphones", "another output");
+        controls.output = null;
+        compare(stateOf("soundTile"), "Microphone", "without an output, the input");
+    }
+
+    function test_the_anzeige_tile_says_the_density() {
+        showSettled(0);
+        const display = control("displayTile");
+        compare(display.name, "anzeige");
+        compare(display.glyph, "window");
+        compare(stateOf("displayTile"), "dichte automatisch");
+        controls.density = "comfortable";
+        compare(stateOf("displayTile"), "dichte bequem");
+        controls.density = "compact";
+        compare(stateOf("displayTile"), "dichte kompakt");
+        compare(display.Accessible.name, "anzeige, dichte kompakt");
+    }
+
+    function test_a_press_on_a_tile_opens_its_level_over_the_panel_below_its_head_on_the_ground_data() {
+        const ways = ["click", "Enter", "Space", "finger"];
+        const areas = [["soundTile", "sound", "ton"], ["displayTile", "display", "anzeige"]];
+        return areas.reduce((all, [tile, level, name]) => all.concat(ways.map(way => ({ tag: `${name} by ${way}`, tile, level, name, way }))), []);
+    }
+
+    function pressTile(tile: var, way: string) {
+        const scroller = named("scroller");
+        scroller.contentY = Math.max(0, scroller.contentHeight - scroller.height);
+        waitForFrame(side);
+        if (way === "click") {
+            mouseClick(tile);
+        } else if (way === "finger") {
+            const at = tile.mapToItem(scene, tile.width / 2, tile.height / 2);
+            const touch = touchEvent(scene);
+            touch.press(0, scene, at.x, at.y).commit();
+            touch.release(0, scene, at.x, at.y).commit();
+        } else {
+            tile.forceActiveFocus(Qt.TabFocusReason);
+            keyClick(way === "Enter" ? Qt.Key_Return : Qt.Key_Space);
+        }
+    }
+
+    function test_a_press_on_a_tile_opens_its_level_over_the_panel_below_its_head_on_the_ground(data) {
+        giveSound(controls);
+        giveDisplays(controls);
+        showSettled(0);
+        const level = findChild(controls, data.level);
+        verify(!level.open);
+        pressTile(control(data.tile), data.way);
+        verify(level.open, "it opens");
+        verify(level.visible);
+        waitForFrame(side);
+        const ground = findChild(side, "ground");
+        const levels = findChild(side, "levels");
+        const under = findChild(side, "underPivot");
+        compare(levels.mapToItem(ground, 0, 0).y, under.y + Geometry.hairline, "from the hairline under the pivot");
+        compare(levels.mapToItem(ground, 0, levels.height).y, ground.height, "to the floor");
+        compare(levels.x, 0);
+        compare(levels.width, ground.width, "across the ground");
+        compare(levels.color, Tokens.color.bg, "on the panel's ground");
+        compare(level.mapToItem(levels, 0, 0), Qt.point(0, 0));
+        compare(level.height, levels.height);
+        const back = findChild(level, "back");
+        compare(back.text, `zurück · ${data.name}`);
+        verify(back.isBack);
+        compare(back.mapToItem(ground, 0, 0).x, Tokens.spaceM, "at the content's edge");
+        compare(back.mapToItem(levels, 0, 0).y, Tokens.spaceM, "space-m below the head");
+        verify(!findChild(level, "heading"), "the rows without their group's heading");
+        const rows = shownRows(level);
+        verify(rows.length > 0);
+        compare(rows[0].mapToItem(level, 0, 0).y, back.mapToItem(level, 0, 0).y + back.height + Tokens.spaceM, "the rows space-m after the back row");
+        verify(findChild(side, "pivot").visible && findChild(side, "close").visible, "pivot and close button stay");
+        const children = Array.from(ground.children);
+        verify(children.indexOf(findChild(side, "close")) > children.indexOf(levels), "the close button over the level");
+    }
+
+    function test_the_level_takes_the_focus_at_once_and_its_back_row_escape_and_left_give_it_back_to_the_tile() {
+        giveSound(controls);
+        showSettled(0);
+        const ton = control("soundTile");
+        const level = findChild(controls, "sound");
+        for (const way of ["back", "Escape", "Left"]) {
+            ton.forceActiveFocus(Qt.TabFocusReason);
+            keyClick(Qt.Key_Return);
+            verify(inSound("outputDevice").activeFocus, `${way}: at once on the output select`);
+            if (way === "back") {
+                waitForFrame(side);
+                mouseClick(inSound("back"));
+            } else {
+                keyClick(way === "Escape" ? Qt.Key_Escape : Qt.Key_Left);
+            }
+            verify(!level.open, `${way} closes it`);
+            verify(ton.activeFocus, `${way}: the focus back on the tile`);
+            verify(side.open, `${way}: the panel stays`);
+        }
+        keyClick(Qt.Key_Return);
+        inSound("back").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Space);
+        verify(!level.open, "Space on the back row");
+        verify(ton.activeFocus);
+        keyClick(Qt.Key_Escape);
+        verify(!side.open, "Escape on the tile closes the panel");
+    }
+
+    function test_tab_and_the_arrows_stay_in_the_head_and_the_level() {
+        giveSound(controls);
+        giveBluetooth(controls);
+        const level = showLevel("sound");
+        const stops = [findChild(side, "pivot"), inSound("back"), inSound("outputDevice"), inSound("outputMute"), inSound("outputVolume"), inSound("inputDevice"), inSound("inputMute"), inSound("inputVolume"), findChild(side, "close")];
+        stops[0].forceActiveFocus(Qt.TabFocusReason);
+        for (let k = 1; k < stops.length; k++) {
+            keyClick(Qt.Key_Tab);
+            verify(stops[k].activeFocus, `Tab to ${stops[k].objectName}`);
+        }
+        for (let k = stops.length - 2; k >= 0; k--) {
+            keyClick(Qt.Key_Tab, Qt.ShiftModifier);
+            verify(stops[k].activeFocus, `Shift+Tab to ${stops[k].objectName}`);
+        }
+        inSound("inputMute").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Down);
+        verify(inSound("inputVolume").activeFocus, "↓ to the next in the level");
+        inSound("back").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Up);
+        verify(findChild(side, "pivot").activeFocus, "↑ from the back row to the head");
+        verify(level.open);
+    }
+
+    function test_what_the_level_covers_is_out_of_reach_and_keeps_its_place_and_its_scroll() {
+        giveSound(controls);
+        giveBluetooth(controls);
+        scene.height = 400;
+        showSettled(0);
+        const scroller = named("scroller");
+        const dark = control("dark");
+        const ton = control("soundTile");
+        ton.forceActiveFocus(Qt.TabFocusReason);
+        verify(scroller.contentY > 0, "scrolled to the tile");
+        const contentY = scroller.contentY;
+        const tonAt = ton.mapToItem(scene, 0, 0);
+        const darkAt = dark.mapToItem(scene, 0, 0);
+        keyClick(Qt.Key_Return);
+        const level = findChild(controls, "sound");
+        verify(level.open);
+        waitForFrame(side);
+        verify(!scroller.enabled, "the facet under it takes no focus, press, hover or wheel");
+        for (const covered of [dark, control("chooseBluetoothDevice"), ton, control("lock")])
+            verify(!covered.enabled, `${covered.objectName}: unavailable, to a screen reader too`);
+        mouseClick(dark, dark.width / 2, dark.height / 2);
+        compare(commands, [], "a press where dunkel lies does not reach it");
+        mouseMove(ton, ton.width / 2, ton.height / 2);
+        verify(!ton.hovered, "nor does the pointer's hover");
+        mouseWheel(scroller, 10, 10, 0, -120);
+        compare(scroller.contentY, contentY, "nor the wheel");
+        inSound("inputVolume").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Tab);
+        verify(findChild(side, "close").activeFocus, "Tab passes over it");
+        keyClick(Qt.Key_Down);
+        verify(!side.within(scroller, side.Window.activeFocusItem), "and so do the arrows");
+        inSound("back").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Escape);
+        verify(ton.activeFocus);
+        compare(scroller.contentY, contentY, "the same scroll afterwards");
+        compare(ton.mapToItem(scene, 0, 0), tonAt, "the same place");
+        compare(dark.mapToItem(scene, 0, 0), darkAt);
+        verify(scroller.enabled && dark.enabled);
+    }
+
+    function test_a_level_longer_than_its_room_scrolls() {
+        giveSound(controls);
+        controls.ownProcessId = 1000;
+        controls.streams = Array.from({ length: 7 }, (_, k) => stream(70 + k, { "application.name": `Player ${k + 1}` }, 0.5));
+        const level = showLevel("sound");
+        compare(streamRows().length, 7);
+        verify(level.contentHeight > level.height, "seven streams outgrow the room");
+        verify(level.interactive, "so the level scrolls");
+        inSound("inputVolume").forceActiveFocus(Qt.TabFocusReason);
+        verify(level.contentY > 0, "the focus brings its control into view");
+        verify(shownWhole(inSound("inputVolume"), level));
+        compare(named("scroller").contentY, 0, "the facet under it stays");
+    }
+
+    function test_the_panel_going_or_another_facet_closes_the_level_at_once() {
+        giveSound(controls);
+        const level = showLevel("sound");
+        Prefs.motion = "on";
+        side.close();
+        verify(findChild(side, "goingOut").running, "the panel goes");
+        tryVerify(() => !side.open, Tokens.durationModerate * 4);
+        verify(!level.open, "the level is gone with it");
+        Prefs.motion = "off";
+        showLevel("sound");
+        findChild(side, "pivot").select(1);
+        verify(!level.open, "another facet closes it at once");
+        verify(findChild(side, "scroller").enabled);
+        findChild(side, "pivot").select(0);
+        verify(!level.open, "and it does not come back with steuerung");
+    }
+
+    // As the host's openAt does for the bar's "stumm" and "mikrofon an".
+    function test_stumm_from_the_bar_opens_the_panel_with_the_level_of_ton_standing_or_opens_it_in_the_open_panel() {
+        giveSound(controls);
+        Prefs.motion = "on";
+        const level = findChild(controls, "sound");
+        side.show(0, true);
+        side.reveal(controls.places.sound);
+        verify(findChild(side, "comingIn").running, "the panel comes in");
+        verify(level.open, "with the level standing");
+        verify(inSound("outputDevice").activeFocus);
+        tryVerify(() => !findChild(side, "comingIn").running, Tokens.durationModerate * 4);
+        side.reveal(findChild(controls, "display"));
+        level.leave();
+        verify(!level.open);
+        side.show(0, true);
+        side.reveal(controls.places.sound);
+        verify(level.open, "the open panel opens it");
+        verify(!findChild(controls, "display").open, "in place of another level");
+        verify(inSound("outputDevice").activeFocus);
+    }
+
+    // The dense case of ton: its level with three streams between the output and the input, so the eye finds where the input
+    // begins.
     function test_contact_sheet_of_ton_with_three_streams_in_both_themes() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
@@ -3888,7 +4228,8 @@ TestCase {
             const panel = findChild(contact, "panel");
             giveSound(panel.controls);
             giveStreams(panel.controls);
-            panel.show(0);
+            panel.show(0, true);
+            panel.reveal(findChild(panel.controls, "sound"));
             waitForRendering(contact);
             tryVerify(() => shownRows(findChild(contact, "sound")).filter(row => row.objectName === "stream").length === 3);
             grabImage(contact).save(`panel-sound-sheet-${theme}.png`);
@@ -3897,15 +4238,18 @@ TestCase {
         }
     }
 
-    // The panel follows the one current theme and density, so the contact sheet is drawn once per pair.
+    // The panel follows the one current theme and density, so the contact sheet is drawn once per pair. On a screen 1440
+    // px high it holds all it has without scrolling: the grid at its foot, the free space above it; then the level of ton
+    // stands over it, its output select open, and the level of anzeige.
     function test_contact_sheet_of_the_panel_in_both_themes_and_densities() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
+        testCase.height = 1440;
         for (const theme of ContactSheets.colourSets) {
             for (const density of ["compact", "comfortable"]) {
                 useColours(theme);
                 Prefs.density = density;
-                const contact = createTemporaryObject(contactComponent, testCase);
+                const contact = createTemporaryObject(contactComponent, testCase, { height: 1440 - Tokens.appbarHeight });
                 const panel = findChild(contact, "panel");
                 panel.controls.hasPerformanceProfile = true;
                 const sound = giveSound(panel.controls);
@@ -3913,20 +4257,29 @@ TestCase {
                 sound.microphone.audio.muted = true;
                 giveDisplays(panel.controls);
                 giveBluetooth(panel.controls).speaker.state = Controls.Connecting;
-                panel.show(0);
+                panel.show(0, true);
                 waitForRendering(contact);
+                verify(!findChild(panel, "scroller").interactive, `${theme} ${density}: no scroll`);
                 grabImage(contact).save(`panel-sheet-${theme}-${density}.png`);
-                findChild(contact, "outputDevice").forceActiveFocus();
+                findChild(contact, "soundTile").forceActiveFocus();
+                keyClick(Qt.Key_Return);
+                waitForRendering(contact);
+                verify(findChild(contact, "outputDevice").activeFocus);
+                grabImage(contact).save(`panel-level-sheet-${theme}-${density}.png`);
                 keyClick(Qt.Key_Return);
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-select-sheet-${theme}-${density}.png`);
                 verify(findChild(contact, "outputDevice").expanded);
-                // Without sound, verbindungen stands first: its level open, the devices connected, on their way and not.
                 keyClick(Qt.Key_Escape);
-                panel.controls.output = null;
-                panel.controls.input = null;
+                keyClick(Qt.Key_Escape);
+                verify(findChild(contact, "soundTile").activeFocus);
+                keyClick(Qt.Key_Right);
+                keyClick(Qt.Key_Return);
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-display-sheet-${theme}-${density}.png`);
+                verify(findChild(contact, "display").open);
+                // Verbindungen: its level open, the devices connected, on their way and not.
+                keyClick(Qt.Key_Escape);
                 const networks = giveNetworks(panel.controls);
                 panel.controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
                 networks.office.stateChanging = true;
@@ -3972,5 +4325,6 @@ TestCase {
                 contact.destroy();
             }
         }
+        testCase.height = 720;
     }
 }

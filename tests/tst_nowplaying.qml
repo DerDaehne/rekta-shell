@@ -109,7 +109,7 @@ TestCase {
 
                     objectName: "controls"
                     sheets: scenePanel.sheets
-                    edge: scenePanel.edge
+                    levels: scenePanel.levels
                 }
 
                 Item {
@@ -160,7 +160,9 @@ TestCase {
         side.show(0);
         const region = part("nowPlaying");
         verify(region.visible);
-        compare(controls.children[0], region, "it stands above every group");
+        const above = findChild(controls, "above");
+        compare(above.children[0], region, "it stands first above the grid, above every group");
+        compare(region.y, 0, "at the top");
         compare(findChild(region, "kicker").text, "läuft gerade · Elisa", "the kicker names the player");
         verify(!findChild(region, "tag").visible, "the region has no status tag");
         compare(part("title").text, "Teardrop");
