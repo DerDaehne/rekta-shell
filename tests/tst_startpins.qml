@@ -597,17 +597,26 @@ TestCase {
 
     function test_the_focus_on_a_tile_whose_window_closes_goes_to_the_next_at_the_end_to_the_one_before() {
         openNow();
-        const build = start.windows.find(window => window.title === "konsole: build");
-        start.windows = [...start.windows, fakeWindow("notes", 5, "org.kde.kate")];
+        start.windows = [...start.windows, fakeWindow("notes", 5, "org.kde.kate"), fakeWindow("mail", 1, "")];
         tryVerify(() => !named("runningPresence").running, 2000);
-        compare(runningTitles(), ["a window", "konsole: build", "notes"]);
-        runningTile("a window").forceActiveFocus();
-        start.windows = start.windows.filter(window => window.title !== "a window");
-        verify(runningTile("konsole: build").activeFocus, "the next");
+        compare(runningTitles(), ["a window", "konsole: build", "notes", "mail"]);
+        runningTile("konsole: build").forceActiveFocus();
+        start.windows = start.windows.filter(window => window.title !== "konsole: build");
+        verify(runningTile("notes").activeFocus, "the next");
         tryVerify(() => !named("runningPresence").running, 2000);
-        runningTile("notes").forceActiveFocus();
-        start.windows = [build];
-        verify(runningTile("konsole: build").activeFocus, "at the end the one before");
+        runningTile("mail").forceActiveFocus();
+        start.windows = start.windows.filter(window => window.title !== "mail");
+        verify(runningTile("notes").activeFocus, "at the end the one before");
+    }
+
+    function test_the_last_windows_tile_leaves_with_motion_before_lauft_goes() {
+        openNow();
+        const tile = runningTile("a window");
+        start.windows = [];
+        verify(named("running").visible, "läuft stays while its tiles leave");
+        verify(runningMotion(tile), "the tile leaves");
+        tryVerify(() => !named("runningPresence").running, 2000);
+        verify(!named("running").visible);
     }
 
     function test_a_window_that_opens_while_the_start_shows_brings_its_tile_in() {
