@@ -1024,10 +1024,16 @@ FocusScope {
     }
 
     // A window comes or goes: as for the pinned apps, the tiles of windows gone leave, the others glide to their places
-    // and those of new windows arrive (motion.md:115–116); at once while the Start is hidden or turns.
+    // and those of new windows arrive (motion.md:115–116); at once while the Start is hidden or turns. The pinned apps'
+    // motion is the same one, so whatever takes the Start's parts finds every tile at rest.
     function followRunning() {
-        runningPresence.finish();
         const next = running;
+        // The same windows in the same order, as when KWin restacks them: nothing comes, goes or moves.
+        if (Rules.steps(runningTiles().map(tile => tile.uuid), next.map(window => window.uuid)).length === 0) {
+            shownRunning = next;
+            return;
+        }
+        presence.finish();
         const tiles = runningTiles();
         const kept = new Set(next.map(window => window.uuid));
         const before = new Set(tiles.map(tile => tile.uuid));
@@ -1041,7 +1047,7 @@ FocusScope {
             showRunning(next);
             return;
         }
-        runningPresence.change(going, staying, () => showRunning(next), () => runningTiles().filter(tile => coming.includes(tile.uuid)), coming.length);
+        presence.change(going, staying, () => showRunning(next), () => runningTiles().filter(tile => coming.includes(tile.uuid)), coming.length);
     }
 
     // The focus on a tile that leaves goes to the next one that stays, at the end to the one before (collections.md,
@@ -1798,12 +1804,6 @@ FocusScope {
         objectName: "presence"
     }
 
-    Presence {
-        id: runningPresence
-
-        objectName: "runningPresence"
-    }
-
     // A change of place, or a turn to the other one, closes the menu.
     Connections {
         target: pivot
@@ -2553,8 +2553,13 @@ FocusScope {
         area: Qt.size(start.width, start.height)
         onChosen: item => start.choose(item)
         onOpenChanged: {
-            if (!open)
-                start.forgetMenuTile();
+            if (open)
+                return;
+            start.forgetMenuTile();
+            // Closed after a pointer choice it would keep the focus and take the next Escape: the Start takes the keys
+            // again, no ring shown.
+            if (activeFocus)
+                start.focusItem.focus = false;
         }
         // Its tile has gone.
         onControlChanged: {

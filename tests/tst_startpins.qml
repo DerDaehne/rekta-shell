@@ -558,6 +558,23 @@ TestCase {
         compare(calls, []);
     }
 
+    function test_after_a_pointer_choice_in_the_menu_escape_reaches_the_start_data() {
+        return [
+            { tag: "fenster", label: "fenster", tile: () => runningTile("konsole: build") },
+            { tag: "a size", label: "groß", tile: () => pinnedTile("Dolphin") }
+        ];
+    }
+
+    function test_after_a_pointer_choice_in_the_menu_escape_reaches_the_start(data) {
+        openNow();
+        rightClick(data.tile(), 30, 40);
+        choose(data.label);
+        verify(!menu.open);
+        verify(!menu.activeFocus, "a closed menu holds no focus");
+        keyClick(Qt.Key_Escape);
+        verify(!start.wanted, "Escape goes back out of the Start");
+    }
+
     Component {
         id: spyComponent
 
@@ -570,10 +587,6 @@ TestCase {
         return tilesIn("running").map(tile => tile.title);
     }
 
-    function runningMotion(tile: var): var {
-        return named("runningPresence").moving.find(motion => motion.item === tile);
-    }
-
     function test_a_window_that_closes_while_the_start_shows_takes_only_its_tile_out_and_the_others_close_the_gap() {
         openNow();
         const kept = start.windows.find(window => window.title === "konsole: build");
@@ -581,15 +594,15 @@ TestCase {
         const staying = runningTile("konsole: build");
         compare(runningTitles(), ["a window", "konsole: build"]);
         start.windows = [kept];
-        const leaving = runningMotion(closing);
+        const leaving = moving(closing);
         verify(leaving, "it leaves");
         compare(leaving.to.scale, Geometry.leaveTileScale);
         compare(leaving.to.opacity, 0);
         compare(leaving.duration, Geometry.leaveShare * Tokens.durationShort);
         compare(leaving.curve, Tokens.easeOut);
-        tryVerify(() => runningMotion(staying) !== undefined, 1000, "then konsole glides into the gap");
-        compare(runningMotion(staying).duration, Tokens.durationModerate);
-        tryVerify(() => !named("runningPresence").running, 2000);
+        tryVerify(() => moving(staying) !== undefined, 1000, "then konsole glides into the gap");
+        compare(moving(staying).duration, Tokens.durationModerate);
+        tryVerify(() => !named("presence").running, 2000);
         compare(runningTitles(), ["konsole: build"]);
         verify(runningTile("konsole: build") === staying, "the tile that stays is the same tile");
         verify(start.wanted, "the Start stays open");
@@ -598,12 +611,12 @@ TestCase {
     function test_the_focus_on_a_tile_whose_window_closes_goes_to_the_next_at_the_end_to_the_one_before() {
         openNow();
         start.windows = [...start.windows, fakeWindow("notes", 5, "org.kde.kate"), fakeWindow("mail", 1, "")];
-        tryVerify(() => !named("runningPresence").running, 2000);
+        tryVerify(() => !named("presence").running, 2000);
         compare(runningTitles(), ["a window", "konsole: build", "notes", "mail"]);
         runningTile("konsole: build").forceActiveFocus();
         start.windows = start.windows.filter(window => window.title !== "konsole: build");
         verify(runningTile("notes").activeFocus, "the next");
-        tryVerify(() => !named("runningPresence").running, 2000);
+        tryVerify(() => !named("presence").running, 2000);
         runningTile("mail").forceActiveFocus();
         start.windows = start.windows.filter(window => window.title !== "mail");
         verify(runningTile("notes").activeFocus, "at the end the one before");
@@ -614,8 +627,8 @@ TestCase {
         const tile = runningTile("a window");
         start.windows = [];
         verify(named("running").visible, "läuft stays while its tiles leave");
-        verify(runningMotion(tile), "the tile leaves");
-        tryVerify(() => !named("runningPresence").running, 2000);
+        verify(moving(tile), "the tile leaves");
+        tryVerify(() => !named("presence").running, 2000);
         verify(!named("running").visible);
     }
 
@@ -624,10 +637,31 @@ TestCase {
         start.windows = [...start.windows, fakeWindow("notes", 30, "org.kde.kate")];
         const notes = runningTile("notes");
         compare(runningTitles()[0], "notes", "the most recent first");
-        const arrival = runningMotion(notes);
+        const arrival = moving(notes);
         verify(arrival, "it arrives");
         compare(arrival.from.scale, Geometry.arriveTileScale);
         compare(arrival.duration, Tokens.durationModerate);
+    }
+
+    function test_a_tile_still_arriving_as_the_start_turns_out_is_at_rest_before_the_turn_takes_it() {
+        openNow();
+        start.windows = [...start.windows, fakeWindow("notes", 30, "org.kde.kate")];
+        const notes = runningTile("notes");
+        verify(moving(notes), "it arrives");
+        start.close(null);
+        verify(findChild(start, "turn").running, "the Start turns out");
+        verify(moving(notes) === undefined, "the arrival has landed: no layer of it stands among the parts");
+    }
+
+    function test_windows_restacked_in_the_same_order_leave_a_pinned_change_on_its_way() {
+        openNow();
+        rightClick(pinnedTile("Dolphin"), 30, 40);
+        const dolphin = pinnedTile("Dolphin");
+        choose("lösen");
+        verify(moving(dolphin), "it leaves");
+        start.windows = start.windows.slice();
+        verify(moving(dolphin), "it still leaves");
+        compare(pinnedNames(), ["Systemeinstellungen", "Dolphin", "Konsole"], "the change still waits for it");
     }
 
     function test_the_menu_on_a_tile_whose_window_closes_closes_with_it() {
@@ -642,7 +676,7 @@ TestCase {
         openNow();
         Prefs.motion = "off";
         start.windows = start.windows.filter(window => window.title !== "a window");
-        verify(!named("runningPresence").running);
+        verify(!named("presence").running);
         compare(runningTitles(), ["konsole: build"]);
     }
 
