@@ -300,6 +300,31 @@ in
         touch $out
       '';
 
+  rekta-backgrounds =
+    let
+      backgrounds = self.packages.${pkgs.stdenv.hostPlatform.system}.rekta-backgrounds;
+      sky = "${backgrounds}/share/wallpapers/rekta-sky";
+    in
+    pkgs.runCommand "rekta-shell-rekta-backgrounds"
+      {
+        nativeBuildInputs = [
+          pkgs.jq
+        ];
+      }
+      ''
+        jq -e '.KPlugin.Id == "rekta-sky" and .KPlugin.License == "CC0-1.0" and (.KPlugin.Authors[0].Name | contains("Claude"))' ${sky}/metadata.json
+        # RIFF header, then the lossless bitstream: its 14-bit width and height minus one follow the signature byte.
+        image=${sky}/contents/images/1920x1080.webp
+        test "$(head -c 16 $image | tail -c 4)" = "VP8L"
+        size=$(od -An -tu4 -j21 -N4 $image)
+        test $(( (size & 16383) + 1 )) = 1920
+        test $(( ((size >> 14) & 16383) + 1 )) = 1080
+        grep -F "CC0" ${backgrounds}/share/licenses/rekta-backgrounds/LICENSE
+        # The shell's own package holds none of it, so its cache is unaffected by the images.
+        test ! -e ${rekta-shell}/share/wallpapers
+        touch $out
+      '';
+
   # Lint and tests stay green with a forgotten debug line; only `info`, `warn` and `error` are meant to reach the journal.
   no-debug-logging = pkgs.runCommand "rekta-shell-no-debug-logging" { } ''
     if grep -rnE --include='*.qml' --include='*.js' \

@@ -444,6 +444,15 @@ leaves them out. GNOME itself stays unchanged. What you notice when you switch:
 - **Leftovers:** the first session you start writes configuration (`kdeglobals`,
   `kwinrc` and more in `~/.config`) that the other session ignores.
 
+## Background images
+
+rekta ships its background images as a separate data package in KDE's wallpaper format
+(`share/wallpapers/rekta-<name>/`), so Plasma's picker finds them too: the flake package
+`rekta-backgrounds` and the RPM `rekta-shell-backgrounds` (noarch). The first one is "sky", a
+softly blurred evening sky (1920x1080, lossless WebP, 0.9 MB). The images were generated with
+Claude and are CC0 ([backgrounds/LICENSE](backgrounds/LICENSE)). The shell does not show them
+yet. WebP needs Qt's `qtimageformats`, which Plasma installs.
+
 ## A link for "problem melden"
 
 The session bar (Ctrl+Alt+Delete) can offer "problem melden", which opens a web
@@ -500,3 +509,4 @@ scan.
 
 Code is MIT ([LICENSE](LICENSE)), documentation CC BY 4.0
 ([LICENSE-docs](LICENSE-docs)). Third-party material: [NOTICE](NOTICE).
+The background images are CC0 ([backgrounds/LICENSE](backgrounds/LICENSE)).

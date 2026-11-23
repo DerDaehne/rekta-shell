@@ -16,3 +16,8 @@ rekta-shell — provenance notice
 
    Atkinson Hyperlegible Next: https://www.brailleinstitute.org/freefont/
    Licence: SIL Open Font License 1.1 (https://openfontlicense.org)
+
+3. Background images
+   backgrounds/ holds images generated with Claude, dedicated to the public
+   domain under CC0 1.0 (backgrounds/LICENSE). convert-sky.py there records how
+   the shipped file was derived from the original.

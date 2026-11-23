@@ -1,0 +1,13 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "rekta (generated with Claude)"
+            }
+        ],
+        "Description": "A softly blurred evening sky, generated with Claude",
+        "Id": "rekta-sky",
+        "License": "CC0-1.0",
+        "Name": "Sky"
+    }
+}

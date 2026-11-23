@@ -65,6 +65,16 @@ the regular Plasma session: Plasma services without the Plasma shell, with
 rekta-shell in its place. The window manager effects of the shell are loaded
 only in that session.
 
+%package backgrounds
+Summary:        Background images for rekta-shell, in KDE's wallpaper format
+License:        CC0-1.0
+BuildArch:      noarch
+
+%description backgrounds
+The background images of rekta-shell, generated with Claude and placed in the
+public domain (CC0). They are in the format of KDE's wallpapers, so Plasma's
+picker finds them too. Nothing needs this package to run the shell.
+
 %prep
 %autosetup -n rekta-shell-%{safe_version}
 
@@ -76,6 +86,8 @@ only in that session.
 %cmake_install
 install -d %{buildroot}%{_sysconfdir}/rekta-shell
 printf '{ "background": "solid" }\n' > %{buildroot}%{_sysconfdir}/rekta-shell/defaults.json
+install -d %{buildroot}%{_datadir}/wallpapers
+cp -r backgrounds/rekta-sky %{buildroot}%{_datadir}/wallpapers/
 
 %check
 # The session's KWin command is Plasma's, behind the wrapper that adds the rekta paths.
@@ -158,6 +170,10 @@ QMLTESTRUNNER=%{_qt6_bindir}/qmltestrunner $src/tests/run-qml-tests.sh $src
 %{_userunitdir}/plasma-workspace.target.d/rekta-shell.conf
 %dir %{_sysconfdir}/rekta-shell
 %config(noreplace) %{_sysconfdir}/rekta-shell/defaults.json
+
+%files backgrounds
+%license backgrounds/LICENSE
+%{_datadir}/wallpapers/rekta-sky/
 
 %changelog
 * Mon Nov 23 2026 rekta-shell maintainers - 0.1.5^20261123.1951git1b45490-1
