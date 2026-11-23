@@ -407,7 +407,7 @@ FocusScope {
         onSelected: index => view.showPlace(index)
     }
 
-    // Compact, the strip has a hairline below it across the whole place; sideways it has none (rekta.css:1167–1170, :1531).
+    // Compact, the strip has a hairline below it across the whole place; sideways it has none (rekta.css:1169–1172, :1533).
     Hairline {
         objectName: "underPivot"
         visible: view.columns === 1
