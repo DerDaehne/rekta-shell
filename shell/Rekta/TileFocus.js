@@ -4,7 +4,7 @@
 // names.
 
 // Where a typed key jumps among `names`: the next after `from` that starts with it, whatever the case, round past the
-// end; -1 when none does (navigation.md:534–541).
+// end; -1 when none does (navigation.md:548–555).
 // ponytail: one key at a time; Rekta joins letters typed within duration-type-ahead into a prefix
 // (rekta.js:173–190).
 function jumpTarget(names, from, key) {

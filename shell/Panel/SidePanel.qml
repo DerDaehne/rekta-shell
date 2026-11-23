@@ -3,10 +3,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 
-// The side panel, the shell's own surface: two tile units wide with a sheet's padding (rekta.css:1086), the full height
+// The side panel, the shell's own surface: two tile units wide with a sheet's padding (rekta.css:1088), the full height
 // of its host at the trailing edge, on the ground with a hairline along its leading edge. It slides all the way in from
 // the trailing edge over duration-moderate with ease-out and leaves the way it came in 0.8 × that, as a sheet leaves
-// (motion.md, "Sheets"); unlike Rekta's side panel (`.rk-sheet--side`, rekta.css:1114–1125) nothing beside it is shaded
+// (motion.md, "Sheets"); unlike Rekta's side panel (`.rk-sheet--side`, rekta.css:1116–1127) nothing beside it is shaded
 // or blocked and it arrives on ease-out. Its pivot picks a facet. Escape, its close button at the top trailing corner
 // (states.md:325–331), a touch swipe towards the trailing edge and close() send it away; a tip that shows takes Escape
 // first. A swipe from its host (drawIn(), drawOut()) moves it as a finger on it does. Focus starts at the first control
@@ -368,7 +368,7 @@ FocusScope {
         onFinished: sidePanel.gone()
     }
 
-    // The hairline along its leading edge shows under the ground, as a sheet's does along its bottom (rekta.css:1087).
+    // The hairline along its leading edge shows under the ground, as a sheet's does along its bottom (rekta.css:1089).
     Rectangle {
         id: panel
 
@@ -403,8 +403,8 @@ FocusScope {
             width: parent.width - Geometry.hairline
             height: parent.height
             color: Tokens.color.bg
-            // Nothing in it paints over the hairline, as a sheet cuts its content off at its padding box (rekta.css:1085,
-            // :1120), not even a facet on its way in.
+            // Nothing in it paints over the hairline, as a sheet cuts its content off at its padding box (rekta.css:1087,
+            // :1122), not even a facet on its way in.
             clip: true
 
             // A place's strip, the nav level; at this width it takes the facet sizes (Pivot, compact).
@@ -414,7 +414,7 @@ FocusScope {
                 objectName: "pivot"
                 x: Tokens.spaceM
                 y: Tokens.spaceL
-                // Clear of the close button, as a sheet's kicker is (rekta.css:1111).
+                // Clear of the close button, as a sheet's kicker is (rekta.css:1113).
                 width: sidePanel.contentWidth - Tokens.touchTarget
                 level: "nav"
                 titles: sidePanel.titles
@@ -423,7 +423,7 @@ FocusScope {
                 onCurrentIndexChanged: sidePanel.closeLevels()
             }
 
-            // A compact place's strip has a hairline below it (rekta.css:1166–1170).
+            // A compact place's strip has a hairline below it (rekta.css:1168–1172).
             Hairline {
                 objectName: "underPivot"
                 x: Tokens.spaceM
@@ -438,7 +438,7 @@ FocusScope {
                 objectName: "scroller"
                 y: pivot.y + pivot.height + Geometry.hairline
                 width: parent.width
-                // To the bottom edge: the sheet's padding there scrolls with its content (rekta.css:1085, :1119).
+                // To the bottom edge: the sheet's padding there scrolls with its content (rekta.css:1087, :1121).
                 height: parent.height - y
                 contentWidth: width
                 contentHeight: facetHolder.height + Tokens.spaceL
@@ -465,7 +465,7 @@ FocusScope {
                 }
             }
 
-            // Over the facet's scroll, on the ground (`.rk-levels > * { background-color: bg }`, rekta.css:1140).
+            // Over the facet's scroll, on the ground (`.rk-levels > * { background-color: bg }`, rekta.css:1142).
             Rectangle {
                 id: levelHolder
 
@@ -482,7 +482,7 @@ FocusScope {
                 }
             }
 
-            // `.rk-sheet-close { position: absolute; top: space-xs; right: space-xs }` (rekta.css:1110); last in the
+            // `.rk-sheet-close { position: absolute; top: space-xs; right: space-xs }` (rekta.css:1112); last in the
             // focus chain, as in a sheet's form (forms.md:265), and under the facet's sheets.
             IconButton {
                 id: closeButton

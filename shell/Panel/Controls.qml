@@ -314,8 +314,8 @@ Item {
         })
 
     width: parent ? parent.width : 0
-    // The room below the panel's head less the sheet's padding at its foot (rekta.css:1119): what stands above the grid,
-    // at least space-m free, then the grid (rekta.css:1141–1142).
+    // The room below the panel's head less the sheet's padding at its foot (rekta.css:1121): what stands above the grid,
+    // at least space-m free, then the grid (rekta.css:1143–1144).
     implicitHeight: Math.max((levels?.height ?? 0) - Tokens.spaceL, above.height + Tokens.spaceM + areaGrid.height)
     onPlayingChanged: followStreams()
     Component.onCompleted: followStreams()

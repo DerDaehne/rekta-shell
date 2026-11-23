@@ -25,7 +25,7 @@ Item {
     // Where each visible tile sits, in cells: [{tile, column, row}], in the order of the children.
     readonly property var placed: pack()
     readonly property int rows: placed.reduce((most, cell) => Math.max(most, cell.row + cell.tile.rows), 0)
-    // A grid of tiles that open is one tab stop where its host says so (navigation.md:546–559): Tab reaches the tile last
+    // A grid of tiles that open is one tab stop where its host says so (navigation.md:560–573): Tab reaches the tile last
     // focused, the first to begin with, and the next Tab leaves the grid. The Start leads the keys across its sections
     // itself.
     property bool oneTabStop: false
