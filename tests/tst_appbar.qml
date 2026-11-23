@@ -562,6 +562,28 @@ TestCase {
         tryVerify(() => press.opacity === 0, 1000, "let go once it has closed");
     }
 
+    // Which control holds the open state when the opener waits in "more" is for Rekta to say; until then "more" holds it
+    // only for its own menu.
+    function test_while_the_surface_of_a_control_moved_into_more_is_open_more_holds_no_tint_and_is_not_expanded() {
+        makeScene({ barWidth: 760 });
+        settle();
+        restPointerAway();
+        const moved = named("in the background");
+        verify(moved.overflowed, "it waits in more");
+        verify(bar.more.surfaces.includes(moved.opens), "its surface opens at more");
+        const press = findChild(bar.more, "press");
+        const steps = Glide.record(press, "opacity");
+        moved.click();
+        verify(moved.opens.open);
+        verify(!bar.more.expanded);
+        if ("expanded" in bar.more.Accessible)
+            verify(!bar.more.Accessible.expanded);
+        wait(Tokens.durationShort + 50);
+        compare(steps.length, 0, "no tint comes");
+        compare(press.opacity, 0);
+        moved.click();
+    }
+
     function test_a_disabled_control_holds_no_tint_even_while_set_expanded() {
         const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 40, expandable: true, disabledReason: "comes with the panel" });
         mouseMove(testCase, 1, 1);
