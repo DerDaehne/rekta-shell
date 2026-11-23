@@ -4,10 +4,10 @@ import QtQuick
 import Rekta
 import Start
 
-// The shell's keyboard shortcuts, listed in the shell itself as Rekta lists an app's (navigation.md:508–509): a sheet
+// The shell's keyboard shortcuts, listed in the shell itself as Rekta lists an app's (navigation.md:522–523): a sheet
 // with a row per shortcut, its words and its key, and "schließen" (Rekta's showcase, site/index.html:924–947). The
 // keys of the session's shortcuts are read from kglobalaccel as it opens, so what the user bound shows; a shortcut with
-// no key bound has no row. `?` outside a text field asks for it (navigation.md:503).
+// no key bound has no row. `?` outside a text field asks for it (navigation.md:517).
 Sheet {
     id: keyMap
 

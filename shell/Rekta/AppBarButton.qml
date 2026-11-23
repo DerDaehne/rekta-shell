@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A control of the app bar (navigation.md, "App bar"; rekta.css:813–824, :1368): a glyph and a word, never a glyph
+// A control of the app bar (navigation.md, "App bar"; rekta.css:813–826, :1370): a glyph and a word, never a glyph
 // alone, at least 48px square in every density, no frame; hover and press lay `hover` under it. A click gives no focus,
 // so the ring shows only for the keyboard. A control that cannot act stays focusable and is read with its reason; the
 // reason shows as its tooltip (on touch when it is tapped) and moves into "more" with it, as Rekta has it in the

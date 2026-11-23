@@ -1,6 +1,6 @@
 import QtQuick
 
-// A surface that floats next to the control that opened it (states.md, "Floating surfaces"; rekta.css:1016–1024): bg, a
+// A surface that floats next to the control that opened it (states.md, "Floating surfaces"; rekta.css:1018–1026): bg, a
 // 1px text-contrast-medium edge, radius-s, no shadow. As wide as its widest row, from 12rem up to 24rem (less in a
 // narrow window); at most 24rem, 60% of the window or the window less space-m above and below high
 // (rekta.js:2053), scrolling the rest. It comes in with a fade and a 4px shift away from its control and leaves at

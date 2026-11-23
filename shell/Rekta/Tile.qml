@@ -49,7 +49,7 @@ Item {
     // How far it has sunk, 0 to 1, eased like a CSS transition: in over duration-press, back over duration-short.
     // Not bound to `pressed`, or sink moves before the Behavior's duration does and lets go in duration-press.
     property real sink: (press.held || kept) ? 1 : 0
-    // The tilt the sink has reached, in degrees; none under reduced motion, where a press only shrinks (rekta.css:1562).
+    // The tilt the sink has reached, in degrees; none under reduced motion, where a press only shrinks (rekta.css:1564).
     readonly property real tiltX: Tokens.reducedMotion ? 0 : -pressY * sink * Tokens.tileTilt
     readonly property real tiltY: Tokens.reducedMotion ? 0 : pressX * sink * Tokens.tileTilt
     readonly property real pressScale: 1 - sink * (1 - Tokens.tilePressScale)
@@ -185,7 +185,7 @@ Item {
             }
         }
 
-        // Hover tints a tile that opens (rekta.css:1358); it is an image in the stylesheet, so it changes at once.
+        // Hover tints a tile that opens (rekta.css:1360); it is an image in the stylesheet, so it changes at once.
         Rectangle {
             objectName: "tint"
             anchors.fill: parent

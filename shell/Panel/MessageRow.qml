@@ -211,7 +211,7 @@ Item {
             OverflowTip {}
         }
 
-        // Hover and press lay `hover` over the row, as over a toast's text (rekta.css:1247).
+        // Hover and press lay `hover` over the row, as over a toast's text (rekta.css:1249).
         Rectangle {
             objectName: "tint"
             anchors.fill: parent

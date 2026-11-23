@@ -1019,7 +1019,7 @@ TestCase {
         }
     }
 
-    // Keys (navigation.md:484–486).
+    // Keys (navigation.md:498–500).
 
     function test_arrow_and_page_keys_jump_to_the_previous_and_next_section_flush_left() {
         Prefs.motion = "off";

@@ -1,11 +1,11 @@
 import QtQuick
 
-// A sheet (states.md, "Layers"; forms.md, "A form in a sheet"; behaviour.md, `sheet()`; rekta.css:1084–1145): a short
+// A sheet (states.md, "Layers"; forms.md, "A form in a sheet"; behaviour.md, `sheet()`; rekta.css:1086–1147): a short
 // question hanging from the top edge over the shading, while everything behind stays where it was. It comes 16px down
 // with a fade over duration-short and leaves the way it came in 0.8 × that (motion.md, "Sheets"). It holds the focus
 // while it is open and gives it back once it has gone. Escape (a key layer), the shading and its close button are
 // close requests: while `dirty` it asks first, in its own place. The host lays it over its whole surface, above the
-// toasts, has what lies behind blurred (rekta.css:1092) and routes keys to KeyLayers.
+// toasts, has what lies behind blurred (rekta.css:1094) and routes keys to KeyLayers.
 Item {
     id: sheet
 
@@ -28,12 +28,12 @@ Item {
     // Set by show(), request() and close(): open from show() until it has gone, asking while the question shows.
     property bool open: false
     property bool asking: false
-    // Runs from 0 to 1 as it comes in, and back to 0 as it leaves; the shading comes and goes with it (rekta.css:1093–1094,
+    // Runs from 0 to 1 as it comes in, and back to 0 as it leaves; the shading comes and goes with it (rekta.css:1095–1096,
     // rekta.js:1832–1837).
     property real entry: 1
     // Set by a host that has KWin blur what lies behind and shows its whole surface by surfaceOpacity. The sheet then
     // shows by that once more, so shading and sheet show by entry, and so does KWin's blur, which goes with the square
-    // of the surface's opacity: shading and blur fade as one (rekta.css:1092–1093).
+    // of the surface's opacity: shading and blur fade as one (rekta.css:1094–1095).
     property bool surfaceFades: false
     readonly property real surfaceOpacity: surfaceFades ? Math.sqrt(entry) : 1
     readonly property real shift: -(1 - entry) * Geometry.sheetShift
@@ -191,7 +191,7 @@ Item {
     }
 
     // `margin: 0 auto auto; width: min(32rem, 100%); max-height: calc(100dvh - space-xl)`; the bottom edge a hairline
-    // in text-contrast-low, the bottom corners radius-m (rekta.css:1085–1087).
+    // in text-contrast-low, the bottom corners radius-m (rekta.css:1087–1089).
     Rectangle {
         id: panel
 
@@ -233,7 +233,7 @@ Item {
             Flickable {
                 id: scroller
 
-                // `padding: space-l space-m`, space-xl at the sides in a sideways viewport (rekta.css:1086, :1443–1447)
+                // `padding: space-l space-m`, space-xl at the sides in a sideways viewport (rekta.css:1088, :1445–1449)
                 readonly property real inset: sheet.sideways ? Tokens.spaceXl : Tokens.spaceM
 
                 objectName: "scroller"
@@ -244,7 +244,7 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
 
-                // `.rk-sheet > * + * { margin-top: space-m }` (rekta.css:1095)
+                // `.rk-sheet > * + * { margin-top: space-m }` (rekta.css:1097)
                 Column {
                     id: form
 
@@ -262,7 +262,7 @@ Item {
                     }
                 }
 
-                // The question takes the sheet's place, in it (rekta.css:1113).
+                // The question takes the sheet's place, in it (rekta.css:1115).
                 Column {
                     id: question
 
@@ -300,7 +300,7 @@ Item {
                     }
                 }
 
-                // `.rk-sheet-close { position: absolute; top: space-xs; right: space-xs }` (rekta.css:1110)
+                // `.rk-sheet-close { position: absolute; top: space-xs; right: space-xs }` (rekta.css:1112)
                 IconButton {
                     objectName: "close"
                     visible: sheet.closeButton && !sheet.asking
@@ -330,12 +330,12 @@ Item {
 
         property alias kicker: kickerText.text
         property alias title: titleText.text
-        // The kicker keeps clear of the close button (rekta.css:1111).
+        // The kicker keeps clear of the close button (rekta.css:1113).
         property bool besideClose: false
 
         width: parent.width
         visible: kicker !== "" || title !== ""
-        // `.rk-sheet .rk-kicker + * { margin-top: space-xs }` (rekta.css:1096)
+        // `.rk-sheet .rk-kicker + * { margin-top: space-xs }` (rekta.css:1098)
         spacing: Tokens.spaceXs
 
         Kicker {

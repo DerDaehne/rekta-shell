@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 
-// A group of rows under its heading, a section of a compact place (layout.md:76–96; rekta.css:1155–1158): space-xl
+// A group of rows under its heading, a section of a compact place (layout.md:76–96; rekta.css:1157–1160): space-xl
 // above and below, the heading space-l above its rows.
 // Its rows are a form's fields, not a list's items: each is a part of its own, space-m from the next, on no hairline,
 // and groups stand apart by their headings and that space. A group without a row present falls away. An open level

@@ -35,7 +35,7 @@ Row {
         switch (variant) {
         case "primary":
             return Tokens.color.textOnAccent;
-        // Under more contrast its words take ink inside the error frame (rekta.css:1584).
+        // Under more contrast its words take ink inside the error frame (rekta.css:1586).
         case "destructive":
             return Tokens.moreContrast ? Tokens.color.textPrimary : Tokens.color.statusErrorFull;
         case "quiet":
@@ -196,7 +196,7 @@ Row {
             font: label.font
         }
 
-        // `inset: auto 0 -6px` on the padding box (rekta.css:907): under the button, as wide as inside its frame.
+        // `inset: auto 0 -6px` on the padding box (rekta.css:909): under the button, as wide as inside its frame.
         BusyLine {
             objectName: "pendingLine"
             x: Geometry.buttonBorder
@@ -211,7 +211,7 @@ Row {
             }
         }
 
-        // On a status fill the ring takes the text colour, which clears AA there (rekta.css:1292).
+        // On a status fill the ring takes the text colour, which clears AA there (rekta.css:1294).
         FocusRing {
             id: ring
 

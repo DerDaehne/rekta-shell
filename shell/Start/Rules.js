@@ -557,7 +557,7 @@ function providerQuery(grepped, files, locale) {
 
 // Rekta writes a combination one way: the modifiers in the order Ctrl, Alt, Shift, Meta, then the key, joined by "+".
 // Meta is "Super" off Apple and Windows, Escape "Esc", the arrows glyphs, a letter a capital and any other key its web
-// name (navigation.md:511–525; rekta.js:3029–3047).
+// name (navigation.md:525–539; rekta.js:3029–3047).
 const keyModifiers = [[0x04000000, "Ctrl"], [0x08000000, "Alt"], [0x02000000, "Shift"], [0x10000000, "Super"]];
 // A modifier that is the whole shortcut, as Meta is the Start's, by its flag.
 const modifierKeys = {

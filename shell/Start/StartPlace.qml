@@ -89,7 +89,7 @@ FocusScope {
     readonly property bool shown: phase !== "closed"
     // From open() to close(): the Start is open or on its way.
     readonly property bool wanted: phase === "opening" || phase === "open"
-    // A place that is leaving takes no more input: presses reach the app bar or the window below (rekta.css:1203, :1316).
+    // A place that is leaving takes no more input: presses reach the app bar or the window below (rekta.css:1205, :1318).
     readonly property bool takesInput: shown && phase !== "closing" && phase !== "returning"
     // A finger has taken the closing along: the Start keeps the keyboard and its focus, but takes no keys or presses.
     readonly property bool fingerCloses: phase === "followingOut" || phase === "returningIn"
@@ -115,7 +115,7 @@ FocusScope {
     readonly property real unitStep: Tokens.tileUnit + Tokens.spaceS
     // The loading line of "alle apps" keeps to the leading edge, at most six units wide.
     readonly property real sixUnits: 6 * Tokens.tileUnit + 5 * Tokens.spaceS
-    // The strips stand as far in as the sections: space-xl sideways, space-m compact (rekta.css:1531, :1170).
+    // The strips stand as far in as the sections: space-xl sideways, space-m compact (rekta.css:1533, :1172).
     readonly property real stripInset: panorama.inset
     // The search keeps between the sections' edges. Sideways it is as many whole tile units as fit there, at most six,
     // in fixed cells (layout.md:167–168); compact it takes the whole width between them, its grid stretched as the
@@ -794,7 +794,7 @@ FocusScope {
         presence.change(partsIn(body), [], apply, () => partsIn(body), arriving);
     }
 
-    // What was typed stands at once in place of the pivot, as a field's text does (navigation.md:529–544), and its line
+    // What was typed stands at once in place of the pivot, as a field's text does (navigation.md:543–558), and its line
     // takes the keys from the search field, so an on-screen keyboard stays up.
     function showSearch() {
         searching = true;
@@ -1193,7 +1193,7 @@ FocusScope {
             tell(`${app.name}: ${size.name}`, () => pinFile.replace(app.index, entry));
     }
 
-    // Delete unpins the focused tile of "angeheftet" (navigation.md:505).
+    // Delete unpins the focused tile of "angeheftet" (navigation.md:519).
     function unpinFocused() {
         const tile = pinTiles().find(pinTile => pinTile.activeFocus);
         const app = pinned.find(known => known.id === tile?.appId);
@@ -1411,7 +1411,7 @@ FocusScope {
 
     // Arrows move the focus to the nearest tile that way, across the sections.
     // ponytail: this rule is the shell's own from before Rekta had one; 0.6.0 has it for a grid of tiles: shared row or
-    // column first, of two as near the better aligned, at the edge focus stays (navigation.md:546–559, :491).
+    // column first, of two as near the better aligned, at the edge focus stays (navigation.md:560–573, :505).
     function moveFocus(direction: string) {
         const tiles = reachableTiles();
         const from = tiles.find(tile => tile.activeFocus);
@@ -1900,7 +1900,7 @@ FocusScope {
         }
 
         // The place's strip along the top. Its titles are larger than Rekta's, the inactive one at the title size
-        // (rekta.css:57), also compact where Rekta takes the facet sizes (rekta.css:1172–1173): both titles stay above
+        // (rekta.css:57), also compact where Rekta takes the facet sizes (rekta.css:1174–1175): both titles stay above
         // the section headings.
         Pivot {
             id: pivot
@@ -1928,7 +1928,7 @@ FocusScope {
             anchors.fill: parent
 
             // Sideways at the end of the pivot's row, its text on the titles' baseline; stacked under the pivot at the
-            // leading edge, space-m above the strip as between the blocks of a section (rekta.css:1157). What is typed in
+            // leading edge, space-m above the strip as between the blocks of a section (rekta.css:1159). What is typed in
             // it goes on in the search's line, so it holds nothing itself.
             SearchField {
                 id: searchField
@@ -2140,7 +2140,7 @@ FocusScope {
                 }
             }
 
-            // Compact the strip stays above the stacked sections with a hairline under it (rekta.css:1165–1171).
+            // Compact the strip stays above the stacked sections with a hairline under it (rekta.css:1167–1173).
             Hairline {
                 objectName: "stripLine"
                 y: strip.y + strip.height
@@ -2203,7 +2203,7 @@ FocusScope {
             }
 
             // Loading, the line runs on the region's first hairline; without apps a sentence there says so (states.md,
-            // "Data states"; rekta.css:901). Both stand where the first section would.
+            // "Data states"; rekta.css:903). Both stand where the first section would.
             Item {
                 x: appsPanorama.inset
                 y: appsPanorama.y + Tokens.spaceXl
@@ -2352,7 +2352,7 @@ FocusScope {
         }
 
         // The apps whose name matches, as one row of tiles in the search's grid, space-xl above and below as a section
-        // (rekta.css:1155).
+        // (rekta.css:1157).
         Flickable {
             id: results
 
@@ -2476,7 +2476,7 @@ FocusScope {
             }
 
             // Without a match, a sentence on the region's first hairline says so, and the ways on follow it as rows
-            // (states.md, "Empty"; rekta.css:901–902).
+            // (states.md, "Empty"; rekta.css:903–904).
             Empty {
                 id: noHits
 

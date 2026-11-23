@@ -1,12 +1,12 @@
 import QtQuick
 
-// One row of a menu (states.md, "Floating surfaces"; rekta.css:1026–1034): a lowercase verb or option at the density's
+// One row of a menu (states.md, "Floating surfaces"; rekta.css:1028–1036): a lowercase verb or option at the density's
 // row height; a checkbox or radio option starts with a 10px square, filled when chosen; an option of a list that picks
 // a field's value keeps a 10 × 6px room at the start for the tick it carries when chosen (rekta.css:474–475); a key
 // hint sits at the end.
 // A disabled item stays in the list, greyed, and says why in its label ("print (needs a printer)"). The menu moves the
 // focus between rows; the focused row shows the ring inside and the hover colour, and an enabled row under the pointer
-// takes the hover colour too (rekta.css:1030, :1370). In a row narrower than its words they are cut.
+// takes the hover colour too (rekta.css:1032, :1372). In a row narrower than its words they are cut.
 Item {
     id: item
 
@@ -17,7 +17,7 @@ Item {
     property bool active: false
     property bool checked: false
     // An image at the front of the row, 20px; when one row of a menu has one, every row's text starts at the same edge
-    // (rekta.css:1035–1044).
+    // (rekta.css:1037–1046).
     property url icon
     // The same, by the name of a Rekta icon.
     property string glyph
@@ -30,15 +30,15 @@ Item {
     property string disabledReason
     // Off with no reason to give: a foreign menu's entry that the app has turned off.
     property bool dimmed: false
-    // The room before and after the row's content: space-m inside a bordered menu (rekta.css:1027), none for rows that
+    // The room before and after the row's content: space-m inside a bordered menu (rekta.css:1029), none for rows that
     // stand on a surface (`.rk-rows`, rekta.css:77–78).
     property real inset: Tokens.spaceM
     // Keeps the icon's room also for a row without one, so every text of a list starts at one edge.
     property bool iconSlot: false
     // Choosing it opens a deeper level the host swaps in, so the menu stays open. The row ends in a chevron pointing on
-    // (rekta.css:1048–1051).
+    // (rekta.css:1050–1053).
     property bool opensLevel: false
-    // The back row of a level (rekta.css:1052–1056): a chevron pointing back instead of an icon, words in text-contrast-high
+    // The back row of a level (rekta.css:1054–1058): a chevron pointing back instead of an icon, words in text-contrast-high
     // and semibold, a hairline below. It is no row with an icon, so it takes no part in the edge the others share.
     property bool isBack: false
     readonly property bool disabled: disabledReason !== "" || dimmed
@@ -70,12 +70,12 @@ Item {
     readonly property real onwardSpace: hasOnward ? Tokens.spaceS + Geometry.chevronSize : 0
     readonly property real textEdge: inset + chevronSpace + checkSpace + iconSpace + leadSpace
     readonly property string spoken: lead !== "" ? `${lead} ${label}` : label
-    // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:1027, :1034)
+    // `.rk-menu-key { padding-left: space-l }` on top of the row's gap (rekta.css:1029, :1036)
     readonly property real keyGap: keyHint !== "" ? Tokens.spaceS + Tokens.spaceL : 0
     readonly property real keySpace: keyGap + key.width
     readonly property real endSpace: end.implicitWidth > 0 ? Tokens.spaceS + end.implicitWidth : 0
     // ponytail: Rekta does not yet say how a key hint and the chevron on share the row's end (both `margin-left: auto`,
-    // rekta.css:1034, :1051); its proposal stands meanwhile: the hint before the chevron, space-s between, the hint
+    // rekta.css:1036, :1053); its proposal stands meanwhile: the hint before the chevron, space-s between, the hint
     // shortened with an ellipsis so the chevron stays. Follow Rekta's answer once it comes.
     readonly property real keyRoom: width - textEdge - words.implicitWidth - endSpace - keyGap - onwardSpace - inset
 

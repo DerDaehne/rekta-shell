@@ -14,21 +14,21 @@ QtObject {
     readonly property real focusRingInsetOnFill: 5
     // `.rk-kicker { letter-spacing: 0.02em }` (rekta.css:56), in em of the kicker's own size
     readonly property real kickerLetterSpacing: 0.02
-    // `.rk-key { padding: 0 4px; min-width: 1.6em; line-height: 1.5 }` (rekta.css:1068); the width in em of the key's size
+    // `.rk-key { padding: 0 4px; min-width: 1.6em; line-height: 1.5 }` (rekta.css:1070); the width in em of the key's size
     readonly property real keyPadding: 4
     readonly property real keyMinWidth: 1.6
     readonly property real keyLineHeight: 1.5
     // `.rk-clamp { line-clamp: 3 }` on the one main title (rekta.css:124)
     readonly property int titleMaxLines: 3
 
-    // `.rk-region[aria-busy='true']::before { height: 2px }` (rekta.css:885–886)
+    // `.rk-region[aria-busy='true']::before { height: 2px }` (rekta.css:887–888)
     readonly property real busyLineHeight: 2
     // `.rk-progress { height: 4px; background: color-mix(in srgb, currentColor 20%, transparent) }` (rekta.css:217)
     readonly property real progressHeight: 4
     readonly property real progressTrackOpacity: 0.2
     // `.rk-meter { height: 6px }` (rekta.css:722)
     readonly property real meterHeight: 6
-    // A level indicator's value: `.rk-toast-level { min-width: 4ch }` (rekta.css:1265)
+    // A level indicator's value: `.rk-toast-level { min-width: 4ch }` (rekta.css:1267)
     readonly property int levelValueMinChars: 4
     // `.rk-tag { gap: 6px }`, `.rk-tag::before { width: 8px; height: 8px }` (rekta.css:801–802)
     // The same square starts a field's error: `.rk-field[data-status='error'] .rk-hint::before { width: 8px; height: 8px;
@@ -36,12 +36,12 @@ QtObject {
     readonly property real tagGap: 6
     readonly property real tagMark: 8
     // In the ink toast: `.rk-toast:not([data-status]) .rk-tag:not(.rk-tag--soft)::before { box-shadow: 0 0 0 1px
-    // currentColor }` (rekta.css:1210)
+    // currentColor }` (rekta.css:1212)
     readonly property real tagEdge: 1
     // `.rk-dots > i { width: 4px; height: 4px }`, five of them (rekta.css:740–744)
     readonly property int dotCount: 5
     readonly property real dotSize: 4
-    // Under reduced motion `left: calc(50% - 22px + n × 10px)` (rekta.css:1565)
+    // Under reduced motion `left: calc(50% - 22px + n × 10px)` (rekta.css:1567)
     readonly property real dotRestOffset: 22
     readonly property real dotRestSpacing: 10
     // `.rk-input { padding: 0 12px; border: 1px solid … }`, in error `padding-inline: 11px; border: 2px solid …` (rekta.css:399, :415)
@@ -49,7 +49,7 @@ QtObject {
     readonly property real inputBorder: 1
     readonly property real inputErrorBorder: 2
     // `.rk-search { max-width: 24rem }`, its icon `left: 10px; width: 16px; height: 16px`, the input's text from 32px
-    // (rekta.css:941–943); a rem is 16 logical px
+    // (rekta.css:943–945); a rem is 16 logical px
     readonly property real searchMaxWidth: 384
     readonly property real searchIconStart: 10
     readonly property real searchIconSize: 16
@@ -91,7 +91,7 @@ QtObject {
     readonly property real segmentBorder: 2
     // `.rk-btn { border: 2px solid currentColor }` (rekta.css:332)
     readonly property real buttonBorder: 2
-    // `.rk-btn[data-rk-pending]::after { inset: auto 0 -6px }` (rekta.css:907): the line runs under the button and ends
+    // `.rk-btn[data-rk-pending]::after { inset: auto 0 -6px }` (rekta.css:909): the line runs under the button and ends
     // 6px below its padding box
     readonly property real pendingLineBelow: 6
     // `.rk-btn--icon > svg { width: 20px; height: 20px }` (rekta.css:360)
@@ -102,7 +102,7 @@ QtObject {
     // `.rk-tile-word { top: 10px; right: 12px }` (rekta.css:112)
     readonly property real tileWordTop: 10
     readonly property real tileWordRight: 12
-    // Under more contrast `.rk-tile[data-status] { box-shadow: inset 0 0 0 2px var(--_rk-mark) }` (rekta.css:1583)
+    // Under more contrast `.rk-tile[data-status] { box-shadow: inset 0 0 0 2px var(--_rk-mark) }` (rekta.css:1585)
     readonly property real tileStatusFrame: 2
     // A press gives up once the pointer moves this far: `> (start.touch ? 8 : 4)` (rekta.js:332)
     readonly property real pressSlopMouse: 4
@@ -119,15 +119,15 @@ QtObject {
     // `.rk-actions > .rk-why { flex: 1 1 12rem }` (rekta.css:430); the web build writes 16px as 1rem
     readonly property real whyBasis: 192
     // `.rk-float { min-width: 12rem; max-width: min(24rem, …); max-height: min(24rem, 60dvh); border: 1px solid … }`
-    // (rekta.css:1018–1019); a rem is 16 logical px, as the web build writes lengths (scripts/build.mjs:83)
+    // (rekta.css:1020–1021); a rem is 16 logical px, as the web build writes lengths (scripts/build.mjs:83)
     readonly property real floatMinWidth: 192
     readonly property real floatMaxSize: 384
     readonly property real floatMaxHeightShare: 0.6
     readonly property real floatBorder: 1
     // `@keyframes rk-float-in { from { opacity: 0; transform: translateY(var(--_rk-from, -4px)) } }`, 4px from below
-    // when above its control (rekta.css:1022–1024; the tip :586–587)
+    // when above its control (rekta.css:1024–1026; the tip :586–587)
     readonly property real floatShift: 4
-    // `.rk-menu-item:focus-visible { outline-offset: -2px }` (rekta.css:1030), the active row of a long list's
+    // `.rk-menu-item:focus-visible { outline-offset: -2px }` (rekta.css:1032), the active row of a long list's
     // (rekta.css:642) and the grip's (rekta.css:627)
     readonly property real focusRingInsetInRow: 2
     // A tree branch closes in 0.7 of the time it opens in: `duration: d * 0.7` (rekta.js:3368)
@@ -143,18 +143,18 @@ QtObject {
     readonly property real listCheckAngle: -45
     // Beyond the rows in view, `over = 6` more either side exist (rekta.js:3620)
     readonly property int listRowsAround: 6
-    // `.rk-ghost { width: 8em; height: 0.75em }` (rekta.css:899), in em of the text size
+    // `.rk-ghost { width: 8em; height: 0.75em }` (rekta.css:901), in em of the text size
     readonly property real ghostWidth: 8
     readonly property real ghostHeight: 0.75
     // `.rk-menu-item[role='menuitemcheckbox']::before { width: 10px; height: 10px; border: 1px solid currentColor }`
-    // (rekta.css:1032)
+    // (rekta.css:1034)
     readonly property real menuCheck: 10
     readonly property real menuCheckBorder: 1
     // `.rk-menu-item[aria-haspopup='menu']::after, .rk-menu-back::before { width: 6px; height: 6px; border-width: 1.6px 1.6px 0 0 }`
-    // (rekta.css:1048–1049); the chevron back is turned -135° and set 2px to the trailing side: `.rk-menu-back::before
-    // { transform: translateX(2px) rotate(-135deg) }` (rekta.css:1053); the chevron on, at the end of an item with a
+    // (rekta.css:1050–1051); the chevron back is turned -135° and set 2px to the trailing side: `.rk-menu-back::before
+    // { transform: translateX(2px) rotate(-135deg) }` (rekta.css:1055); the chevron on, at the end of an item with a
     // level, is turned 45° and set 2px to the leading side: `.rk-menu-item[aria-haspopup='menu']::after
-    // { transform: translateX(-2px) rotate(45deg) }` (rekta.css:1051)
+    // { transform: translateX(-2px) rotate(45deg) }` (rekta.css:1053)
     readonly property real chevronSize: 6
     readonly property real chevronStroke: 1.6
     readonly property real chevronBackTurn: -135
@@ -165,18 +165,18 @@ QtObject {
     readonly property real tipMaxWidth: 320
     readonly property real tipPaddingY: 4
     // `.rk-ab { gap: 6px; min-width: 48px; min-height: 48px; padding: 0 10px }`, `.rk-ab svg { width: 20px; height: 20px }`
-    // (rekta.css:814, :824)
+    // (rekta.css:814, :826)
     readonly property real appBarControl: 48
     readonly property real appBarControlPadding: 10
     readonly property real appBarControlGap: 6
     readonly property real appBarGlyph: 20
-    // `.rk-ab-mid[data-rk-priority='pinned'] { max-width: 50% }` of the bar (rekta.css:848)
+    // `.rk-ab-mid[data-rk-priority='pinned'] { max-width: 50% }` of the bar (rekta.css:850)
     readonly property real appBarPinnedShare: 0.5
 
     // rekta-core's month: today 2px inside its day-cell, `in = { cell.x + 2, … }` (core/src/controls.c:921).
     // ponytail: a week column one cell wide and today filled within that inset are the shell's own from before Rekta had
     // a month to look at; 0.6.0 frames today with a 1px line and has no week column (core/src/controls.c:896–898;
-    // rekta.css:1008–1012).
+    // rekta.css:1010–1014).
     readonly property real monthTodayInset: 2
     readonly property real monthWeekColumn: Tokens.dayCell
 
@@ -224,26 +224,26 @@ QtObject {
 
     // `.rk-icon { width: 20px; height: 20px }` (rekta.css:590)
     readonly property real iconSize: 20
-    // `.rk-toast { max-width: 32rem }` sideways (rekta.css:1450)
+    // `.rk-toast { max-width: 32rem }` sideways (rekta.css:1452)
     readonly property real toastMaxWidth: 512
-    // A toast rises 12px from the app bar, compact: `.rk-toasts { --_rk-from: 12px }` (rekta.css:1439) in `@keyframes
-    // rk-toast-in { from { opacity: 0; transform: translateY(var(--_rk-from)) } }` (rekta.css:1267). A level display is a
-    // toast (`.rk-toast--level`, rekta.css:1261) and arrives as one (motion.md:38), so a display alone rises the same.
+    // A toast rises 12px from the app bar, compact: `.rk-toasts { --_rk-from: 12px }` (rekta.css:1441) in `@keyframes
+    // rk-toast-in { from { opacity: 0; transform: translateY(var(--_rk-from)) } }` (rekta.css:1269). A level display is a
+    // toast (`.rk-toast--level`, rekta.css:1263) and arrives as one (motion.md:38), so a display alone rises the same.
     readonly property real toastRise: 12
-    // A notification's toast leaves over `calc(0.6 * var(--rk-duration-short))` (rekta.css:1233)
+    // A notification's toast leaves over `calc(0.6 * var(--rk-duration-short))` (rekta.css:1235)
     readonly property real toastEdgeOutShare: 0.6
-    // A notification's title and text, each: `.rk-toast-text { line-clamp: 2 }` (rekta.css:1228)
+    // A notification's title and text, each: `.rk-toast-text { line-clamp: 2 }` (rekta.css:1230)
     readonly property int toastMaxLines: 2
-    // The action's divider: `border-left: 1px solid color-mix(in srgb, currentColor 20%, transparent)` (rekta.css:1245)
+    // The action's divider: `border-left: 1px solid color-mix(in srgb, currentColor 20%, transparent)` (rekta.css:1247)
     readonly property real toastDividerOpacity: 0.2
-    // `.rk-toast-act:focus-visible { outline: 2px solid currentColor; outline-offset: -10px }` (rekta.css:1248)
+    // `.rk-toast-act:focus-visible { outline: 2px solid currentColor; outline-offset: -10px }` (rekta.css:1250)
     readonly property real toastFocusInset: 10
-    // The undo window's line: `border-top: 2px solid` (rekta.css:1255)
+    // The undo window's line: `border-top: 2px solid` (rekta.css:1257)
     readonly property real toastLine: 2
-    // `@keyframes rk-banner-in { from { opacity: 0; transform: translateY(-8px) } }` (rekta.css:1293)
+    // `@keyframes rk-banner-in { from { opacity: 0; transform: translateY(-8px) } }` (rekta.css:1295)
     readonly property real bannerShift: 8
     // The button that says how many updates wait: `.rk-live-more { padding: 2px var(--rk-space-s) }` (rekta.css:673); it
-    // arrives with `@keyframes rk-arrive { from { opacity: 0; transform: translateY(-8px) } }` (rekta.css:1147)
+    // arrives with `@keyframes rk-arrive { from { opacity: 0; transform: translateY(-8px) } }` (rekta.css:1149)
     readonly property real liveMorePadding: 2
     readonly property real arriveDrop: 8
 
@@ -260,9 +260,9 @@ QtObject {
     // A row dragged towards its trailing edge past half its width goes when let go (motion.md:25).
     readonly property real rowPullAway: 0.5
 
-    // `.rk-sheet { width: min(32rem, 100%) }` (rekta.css:1085), a rem being 16 logical px
+    // `.rk-sheet { width: min(32rem, 100%) }` (rekta.css:1087), a rem being 16 logical px
     readonly property real sheetMaxWidth: 512
-    // `@keyframes rk-from-top { from { opacity: 0; transform: translateY(-16px) } }` (rekta.css:1145); a sheet leaves
+    // `@keyframes rk-from-top { from { opacity: 0; transform: translateY(-16px) } }` (rekta.css:1147); a sheet leaves
     // back up the same way (rekta.js:1835)
     readonly property real sheetShift: 16
 

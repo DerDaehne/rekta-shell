@@ -105,7 +105,7 @@ Item {
         }
 
         // Hover and press lay `hover` over it, never on a disabled one; pressed, it is an image over the ink and
-        // comes at once (rekta.css:350, :1364).
+        // comes at once (rekta.css:350, :1366).
         Rectangle {
             objectName: "press"
             anchors.fill: parent

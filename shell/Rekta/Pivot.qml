@@ -201,7 +201,7 @@ Item {
         // The width the title takes at the active size; an inactive one takes this times the ratio.
         readonly property real restingWidth: word.implicitWidth
         readonly property real ratio: pivot.down ? 1 : pivot.inactiveSize / pivot.activeSize
-        // A title under the pointer darkens like the active one (rekta.css:1359).
+        // A title under the pointer darkens like the active one (rekta.css:1361).
         readonly property bool lit: active || hover.hovered
 
         objectName: `title-${index}`

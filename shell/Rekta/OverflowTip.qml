@@ -1,6 +1,6 @@
 import QtQuick
 
-// The whole of a text its box cuts off, as the text's tip (navigation.md:475–477, behaviour.md:1098–1099; rekta.js
+// The whole of a text its box cuts off, as the text's tip (navigation.md:489–491, behaviour.md:1098–1099; rekta.js
 // :3049–3052). Declared in a text that elides or stops at maximumLineCount, it offers all of the text's words while the
 // text is cut: under a resting mouse or pen as every tip comes, and at once on show(), which a control whose one text
 // this is calls when the keyboard brings it focus. Cut or not counts while the tip shows or waits: it follows new

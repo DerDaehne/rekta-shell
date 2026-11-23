@@ -3,7 +3,7 @@ import QtQuick
 // One row of a long list (rekta.css:636–646): an icon and its text at the density's row height, on a hairline. Chosen,
 // it takes the accent fill with on-accent text, loses its hairline and shows a checkmark in its leading padding, at
 // once, as a row drawn again while scrolling does (motion.md, "Checkmark"). It nudges where it is pressed, by up to
-// row-tilt, and shrinks to row-press-scale; under reduced motion it only shrinks (rekta.css:953–960, :1563).
+// row-tilt, and shrinks to row-press-scale; under reduced motion it only shrinks (rekta.css:955–962, :1565).
 Item {
     id: row
 
@@ -64,7 +64,7 @@ Item {
     }
 
     // perspective(turnstile-perspective) rotateX(-py · tilt) rotateY(px · tilt) scale(press-scale) around the centre
-    // (rekta.css:958), flattened to the item's plane as Qt's own Rotation does.
+    // (rekta.css:960), flattened to the item's plane as Qt's own Rotation does.
     transform: Matrix4x4 {
         matrix: {
             const rad = Math.PI / 180;
@@ -103,7 +103,7 @@ Item {
         }
     }
 
-    // Hover tints the row over its fill (rekta.css:1379).
+    // Hover tints the row over its fill (rekta.css:1381).
     Rectangle {
         objectName: "tint"
         anchors.fill: parent
@@ -163,7 +163,7 @@ Item {
         }
     }
 
-    // On a chosen row text-contrast-low turns clear, and with it the hairline (rekta.css:962).
+    // On a chosen row text-contrast-low turns clear, and with it the hairline (rekta.css:964).
     Hairline {
         objectName: "hairline"
         y: row.height - height
@@ -171,7 +171,7 @@ Item {
         visible: !row.chosen
     }
 
-    // On the chosen row's fill the ring, the accent, would sink into it: it takes the fill's text colour (rekta.css:963).
+    // On the chosen row's fill the ring, the accent, would sink into it: it takes the fill's text colour (rekta.css:965).
     FocusRing {
         objectName: "ring"
         offset: -Geometry.focusRingInsetInRow

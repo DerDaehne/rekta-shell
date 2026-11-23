@@ -1,6 +1,6 @@
 import QtQuick
 
-// The grip of an item ordered by hand (collections.md, "Ordering by hand"; rekta.css:625–631, :1380): a button of six
+// The grip of an item ordered by hand (collections.md, "Ordering by hand"; rekta.css:625–631, :1382): a button of six
 // squares at the item's leading edge, as tall as the item, and the only place a pointer drags it from. A press that
 // does not move does nothing; once the pointer has moved gripDragStart up or down, `dragged` follows it. Picked up from
 // the keyboard or under the pointer it takes the primary text colour. A finger on it never scrolls what holds it

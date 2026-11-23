@@ -1,6 +1,6 @@
 import QtQuick
 
-// A menu's chevron (rekta.css:1048–1049): a 6px box with a stroke on its top and right edge, turned about its centre.
+// A menu's chevron (rekta.css:1050–1051): a 6px box with a stroke on its top and right edge, turned about its centre.
 // The row that carries it sets it aside by moving `x`. It takes the colour of its row's words.
 Item {
     property color color: Tokens.color.textPrimary

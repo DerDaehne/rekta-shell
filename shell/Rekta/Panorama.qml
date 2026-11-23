@@ -2,8 +2,8 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A panorama (layout.md "Panorama" and "Sideways scrolling by mouse wheel"; navigation.md:57–69, :480–509; motion.md
-// "Panorama scroll"; rekta.css:1152–1159, :1510–1531; rekta.js panorama(), :947–1128): sections side by side, each
+// A panorama (layout.md "Panorama" and "Sideways scrolling by mouse wheel"; navigation.md:57–69, :494–523; motion.md
+// "Panorama scroll"; rekta.css:1154–1161, :1512–1533; rekta.js panorama(), :947–1128): sections side by side, each
 // sized in tile units, so a wider window shows more sections, never wider ones. Each child is a section (see
 // Section); a section scrolls vertically within itself, and the panorama is never taller than its box. When every
 // section fits nothing scrolls. Compact the sections stack and the panorama scrolls vertically, the wheel untouched.
@@ -15,7 +15,7 @@ Item {
     id: panorama
 
     default property alias content: row.data
-    // --rk-sec-w (rekta.css:1524)
+    // --rk-sec-w (rekta.css:1526)
     property real sectionWidth: 3 * Tokens.tileUnit + 2 * Tokens.spaceS + 2 * Tokens.spaceXl
     property real placeWidth: width
     property real viewportHeight: Window.height
@@ -29,7 +29,7 @@ Item {
     // The gap between the sections: space-xl, or as spread() makes it so that the window's edge never falls flush.
     readonly property real gap: reading.gap
     readonly property int currentIndex: reading.current
-    // Everything fits: nothing scrolls, and no spacer lets the last section reach the left edge (rekta.css:1530).
+    // Everything fits: nothing scrolls, and no spacer lets the last section reach the left edge (rekta.css:1532).
     readonly property bool fit: fits()
     readonly property alias scroller: flick
     readonly property alias sectionParent: row
@@ -142,7 +142,7 @@ Item {
     function extent(): size {
         if (!sideways)
             return Qt.size(width, reading.stackHeight);
-        // The last section can reach the left edge: a spacer after it, as wide as is left (rekta.css:1529–1530).
+        // The last section can reach the left edge: a spacer after it, as wide as is left (rekta.css:1531–1532).
         const spacer = facetRow ? 0 : Math.max(0, width - 2 * inset - sectionWidth - gap);
         return Qt.size(fits() ? width : reading.reach + gap + spacer + inset, height);
     }
@@ -178,7 +178,7 @@ Item {
     }
 
     // A focused item beyond the edge scrolls into view with space-xl clear, as a browser does with
-    // `scroll-padding-inline` (rekta.css:1520), at once like the wheel.
+    // `scroll-padding-inline` (rekta.css:1522), at once like the wheel.
     // ponytail: sideways only; a stacked panorama's vertical reveal is the nearest scroller's.
     function revealFocus() {
         const focused = Window.activeFocusItem;
@@ -244,7 +244,7 @@ Item {
         return null;
     }
 
-    // Sections side by side from the inset, or stacked top to bottom (rekta.css:1518–1524, :1152–1157).
+    // Sections side by side from the inset, or stacked top to bottom (rekta.css:1520–1526, :1154–1159).
     function relayout() {
         if (reading.gone)
             return;

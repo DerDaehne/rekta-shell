@@ -9,7 +9,7 @@ Column {
 
     property string value
     property string label
-    // An icon before the words, in their colour, space-s before them as before a menu item's words (rekta.css:1035).
+    // An icon before the words, in their colour, space-s before them as before a menu item's words (rekta.css:1037).
     property string icon
     // The widest the stat may be among figures: past it, its number ends in an ellipsis on its one line, its words wrap.
     property real maximumWidth: Infinity

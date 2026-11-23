@@ -1,6 +1,6 @@
 import QtQuick
 
-// A grid of tiles (layout.md:162–168; rekta.css:87–92, :1513), space-s apart. Each tile takes the first free cells its
+// A grid of tiles (layout.md:162–168; rekta.css:87–92, :1515), space-s apart. Each tile takes the first free cells its
 // size fits, row by row from the top (grid-auto-flow: dense), so a wide tile never leaves a hole that a narrower one
 // after it could fill. Sideways the cells are a tile unit square, `columns` of them across. Compact the grid fills its
 // width: as many tile-unit columns as fit, at least two, each stretched to fill the row, rows a tile unit high; a tile

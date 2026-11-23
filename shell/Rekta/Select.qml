@@ -132,7 +132,7 @@ Item {
         radius: Tokens.radiusS
         color: Tokens.color.bg
         border.width: Geometry.inputBorder
-        // Hover only with a pointer that hovers (rekta.css:1367); dark while its list is open, as rekta-core draws it.
+        // Hover only with a pointer that hovers (rekta.css:1369); dark while its list is open, as rekta-core draws it.
         border.color: {
             if (select.disabled)
                 return Tokens.color.disabled;

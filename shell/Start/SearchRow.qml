@@ -1,7 +1,7 @@
 import QtQuick
 import Rekta
 
-// A row of the search below its app tiles: a palette entry (navigation.md, "Go to"; rekta.css:1065), a menu item whose
+// A row of the search below its app tiles: a palette entry (navigation.md, "Go to"; rekta.css:1067), a menu item whose
 // press acts. It stands on the Start's surface, so it has no indent (`.rk-rows`, rekta.css:77–78), and every text of the
 // search starts at one edge, with or without an icon. The best hit says which key acts, as the best app tile does.
 MenuItem {

@@ -191,11 +191,11 @@ TestCase {
         compare(banner.y, 0);
         compare(banner.width, 900, "full bleed");
         compare(banner.color, Tokens.color.surface);
-        compare(word.x, Tokens.spaceXl, "space-xl at the sides of a sideways screen (rekta.css:1451)");
+        compare(word.x, Tokens.spaceXl, "space-xl at the sides of a sideways screen (rekta.css:1453)");
         compare(word.font.pixelSize, Math.floor(Tokens.fluid(Tokens.fontSizeL, 900)));
         compare(word.font.weight, Tokens.fontWeightLight);
         compare(actions.x, Tokens.spaceXl + Math.max(Tokens.tileUnit, word.implicitWidth) + Tokens.spaceS, "the actions from tile column 2");
-        compare(actions.width, 900 - actions.x - Tokens.spaceXl - Tokens.touchTarget, "the close button's corner stays free (rekta.css:1105)");
+        compare(actions.width, 900 - actions.x - Tokens.spaceXl - Tokens.touchTarget, "the close button's corner stays free (rekta.css:1107)");
         const lock = button("lock");
         compare(word.y + word.baselineOffset, actions.y + lock.mapToItem(actions, 0, 0).y + lock.baselineOffset, "word and buttons share a baseline");
         const top = Math.min(word.y, actions.y);

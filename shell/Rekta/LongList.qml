@@ -127,7 +127,7 @@ FocusScope {
         }
     }
 
-    // Still placeholders hold the rows' place until the first rows come (rekta.css:899–900); nothing shimmers.
+    // Still placeholders hold the rows' place until the first rows come (rekta.css:901–902); nothing shimmers.
     Column {
         objectName: "ghosts"
         y: Geometry.hairline
@@ -158,7 +158,7 @@ FocusScope {
         }
     }
 
-    // A sentence on the first hairline, in text-contrast-high, says what is empty (rekta.css:901).
+    // A sentence on the first hairline, in text-contrast-high, says what is empty (rekta.css:903).
     Body {
         objectName: "empty"
         y: Geometry.hairline + Tokens.spaceM

@@ -1,9 +1,9 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 
-// The toast region (behaviour.md `toaster()`; rekta.css:1175–1268): one toast at a time, rising from the app bar, its
+// The toast region (behaviour.md `toaster()`; rekta.css:1177–1270): one toast at a time, rising from the app bar, its
 // trailing edge flush with that of the control that counts notifications, as Rekta's compact toast rises from the bar
-// (rekta.css:1439). A new toast replaces the one open and comes in once that one has gone; the same key with undo joins
+// (rekta.css:1441). A new toast replaces the one open and comes in once that one has gone; the same key with undo joins
 // the open toast instead and restarts its window. Escape inside a toast dismisses it (key layer 30); Ctrl+Z undoes while
 // an undo window is open, except in a text field (layer 25). A host whose toasts never take the keyboard as they come
 // gives a key of its own that brings it to a toast that stays (reach()). It stays on the toast layer, below floating
@@ -16,9 +16,9 @@ import QtQuick
 // as soon as the toast has come in, so that it stays in reach while the toast stands. The toast leaves over the count,
 // and a notification's toast that follows one still in sight comes in without the count giving way again. It came from
 // another program, so it glides whole from the bottom edge and back without a fade (states.md:85–89; motion.md:37;
-// rekta.css:1229–1235, :1439); a toast of the product's own rises 12px with a fade.
+// rekta.css:1231–1237, :1441); a toast of the product's own rises 12px with a fade.
 // A window without an app bar hangs its toasts from the top centre, as Rekta does sideways (`hangsFromTop`;
-// rekta.css:1187–1189, :1449). Deliberate deviations: sideways Rekta hangs toasts from the top centre, a notification's
+// rekta.css:1189–1191, :1451). Deliberate deviations: sideways Rekta hangs toasts from the top centre, a notification's
 // from the top edge; in the shell every toast comes from the bar, as a compact one does, so that a notification comes
 // from the control that counts it. Rekta's toast layer lies above the app bar (states.md:307–309), so its notification glides
 // over the bar; here the toasts' surface ends at the bar's top edge, and a notification comes from behind the bar.
@@ -202,7 +202,7 @@ Item {
         return true;
     }
 
-    // Toasts stand space-s above the bar (rekta.css:1439), or space-m below the top.
+    // Toasts stand space-s above the bar (rekta.css:1441), or space-m below the top.
     implicitHeight: (hangsFromTop ? Tokens.spaceM : Tokens.spaceS) + Array.from(cell.children).reduce((tallest, toast) => Math.max(tallest, toast.height), 0)
     z: Tokens.layerToast
 

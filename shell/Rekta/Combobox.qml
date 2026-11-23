@@ -193,7 +193,7 @@ FocusScope {
         radius: Tokens.radiusS
         color: Tokens.color.bg
         border.width: Geometry.inputBorder
-        // Hover only with a pointer that hovers (rekta.css:1367).
+        // Hover only with a pointer that hovers (rekta.css:1369).
         border.color: {
             if (combo.disabled)
                 return Tokens.color.disabled;
@@ -351,7 +351,7 @@ FocusScope {
             x: Tokens.spaceM
             width: parent.width - 2 * Tokens.spaceM
             visible: combo.shown.length === 0
-            // `.rk-float` sets the compact line height (rekta.css:1020).
+            // `.rk-float` sets the compact line height (rekta.css:1022).
             lineHeightFactor: Tokens.lineHeightCompact
             text: combo.filtering ? combo.noMatch(combo.query) : combo.nothingYet
         }

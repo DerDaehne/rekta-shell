@@ -1,6 +1,6 @@
 import QtQuick
 
-// The label of a group of menu items: xs semibold in text-contrast-high (rekta.css:1069).
+// The label of a group of menu items: xs semibold in text-contrast-high (rekta.css:1071).
 TextRole {
     width: parent ? parent.width : implicitWidth
     topPadding: Tokens.spaceS + lineBoxTop
