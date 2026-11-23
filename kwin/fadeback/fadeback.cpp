@@ -23,6 +23,7 @@
 #include <QVector2D>
 
 #include <algorithm>
+#include <array>
 #include <optional>
 #include <utility>
 
@@ -211,7 +212,7 @@ private:
     void activatePastShell();
     Window *windowUnderPointer() const;
     void holdShellPopup(EffectWindow *w);
-    void handOverOnMoveOrResize(QMenu *menu, Window *window);
+    void handOverWhenChosen(QMenu *menu, Window *window);
     void fadeSplash(std::chrono::nanoseconds presentation);
     bool fading() const;
     void holdEdges();
@@ -475,21 +476,21 @@ void FadeBackEffect::showWindowMenu(const QString &window, int x, int y)
     const QPoint at(x, y);
     workspace()->showWindowMenu(Rect(at, at), target);
     if (auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget())) {
-        handOverOnMoveOrResize(menu, target);
+        handOverWhenChosen(menu, target);
     }
 }
 
-// KWin moves or resizes a window from its menu without activating it, and blocks activation while it does. Chosen here,
-// the window is activated first, so the Start closes forward and hands it over: KWin queues the operation as the menu
-// triggers. The menu hides before it triggers, so the hand-over is forgotten only on the next turn of the event loop.
-void FadeBackEffect::handOverOnMoveOrResize(QMenu *menu, Window *window)
+// Moving, resizing and full screen take the window in hand, so the Start closes forward and hands it over; KWin does
+// them from its menu without activating the window, and blocks activation while it moves or resizes. Chosen here, the
+// window is activated first: KWin queues the operation as the menu triggers. The menu hides before it triggers, so the
+// hand-over is forgotten only on the next turn of the event loop.
+void FadeBackEffect::handOverWhenChosen(QMenu *menu, Window *window)
 {
+    static constexpr std::array inHand{Options::MoveOp, Options::UnrestrictedMoveOp, Options::ResizeOp,
+                                       Options::UnrestrictedResizeOp, Options::FullScreenOp};
     auto *handOver = new QObject(this);
     connect(menu, &QMenu::triggered, handOver, [window = QPointer(window)](QAction *chosen) {
-        const auto operation = chosen->data().toInt();
-        const bool inHand = operation == Options::MoveOp || operation == Options::UnrestrictedMoveOp
-            || operation == Options::ResizeOp || operation == Options::UnrestrictedResizeOp;
-        if (inHand && window) {
+        if (window && std::ranges::contains(inHand, chosen->data().toInt())) {
             workspace()->activateWindow(window);
         }
     });
