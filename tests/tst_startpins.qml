@@ -621,6 +621,24 @@ TestCase {
         verify(runningTile("notes").activeFocus, "at the end the one before");
     }
 
+    function test_the_focus_on_a_tile_that_stays_stays_when_another_window_closes() {
+        openNow();
+        start.windows = [...start.windows, fakeWindow("notes", 5, "org.kde.kate")];
+        tryVerify(() => !named("presence").running, 2000);
+        compare(runningTitles(), ["a window", "konsole: build", "notes"]);
+        runningTile("konsole: build").forceActiveFocus();
+        start.windows = start.windows.filter(window => window.title !== "a window");
+        verify(runningTile("konsole: build").activeFocus, "the focus stays where it was");
+    }
+
+    function test_a_closing_windows_tile_keeps_its_title_while_it_leaves() {
+        openNow();
+        const closing = runningTile("a window");
+        start.windows = start.windows.filter(window => window.title !== "a window");
+        verify(moving(closing), "it leaves");
+        compare(closing.title, "a window", "it leaves as it was");
+    }
+
     function test_the_last_windows_tile_leaves_with_motion_before_lauft_goes() {
         openNow();
         const tile = runningTile("a window");
