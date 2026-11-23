@@ -69,6 +69,10 @@ only in that session.
 Summary:        Background images for rekta-shell, in KDE's wallpaper format
 License:        CC0-1.0
 BuildArch:      noarch
+# /usr/share/wallpapers belongs to kde-filesystem, as for Fedora's own wallpaper packages
+Requires:       kde-filesystem
+# Qt reads WebP only through this plugin; without it Plasma's picker skips the package
+Requires:       qt6-qtimageformats
 
 %description backgrounds
 The background images of rekta-shell, generated with Claude and placed in the
@@ -87,7 +91,7 @@ picker finds them too. Nothing needs this package to run the shell.
 install -d %{buildroot}%{_sysconfdir}/rekta-shell
 printf '{ "background": "solid" }\n' > %{buildroot}%{_sysconfdir}/rekta-shell/defaults.json
 install -d %{buildroot}%{_datadir}/wallpapers
-cp -r backgrounds/rekta-sky %{buildroot}%{_datadir}/wallpapers/
+cp -pr backgrounds/rekta-sky %{buildroot}%{_datadir}/wallpapers/
 
 %check
 # The session's KWin command is Plasma's, behind the wrapper that adds the rekta paths.

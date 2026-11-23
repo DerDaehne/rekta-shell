@@ -33,3 +33,7 @@ test "$(rpm -q --qf '%{version}' rekta-shell-backgrounds)" = "$(sh packaging/ver
 rpm -q --qf '%{license}\n' rekta-shell-backgrounds | grep -Fx CC0-1.0
 grep -F '"License": "CC0-1.0"' /usr/share/wallpapers/rekta-sky/metadata.json
 test -f /usr/share/wallpapers/rekta-sky/contents/images/1920x1080.webp
+# The directory's owner and the WebP reader come with the package: without either, Plasma's picker would not list it.
+rpm -q --requires rekta-shell-backgrounds | grep -Fx kde-filesystem
+rpm -q --requires rekta-shell-backgrounds | grep -Fx qt6-qtimageformats
+test -e /usr/lib64/qt6/plugins/imageformats/libqwebp.so

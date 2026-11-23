@@ -451,7 +451,7 @@ rekta ships its background images as a separate data package in KDE's wallpaper 
 `rekta-backgrounds` and the RPM `rekta-shell-backgrounds` (noarch). The first one is "sky", a
 softly blurred evening sky (1920x1080, lossless WebP, 0.9 MB). The images were generated with
 Claude and are CC0 ([backgrounds/LICENSE](backgrounds/LICENSE)). The shell does not show them
-yet. WebP needs Qt's `qtimageformats`, which Plasma installs.
+yet. WebP needs Qt's `qtimageformats`: Plasma's NixOS module installs it, and the RPM requires it.
 
 ## A link for "problem melden"
 
