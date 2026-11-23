@@ -407,6 +407,14 @@ FocusScope {
         onSelected: index => view.showPlace(index)
     }
 
+    // Compact, the strip has a hairline below it across the whole place; sideways it has none (rekta.css:1167–1170, :1531).
+    Hairline {
+        objectName: "underPivot"
+        visible: view.columns === 1
+        y: pivot.height
+        width: view.width
+    }
+
     Repeater {
         id: pages
 
@@ -421,7 +429,7 @@ FocusScope {
 
             objectName: `page-${index}`
             x: view.inset
-            y: pivot.height
+            y: pivot.height + (view.columns === 1 ? Geometry.hairline : 0)
             width: view.width - 2 * view.inset
             height: view.height - y
             visible: index === 0

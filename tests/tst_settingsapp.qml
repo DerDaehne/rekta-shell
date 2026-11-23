@@ -147,6 +147,15 @@ TestCase {
         return findChild(view, `group-${name}`);
     }
 
+    // The software renderer repaints only what changed, so a part that swung out of a place can stay in the grab as stale
+    // pixels long after the turn; a resized window repaints whole.
+    function repaintWhole() {
+        host.width -= 1;
+        waitForRendering(view);
+        host.width += 1;
+        waitForRendering(view);
+    }
+
     // Every place in light, dark, black and black with more contrast, sideways and stacked.
     function test_contact_sheet() {
         if (!ContactSheets.wanted)
@@ -160,7 +169,7 @@ TestCase {
                 for (let place = 0; place < 3; place++) {
                     pivot().select(place);
                     tryVerify(() => page(place).visible && !turner().running);
-                    waitForRendering(view);
+                    repaintWhole();
                     grabImage(view).save(`settingsapp-sheet-${theme}-${columns}-${place}.png`);
                 }
             }
@@ -334,6 +343,22 @@ TestCase {
         compare(pivot().width, view.width - 2 * Tokens.spaceM);
         compare(page(0).x, Tokens.spaceM);
         compare(page(0).width, view.width - 2 * Tokens.spaceM);
+    }
+
+    function test_stacked_the_pivot_has_a_hairline_below_it_across_the_window_and_the_pages_start_under_it() {
+        view.parent.width = Tokens.bpSidewaysScrollMin - 1;
+        const line = findChild(view, "underPivot");
+        tryVerify(() => line.visible);
+        compare(line.x, 0);
+        compare(line.y, pivot().height);
+        compare(line.width, view.width);
+        compare(line.height, Geometry.hairline);
+        compare(page(0).y, line.y + line.height);
+    }
+
+    function test_sideways_the_pivot_has_no_hairline_and_the_pages_start_under_it() {
+        compare(findChild(view, "underPivot").visible, false);
+        compare(page(0).y, pivot().height);
     }
 
     function test_sideways_groups_have_no_hairline() {
