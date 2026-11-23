@@ -3,7 +3,7 @@ import QtQuick
 // A panorama section (layout.md:76–96; rekta.css `.rk-sec`, :1154–1161, :1526): a heading and what belongs to it,
 // space-xl above and below, the heading space-l above what follows it and the blocks after it space-m apart. Sideways
 // it scrolls vertically within itself when its content is taller than the panorama's box; stacked (compact) it takes
-// its content's height and a hairline separates it from the section above (:1156).
+// its content's height and a hairline separates it from the section above (rekta.css:1158).
 Flickable {
     id: section
 
