@@ -4222,6 +4222,40 @@ TestCase {
         verify(inSound("outputDevice").activeFocus);
     }
 
+    // As the host's openAt does for "nicht stören", "offline" or a banner's remedy while a level stands.
+    function test_a_word_that_leads_to_a_place_of_the_facet_while_a_level_stands_closes_the_level_and_puts_the_focus_on_the_place() {
+        giveSound(controls);
+        scene.height = 500;
+        const level = showLevel("sound");
+        const scroller = named("scroller");
+        side.show(0, true);
+        side.reveal(controls.places.doNotDisturb);
+        verify(!level.open, "the level gives way");
+        verify(scroller.enabled, "the facet is in reach again");
+        verify(control("doNotDisturb").activeFocus, "the place takes the focus");
+        verify(shownWhole(control("doNotDisturb")), "whole in view, ring included");
+        verify(scroller.contentY > 0, "the view went to it");
+        showLevel("sound");
+        side.reveal(null);
+        verify(!level.open, "revealing nothing closes it too");
+        compare(scroller.contentY, 0, "the view at the top");
+        verify(side.holds(side.Window.activeFocusItem), "the focus stays in the panel");
+        verify(control("outputMute").activeFocus, "on its first control");
+    }
+
+    // Rekta's levels take Escape only from inside them (rekta.js:1990–1991); in the head it is the panel's.
+    function test_escape_in_the_panels_head_while_a_level_stands_closes_the_panel() {
+        giveSound(controls);
+        for (const name of ["pivot", "close"]) {
+            const level = showLevel("sound");
+            findChild(side, name).forceActiveFocus(Qt.TabFocusReason);
+            Tips.hide();
+            keyClick(Qt.Key_Escape);
+            verify(!side.open, `Escape on the ${name} closes the panel`);
+            verify(!level.open, `${name}: and the level with it`);
+        }
+    }
+
     // The dense case of ton: its level with three streams between the output and the input, so the eye finds where the input
     // begins.
     function test_contact_sheet_of_ton_with_three_streams_in_both_themes() {

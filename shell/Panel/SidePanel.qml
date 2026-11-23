@@ -75,10 +75,13 @@ FocusScope {
     // scrolls the facet so an item of it stands at the top, or to the top without one, and puts the focus on the item's
     // first control. The facet lays itself out when it first shows, which moves the item and grows the content: the item
     // is kept at the top through the frames that change the content, and let go after two frames without a change or when
-    // a hand moves the view. An item that does not show leaves the view at the top.
+    // a hand moves the view. An item that does not show leaves the view at the top. A level that stood gives way first, as
+    // the facet under it takes no focus; the focus it held goes to the item, else to the facet's first control, since Qt
+    // leaves the focus on a hidden item.
     function reveal(item: Item) {
+        const fromLevel = within(levelHolder, Window.activeFocusItem);
+        closeLevels();
         if (within(levelHolder, item)) {
-            closeLevels();
             (item as AreaLevel).show();
             return;
         }
@@ -89,6 +92,8 @@ FocusScope {
         keepRevealed();
         if (shown)
             focusIn(item);
+        else if (fromLevel)
+            focusFirst();
     }
 
     // A frame has been drawn: content that changed takes the place again; two frames in a row without a change end the
