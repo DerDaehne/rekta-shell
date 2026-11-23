@@ -4243,6 +4243,22 @@ TestCase {
         verify(control("outputMute").activeFocus, "on its first control");
     }
 
+    // As the host's openAt does without a place: a focus that was not in a level stays where it is.
+    function test_revealing_nothing_leaves_a_focus_that_was_not_in_a_level_where_it_is() {
+        giveSound(controls);
+        showSettled(0);
+        const dark = control("dark");
+        dark.forceActiveFocus(Qt.TabFocusReason);
+        side.reveal(null);
+        verify(dark.activeFocus, "a focus in the facet stays");
+        const level = showLevel("sound");
+        const pivot = findChild(side, "pivot");
+        pivot.forceActiveFocus(Qt.TabFocusReason);
+        side.reveal(null);
+        verify(!level.open, "the level gives way");
+        verify(pivot.activeFocus, "a focus in the head stays while a level stood");
+    }
+
     // Rekta's levels take Escape only from inside them (rekta.js:1990–1991); in the head it is the panel's.
     function test_escape_in_the_panels_head_while_a_level_stands_closes_the_panel() {
         giveSound(controls);
