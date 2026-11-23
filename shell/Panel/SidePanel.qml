@@ -206,6 +206,11 @@ FocusScope {
             comingIn.restart();
     }
 
+    // Whether it shows a facet, from show() until it has gone: the facet's opener holds its open state meanwhile.
+    function shows(index: int): bool {
+        return open && currentIndex === index;
+    }
+
     // Closes when that facet shows already, else shows it.
     function toggle(index: int, byPointer: bool) {
         if (open && !going.running && currentIndex === index)

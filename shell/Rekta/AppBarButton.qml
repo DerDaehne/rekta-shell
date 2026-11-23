@@ -3,13 +3,13 @@ pragma ComponentBehavior: Bound
 import QtQuick
 
 // A control of the app bar (navigation.md, "App bar"; rekta.css:813–826, :1370): a glyph and a word, never a glyph
-// alone, at least 48px square in every density, no frame; hover and press lay `hover` under it. A click gives no focus,
-// so the ring shows only for the keyboard. A control that cannot act stays focusable and is read with its reason; the
-// reason shows as its tooltip (on touch when it is tapped) and moves into "more" with it, as Rekta has it in the
-// bar (forms.md:327–337). A count follows the word ("meldungen 3"); a new count peeks in as a live tile's news
-// does (motion.md, "Live tile news"; rekta.js tileUpdate()): the old one leaves upwards over 0.6 ×
-// duration-moderate while the new one rises from below over 0.8 ×, after 0.2 ×; with news on other tiles at once, one
-// after another (Greet).
+// alone, at least 48px square in every density, no frame; hover and press lay `hover` under it, and so does a surface
+// of its own while it is open (navigation.md:372–384; rekta.css:821). A click gives no focus, so the ring shows only
+// for the keyboard. A control that cannot act stays focusable and is read with its reason; the reason shows as its
+// tooltip (on touch when it is tapped) and moves into "more" with it, as Rekta has it in the bar (forms.md:327–337). A
+// count follows the word ("meldungen 3"); a new count peeks in as a live tile's news does (motion.md, "Live tile news";
+// rekta.js tileUpdate()): the old one leaves upwards over 0.6 × duration-moderate while the new one rises from below
+// over 0.8 ×, after 0.2 ×; with news on other tiles at once, one after another (Greet).
 Item {
     id: control
 
@@ -46,6 +46,10 @@ Item {
     // The surfaces of the controls moved into this one ("more"); they open at it, so a press on it closes them too.
     property var opensForMoved: []
     readonly property var surfaces: [opens].concat(opensForMoved).filter(surface => surface)
+    // It opens a surface of its own, and says so to assistive technology.
+    property bool expandable: opens !== null
+    // That surface is open: the control holds the press tint until it closes, and says it is expanded.
+    property bool expanded: expandable && opens !== null && opens.open
     property bool pressFoundOpen: false
     readonly property bool showing: wanted && !held
     // While it fades out it stays where it was, and the bar closes the gap after it (motion.md, "Arriving, leaving").
@@ -73,6 +77,12 @@ Item {
     Accessible.name: words
     Accessible.description: disabledReason
     Accessible.onPressAction: click()
+
+    ExpandedState {
+        target: control
+        expandable: control.expandable
+        expanded: control.expanded
+    }
 
     onShowingChanged: {
         fade.arriving = showing;
@@ -192,7 +202,7 @@ Item {
             anchors.fill: parent
             radius: Tokens.radiusS
             color: Tokens.color.hover
-            opacity: (control.hovered || control.pressed) && !control.disabled ? 1 : 0
+            opacity: (control.hovered || control.pressed || control.expanded) && !control.disabled ? 1 : 0
 
             Behavior on opacity {
                 NumberAnimation {

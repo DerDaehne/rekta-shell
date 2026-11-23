@@ -467,6 +467,112 @@ TestCase {
         mouseRelease(control, 10, 10);
     }
 
+    // The pointer rests on no control, so no hover tint stands in for the open state.
+    function restPointerAway() {
+        mouseMove(testCase, 1, 1);
+        verify(!controls().concat([bar.more]).some(control => control.hovered), "nothing is hovered");
+    }
+
+    function test_while_its_surface_is_open_a_control_holds_the_press_tint_and_lets_it_go_once_it_has_closed() {
+        makeScene({});
+        restPointerAway();
+        const control = named("in the background");
+        const press = findChild(control, "press");
+        compare(press.opacity, 0);
+        control.click();
+        verify(control.opens.open);
+        tryVerify(() => press.opacity === 1, 1000, "held while the surface is open");
+        compare(findChild(named("pause"), "press").opacity, 0, "a control that opened nothing stays clear");
+        control.click();
+        verify(!control.opens.open);
+        tryVerify(() => press.opacity === 0, 1000, "let go once it has closed");
+    }
+
+    function test_the_open_state_s_tint_comes_and_goes_over_duration_short_with_ease_base() {
+        Prefs.motion = "on";
+        makeScene({});
+        restPointerAway();
+        const control = named("in the background");
+        const press = findChild(control, "press");
+        for (const [way, from, to] of [["comes", 0, 1], ["goes", 1, 0]]) {
+            const ticks = Glide.ticks(testCase);
+            const steps = Glide.record(press, "opacity");
+            const since = Date.now();
+            control.click();
+            compare(press.opacity, from, `it ${way}, not at once`);
+            tryVerify(() => press.opacity === to, 1000);
+            const stray = Glide.strayOf([{ steps, from, to }], Tokens.durationShort, easeBase, since, ticks);
+            verify(stray < 0.06, `it ${way} over duration-short along ease-base, off by ${stray}`);
+        }
+    }
+
+    function test_under_reduced_motion_the_open_state_s_tint_stands_and_goes_at_once() {
+        Prefs.motion = "off";
+        makeScene({});
+        restPointerAway();
+        const control = named("in the background");
+        const press = findChild(control, "press");
+        control.click();
+        compare(press.opacity, 1, "stands at once");
+        control.click();
+        compare(press.opacity, 0, "gone at once");
+    }
+
+    function test_a_control_says_it_is_expanded_while_its_surface_is_open_and_one_that_opens_none_is_not_expandable() {
+        makeScene({});
+        const control = named("in the background");
+        if (!("expanded" in control.Accessible))
+            skip("this Qt has no Accessible.expanded");
+        verify(control.Accessible.expandable, "it opens a surface of its own");
+        verify(!control.Accessible.expanded, "closed, it is collapsed");
+        control.click();
+        verify(control.Accessible.expanded, "open, it is expanded");
+        control.click();
+        verify(!control.Accessible.expanded, "closed again, collapsed again");
+        verify(!named("pause").Accessible.expandable, "a control that opens nothing");
+        verify(!named("pause").Accessible.expanded);
+    }
+
+    function test_a_control_set_expanded_by_its_host_holds_the_tint_and_says_so_without_a_surface_of_its_own() {
+        const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 40, expandable: true });
+        mouseMove(testCase, 1, 1);
+        const press = findChild(control, "press");
+        control.expanded = true;
+        tryVerify(() => press.opacity === 1, 1000, "as the side panel holds its opener's tint");
+        if ("expanded" in control.Accessible) {
+            verify(control.Accessible.expandable);
+            verify(control.Accessible.expanded);
+        }
+        control.expanded = false;
+        tryVerify(() => press.opacity === 0, 1000);
+    }
+
+    function test_more_holds_the_press_tint_while_its_menu_is_open_and_says_it_is_expanded() {
+        makeScene({ barWidth: 760 });
+        settle();
+        restPointerAway();
+        const press = findChild(bar.more, "press");
+        bar.more.click();
+        verify(bar.menu.open);
+        tryVerify(() => press.opacity === 1, 1000, "held while its menu is open");
+        if ("expanded" in bar.more.Accessible)
+            verify(bar.more.Accessible.expanded);
+        bar.more.click();
+        verify(!bar.menu.open);
+        tryVerify(() => press.opacity === 0, 1000, "let go once it has closed");
+    }
+
+    function test_a_disabled_control_holds_no_tint_even_while_set_expanded() {
+        const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 40, expandable: true, disabledReason: "comes with the panel" });
+        mouseMove(testCase, 1, 1);
+        const press = findChild(control, "press");
+        const steps = Glide.record(press, "opacity");
+        control.expanded = true;
+        wait(Tokens.durationShort + 50);
+        compare(steps.length, 0, "nothing comes");
+        compare(press.opacity, 0);
+    }
+
     function test_space_and_enter_press_a_control_and_a_click_gives_no_focus() {
         const control = createTemporaryObject(buttonComponent, testCase, { x: 40, y: 40 });
         const clicked = createTemporaryObject(spy, testCase, { target: control });
@@ -1499,7 +1605,11 @@ TestCase {
         for (const theme of ContactSheets.colourSets) {
             useColours(theme);
             const sheet = createTemporaryObject(sheetComponent, testCase);
-            mouseClick(findChild(sheet, "narrow").more, 10, 10);
+            const more = findChild(sheet, "narrow").more;
+            mouseClick(more, 10, 10);
+            // Away from "more", so its tint is the open menu's and not the pointer's.
+            mouseMove(testCase, 1, 1);
+            tryVerify(() => findChild(more, "press").opacity === 1, 1000, "more holds its tint");
             const back = findChild(findChild(sheet, "wide"), "back");
             Tips.show(findChild(back, "box"), back.disabledReason);
             waitForRendering(sheet);
@@ -1509,7 +1619,7 @@ TestCase {
     }
 
     // A wide bar with the centre item and a disabled control showing its reason, a bar full at 760px with more open, a
-    // pinned middle, the middle with music.
+    // pinned middle with the side panel open on "messages", the middle with music and the side panel open on "controls".
     Component {
         id: sheetComponent
 
@@ -1527,7 +1637,11 @@ TestCase {
             }
 
             component Bar: AppBar {
+                id: barInSheet
+
                 property alias middle: line
+                // The opener whose facet of the side panel is open, as the shell's bar sets it.
+                property string panelFacet: ""
 
                 width: 1200
                 viewportHeight: 600
@@ -1538,8 +1652,8 @@ TestCase {
                 AppBarMiddle { id: line; parts: ["konsole", "~/projects: build the shell"] }
                 Text { id: slot; text: "14:32"; font.pixelSize: Tokens.fontSizeXs; font.weight: Tokens.fontWeightSemibold; color: Tokens.color.textPrimary }
                 AppBarButton { icon: "window"; text: "in the background"; priority: 0 }
-                AppBarButton { icon: "bell"; text: "messages"; priority: 2 }
-                AppBarButton { icon: "tune"; text: "controls"; priority: 1 }
+                AppBarButton { icon: "bell"; text: "messages"; priority: 2; expandable: true; expanded: barInSheet.panelFacet === "messages" }
+                AppBarButton { icon: "tune"; text: "controls"; priority: 1; expandable: true; expanded: barInSheet.panelFacet === "controls" }
             }
 
             Ground { y: 24 }
@@ -1547,10 +1661,11 @@ TestCase {
             Ground { y: 464 }
             Bar { id: wide; objectName: "wide"; y: 40 }
             Bar { objectName: "narrow"; y: 360; width: 760 }
-            Bar { y: 480; width: 1000; Component.onCompleted: middle.pinned = true }
+            Bar { y: 480; width: 1000; panelFacet: "messages"; Component.onCompleted: middle.pinned = true }
             Ground { y: 184 }
             Bar {
                 y: 200
+                panelFacet: "controls"
                 Component.onCompleted: {
                     middle.figuresPart = 1;
                     middle.parts = ["Titel · Interpret", "2:14 / 4:03"];

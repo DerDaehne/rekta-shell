@@ -279,6 +279,26 @@ TestCase {
         verify(menu.visible);
     }
 
+    function test_while_its_list_is_open_the_control_holds_the_press_tint_and_says_it_is_expanded() {
+        scene = createTemporaryObject(sceneComponent, testCase, { apps: threeApps() });
+        const control = scene.control;
+        mouseMove(testCase, 1, 1);
+        const press = findChild(control, "press");
+        verify(!control.hovered);
+        control.forceActiveFocus();
+        keyClick(Qt.Key_Space);
+        verify(control.menu.open);
+        tryVerify(() => press.opacity === 1, 1000, "held while the list is open");
+        if ("expanded" in control.Accessible) {
+            verify(control.Accessible.expandable);
+            verify(control.Accessible.expanded);
+        }
+        control.menu.close(false);
+        tryVerify(() => press.opacity === 0, 1000, "let go once the list has closed");
+        if ("expanded" in control.Accessible)
+            verify(!control.Accessible.expanded);
+    }
+
     // The compositor dismisses the menu's popup on a press outside it, before that press reaches the bar or while it is held.
     function test_a_press_on_the_control_while_its_menu_is_open_closes_it_also_when_the_press_has_dismissed_the_popup() {
         const menu = open(threeApps());
@@ -1006,6 +1026,7 @@ TestCase {
             Prefs.theme = theme;
             for (const [level, apps] of Object.entries(sheets)) {
                 const menu = open(apps());
+                tryVerify(() => findChild(scene.control, "press").opacity === 1, 1000, "the control holds its tint");
                 if (level !== "list") {
                     keyClick(Qt.Key_Right);
                     keyClick(Qt.Key_Down);

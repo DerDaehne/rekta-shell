@@ -288,6 +288,19 @@ TestCase {
         compare(spy.signalArguments[0][0].opens, "background");
     }
 
+    function test_the_screen_word_is_not_expanded_while_the_background_menu_is_open_and_is_not_expandable() {
+        makeScene({ shown: [screen, muted] });
+        tryVerify(() => standing().length === 2);
+        const screenWord = word("screen");
+        scene.backgroundMenu.open = true;
+        verify(!screenWord.expanded, "the menu stands at its own control, which holds the open state");
+        if ("expanded" in screenWord.Accessible) {
+            verify(!screenWord.Accessible.expandable);
+            verify(!screenWord.Accessible.expanded);
+        }
+        scene.backgroundMenu.open = false;
+    }
+
     // The compositor dismisses the menu's popup on a press outside it, before that press reaches the bar or while it is held.
     function test_a_press_on_the_screen_word_while_the_background_menu_is_open_closes_it_also_when_the_press_has_dismissed_the_popup() {
         makeScene({ shown: [screen, muted] });

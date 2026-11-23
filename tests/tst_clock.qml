@@ -215,6 +215,26 @@ TestCase {
         verify(!calendar.open);
     }
 
+    function test_while_the_month_is_open_the_clock_holds_the_press_tint_and_says_it_is_expanded() {
+        mouseMove(testCase, 1, 1);
+        const press = findChild(clock, "press");
+        verify(!clock.hovered);
+        compare(press.opacity, 0);
+        clock.forceActiveFocus();
+        keyClick(Qt.Key_Space);
+        verify(clock.calendar.open);
+        tryVerify(() => press.opacity === 1, 1000, "held while the month is open");
+        if ("expanded" in clock.Accessible) {
+            verify(clock.Accessible.expandable);
+            verify(clock.Accessible.expanded);
+        }
+        keyClick(Qt.Key_Escape);
+        verify(!clock.calendar.open);
+        tryVerify(() => press.opacity === 0, 1000, "let go once the month has closed");
+        if ("expanded" in clock.Accessible)
+            verify(!clock.Accessible.expanded);
+    }
+
     // The compositor dismisses the month's popup on a press outside it, before that press reaches the bar or while it is held.
     function test_a_press_on_the_clock_while_the_month_is_open_closes_it_also_when_the_press_has_dismissed_the_popup() {
         const calendar = clock.calendar;
@@ -438,6 +458,7 @@ TestCase {
             sheetClock.forceActiveFocus();
             keyClick(Qt.Key_Space);
             keyClick(Qt.Key_Right);
+            tryVerify(() => findChild(sheetClock, "press").opacity === 1, 1000, "the clock holds its tint");
             waitForRendering(sheet);
             wait(Tokens.durationFloat + 50);
             grabImage(sheet).save(`clock-sheet-${theme}.png`);

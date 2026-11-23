@@ -1210,6 +1210,22 @@ TestCase {
         verify(side.open, "and leaves the panel open");
     }
 
+    function test_it_shows_a_facet_from_show_until_it_has_gone_and_a_turn_to_another_facet_moves_that() {
+        Prefs.motion = "on";
+        verify(!side.shows(0) && !side.shows(1), "away, it shows none");
+        side.show(0);
+        verify(side.shows(0));
+        verify(!side.shows(1));
+        side.show(1);
+        verify(side.shows(1), "turned to the other facet");
+        verify(!side.shows(0));
+        tryCompare(side, "entry", 1, Tokens.durationModerate * 4);
+        side.close();
+        verify(side.shows(1), "still while it leaves");
+        tryVerify(() => !side.open, Tokens.durationModerate * 4);
+        verify(!side.shows(1), "not once it has gone");
+    }
+
     function test_toggle_closes_it_on_the_facet_in_sight_and_turns_to_another() {
         side.toggle(0);
         verify(side.open);

@@ -155,6 +155,8 @@ PanelWindow {
             count: panel.notices.unseen
             away: panel.showsToasts && panel.toaster.countAway
             priority: 2
+            expandable: true
+            expanded: panel.controlPanel.shows(panel.modelData, 1)
             onClicked: panel.controlPanel.toggle(panel.modelData, 1, !bell.activeFocus)
         }
 
@@ -164,6 +166,8 @@ PanelWindow {
             icon: "tune"
             text: "steuerung"
             priority: 1
+            expandable: true
+            expanded: panel.controlPanel.shows(panel.modelData, 0)
             onClicked: panel.controlPanel.toggle(panel.modelData, 0, !tune.activeFocus)
         }
     }

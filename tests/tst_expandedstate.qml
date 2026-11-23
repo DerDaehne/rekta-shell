@@ -31,4 +31,17 @@ TestCase {
         expansion.expanded = false;
         verify(!announced.Accessible.expanded);
     }
+
+    function test_a_target_that_opens_nothing_of_its_own_is_neither_expandable_nor_expanded() {
+        if (!("expanded" in announced.Accessible))
+            skip("this Qt has no Accessible.expanded");
+        expansion.expanded = true;
+        expansion.expandable = false;
+        verify(!announced.Accessible.expandable);
+        verify(!announced.Accessible.expanded);
+        expansion.expandable = true;
+        verify(announced.Accessible.expandable);
+        verify(announced.Accessible.expanded);
+        expansion.expanded = false;
+    }
 }

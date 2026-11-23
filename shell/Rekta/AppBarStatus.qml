@@ -132,6 +132,8 @@ Item {
         text: shown?.name ?? ""
         present: current !== undefined
         opens: status.surfaces[shown?.opens] ?? null
+        // What a word opens is another control's surface, standing at that control, which holds the open state.
+        expandable: false
         face: StatusTag {
             x: Geometry.appBarControlPadding
             y: (Geometry.appBarControl - implicitHeight) / 2

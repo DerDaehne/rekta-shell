@@ -81,6 +81,11 @@ PanelWindow {
         panel.close();
     }
 
+    // Whether it shows a facet on a screen, until it has gone.
+    function shows(onScreen: ShellScreen, index: int): bool {
+        return visible && shownOn === onScreen && panel.shows(index);
+    }
+
     // A swipe draws the panel in on the primary screen.
     function drawIn(share: real) {
         if (!panel.open)
