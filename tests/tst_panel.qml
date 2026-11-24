@@ -3553,6 +3553,18 @@ TestCase {
         tryVerify(() => findChild(level, "back").activeFocus, 1000, "the focus on the back row, the level's first control left");
     }
 
+    // Another facet closed the level and left the focus where it was.
+    function test_wlan_off_while_the_level_of_netz_is_closed_draws_no_focus_into_it() {
+        giveNetworks(controls);
+        const level = showLevel("network");
+        rowsOf("networkRows")[1].forceActiveFocus(Qt.TabFocusReason);
+        findChild(side, "pivot").select(1);
+        verify(!level.open);
+        controls.networking.wifiEnabled = false;
+        settleLater();
+        verify(!findChild(level, "back").activeFocus && !control("wifiSwitch").activeFocus, "the closed level takes no focus");
+    }
+
     function test_kabel_stands_last_in_the_level_of_netz_with_its_state_as_a_status_word() {
         giveNetworks(controls);
         controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);

@@ -317,6 +317,8 @@ FocusScope {
                 return;
             // A focused row that went (its list built anew) can leave the focus on the panel's scope: it goes back into
             // the level that stands.
+            // ponytail: to the level's first control, not to the new row of the same network or device; follow it there
+            // should keyboard users miss it.
             if (now === sidePanel && sidePanel.openLevel) {
                 sidePanel.openLevel.focusFirst();
                 return;

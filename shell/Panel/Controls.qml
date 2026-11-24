@@ -286,9 +286,9 @@ Item {
         keepFocusIn(networkLevel);
     }
 
-    // Rows of a level that hide or are built anew while one holds the focus: Qt leaves the focus on the hidden row, or
-    // nowhere once the row has gone, so it goes to the level's first control.
-    // ponytail: not to the new row of the same network or device; follow it there should keyboard users miss it.
+    // Rows of a level that hide while one holds the focus, as the switch goes off from elsewhere or the device goes: Qt
+    // leaves the focus on the hidden row, or nowhere once the row has gone with its list, so it goes to the level's first
+    // control. A row built anew while the level stands leaves it on the panel, which hands it back (SidePanel).
     function keepFocusIn(level: AreaLevel) {
         Qt.callLater(() => {
             const focused = level.Window.activeFocusItem;
@@ -868,19 +868,6 @@ Item {
                 devicesLevel.leave();
                 controls.keepFocusIn(bluetoothLevel);
             }
-        }
-
-        // The repeaters build their rows anew from each new list.
-        function onRankedChanged() {
-            controls.keepFocusIn(networkLevel);
-        }
-
-        function onDevicesInlineChanged() {
-            controls.keepFocusIn(bluetoothLevel);
-        }
-
-        function onBluetoothDevicesChanged() {
-            controls.keepFocusIn(bluetoothLevel);
         }
     }
 
