@@ -171,8 +171,13 @@ public Q_SLOTS:
     Q_SCRIPTABLE void setPanelShown(bool shown);
     // KWin's window menu for the window with the UUID `window`, its top left corner at (`x`, `y`) on the screens.
     Q_SCRIPTABLE void showWindowMenu(const QString &window, int x, int y);
+    // The spec's version of the build in tag form, as its starter gives it the shell: KWin keeps the effect it loaded
+    // until the next login, also after an update has brought the shell a newer one.
+    Q_SCRIPTABLE QString version() const;
 
 Q_SIGNALS:
+    // The effect has come, as KWin starts or loads it anew: its methods and version may have changed.
+    Q_SCRIPTABLE void loaded();
     // A finger on the bottom edge of the primary screen is `distance` px above where it set down.
     Q_SCRIPTABLE void fingerMoved(double distance);
     Q_SCRIPTABLE void fingerLetGo();
@@ -286,6 +291,7 @@ FadeBackEffect::FadeBackEffect()
     takeSwipe(SwipeDirection::Down, m_swipeDown, &FadeBackEffect::touchpadDown, &FadeBackEffect::touchpadDownLetGo);
     takeSwipe(SwipeDirection::Left, m_swipeLeft, &FadeBackEffect::touchpadLeft, &FadeBackEffect::touchpadLeftLetGo);
     takeSwipe(SwipeDirection::Right, m_swipeRight, &FadeBackEffect::touchpadRight, &FadeBackEffect::touchpadRightLetGo);
+    Q_EMIT loaded();
 }
 
 FadeBackEffect::~FadeBackEffect()
@@ -465,6 +471,11 @@ void FadeBackEffect::setPanelShown(bool shown)
 {
     m_panelShown = shown;
     holdEdges();
+}
+
+QString FadeBackEffect::version() const
+{
+    return QString::fromLatin1(REKTA_VERSION);
 }
 
 void FadeBackEffect::showWindowMenu(const QString &window, int x, int y)

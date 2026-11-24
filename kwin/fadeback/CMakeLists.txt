@@ -24,6 +24,8 @@ endif()
 # KWin knows a plugin by its file name.
 add_library(rekta-fadeback MODULE fadeback.cpp)
 set_target_properties(rekta-fadeback PROPERTIES PREFIX "")
-target_compile_definitions(rekta-fadeback PRIVATE KPLUGINFACTORY_PLUGIN_CLASS_INTERNAL_NAME=rekta_fadeback_factory)
+# REKTA_VERSION comes from the project around it, the spec's version as the shell's starter has it.
+target_compile_definitions(rekta-fadeback PRIVATE KPLUGINFACTORY_PLUGIN_CLASS_INTERNAL_NAME=rekta_fadeback_factory
+    REKTA_VERSION="${REKTA_VERSION}")
 target_link_libraries(rekta-fadeback PRIVATE KWin::kwin Qt6::Qml Qt6::Widgets)
 install(TARGETS rekta-fadeback DESTINATION ${KDE_INSTALL_LIBDIR}/rekta-kwin/plugins/kwin/effects/plugins)

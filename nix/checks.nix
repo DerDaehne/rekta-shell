@@ -705,6 +705,10 @@ in
     grep -Fx "ExecStart=${versioned}/bin/rekta-shell" ${versioned}/lib/systemd/user/rekta-shell.service
     # The cached build, started by hand, reports the spec's version alone.
     test "$(${rekta-shell}/bin/rekta-shell --version)" = "rekta-shell $(sh ${../packaging/version.sh} tag ${../packaging/fedora/rekta-shell.spec})"
+    # The starter and the fade-back effect carry the same build version, which the shell compares with the running effect's.
+    tag=$(sh ${../packaging/version.sh} tag ${../packaging/fedora/rekta-shell.spec})
+    grep -Fx "export REKTA_BUILD_VERSION=\"$tag\"" ${rekta-shell}/bin/.rekta-shell-wrapped
+    grep -aF "$tag" ${rekta-shell}/lib/rekta-kwin/plugins/kwin/effects/plugins/rekta-fadeback.so >/dev/null
     touch $out
   '';
 

@@ -5,5 +5,7 @@ REKTA_VERSION="${REKTA_VERSION:-@REKTA_VERSION@}"
 [ "${1:-}" = --version ] && { echo "rekta-shell $REKTA_VERSION"; exit 0; }
 export QML_IMPORT_PATH="@REKTA_SHELL_DIR@${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
 export REKTA_VERSION
+# The version this build gave its KWin effects too, which no wrapper changes: the shell compares the running effect's.
+export REKTA_BUILD_VERSION="@REKTA_VERSION@"
 export REKTA_SHELL_LAUNCH="${REKTA_SHELL_LAUNCH:-systemd}"@REKTA_DEFAULTS_EXPORT@
 exec @QUICKSHELL@ --path "@REKTA_SHELL_DIR@" "$@"
