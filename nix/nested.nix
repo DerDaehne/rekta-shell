@@ -75,7 +75,7 @@ writeShellApplication {
       echo "usage: rekta-nested [--window] [--outputs N] [--size WIDTHxHEIGHT] [--background solid|rekta] [--touch-edges]" >&2
       echo "                    [--state FILE [--wait-ready] [--timeout SECONDS]] [--a11y]" >&2
       echo "  --touch-edges  let KWin take touch screen edges (it then also runs global shortcuts, on the session's own bus)" >&2
-      echo "  --state FILE   keep the session's state as JSON in FILE while the session runs (not directly in /tmp or $TMPDIR)" >&2
+      echo "  --state FILE   keep the session's state as JSON in FILE while the session runs (not directly in /tmp or \$TMPDIR)" >&2
       echo "  --wait-ready   run the session detached and return once its shell and effects stand (needs --state)" >&2
       echo "  --timeout S    stop the session if it is not ready after S seconds (default 120)" >&2
       echo "  --a11y         add an accessibility bus of the session's own, for AT-SPI probes" >&2
@@ -112,13 +112,13 @@ writeShellApplication {
     [[ "$background" =~ ^(rekta|solid)$ ]] || usage
     [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || usage
     [ "$wait_ready" = false ] || [ -n "$state" ] || usage
-    # The shell's file watcher rescans every directory it sees changing under /tmp, so the state file lives in a subdirectory.
+    # The shell watches its HOME's parent directories (here TMPDIR), so a state file written there would make it rescan; use a subdirectory.
     [ -z "$state" ] || [[ "$(dirname "$state")" != "$(realpath -m "''${TMPDIR:-/tmp}")" && "$(dirname "$state")" != /tmp ]] || usage
 
     # The session's script runs on in the background; every PID, Quickshell's included, comes from the state file.
     detach_and_wait() {
       rm -f "$state"
-      REKTA_NESTED_DETACHED=1 setsid "$0" "''${original_args[@]}" >"$state.log" 2>&1 </dev/null &
+      env --default-signal=INT REKTA_NESTED_DETACHED=1 setsid "$0" "''${original_args[@]}" >"$state.log" 2>&1 </dev/null &
       local session_pid=$!
       trap 'kill "$session_pid" 2>/dev/null; exit 130' INT TERM HUP
       until [ "$(jq -r .ready "$state" 2>/dev/null)" = true ]; do
