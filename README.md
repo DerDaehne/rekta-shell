@@ -318,7 +318,10 @@ configuration does.
 - **Update:** run `nix flake update rekta-shell` in your configuration, then
   build and switch as usual. The new shell starts with the next rekta login;
   inside a running rekta session, `systemctl --user restart rekta-shell` picks
-  it up at once.
+  it up at once. KWin keeps the rekta effects it loaded until the next login;
+  meanwhile the shell offers only what the running effects can do (the Start's
+  "fenster" says "nach neuer anmeldung") and names the older effect once in its
+  journal (`FadeBackEffect:`).
 - **Go back to an earlier version:** revert the `flake.lock` change and switch
   again, or `nixos-rebuild switch --rollback`, or boot an earlier generation.
 - **What both sessions share:** KDE's settings (`kwinrc`, `kdeglobals`,
