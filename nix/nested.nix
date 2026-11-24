@@ -65,6 +65,7 @@ writeShellApplication {
   name = "rekta-nested";
   runtimeInputs = [
     coreutils
+    gnugrep
     jq
     util-linux
     systemd
@@ -74,7 +75,7 @@ writeShellApplication {
       echo "usage: rekta-nested [--window] [--outputs N] [--size WIDTHxHEIGHT] [--background solid|rekta] [--touch-edges]" >&2
       echo "                    [--state FILE [--wait-ready] [--timeout SECONDS]] [--a11y]" >&2
       echo "  --touch-edges  let KWin take touch screen edges (it then also runs global shortcuts, on the session's own bus)" >&2
-      echo "  --state FILE   keep the session's state as JSON in FILE for as long as the session runs" >&2
+      echo "  --state FILE   keep the session's state as JSON in FILE while the session runs (not directly in /tmp or $TMPDIR)" >&2
       echo "  --wait-ready   run the session detached and return once its shell and effects stand (needs --state)" >&2
       echo "  --timeout S    stop the session if it is not ready after S seconds (default 120)" >&2
       echo "  --a11y         add an accessibility bus of the session's own, for AT-SPI probes" >&2
@@ -111,13 +112,15 @@ writeShellApplication {
     [[ "$background" =~ ^(rekta|solid)$ ]] || usage
     [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || usage
     [ "$wait_ready" = false ] || [ -n "$state" ] || usage
+    # The shell's file watcher rescans every directory it sees changing under /tmp, so the state file lives in a subdirectory.
+    [ -z "$state" ] || [[ "$(dirname "$state")" != "$(realpath -m "''${TMPDIR:-/tmp}")" && "$(dirname "$state")" != /tmp ]] || usage
 
-    # The session's script runs on in the background, so its PID, and with it every process's, comes from the state file
-    # and not from a shell's `&` (the Nix launcher puts processes between).
+    # The session's script runs on in the background; every PID, Quickshell's included, comes from the state file.
     detach_and_wait() {
       rm -f "$state"
       REKTA_NESTED_DETACHED=1 setsid "$0" "''${original_args[@]}" >"$state.log" 2>&1 </dev/null &
       local session_pid=$!
+      trap 'kill "$session_pid" 2>/dev/null; exit 130' INT TERM HUP
       until [ "$(jq -r .ready "$state" 2>/dev/null)" = true ]; do
         kill -0 "$session_pid" 2>/dev/null || { tail -n 20 "$state.log" >&2; exit 1; }
         sleep 0.2
@@ -155,6 +158,7 @@ writeShellApplication {
       wait "$1" 2>/dev/null || true
     }
     cleanup() {
+      local status=$?
       stop "''${kwin:-}"
       for shell_pid in $(quickshell_pids || true); do stop "$shell_pid"; done
       stop "''${a11y_launcher_pid:-}"
@@ -164,6 +168,8 @@ writeShellApplication {
       stop "''${system_bus_pid:-}"
       stop "''${bus_pid:-}"
       [ -z "$state" ] || rm -f "$state" "$state.tmp"
+      # The log of a detached session is kept when it failed.
+      [ "$status" -ne 0 ] && [ "$status" -ne 130 ] || [ -z "$state" ] || rm -f "$state.log"
       rm -rf "$home"
     }
     trap cleanup EXIT
@@ -199,7 +205,7 @@ writeShellApplication {
       XDG_SESSION_DESKTOP=rekta
       PIPEWIRE_CONFIG_DIR=${pipewireConfig}
       WIREPLUMBER_CONFIG_DIR=${wireplumberConfig}:${wireplumber}/share/wireplumber
-      # Its programs log to its own stderr, not to the desktop's journal.
+      # Its programs log to its own stderr; only the AT-SPI bus's dbus-broker (--a11y) writes two lines to the desktop's journal.
       QT_FORCE_STDERR_LOGGING=1
     )
     [ -n "''${LOCALE_ARCHIVE:-}" ] && session+=(LOCALE_ARCHIVE="$LOCALE_ARCHIVE")
@@ -222,9 +228,10 @@ writeShellApplication {
 
     # Quickshell leaves KWin's process tree, but registers by PID in the session's own runtime directory.
     quickshell_pids() {
-      local entry
+      local entry pid
       for entry in "$home"/runtime/quickshell/by-pid/*; do
-        [ -e "$entry" ] && basename "$entry"
+        pid="$(basename "$entry")"
+        grep -qzxF "XDG_RUNTIME_DIR=$home/runtime" "/proc/$pid/environ" 2>/dev/null && echo "$pid"
       done
       return 0
     }

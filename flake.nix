@@ -106,6 +106,7 @@
             })
             pkgs.nodejs
             pkgs.gitleaks
+            pkgs.jq
             pkgs.nixfmt
           ];
         };

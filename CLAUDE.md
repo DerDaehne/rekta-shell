@@ -128,7 +128,7 @@ People should understand intent and behaviour by reading the code.
 
 ```sh
 nix flake check   # package, qmllint (warnings fail), token drift, QML tests, modules, nixfmt --check
-nix develop       # qs, qmllint, qmlformat, node, gitleaks, nixfmt, rekta-qmllint
+nix develop       # qs, qmllint, qmlformat, node, gitleaks, jq, nixfmt, rekta-qmllint
 nix build         # result/bin/rekta-shell, a wrapper around quickshell --path
 nix fmt           # formats the Nix files
 nix run .#nested -- [--window] [--outputs N] [--size WxH] [--background solid|rekta] [--touch-edges] [--state FILE [--wait-ready] [--timeout S]] [--a11y]   # own KWin, hot reload
@@ -215,15 +215,17 @@ nix run .#fedora-vm -- [--window] [--disk <file>] [--rpms <dir>] [QEMU args]   #
   of its own (config from the store only, no devices, no D-Bus) for KWin's
   screencasts; `mapfile -t s < /tmp/rekta-nested.*/session.env; env -i "${s[@]}" pw-dump`
   shows its graph.
-- The nested session reports its state on request, so nobody guesses PIDs (a `nix run … &` knows only the Nix
-  launcher's): `--state FILE` keeps a JSON in FILE for as long as the session runs and deletes it on exit. With
-  `--wait-ready` (needs `--state`) the session runs detached, with its log in `FILE.log`, and the command prints the JSON
-  and returns once the shell and the three rekta effects stand; it exits 1, with the log's tail, if KWin dies or
-  `--timeout S` (default 120) passes, and then nothing is left. Stop the session by `kill <pids.nested>`: its cleanup stops
-  every process in the JSON (Quickshell lives outside KWin's process tree and is found through the session's own
-  `quickshell/by-pid`). `--a11y` adds an AT-SPI bus of the session's own (`at-spi-bus-launcher` and `at-spi2-registryd`
-  from the store, address in `buses.a11y`, `null` without the option) and sets `QT_LINUX_ACCESSIBILITY_ALWAYS_ON` for
-  the session. The JSON, read with `jq`:
+- The nested session reports its state on request, so nobody guesses PIDs: `--state FILE` keeps a JSON in FILE for as
+  long as the session runs and deletes it on exit. FILE must not lie directly in `/tmp` or `$TMPDIR` (the shell's file
+  watcher rescans there); use a subdirectory. With `--wait-ready` (needs `--state`) the session runs detached, with its
+  log in `FILE.log`, and the command prints the JSON and returns once the shell and the three rekta effects stand; it
+  exits 1, with the log's tail, if KWin dies or `--timeout S` (default 120) passes, and then every process is stopped
+  and only `FILE.log` stays (a clean stop deletes it too). Stop the session by `kill <pids.nested>`: its cleanup stops
+  every process in the JSON. Quickshell lives outside KWin's process tree; it is found through the session's own
+  `quickshell/by-pid`, and only a PID whose environment names this session's runtime directory counts. `--a11y` adds an
+  AT-SPI bus of the session's own (`at-spi-bus-launcher` and `at-spi2-registryd` from the store, address in
+  `buses.a11y`, `null` without the option) and sets `QT_LINUX_ACCESSIBILITY_ALWAYS_ON` for the session; its dbus-broker
+  writes two lines to the desktop's journal. The JSON is read with `jq` (in the dev shell):
 
   ```json
   { "ready": true, "home": "…", "session_env": "…/session.env",
