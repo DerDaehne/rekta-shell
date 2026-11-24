@@ -27,12 +27,12 @@ DBusConnection {
     function learn() {
         failed = {};
         call("org.kde.KWin", "/RektaFadeBack", "org.freedesktop.DBus.Introspectable", "Introspect", [], "", (error, values) => {
-            const found = effect.methodsIn(typeof values[0] === "string" ? values[0] : "");
+            const found = effect.methodsIn(effect.textOf(values));
             effect.methods = found ?? [];
             if (!effect.methods.includes("version"))
                 effect.warnStale(found === null ? "no rekta-fadeback" : "an older rekta-fadeback without a version");
             else
-                effect.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "version", [], "", (error, values) => effect.compareVersion(typeof values[0] === "string" ? values[0] : ""));
+                effect.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "version", [], "", (error, values) => effect.compareVersion(effect.textOf(values)));
         });
     }
 
@@ -43,6 +43,11 @@ DBusConnection {
 
     function warnStale(running: string) {
         console.warn(`FadeBackEffect: KWin runs ${running}, the shell is ${buildVersion || "a checkout"}: log out and back in to load the shell's`);
+    }
+
+    // A reply's one string; "" after an error, or for a value of another type.
+    function textOf(values: var): string {
+        return typeof values[0] === "string" ? values[0] : "";
     }
 
     // The method names of org.rekta.FadeBack in introspection XML as QtDBus writes it, or null without that interface.
