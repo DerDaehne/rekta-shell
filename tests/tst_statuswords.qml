@@ -68,7 +68,7 @@ TestCase {
 
     function test_every_word_names_what_it_opens() {
         compare(make({ muted: true }).deviations[0].name, "stumm, öffnet ton");
-        compare(make({ offline: true }).deviations[0].name, "offline, öffnet verbindungen");
+        compare(make({ offline: true }).deviations[0].name, "offline, öffnet netz");
         compare(make({ doNotDisturb: true }).deviations[0].name, "nicht stören, öffnet steuerung");
     }
 

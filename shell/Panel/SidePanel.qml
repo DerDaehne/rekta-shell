@@ -315,6 +315,12 @@ FocusScope {
             const now = sidePanel.Window.window.activeFocusItem;
             if (!now)
                 return;
+            // A focused row that went (its list built anew) can leave the focus on the panel's scope: it goes back into
+            // the level that stands.
+            if (now === sidePanel && sidePanel.openLevel) {
+                sidePanel.openLevel.focusFirst();
+                return;
+            }
             sidePanel.watchKeysOf(now);
             sidePanel.revealFocus(now);
         }
@@ -474,6 +480,9 @@ FocusScope {
                 width: parent.width
                 height: parent.height - y
                 visible: sidePanel.openLevel !== null
+                // Under a sheet the level takes no press: Qt hands the pointer handlers under the sheet's shading the
+                // press all the same, and a row or the back row would act on it.
+                enabled: !sidePanel.sheetOpen
                 color: Tokens.color.bg
 
                 // The facet under it is disabled, but Qt still hands a disabled item's hover handlers the pointer.

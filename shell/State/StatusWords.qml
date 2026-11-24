@@ -25,7 +25,7 @@ QtObject {
         microphoneInUse ? word("microphone", "mikrofon an", "error", "sound", "ton") : null,
         screenShared ? word("screen", "bildschirm geteilt", "error", "background", "im hintergrund") : null,
         batteryLow ? word("battery", `akku ${batteryPercent} %`, "error", "power", powerProfiles ? "energieprofil" : "sitzung") : null,
-        offline ? word("offline", "offline", "error", "connections", "verbindungen") : null,
+        offline ? word("offline", "offline", "error", "connections", "netz") : null,
         muted ? word("muted", "stumm", "", "sound", "ton") : null,
         doNotDisturb ? word("doNotDisturb", "nicht stören", "", "doNotDisturb", "steuerung") : null
     ].filter(deviation => deviation !== null)

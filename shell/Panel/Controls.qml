@@ -5,16 +5,16 @@ import Rekta
 import State
 
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons. Its areas
-// are opener tiles in one grid at its foot, in a fixed order, ton then anzeige: a tile says how its area stands and
-// opens the area's level, which covers the panel below its head (states.md:224–275); a tile never changes data. What is
-// used most stands above the grid, from the top: what a media player plays while it plays, the output's mute button and
-// volume, each display's brightness, the states switched most ("wlan", "bluetooth", "nicht stören", "dunkel") as toggle
-// buttons, then the groups that have no tile, verbindungen and sitzung; one without rows falls away. The free space lies
-// between the two, and a panel taller than its room scrolls as one, the grid last. The host runs what the rows ask for
-// and feeds back the state they show. In ton each kind has two rows, a select of its devices, then a button that mutes
-// before the volume slider; between the output and the input each stream another program plays has a row with a button
-// and a slider of its own; in anzeige each display that can be dimmed has a slider; in verbindungen the paired
-// Bluetooth devices and the strongest wireless networks unfold below their rows, up to five, and a level lists them
+// are opener tiles in one grid at its foot, in a fixed order, ton, netz, bluetooth, anzeige: a tile says how its area
+// stands and opens the area's level, which covers the panel below its head (states.md:224–275); a tile never changes
+// data. What is used most stands above the grid, from the top: what a media player plays while it plays, the output's
+// mute button and volume, each display's brightness, "nicht stören" and "dunkel" as toggle buttons, then the group that
+// has no tile, sitzung. The free space lies between the two, and a panel taller than its room scrolls as one, the grid
+// last. The host runs what the rows ask for and feeds back the state they show. In ton each kind has two rows, a select
+// of its devices, then a button that mutes before the volume slider; between the output and the input each stream
+// another program plays has a row with a button and a slider of its own; in anzeige each display that can be dimmed has
+// a slider. netz and bluetooth start with their toggle switch (states.md:231–233); while it is on, the strongest
+// wireless networks or the paired Bluetooth devices follow as rows, up to five, and a list chosen in place holds them
 // all. A secured network the system does not know asks for its password in a sheet.
 Item {
     id: controls
@@ -95,17 +95,19 @@ Item {
     property Item levels
     readonly property bool bluetoothOn: bluetooth?.enabled ?? false
     readonly property bool wifiOn: networking?.wifiEnabled ?? false
+    readonly property bool hasNetwork: wifiDevice !== null || wiredDevice !== null
     readonly property var networkList: wifiDevice?.networks.values ?? []
     readonly property var connectedNetwork: networkList.find(network => network.connected) ?? null
     readonly property bool joining: networkList.some(network => network.stateChanging)
-    // The networks by signal while the list shows (inline or in the level), kept in that order meanwhile: the signal
-    // moves with every scan, and rows that jump under the pointer cannot be pressed. The cause of a failed connection by
-    // network name, until the next attempt.
+    // The networks by signal while the list shows, kept in that order meanwhile: the signal moves with every scan, and
+    // rows that jump under the pointer cannot be pressed. The cause of a failed connection by network name, until the
+    // next attempt.
     property var ranked: []
     property var failures: ({})
     readonly property int inlineNetworkLimit: 5
     readonly property var networksInline: ranked.slice(0, inlineNetworkLimit)
-    readonly property bool listing: wifiBranch.expanded || networksLevel.open
+    // The networks show while the level of netz stands with wireless on; the system scans only meanwhile.
+    readonly property bool listing: networkLevel.open && wifiOn && wifiDevice !== null
     readonly property int inlineDeviceLimit: 5
     readonly property var devicesInline: connectedFirst(bluetoothDevices).slice(0, inlineDeviceLimit)
 
@@ -117,7 +119,7 @@ Item {
     property string density: "auto"
     readonly property list<string> densityWords: ["automatisch", "bequem", "kompakt"]
     // What each area's tile says of it (states.md:237–242): ton the output's name, "stumm" while it is muted, the input's
-    // without an output; anzeige the density.
+    // without an output; netz and bluetooth as networkWord() and bluetoothWord() say; anzeige the density.
     readonly property string soundWord: output ? (output.audio?.muted ? "stumm" : deviceName(output)) : deviceName(input)
     readonly property string displayWord: `dichte ${densityWords[Math.max(0, densities.indexOf(density))]}`
 
@@ -157,6 +159,30 @@ Item {
             quiet.choose("open");
         else
             quiet.stop();
+    }
+
+    // On its way to a network, the joined network, the cable, wireless off, else not connected. "aus" speaks of the
+    // wireless switch, so it needs a wireless device.
+    function networkWord(): string {
+        if (joining)
+            return "wartet";
+        if (connectedNetwork)
+            return connectedNetwork.name;
+        if (wiredDevice?.connected)
+            return "kabel";
+        return wifiDevice && !wifiOn ? "aus" : "getrennt";
+    }
+
+    // Its radio blocked, off, the one device connected, how many are, else on.
+    function bluetoothWord(): string {
+        if (bluetooth?.state === Controls.Blocked)
+            return "funk gesperrt";
+        if (!bluetoothOn)
+            return "aus";
+        const connected = bluetoothDevices.filter(device => device.connected);
+        if (connected.length === 1)
+            return connected[0].name;
+        return connected.length > 1 ? `${connected.length} verbunden` : "an";
     }
 
     // So the few that show are the ones in use; each group keeps its order.
@@ -254,10 +280,21 @@ Item {
         ranked = kept.concat(fresh);
     }
 
-    // Without wireless, or without its device, nothing of the list stays open and nothing is scanned for.
+    // Without wireless, or without its device, the list of all networks closes; the scan stops as the rows hide.
     function dropNetworkList() {
-        wifiBranch.fold();
         networksLevel.leave();
+        keepFocusIn(networkLevel);
+    }
+
+    // Rows of a level that hide or are built anew while one holds the focus: Qt leaves the focus on the hidden row, or
+    // nowhere once the row has gone, so it goes to the level's first control.
+    // ponytail: not to the new row of the same network or device; follow it there should keyboard users miss it.
+    function keepFocusIn(level: AreaLevel) {
+        Qt.callLater(() => {
+            const focused = level.Window.activeFocusItem;
+            if (level.open && (!focused || level.isMine(focused) && !focused.visible))
+                level.focusFirst();
+        });
     }
 
     function needsPassword(network: var): bool {
@@ -305,10 +342,11 @@ Item {
     }
 
     readonly property list<string> densities: ["auto", "comfortable", "compact"]
-    // Where a status word of the app bar leads, by name; the energy profile, where it is offered, else its group.
+    // Where a status word of the app bar leads, by name: "offline" to the level of netz while there is a network device;
+    // the energy profile, where it is offered, else its group.
     readonly property var places: ({
             sound: soundLevel,
-            connections: connectionsGroup,
+            connections: hasNetwork ? networkLevel : null,
             doNotDisturb: quietButton,
             power: powerRow.present ? powerRow : sessionGroup
         })
@@ -364,11 +402,9 @@ Item {
                 BrightnessRow {}
             }
 
-            // Each a toggle button (forms.md:54–69: wireless, do not disturb, dark appearance), in two columns space-s
-            // apart as a row of buttons is (rekta.css:363). One whose device is missing is gone. The details of wlan and
-            // bluetooth are their lists in verbindungen, unfolded with the focus on them; those of "nicht stören" are how
-            // long it lasts, unfolded below the buttons. Escape folds them and gives the focus back to the button
-            // (behaviour.md:836).
+            // Each a toggle button (forms.md:54–69: do not disturb, dark appearance), in two columns space-s apart as a
+            // row of buttons is (rekta.css:363). The details of "nicht stören" are how long it lasts, unfolded below the
+            // buttons. Escape folds them and gives the focus back to the button (behaviour.md:836).
             Column {
                 objectName: "toggles"
                 width: parent.width
@@ -383,49 +419,6 @@ Item {
                     width: parent ? parent.width : 0
                     columns: 2
                     spacing: Tokens.spaceS
-
-                    ToggleButton {
-                        id: wifiButton
-
-                        objectName: "wifi"
-                        width: quickSettings.cellWidth
-                        visible: controls.networking !== null && controls.wifiDevice !== null
-                        icon: "wireless"
-                        text: "wlan"
-                        onWord: "an"
-                        offWord: "aus"
-                        value: controls.connectedNetwork?.name ?? ""
-                        checked: controls.wifiOn
-                        disabledReason: controls.networking?.wifiHardwareEnabled === false ? "funk gesperrt" : ""
-                        details: controls.wifiOn
-                        // It shows what the system has: a switch it did not take springs back.
-                        onToggled: {
-                            controls.wifiChosen(checked);
-                            checked = Qt.binding(() => controls.wifiOn);
-                        }
-                        onDetailsAsked: wifiBranch.expandFocused(wifiButton)
-                    }
-
-                    ToggleButton {
-                        id: bluetoothButton
-
-                        objectName: "bluetooth"
-                        width: quickSettings.cellWidth
-                        visible: controls.bluetooth !== null
-                        icon: "bluetooth"
-                        text: "bluetooth"
-                        onWord: "an"
-                        offWord: "aus"
-                        checked: controls.bluetoothOn
-                        disabledReason: controls.bluetooth?.state === Controls.Blocked ? "funk gesperrt" : ""
-                        details: true
-                        // It shows what the adapter has: a switch the system did not take springs back.
-                        onToggled: {
-                            controls.bluetoothChosen(checked);
-                            checked = Qt.binding(() => controls.bluetoothOn);
-                        }
-                        onDetailsAsked: bluetoothBranch.expandFocused(bluetoothButton)
-                    }
 
                     // A plain press switches it on without an end; the details choose how long it lasts.
                     ToggleButton {
@@ -479,182 +472,6 @@ Item {
                             currentIndex = Qt.binding(() => controls.quiet.chosen);
                         }
                     }
-                }
-            }
-        }
-
-        PanelGroup {
-            id: connectionsGroup
-
-            objectName: "connections"
-            title: "verbindungen"
-            levels: [
-                PanelLevel {
-                    id: networksLevel
-
-                    objectName: "networks"
-                    name: "netze"
-                    onActivated: row => controls.pressNetwork(row)
-
-                    Repeater {
-                        model: controls.ranked
-
-                        NetworkItem {}
-                    }
-                },
-                PanelLevel {
-                    id: bluetoothLevel
-
-                    objectName: "bluetoothDevices"
-                    name: "geräte"
-                    onActivated: row => controls.pressBluetooth(row)
-
-                    Repeater {
-                        model: controls.bluetoothDevices
-
-                        BluetoothDeviceItem {}
-                    }
-
-                    PairItem {
-                        objectName: "pairDevice"
-                    }
-                }
-            ]
-
-            PanelRow {
-                label: controls.connectedNetwork ? `netz · ${controls.connectedNetwork.name}` : "netz"
-                present: controls.wifiOn && controls.wifiDevice !== null
-
-                Keys.onPressed: event => event.accepted = wifiBranch.handleKey(event)
-
-                Item {
-                    implicitWidth: wifiState.implicitWidth + Tokens.spaceS + networksOpener.implicitWidth
-                    implicitHeight: networksOpener.implicitHeight
-
-                    StatusTag {
-                        id: wifiState
-
-                        objectName: "wifiState"
-                        anchors.verticalCenter: parent.verticalCenter
-                        status: controls.joining ? "warning" : controls.connectedNetwork ? "info" : ""
-                        word: controls.joining ? "wartet" : controls.connectedNetwork ? "verbunden" : "getrennt"
-                    }
-
-                    Button {
-                        id: networksOpener
-
-                        objectName: "chooseNetwork"
-                        x: wifiState.implicitWidth + Tokens.spaceS
-                        text: "wählen"
-                        Accessible.name: "netze wählen"
-
-                        ExpandedState {
-                            target: networksOpener
-                            expanded: wifiBranch.expanded
-                        }
-                        onClicked: wifiBranch.toggle()
-                    }
-                }
-            }
-
-            PanelBranch {
-                id: wifiBranch
-
-                objectName: "wifiBranch"
-                opener: networksOpener
-                onActivated: row => {
-                    if (row === allNetworksRow)
-                        networksLevel.show(networksOpener);
-                    else
-                        controls.pressNetwork(row);
-                }
-
-                Empty {
-                    objectName: "noNetworks"
-                    visible: controls.ranked.length === 0
-                    width: parent.width
-                    text: "keine netze gefunden, die suche läuft"
-                }
-
-                Repeater {
-                    model: controls.networksInline
-
-                    NetworkItem {}
-                }
-
-                MenuItem {
-                    id: allNetworksRow
-
-                    objectName: "allNetworks"
-                    visible: controls.ranked.length > controls.inlineNetworkLimit
-                    text: "alle netze …"
-                    opensLevel: true
-                    activeFocusOnTab: true
-                }
-            }
-
-            PanelRow {
-                label: "kabel"
-                present: controls.wiredDevice !== null
-
-                StatusTag {
-                    objectName: "wiredState"
-                    status: controls.wiredDevice?.connected ? "info" : ""
-                    word: controls.wiredDevice?.connected ? "verbunden" : "getrennt"
-                }
-            }
-
-            PanelRow {
-                label: `geräte · ${controls.bluetoothDevices.filter(device => device.connected).length} verbunden`
-                present: controls.bluetooth !== null
-
-                Keys.onPressed: event => event.accepted = bluetoothBranch.handleKey(event)
-
-                Button {
-                    id: devicesOpener
-
-                    objectName: "chooseBluetoothDevice"
-                    text: "wählen"
-                    Accessible.name: "geräte wählen"
-
-                    ExpandedState {
-                        target: devicesOpener
-                        expanded: bluetoothBranch.expanded
-                    }
-                    onClicked: bluetoothBranch.toggle()
-                }
-            }
-
-            PanelBranch {
-                id: bluetoothBranch
-
-                objectName: "bluetoothBranch"
-                opener: devicesOpener
-                onActivated: row => {
-                    if (row === allDevicesRow)
-                        bluetoothLevel.show(devicesOpener);
-                    else
-                        controls.pressBluetooth(row);
-                }
-
-                Repeater {
-                    model: controls.devicesInline
-
-                    BluetoothDeviceItem {}
-                }
-
-                MenuItem {
-                    id: allDevicesRow
-
-                    objectName: "allDevices"
-                    visible: controls.bluetoothDevices.length > controls.inlineDeviceLimit
-                    text: "alle geräte …"
-                    opensLevel: true
-                    activeFocusOnTab: true
-                }
-
-                PairItem {
-                    objectName: "pairDeviceInline"
                 }
             }
         }
@@ -721,6 +538,28 @@ Item {
             onActivated: soundLevel.show()
         }
 
+        OpenerTile {
+            id: networkTile
+
+            objectName: "networkTile"
+            visible: controls.hasNetwork
+            glyph: "wireless"
+            name: "netz"
+            stateWord: controls.networkWord()
+            onActivated: networkLevel.show()
+        }
+
+        OpenerTile {
+            id: bluetoothTile
+
+            objectName: "bluetoothTile"
+            visible: controls.bluetooth !== null
+            glyph: "bluetooth"
+            name: "bluetooth"
+            stateWord: controls.bluetoothWord()
+            onActivated: bluetoothLevel.show()
+        }
+
         // ponytail: `window` stands in for the display until Rekta has an icon for it; take Rekta's once it does.
         OpenerTile {
             id: displayTile
@@ -779,6 +618,168 @@ Item {
     }
 
     AreaLevel {
+        id: networkLevel
+
+        objectName: "network"
+        parent: controls.levels
+        name: "netz"
+        tile: networkTile
+        levels: [
+            PanelLevel {
+                id: networksLevel
+
+                objectName: "networks"
+                name: "netze"
+                onActivated: row => controls.pressNetwork(row)
+
+                Repeater {
+                    model: controls.ranked
+
+                    NetworkItem {}
+                }
+            }
+        ]
+
+        // It shows what the system has: a switch it did not take springs back.
+        Toggle {
+            objectName: "wifiSwitch"
+            width: parent.width
+            visible: controls.wifiDevice !== null
+            label: "wlan"
+            onWord: "an"
+            offWord: "aus"
+            checked: controls.wifiOn
+            disabledReason: controls.networking?.wifiHardwareEnabled === false ? "funk gesperrt" : ""
+            onToggled: {
+                controls.wifiChosen(checked);
+                checked = Qt.binding(() => controls.wifiOn);
+            }
+        }
+
+        ListRows {
+            objectName: "networkRows"
+            visible: controls.wifiOn && controls.wifiDevice !== null
+            onActivated: row => {
+                if (row === allNetworksRow)
+                    networksLevel.show(allNetworksRow);
+                else
+                    controls.pressNetwork(row);
+            }
+
+            Empty {
+                objectName: "noNetworks"
+                visible: controls.ranked.length === 0
+                width: parent.width
+                text: "keine netze gefunden, die suche läuft"
+            }
+
+            Repeater {
+                model: controls.networksInline
+
+                NetworkItem {}
+            }
+
+            MenuItem {
+                id: allNetworksRow
+
+                objectName: "allNetworks"
+                visible: controls.ranked.length > controls.inlineNetworkLimit
+                text: "alle netze …"
+                opensLevel: true
+                activeFocusOnTab: true
+            }
+        }
+
+        PanelRow {
+            label: "kabel"
+            present: controls.wiredDevice !== null
+
+            StatusTag {
+                objectName: "wiredState"
+                status: controls.wiredDevice?.connected ? "info" : ""
+                word: controls.wiredDevice?.connected ? "verbunden" : "getrennt"
+            }
+        }
+    }
+
+    // ponytail: an area whose device goes while its level stands (an adapter unplugged) keeps the level with its back
+    // row, and leaving it puts the focus on the hidden tile; close the level with its tile should that happen in use.
+    AreaLevel {
+        id: bluetoothLevel
+
+        objectName: "bluetooth"
+        parent: controls.levels
+        name: "bluetooth"
+        tile: bluetoothTile
+        levels: [
+            PanelLevel {
+                id: devicesLevel
+
+                objectName: "bluetoothDevices"
+                name: "geräte"
+                onActivated: row => controls.pressBluetooth(row)
+
+                Repeater {
+                    model: controls.bluetoothDevices
+
+                    BluetoothDeviceItem {}
+                }
+
+                PairItem {
+                    objectName: "pairDeviceInAll"
+                }
+            }
+        ]
+
+        // It shows what the adapter has: a switch the system did not take springs back.
+        Toggle {
+            objectName: "bluetoothSwitch"
+            width: parent.width
+            visible: controls.bluetooth !== null
+            label: "bluetooth"
+            onWord: "an"
+            offWord: "aus"
+            checked: controls.bluetoothOn
+            disabledReason: controls.bluetooth?.state === Controls.Blocked ? "funk gesperrt" : ""
+            onToggled: {
+                controls.bluetoothChosen(checked);
+                checked = Qt.binding(() => controls.bluetoothOn);
+            }
+        }
+
+        ListRows {
+            objectName: "deviceRows"
+            visible: controls.bluetoothOn
+            onActivated: row => {
+                if (row === allDevicesRow)
+                    devicesLevel.show(allDevicesRow);
+                else
+                    controls.pressBluetooth(row);
+            }
+
+            Repeater {
+                model: controls.devicesInline
+
+                BluetoothDeviceItem {}
+            }
+
+            MenuItem {
+                id: allDevicesRow
+
+                objectName: "allDevices"
+                visible: controls.bluetoothDevices.length > controls.inlineDeviceLimit
+                text: "alle geräte …"
+                opensLevel: true
+                activeFocusOnTab: true
+            }
+
+            PairItem {
+                objectName: "pairDevice"
+            }
+        }
+    }
+
+    AreaLevel {
         id: displayLevel
 
         objectName: "display"
@@ -822,22 +823,15 @@ Item {
             profiles.currentIndex = controls.powerProfile;
         }
 
-        // Out of sight, or with no adapter, the devices come back folded.
+        // Out of sight the lengths of "nicht stören" come back folded, and the password sheet goes.
         function onVisibleChanged() {
             if (controls.visible)
                 return;
-            bluetoothBranch.fold();
-            wifiBranch.fold();
             quietBranch.fold();
             passwordSheet.close("cancel");
         }
 
-        function onBluetoothChanged() {
-            if (!controls.bluetooth)
-                bluetoothBranch.fold();
-        }
-
-        // Opening starts the list afresh; folding leaves its rows to fold away with it.
+        // Opening starts the list afresh; closing leaves its rows to go with the level.
         function onListingChanged() {
             if (controls.listing) {
                 controls.ranked = [];
@@ -847,7 +841,7 @@ Item {
             controls.scanWanted(controls.listing);
         }
 
-        // A network that came or went while the list shows re-ranks it; folded, the rows are dropped with their objects.
+        // A network that came or went while the list shows re-ranks it; closed, the rows are dropped with their objects.
         function onNetworkListChanged() {
             if (controls.listing)
                 controls.rank();
@@ -865,6 +859,26 @@ Item {
         function onWifiDeviceChanged() {
             if (!controls.wifiDevice)
                 controls.dropNetworkList();
+        }
+
+        function onBluetoothOnChanged() {
+            if (!controls.bluetoothOn) {
+                devicesLevel.leave();
+                controls.keepFocusIn(bluetoothLevel);
+            }
+        }
+
+        // The repeaters build their rows anew from each new list.
+        function onRankedChanged() {
+            controls.keepFocusIn(networkLevel);
+        }
+
+        function onDevicesInlineChanged() {
+            controls.keepFocusIn(bluetoothLevel);
+        }
+
+        function onBluetoothDevicesChanged() {
+            controls.keepFocusIn(bluetoothLevel);
         }
     }
 
@@ -1134,6 +1148,36 @@ Item {
             function onConnectionFailed(reason: int) {
                 controls.failed(networkItem.network, reason);
             }
+        }
+    }
+
+    // The rows of a list in a level, one under another as a menu's rows: a press on one, or Enter or Space on it, says so
+    // in `activated`; a held key acts once.
+    component ListRows: Column {
+        id: listRows
+
+        signal activated(MenuItem row)
+
+        function press(row: Item) {
+            if (row instanceof MenuItem && !(row as MenuItem).disabled)
+                activated(row as MenuItem);
+        }
+
+        width: parent ? parent.width : 0
+
+        Keys.onPressed: event => {
+            if (![Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space].includes(event.key))
+                return;
+            event.accepted = true;
+            if (!event.isAutoRepeat)
+                press(Window.activeFocusItem);
+        }
+
+        TapHandler {
+            // A slow click is still a click.
+            longPressThreshold: 0
+
+            onTapped: eventPoint => listRows.press(listRows.childAt(eventPoint.position.x, eventPoint.position.y))
         }
     }
 

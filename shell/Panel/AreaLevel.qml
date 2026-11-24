@@ -7,7 +7,9 @@ import Rekta
 // stands in the panel's `levels`, over the facet below the panel's head, and scrolls when it is longer than that room.
 // It starts with the back row "zurück · name", then the area's rows space-m apart, without the group's heading, as in
 // Rekta's own panel (site/index.html:1008–1011). The focus goes in as it opens, to its first control, and back to its
-// tile as it leaves: by the back row here, by Escape and ← through the panel.
+// tile as it leaves: by the back row here, by Escape and ← through the panel. Choosing in place works inside it
+// (states.md:203–214, :264–265): a list it opens (a PanelLevel among its `levels`) stands in place of its rows below its
+// back row and slides in as the next item of a place.
 Flickable {
     id: level
 
@@ -16,12 +18,14 @@ Flickable {
     property Item tile
     property bool open: false
     default property alias rows: list.data
+    // Its lists chosen in place, one open at a time.
+    property alias levels: chosenHolder.data
+    readonly property PanelLevel chosen: Array.from(chosenHolder.children).find(child => (child as PanelLevel)?.open) ?? null
 
     function show() {
         open = true;
         contentY = 0;
-        const first = back.nextItemInFocusChain(true);
-        (first && isMine(first) ? first : back).forceActiveFocus(Qt.TabFocusReason);
+        focusFirst();
     }
 
     function leave() {
@@ -29,6 +33,12 @@ Flickable {
             return;
         open = false;
         tile?.forceActiveFocus(Qt.TabFocusReason);
+    }
+
+    // Its first control after the back row, else the back row (rekta.js:1953).
+    function focusFirst() {
+        const first = back.nextItemInFocusChain(true);
+        (first && isMine(first) ? first : back).forceActiveFocus(Qt.TabFocusReason);
     }
 
     function isMine(item: Item): bool {
@@ -42,12 +52,13 @@ Flickable {
     // Places its rows now rather than at the next frame, so a change can be measured where it lands.
     function layOutNow() {
         list.forceLayout();
+        column.forceLayout();
     }
 
     anchors.fill: parent
     visible: open
     contentWidth: width
-    contentHeight: list.y + list.height + Tokens.spaceL
+    contentHeight: column.y + column.height + Tokens.spaceL
     interactive: contentHeight > height
     boundsBehavior: Flickable.StopAtBounds
     clip: true
@@ -67,9 +78,8 @@ Flickable {
 
     // At the panel's content edge, space-m below its head as a sheet's parts stand (rekta.css:1097, :1145).
     Column {
-        id: list
+        id: column
 
-        objectName: "rows"
         x: Tokens.spaceM
         y: Tokens.spaceM
         width: level.width - 2 * Tokens.spaceM
@@ -86,12 +96,34 @@ Flickable {
             activeFocusOnTab: true
         }
 
+        Facets {
+            objectName: "parts"
+            width: column.width
+            height: level.chosen?.implicitHeight ?? list.implicitHeight
+            currentIndex: level.chosen ? 1 : 0
+
+            Column {
+                id: list
+
+                objectName: "rows"
+                width: parent.width
+                spacing: Tokens.spaceM
+            }
+
+            Item {
+                id: chosenHolder
+
+                width: parent.width
+                height: level.chosen?.implicitHeight ?? 0
+            }
+        }
+
         TapHandler {
             // A slow click is still a click.
             longPressThreshold: 0
 
             onTapped: eventPoint => {
-                if (list.childAt(eventPoint.position.x, eventPoint.position.y) === back)
+                if (column.childAt(eventPoint.position.x, eventPoint.position.y) === back)
                     level.leave();
             }
         }

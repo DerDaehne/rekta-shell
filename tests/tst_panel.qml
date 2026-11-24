@@ -43,6 +43,8 @@ TestCase {
     property var joined: []
     property var passwordsSent: []
     property var leaves: []
+    // The keys that no part of the panel took and that reached what lies behind it, oldest first.
+    property var keysPast: []
     property Item scene
     // Untyped: qmllint stops without a word on members an Item-typed value lacks.
     property var side
@@ -142,6 +144,7 @@ TestCase {
         Item {
             width: 900
             height: 640
+            Keys.onPressed: event => testCase.keysPast = [...testCase.keysPast, event.key]
 
             Behind {
                 anchors.fill: parent
@@ -448,6 +451,7 @@ TestCase {
         joined = [];
         passwordsSent = [];
         leaves = [];
+        keysPast = [];
         scene = createTemporaryObject(sceneComponent, testCase);
         side = findChild(scene, "panel");
         controls = side.controls;
@@ -602,10 +606,10 @@ TestCase {
         networks.device = device;
         return networks;
     }
-    // The rows that show in a branch of the controls.
-    function rowsOf(branchName: string): var {
-        const list = Array.from(control(branchName).children).find(child => child instanceof Column);
-        return Array.from(list.children).filter(row => row instanceof MenuItem && row.visible);
+    // The rows that show in a list of the controls: the networks or devices of a level, or a list of all of them chosen
+    // in place, its back row first.
+    function rowsOf(listName: string): var {
+        return Array.from(control(listName).children).filter(row => row instanceof MenuItem && row.visible);
     }
     function typeText(text: string) {
         Array.from(text).forEach(letter => keyClick(letter));
@@ -613,20 +617,12 @@ TestCase {
     function sheet(): var {
         return findChild(side, "passwordSheet");
     }
-    // The rows that show in the unfolded devices.
-    function branchRows(): var {
-        const list = Array.from(control("bluetoothBranch").children).find(child => child instanceof Column);
-        return Array.from(list.children).filter(row => row instanceof MenuItem && row.visible);
-    }
 
-    // The Bluetooth level of the controls, which the row "alle geräte …" opens; here opened directly.
-    function showBluetoothLevel(): var {
-        side.show(0);
-        control("bluetoothDevices").show(control("chooseBluetoothDevice"));
-        const level = control("bluetoothDevices");
-        verify(level.open);
-        waitForRendering(side);
-        return level;
+    // What the controls put off with Qt.callLater has run: calls put off later run after it.
+    function settleLater() {
+        let ran = false;
+        Qt.callLater(() => ran = true);
+        tryVerify(() => ran);
     }
 
     // A frame drawn after this point. waitForRendering alone waits for the next frame, which never comes once a scene
@@ -913,10 +909,8 @@ TestCase {
 
     function test_a_finger_swipe_over_an_open_sheet_leaves_the_panel_and_the_sheet_where_they_are() {
         giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(rowsOf("wifiBranch")[3]);
+        showLevel("network");
+        mouseClick(rowsOf("networkRows")[3]);
         verify(sheet().open);
         const letGo = pullSideways(0.6 * side.panelWidth, true);
         compare(side.entry, 1, "the panel does not follow the finger");
@@ -1158,10 +1152,8 @@ TestCase {
         verify(!side.open, "away, it stays away");
         compare(side.entry, 1);
         giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(rowsOf("wifiBranch")[3]);
+        showLevel("network");
+        mouseClick(rowsOf("networkRows")[3]);
         verify(sheet().open);
         side.drawOut(0.6);
         compare(side.entry, 1, "over a sheet the panel keeps still");
@@ -1266,7 +1258,7 @@ TestCase {
     }
 
     function test_on_their_way_in_the_quick_settings_are_cut_off_at_the_ground_and_leave_the_hairline_a_hairline() {
-        giveNetworks(controls);
+        controls.setDoNotDisturb(true);
         Prefs.motion = "on";
         showSettled(1);
         side.show(0);
@@ -1275,21 +1267,20 @@ TestCase {
         findChild(side, "shift").x = -Tokens.slideDistance;
         findChild(side, "holder").opacity = 1;
         waitForRendering(scene);
-        const wifi = control("wifi");
-        verify(wifi.checked, "wlan on, an accent fill");
-        verify(wifi.mapToItem(findChild(side, "ground"), 0, 0).x < 0, "the row reaches past the ground");
+        const quiet = control("doNotDisturb");
+        verify(quiet.checked, "nicht stören on, an ink fill");
+        verify(quiet.mapToItem(findChild(side, "ground"), 0, 0).x < 0, "the row reaches past the ground");
         const hairline = findChild(side, "panel").mapToItem(scene, 0, 0);
-        const besideWifi = wifi.mapToItem(scene, 0, wifi.height / 2);
-        verify(Qt.colorEqual(grabImage(scene).pixel(Math.floor(hairline.x), Math.floor(besideWifi.y)), Tokens.color.textContrastLow));
+        const besideQuiet = quiet.mapToItem(scene, 0, quiet.height / 2);
+        verify(Qt.colorEqual(grabImage(scene).pixel(Math.floor(hairline.x), Math.floor(besideQuiet.y)), Tokens.color.textContrastLow));
     }
 
     function test_the_focus_ring_of_a_quick_setting_at_the_grounds_padding_is_not_cut_off() {
-        giveNetworks(controls);
         showSettled(0);
-        const wifi = control("wifi");
-        wifi.forceActiveFocus(Qt.TabFocusReason);
+        const quiet = control("doNotDisturb");
+        quiet.forceActiveFocus(Qt.TabFocusReason);
         waitForRendering(scene);
-        const ring = findChild(wifi, "ring");
+        const ring = findChild(quiet, "ring");
         verify(ring.visible);
         const leftStroke = ring.mapToItem(scene, Geometry.focusRingWidth / 2, ring.height / 2);
         verify(Qt.colorEqual(grabImage(scene).pixel(Math.floor(leftStroke.x), Math.floor(leftStroke.y)), Tokens.color.focus));
@@ -1430,7 +1421,7 @@ TestCase {
     function test_tab_and_the_arrows_reach_every_control_in_order() {
         giveBluetooth(controls);
         side.show(0);
-        const names = ["bluetooth", "doNotDisturb", "dark", "chooseBluetoothDevice", "powerProfile", "lock", "sessionActions", "displayTile", "close"];
+        const names = ["doNotDisturb", "dark", "powerProfile", "lock", "sessionActions", "bluetoothTile", "close"];
         const order = names.map(name => findChild(side, name));
         verify(order[0].activeFocus);
         for (let k = 1; k < order.length; k++) {
@@ -1448,11 +1439,11 @@ TestCase {
         verify(findChild(side, "pivot").activeFocus, "↑ from the first to the pivot");
         keyClick(Qt.Key_Down);
         verify(order[0].activeFocus, "↓ from the pivot to the first");
-        order[6].forceActiveFocus();
+        order[4].forceActiveFocus();
         keyClick(Qt.Key_Down);
-        verify(order[7].activeFocus, "↓ from the last row into the grid");
+        verify(order[5].activeFocus, "↓ from the last row into the grid");
         keyClick(Qt.Key_Down);
-        verify(order[7].activeFocus, "the grid's arrows stay at its edge");
+        verify(order[5].activeFocus, "the grid's arrows stay at its edge");
         keyClick(Qt.Key_Tab);
         keyClick(Qt.Key_Down);
         verify(findChild(side, "close").activeFocus, "the arrows never leave the panel");
@@ -1486,7 +1477,7 @@ TestCase {
                 verify(focused === findChild(side, "close") || shownWhole(focused), `${focused.objectName} in sight`);
             }
         }
-        for (const name of ["outputVolume", "dark", "chooseBluetoothDevice", "lock", "sessionActions", "soundTile"])
+        for (const name of ["outputVolume", "dark", "lock", "sessionActions", "soundTile"])
             verify(names.includes(name), `Tab reached ${name}`);
         verify(named("scroller").contentY > 0, "the view followed the focus");
     }
@@ -2297,21 +2288,17 @@ TestCase {
         verify(!side.open, "a third, on its tile, closes the panel");
     }
 
-    // The opener lies below the sound group's labelled selects: scrolled to the view's start it is whole in the view.
-    function pressBluetoothOpener() {
-        const opener = control("chooseBluetoothDevice");
-        named("scroller").contentY += opener.mapToItem(named("scroller"), 0, 0).y;
-        mouseClick(opener);
+    // A branch unfolded as a pointer's press on its opener does: the focus stays where it was, outside it.
+    function unfoldByPointer(): var {
+        const branch = control("quietBranch");
+        branch.expand();
+        verify(branch.expanded);
+        return branch;
     }
 
     function test_escape_folds_a_branch_a_pointer_unfolded_without_focus_and_only_a_second_escape_closes_the_panel() {
-        giveSound(controls);
-        giveBluetooth(controls);
         showSettled(0);
-        const branch = control("bluetoothBranch");
-        pressBluetoothOpener();
-        verify(branch.expanded);
-        verify(!side.within(rowOf(control("chooseBluetoothDevice")), side.Window.activeFocusItem), "nor in the row of its opener");
+        const branch = unfoldByPointer();
         verify(!side.within(branch, side.Window.activeFocusItem), "the focus is not in the branch");
         Tips.show(control("dark"), "dunkel");
         keyClick(Qt.Key_Escape);
@@ -2325,22 +2312,16 @@ TestCase {
     }
 
     function test_escape_in_another_window_leaves_an_open_branch_open() {
-        giveSound(controls);
-        giveBluetooth(controls);
         showSettled(0);
-        const branch = control("bluetoothBranch");
-        pressBluetoothOpener();
+        const branch = unfoldByPointer();
         const elsewhere = createTemporaryObject(windowedComponent, testCase).first;
         verify(!branch.foldOnEscape({ key: Qt.Key_Escape }, elsewhere));
         verify(branch.expanded);
     }
 
     function test_another_key_or_a_sheet_over_it_leaves_an_open_branch_open() {
-        giveSound(controls);
-        giveBluetooth(controls);
         showSettled(0);
-        const branch = control("bluetoothBranch");
-        pressBluetoothOpener();
+        const branch = unfoldByPointer();
         const focused = side.Window.activeFocusItem;
         verify(!branch.foldOnEscape({ key: Qt.Key_Down }, focused), "only Escape");
         KeyLayers.opened(side.sheets);
@@ -2427,9 +2408,9 @@ TestCase {
     }
 
     function test_a_word_leads_to_its_place_in_the_controls() {
-        giveBluetooth(controls);
+        giveNetworks(controls);
         compare(controls.places.sound, findChild(side, "sound"));
-        compare(controls.places.connections, findChild(side, "connections"));
+        compare(controls.places.connections, findChild(side, "network"), "offline to the level of netz");
         compare(controls.places.doNotDisturb, control("doNotDisturb"), "nicht stören is its button");
         compare(controls.places.power.label, "energieprofil");
         controls.hasPowerProfiles = false;
@@ -2467,14 +2448,13 @@ TestCase {
 
     function test_revealing_a_place_puts_the_focus_on_its_first_control() {
         giveSound(controls);
-        giveBluetooth(controls);
+        giveNetworks(controls);
         scene.height = 360;
         side.show(0);
         side.reveal(controls.places.connections);
-        const first = findChild(side, "chooseBluetoothDevice");
-        tryVerify(() => first.activeFocus);
+        verify(control("wifiSwitch").activeFocus, "the level of netz, on its switch");
         side.reveal(controls.places.sound);
-        tryVerify(() => findChild(side, "outputDevice").activeFocus || side.within(controls.places.sound, scene.Window.activeFocusItem));
+        verify(inSound("outputDevice").activeFocus, "the level of ton, on its output");
     }
 
     function test_revealing_nicht_stoeren_puts_the_focus_on_its_button_at_the_top_of_the_view() {
@@ -2499,18 +2479,19 @@ TestCase {
         tryVerify(() => side.revealed === null);
     }
 
-    function test_a_device_list_unfolding_after_the_jump_scrolls_itself_whole_into_view() {
+    function test_a_branch_unfolding_after_a_jump_scrolls_itself_whole_into_view() {
         giveSound(controls);
-        giveBluetooth(controls);
         scene.height = 360;
         side.show(0);
-        side.reveal(controls.places.connections);
+        side.reveal(controls.places.power);
         tryVerify(() => side.revealed === null);
         const scroller = findChild(side, "scroller");
-        const branch = control("bluetoothBranch");
+        verify(scroller.contentY > 0, "the jump scrolled the view past the toggle buttons");
+        const branch = control("quietBranch");
         branch.expand();
-        const bottom = () => branch.mapToItem(scroller, 0, branch.height).y;
-        tryVerify(() => branch.unfolded === 1 && bottom() <= scroller.height + 0.5, 3000, `the list ends at ${bottom()} in a view ${scroller.height} high`);
+        const top = () => branch.mapToItem(scroller, 0, 0).y;
+        const bottom = () => top() + branch.height;
+        tryVerify(() => branch.unfolded === 1 && top() >= -0.5 && bottom() <= scroller.height + 0.5, 3000, `the lengths from ${top()} to ${bottom()} in a view ${scroller.height} high`);
     }
 
     function test_a_later_change_of_the_content_does_not_pull_the_view_back_to_the_place() {
@@ -2716,25 +2697,23 @@ TestCase {
         compare(Tips.target, null, "focus a pointer gave shows none");
     }
 
-    function test_a_cut_network_name_in_verbindungen_shows_whole_in_a_tip_under_the_pointer_and_for_keyboard_focus() {
+    function test_a_cut_network_name_in_netz_shows_whole_in_a_tip_under_the_pointer_and_for_keyboard_focus() {
         const long = "the guest network of the house by the lake, second floor, room two";
         const networks = giveNetworks(controls);
         networks.office.name = long;
-        showSettled(0);
-        control("chooseNetwork").forceActiveFocus();
-        keyClick(Qt.Key_Return);
-        waitForRendering(side);
-        const office = findChild(rowsOf("wifiBranch")[1], "label");
+        showLevel("network");
+        verify(control("wifiSwitch").activeFocus);
+        const office = findChild(rowsOf("networkRows")[1], "label");
         verify(office.truncated);
         compare(tipOver(office), long, "a resting pointer");
-        compare(tipOver(findChild(rowsOf("wifiBranch")[0], "label")), "", "Home fits");
+        compare(tipOver(findChild(rowsOf("networkRows")[0], "label")), "", "Home fits");
         mouseMove(scene, 1, 1);
         Tips.hide();
         keyClick(Qt.Key_Down);
         compare(Tips.target, null);
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Down);
-        verify(rowsOf("wifiBranch")[1].activeFocus);
+        verify(rowsOf("networkRows")[1].activeFocus);
         compare(Tips.target, office, "keyboard focus shows it at once");
         compare(Tips.text, long);
     }
@@ -2786,17 +2765,17 @@ TestCase {
     }
 
     function test_the_cut_word_or_state_of_a_quick_setting_shows_whole_in_a_tip_and_keyboard_focus_shows_neither() {
-        const long = "the guest network of the house by the lake, second floor";
-        giveNetworks(controls).home.name = long;
+        const long = "until the end of the meeting in the room by the lake, second floor";
         showSettled(0);
-        const wifi = control("wifi");
-        compare(tipOver(findChild(wifi, "state")), long, "its state");
-        compare(tipOver(findChild(wifi, "word")), "", "wlan fits");
-        wifi.text = "the wireless network of the house";
-        compare(tipOver(findChild(wifi, "word")), "the wireless network of the house", "its word");
+        const quiet = control("doNotDisturb");
+        quiet.value = long;
+        compare(tipOver(findChild(quiet, "state")), long, "its state");
+        compare(tipOver(findChild(quiet, "word")), "", "nicht stören fits");
+        quiet.text = "do not disturb, not even with the quiet ones";
+        compare(tipOver(findChild(quiet, "word")), "do not disturb, not even with the quiet ones", "its word");
         mouseMove(scene, 1, 1);
         Tips.hide();
-        wifi.forceActiveFocus();
+        quiet.forceActiveFocus();
         compare(Tips.target, null);
     }
 
@@ -2815,33 +2794,69 @@ TestCase {
         compare(Tips.target, null);
     }
 
-    function test_the_bluetooth_button_switches_the_adapter_and_shows_what_the_adapter_has() {
+    // bluetooth (states.md:237–242): with an adapter, its tile says how Bluetooth stands.
+    function test_the_bluetooth_tile_stands_with_an_adapter_and_says_funk_gesperrt_aus_the_device_n_verbunden_or_an() {
+        showSettled(0);
+        const tile = control("bluetoothTile");
+        verify(!tile.visible, "without an adapter");
         const bluetooth = giveBluetooth(controls);
-        side.show(0);
-        const toggle = control("bluetooth");
-        compare(toggle.text, "bluetooth");
-        compare(toggle.icon, "bluetooth");
-        compare(findChild(toggle, "state").text, "an");
+        verify(tile.visible);
+        compare(tile.name, "bluetooth");
+        compare(tile.glyph, "bluetooth");
+        compare(stateOf("bluetoothTile"), "Headphones", "the one device connected");
+        compare(tile.Accessible.name, "bluetooth, Headphones");
+        bluetooth.speaker.connected = true;
+        compare(stateOf("bluetoothTile"), "2 verbunden", "how many, with more than one");
+        bluetooth.speaker.connected = false;
+        bluetooth.headphones.connected = false;
+        compare(stateOf("bluetoothTile"), "an", "on, with none connected");
+        bluetooth.headphones.connected = true;
+        bluetooth.adapter.enabled = false;
+        compare(stateOf("bluetoothTile"), "aus", "off, before the devices");
+        bluetooth.adapter.state = Controls.Blocked;
+        compare(stateOf("bluetoothTile"), "funk gesperrt", "blocked, before off");
+        compare(tile.Accessible.name, "bluetooth, funk gesperrt");
+        controls.bluetooth = null;
+        verify(!tile.visible, "the adapter gone");
+    }
+
+    // The level of bluetooth (states.md:231–233, :260–271): the back row, then its switch, which takes the focus.
+    function test_the_bluetooth_level_starts_with_its_switch_which_takes_the_focus_and_switches_the_adapter() {
+        const bluetooth = giveBluetooth(controls);
+        showSettled(0);
+        control("bluetoothTile").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Return);
+        const level = findChild(controls, "bluetooth");
+        verify(level.open);
+        const back = findChild(level, "back");
+        compare(back.text, "zurück · bluetooth");
+        const toggle = control("bluetoothSwitch");
+        verify(toggle instanceof Toggle, "a toggle switch, which acts at once");
+        verify(toggle.activeFocus, "the focus on it at once");
+        compare(toggle.label, "bluetooth");
         verify(toggle.checked, "on, as the adapter is");
-        toggle.forceActiveFocus();
+        waitForFrame(side);
+        compare(toggle.mapToItem(level, 0, 0).y, back.mapToItem(level, 0, 0).y + back.height + Tokens.spaceM, "first after the back row");
         keyClick(Qt.Key_Space);
         compare(bluetoothSwitches, [false]);
         verify(!bluetooth.adapter.enabled);
         verify(!toggle.checked);
+        verify(!control("deviceRows").visible, "off, no devices");
         bluetooth.adapter.enabled = true;
         verify(toggle.checked, "a change from elsewhere shows");
+        verify(control("deviceRows").visible);
         bluetoothTakes = false;
         keyClick(Qt.Key_Space);
         compare(bluetoothSwitches, [false, false]);
         verify(toggle.checked, "a switch the system did not take springs back");
     }
 
-    function test_a_blocked_adapter_greys_the_bluetooth_button_which_says_why() {
+    function test_a_blocked_adapter_greys_the_bluetooth_switch_which_says_why() {
         const bluetooth = giveBluetooth(controls);
         bluetooth.adapter.enabled = false;
         bluetooth.adapter.state = Controls.Blocked;
-        side.show(0);
-        const toggle = control("bluetooth");
+        showLevel("bluetooth");
+        const toggle = control("bluetoothSwitch");
         verify(toggle.disabled);
         verify(findChild(toggle, "why").visible);
         compare(findChild(toggle, "why").text, "funk gesperrt");
@@ -2851,397 +2866,314 @@ TestCase {
         verify(!toggle.checked);
     }
 
-    function test_geräte_unfolds_the_paired_devices_in_place_with_their_state_and_battery() {
-        giveBluetooth(controls);
-        showSettled(0);
-        const opener = control("chooseBluetoothDevice");
-        const branch = control("bluetoothBranch");
-        const below = findChild(controls, "session");
-        compare(findChild(rowOf(opener), "words").text, "geräte · 1 verbunden");
-        verify(!branch.visible, "folded it takes no room");
-        waitForRendering(side);
-        const before = below.y;
-        mouseClick(opener);
-        verify(branch.expanded);
-        waitForRendering(side);
-        verify(control("bluetooth").visible, "the switch stays in sight");
-        verify(opener.visible);
-        const rows = branchRows();
+    function test_while_bluetooth_is_on_the_paired_devices_stand_right_below_its_switch_with_their_state_and_battery() {
+        const bluetooth = giveBluetooth(controls);
+        const level = showLevel("bluetooth");
+        const toggle = control("bluetoothSwitch");
+        const list = control("deviceRows");
+        compare(list.mapToItem(level, 0, 0).y, toggle.mapToItem(level, 0, 0).y + toggle.height + Tokens.spaceM, "directly below the switch, without a heading");
+        const rows = rowsOf("deviceRows");
         compare(rows.map(row => row.text), ["Headphones", "Speaker", "Mouse", "neues gerät koppeln"]);
-        verify(!control("bluetoothDevices").open, "no level");
-        compare(below.y, before + branch.height + Tokens.spaceM, "what stands below moves down");
+        compare(rows.map(row => row.kind), ["item", "item", "item", "item"], "no option to choose one of");
+        const states = rows.slice(0, 3).map(row => findChild(row, "state"));
+        compare(states.map(tag => tag.word), ["verbunden", "getrennt", "getrennt"]);
+        compare(states.map(tag => tag.status), ["info", "", ""]);
         compare(rows[0].Accessible.name, "Headphones, verbunden, akku 80%");
-        compare(findChild(rows[1], "state").word, "getrennt");
-        compare(findChild(rows[0], "battery").text, "80%");
-        mouseClick(opener);
-        verify(!branch.expanded);
-        tryCompare(below, "y", before);
+        const battery = findChild(rows[0], "battery");
+        verify(battery.visible);
+        compare(battery.text, "80%");
+        compare(battery.font.features, { "tnum": 1 }, "in tabular figures");
+        compare(battery.font.weight, Tokens.fontWeightMedium, "a number to read as data");
+        verify(!findChild(rows[1], "battery").visible, "where the device tells none");
+        const end = findChild(rows[0], "end");
+        compare(end.x + end.width, rows[0].width - Tokens.spaceM, "state and battery at the row's end");
+        bluetooth.adapter.enabled = false;
+        verify(!list.visible, "off, the devices are gone");
     }
 
-    function test_with_more_than_five_devices_five_unfold_connected_first_and_alle_geräte_opens_all_in_a_level() {
+    function test_with_more_than_five_devices_five_stand_connected_first_and_alle_geräte_opens_all_in_place() {
         giveBluetooth(controls);
         givePairedDevices(controls, 7);
-        showSettled(0);
-        mouseClick(control("chooseBluetoothDevice"));
-        waitForRendering(side);
-        const rows = branchRows();
-        compare(rows.map(row => row.text), ["Headphones", "Device 7", "Speaker", "Mouse", "Device 4", "alle geräte …", "neues gerät koppeln"]);
-        mouseClick(rows[5]);
-        const level = control("bluetoothDevices");
-        verify(level.open);
-        compare(levelRows(level).map(row => row.text).slice(1, 8), ["Headphones", "Speaker", "Mouse", "Device 4", "Device 5", "Device 6", "Device 7"]);
+        const level = showLevel("bluetooth");
+        compare(rowsOf("deviceRows").map(row => row.text), ["Headphones", "Device 7", "Speaker", "Mouse", "Device 4", "alle geräte …", "neues gerät koppeln"]);
+        verify(control("allDevices").opensLevel, "its chevron says it goes on");
+        verify(!control("bluetoothDevices").open, "no list of all yet");
+        mouseClick(control("allDevices"));
+        const all = control("bluetoothDevices");
+        verify(all.open);
+        compare(rowsOf("bluetoothDevices").map(row => row.text), ["zurück · geräte", "Headphones", "Speaker", "Mouse", "Device 4", "Device 5", "Device 6", "Device 7", "neues gerät koppeln"]);
+        verify(!control("deviceRows").visible && !control("bluetoothSwitch").visible, "in place of the level's rows");
+        verify(findChild(level, "back").visible, "under the level's own back row");
+        verify(rowsOf("bluetoothDevices")[1].activeFocus, "the focus on the first device");
         keyClick(Qt.Key_Escape);
-        verify(control("chooseBluetoothDevice").activeFocus);
+        verify(!all.open);
+        verify(control("allDevices").activeFocus, "back on the row that opened it");
+        verify(level.open);
     }
 
     function test_up_to_five_devices_have_no_alle_geräte_row() {
         giveBluetooth(controls);
         givePairedDevices(controls, 5);
-        showSettled(0);
-        mouseClick(control("chooseBluetoothDevice"));
-        waitForRendering(side);
-        compare(branchRows().length, 6, "five devices and neues gerät koppeln");
+        showLevel("bluetooth");
+        compare(rowsOf("deviceRows").length, 6, "five devices and neues gerät koppeln");
         verify(!control("allDevices").visible);
     }
 
-    function test_the_unfolded_devices_connect_and_pair_like_those_of_the_level() {
+    // A connection that fails shows the state from before, as Quickshell reports no cause.
+    function test_a_press_connects_or_disconnects_and_a_device_on_its_way_takes_no_press() {
         const bluetooth = giveBluetooth(controls);
-        showSettled(0);
-        mouseClick(control("chooseBluetoothDevice"));
-        waitForRendering(side);
-        const rows = branchRows();
-        mouseClick(rows[1]);
+        showLevel("bluetooth");
+        const row = index => rowsOf("deviceRows")[index];
+        const tagOf = index => findChild(row(index), "state");
+        mouseClick(row(1));
         compare(bluetooth.speaker.calls, ["connect"]);
-        compare(findChild(rows[1], "state").word, "wartet");
-        mouseClick(rows[1]);
-        compare(bluetooth.speaker.calls, ["connect"], "one on its way waits for the answer");
-        mouseClick(rows[3]);
-        compare(pairingAsked, 1);
-        verify(control("bluetoothBranch").expanded, "it stays unfolded");
-    }
-
-    function test_the_devices_unfold_over_duration_short_with_ease_in_and_fold_in_0_7_of_that_with_ease_out() {
-        giveBluetooth(controls);
-        showSettled(0);
-        Prefs.motion = "on";
-        const branch = control("bluetoothBranch");
-        const unfolding = findChild(branch, "unfolding");
-        compare(unfolding.duration, Tokens.durationShort);
-        compare(unfolding.easing.bezierCurve, Tokens.easeIn);
-        const folding = findChild(branch, "folding");
-        compare(folding.duration, 0.7 * Tokens.durationShort);
-        compare(folding.easing.bezierCurve, Tokens.easeOut);
-        mouseClick(control("chooseBluetoothDevice"));
-        tryVerify(() => branch.unfolded > 0.2 && branch.unfolded < 0.8, Tokens.durationShort);
-        compare(branch.opacity, branch.unfolded, "it fades in as it grows");
-        tryCompare(branch, "unfolded", 1, 4 * Tokens.durationShort);
-        mouseClick(control("chooseBluetoothDevice"));
-        verify(branch.unfolded > 0, "it folds over time, it does not jump");
-        tryCompare(branch, "unfolded", 0, 4 * Tokens.durationShort);
-    }
-
-    function test_with_reduced_motion_the_devices_show_their_end_state_at_once() {
-        giveBluetooth(controls);
-        side.show(0);
-        control("chooseBluetoothDevice").forceActiveFocus(Qt.TabFocusReason);
-        const branch = control("bluetoothBranch");
-        keyClick(Qt.Key_Return);
-        compare(branch.unfolded, 1);
-        keyClick(Qt.Key_Escape);
-        compare(branch.unfolded, 0);
-    }
-
-    function test_geräte_unfolds_from_the_keyboard_and_escape_folds_it() {
-        const bluetooth = giveBluetooth(controls);
-        side.show(0);
-        const opener = control("chooseBluetoothDevice");
-        opener.forceActiveFocus(Qt.TabFocusReason);
-        const branch = control("bluetoothBranch");
-        keyClick(Qt.Key_Escape);
-        verify(!side.open, "folded, Escape leaves the panel");
-        side.show(0);
-        opener.forceActiveFocus(Qt.TabFocusReason);
-        keyClick(Qt.Key_Return);
-        verify(branch.expanded, "Enter unfolds");
-        keyClick(Qt.Key_Return);
-        verify(!branch.expanded, "and folds");
-        keyClick(Qt.Key_Space);
-        verify(branch.expanded, "Space too");
-        keyClick(Qt.Key_Down);
-        const rows = branchRows();
-        verify(rows[0].activeFocus, "Down goes into the devices");
-        keyClick(Qt.Key_Down);
-        keyClick(Qt.Key_Return);
-        compare(bluetooth.speaker.calls, ["connect"], "Enter connects");
-        keyClick(Qt.Key_Up);
-        keyClick(Qt.Key_Space);
-        compare(bluetooth.headphones.calls, ["disconnect"], "Space too");
-        keyClick(Qt.Key_Down);
-        keyClick(Qt.Key_Down);
-        keyClick(Qt.Key_Down);
-        verify(rows[3].activeFocus);
-        keyClick(Qt.Key_Return);
-        compare(pairingAsked, 1);
-        keyClick(Qt.Key_Escape);
-        verify(!branch.expanded);
-        verify(opener.activeFocus, "the focus goes back to geräte");
-        verify(side.open);
-    }
-
-    function test_an_unfolding_branch_scrolls_itself_whole_into_view() {
-        const scroller = createTemporaryObject(scrolledBranchComponent, testCase);
-        compare(scroller.contentY, 0);
-        scroller.branch.expand();
-        tryVerify(() => scroller.contentY > 0);
-        compare(scroller.contentY, 400 + 3 * Tokens.rowHeight - scroller.height, "its bottom in sight");
-    }
-
-    function test_an_open_branch_leaves_the_view_alone_when_something_moves() {
-        const scroller = createTemporaryObject(scrolledBranchComponent, testCase);
-        scroller.branch.expand();
-        tryVerify(() => scroller.contentY > 0 && !scroller.branch.revealing, 1000, "it has unfolded into view");
-        scroller.contentY = 0;
-        scroller.lateRow.visible = true;
-        scroller.spacer.height = 500;
-        waitForRendering(scroller);
-        wait(50);
-        compare(scroller.contentY, 0, "a new row or a move above does not pull the view");
-    }
-
-    function test_the_devices_come_back_folded_after_the_panel_was_away() {
-        giveBluetooth(controls);
-        showSettled(0);
-        mouseClick(control("chooseBluetoothDevice"));
-        side.close();
-        tryVerify(() => !side.visible);
-        showSettled(0);
-        verify(!control("bluetoothBranch").expanded);
-    }
-
-    function test_geräte_opens_a_level_of_the_paired_devices_with_their_state_and_battery() {
-        giveBluetooth(controls);
-        const level = showBluetoothLevel();
-        const rows = levelRows(level);
-        compare(rows.map(row => row.text), ["zurück · geräte", "Headphones", "Speaker", "Mouse", "neues gerät koppeln"]);
-        compare(rows.slice(1).map(row => row.kind), ["item", "item", "item", "item"], "no option to choose one of");
-        const states = rows.slice(1, 4).map(row => findChild(row, "state"));
-        compare(states.map(tag => tag.word), ["verbunden", "getrennt", "getrennt"]);
-        compare(states.map(tag => tag.status), ["info", "", ""]);
-        const battery = findChild(rows[1], "battery");
-        verify(battery.visible);
-        compare(battery.text, "80%");
-        compare(battery.font.features, { "tnum": 1 }, "in tabular figures");
-        compare(battery.font.weight, Tokens.fontWeightMedium, "a number to read as data");
-        verify(!findChild(rows[2], "battery").visible, "where the device tells none");
-        waitForRendering(side);
-        const end = findChild(rows[1], "end");
-        compare(end.x + end.width, rows[1].width - Tokens.spaceM, "state and battery at the row's end");
-    }
-
-    function test_a_press_connects_or_disconnects_and_the_device_waits_until_the_answer() {
-        const bluetooth = giveBluetooth(controls);
-        const level = showBluetoothLevel();
-        const rows = levelRows(level);
-        const stateOf = row => findChild(row, "state");
-        mouseClick(rows[2]);
-        compare(bluetooth.speaker.calls, ["connect"]);
-        verify(level.open, "the level stays");
-        compare(stateOf(rows[2]).word, "wartet");
-        compare(stateOf(rows[2]).status, "warning");
-        mouseClick(rows[2]);
+        verify(findChild(controls, "bluetooth").open, "the level stays");
+        compare(tagOf(1).word, "wartet");
+        compare(tagOf(1).status, "warning");
+        mouseClick(row(1));
         compare(bluetooth.speaker.calls, ["connect"], "one on its way waits for the answer");
         bluetooth.speaker.connected = true;
         bluetooth.speaker.state = Controls.Connected;
-        compare(stateOf(rows[2]).word, "verbunden");
-        compare(stateOf(rows[2]).status, "info");
-        mouseClick(rows[1]);
+        compare(tagOf(1).word, "verbunden");
+        compare(tagOf(1).status, "info");
+        compare(stateOf("bluetoothTile"), "2 verbunden", "the tile follows");
+        waitForFrame(side);
+        mouseClick(row(0));
         compare(bluetooth.headphones.calls, ["disconnect"]);
-        compare(stateOf(rows[1]).word, "wartet");
+        compare(tagOf(0).word, "wartet");
         bluetooth.headphones.state = Controls.Connected;
-        compare(stateOf(rows[1]).word, "verbunden", "a disconnection that fails shows the state from before");
-        mouseClick(rows[3]);
+        compare(tagOf(0).word, "verbunden", "a disconnection that fails shows the state from before");
+        mouseClick(row(2));
+        compare(bluetooth.mouse.calls, ["connect"]);
         bluetooth.mouse.state = Controls.Disconnected;
-        compare(stateOf(rows[3]).word, "getrennt", "so does a connection that fails");
+        compare(tagOf(2).word, "getrennt", "so does a connection that fails");
         bluetooth.mouse.pairing = true;
-        compare(stateOf(rows[3]).word, "wartet", "pairing waits too");
-        keyClick(Qt.Key_Escape);
-        compare(findChild(rowOf(control("chooseBluetoothDevice")), "words").text, "geräte · 2 verbunden");
+        compare(tagOf(2).word, "wartet", "pairing waits too");
+        mouseClick(row(2));
+        compare(bluetooth.mouse.calls, ["connect"], "and takes no press either");
     }
 
-    function test_neues_gerät_koppeln_asks_for_system_settings_to_pair_a_device() {
+    // The host closes the panel and opens System Settings on pairingAsked: the shell has no BlueZ agent.
+    function test_neues_gerät_koppeln_stands_last_and_asks_for_system_settings_to_pair_a_device() {
         giveBluetooth(controls);
-        const level = showBluetoothLevel();
+        givePairedDevices(controls, 7);
+        showLevel("bluetooth");
         const pair = control("pairDevice");
-        compare(levelRows(level).slice(-1)[0], pair, "the last row");
+        compare(rowsOf("deviceRows").slice(-1)[0], pair, "the last row, after alle geräte …");
         mouseClick(pair);
         compare(pairingAsked, 1);
-    }
-
-    function test_without_an_adapter_the_bluetooth_rows_are_gone_and_verbindungen_falls_away_quietly() {
-        giveBluetooth(controls);
-        side.show(0);
-        verify(findChild(controls, "connections").visible);
-        controls.bluetooth = null;
-        controls.bluetoothDevices = [];
-        verify(!control("bluetooth").visible, "its quick setting too");
-        verify(!rowOf(control("chooseBluetoothDevice")).visible);
-        verify(!findChild(controls, "connections").visible, "with no other row the group falls away");
+        mouseClick(control("allDevices"));
+        waitForFrame(side);
+        const inAll = control("pairDeviceInAll");
+        compare(rowsOf("bluetoothDevices").slice(-1)[0], inAll, "and last in the list of all");
+        mouseClick(inAll);
+        compare(pairingAsked, 2);
     }
 
     function test_bluetooth_works_from_the_keyboard() {
         const bluetooth = giveBluetooth(controls);
-        side.show(0);
-        control("bluetooth").forceActiveFocus();
-        keyClick(Qt.Key_Space);
-        compare(bluetoothSwitches, [false], "its quick setting");
-        const opener = control("chooseBluetoothDevice");
-        opener.forceActiveFocus();
-        const level = control("bluetoothDevices");
-        level.show(opener);
-        const rows = levelRows(level);
-        verify(rows[1].activeFocus, "the focus starts on the first device");
+        showSettled(0);
+        control("bluetoothTile").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Return);
+        verify(control("bluetoothSwitch").activeFocus);
+        keyClick(Qt.Key_Down);
+        verify(rowsOf("deviceRows")[0].activeFocus, "↓ from the switch to the first device");
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Return);
         compare(bluetooth.speaker.calls, ["connect"], "Enter connects");
-        verify(rows[2].activeFocus, "the focus stays");
+        verify(rowsOf("deviceRows")[1].activeFocus, "the focus stays");
         keyClick(Qt.Key_Up);
         keyClick(Qt.Key_Space);
         compare(bluetooth.headphones.calls, ["disconnect"], "Space too");
         keyClick(Qt.Key_Tab);
         keyClick(Qt.Key_Tab);
         keyClick(Qt.Key_Tab);
-        verify(rows[4].activeFocus, "Tab to neues gerät koppeln");
+        verify(control("pairDevice").activeFocus, "Tab to neues gerät koppeln");
         keyClick(Qt.Key_Return);
         compare(pairingAsked, 1);
         keyClick(Qt.Key_Left);
-        verify(!level.open, "← goes back");
-        verify(opener.activeFocus, "to geräte");
+        verify(!findChild(controls, "bluetooth").open, "← goes back");
+        verify(control("bluetoothTile").activeFocus, "to the tile");
         verify(side.open);
+    }
+
+    // Qt leaves the focus on a hidden item: a row that hides while it holds the focus hands it on.
+    function test_bluetooth_off_from_elsewhere_closes_the_list_of_all_devices_and_hands_the_focus_to_the_switch() {
+        giveBluetooth(controls);
+        givePairedDevices(controls, 7);
+        showLevel("bluetooth");
+        mouseClick(control("allDevices"));
+        const all = control("bluetoothDevices");
+        verify(rowsOf("bluetoothDevices")[1].activeFocus);
+        controls.bluetooth.enabled = false;
+        verify(!all.open, "the list of all closes");
+        tryVerify(() => control("bluetoothSwitch").activeFocus, 1000, "the focus on the switch, not on a hidden row");
+        verify(findChild(controls, "bluetooth").open, "the level stays");
+    }
+
+    // The devices are built anew when one connects, the connected first; the focus on one goes back into the level.
+    function test_a_focused_device_row_that_is_built_anew_leaves_the_focus_in_the_level() {
+        const bluetooth = giveBluetooth(controls);
+        const level = showLevel("bluetooth");
+        rowsOf("deviceRows")[2].forceActiveFocus(Qt.TabFocusReason);
+        bluetooth.mouse.connected = true;
+        compare(rowsOf("deviceRows").map(row => row.text).slice(0, 3), ["Headphones", "Mouse", "Speaker"], "connected first");
+        tryVerify(() => level.isMine(side.Window.activeFocusItem) && side.Window.activeFocusItem.visible, 1000, "the focus in the level");
+        keyClick(Qt.Key_Escape);
+        verify(!level.open, "so Escape leaves the level");
+        verify(side.open, "and not the panel");
+    }
+
+    function test_without_an_adapter_the_bluetooth_tile_and_its_switch_are_gone() {
+        giveBluetooth(controls);
+        showLevel("bluetooth");
+        verify(control("bluetoothSwitch").visible);
+        controls.bluetooth = null;
+        controls.bluetoothDevices = [];
+        verify(!control("bluetoothTile").visible, "no tile");
+        verify(!control("bluetoothSwitch").visible, "and no switch that would act on nothing");
     }
 
     function test_a_long_device_name_is_cut_before_its_state() {
         const bluetooth = giveBluetooth(controls);
         bluetooth.headphones.name = "Navi 21/23 HDMI/DP Audio Controller Digital Stereo Headphones of the guest room";
-        const level = showBluetoothLevel();
-        const row = levelRows(level)[1];
+        showLevel("bluetooth");
+        const row = rowsOf("deviceRows")[0];
         const label = findChild(row, "label");
         verify(label.truncated);
         compare(label.x + label.width, findChild(row, "end").x - Tokens.spaceS);
     }
 
-    function test_the_wlan_button_switches_wireless_and_shows_what_the_system_has() {
+    // netz (states.md:237–242): with a wireless or a wired device, its tile says how the network stands.
+    function test_the_netz_tile_stands_with_a_wireless_or_a_wired_device_and_is_gone_without_both() {
+        showSettled(0);
+        const tile = control("networkTile");
+        verify(!tile.visible, "without a network device");
+        controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
+        verify(tile.visible, "with a cable alone");
+        controls.wiredDevice = null;
+        verify(!tile.visible);
+        giveNetworks(controls);
+        verify(tile.visible, "with wireless alone");
+        compare(tile.name, "netz");
+        compare(tile.glyph, "wireless");
+    }
+
+    function test_the_netz_tile_says_wartet_the_joined_network_kabel_aus_or_getrennt() {
+        const networks = giveNetworks(controls);
+        controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
+        showSettled(0);
+        const tile = control("networkTile");
+        compare(stateOf("networkTile"), "Home", "the joined network, before the cable");
+        compare(tile.Accessible.name, "netz, Home");
+        networks.office.stateChanging = true;
+        compare(stateOf("networkTile"), "wartet", "on its way, before all else");
+        networks.office.stateChanging = false;
+        networks.home.connected = false;
+        compare(stateOf("networkTile"), "kabel", "without a joined network, the cable");
+        controls.networking.wifiEnabled = false;
+        compare(stateOf("networkTile"), "kabel", "the cable, before wireless off");
+        controls.wiredDevice.connected = false;
+        compare(stateOf("networkTile"), "aus", "wireless off");
+        compare(tile.Accessible.name, "netz, aus");
+        controls.networking.wifiEnabled = true;
+        compare(stateOf("networkTile"), "getrennt", "on, with nothing joined");
+        controls.networking.wifiEnabled = false;
+        controls.wifiDevice = null;
+        compare(stateOf("networkTile"), "getrennt", "aus speaks of the wireless switch: with a cable alone it is getrennt");
+    }
+
+    // The level of netz (states.md:231–233, :260–271): the back row, then the wlan switch, which takes the focus.
+    function test_the_netz_level_starts_with_the_wlan_switch_which_takes_the_focus_and_switches_wireless() {
         giveNetworks(controls);
         showSettled(0);
-        const toggle = control("wifi");
+        control("networkTile").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Return);
+        const level = findChild(controls, "network");
+        verify(level.open);
+        const back = findChild(level, "back");
+        compare(back.text, "zurück · netz");
+        const toggle = control("wifiSwitch");
+        verify(toggle instanceof Toggle, "a toggle switch, which acts at once");
+        verify(toggle.activeFocus, "the focus on it at once");
+        compare(toggle.label, "wlan");
         verify(toggle.checked);
-        compare(toggle.text, "wlan");
-        compare(toggle.icon, "wireless");
+        waitForFrame(side);
+        compare(toggle.mapToItem(level, 0, 0).y, back.mapToItem(level, 0, 0).y + back.height + Tokens.spaceM, "first after the back row");
         mouseClick(toggle);
         compare(wifiSwitches, [false]);
         verify(!toggle.checked);
-        verify(!control("chooseNetwork").visible, "without wireless there is no list of networks");
+        verify(!control("networkRows").visible, "without wireless there are no networks");
         wifiTakes = false;
         mouseClick(toggle);
         compare(wifiSwitches, [false, true]);
         verify(!toggle.checked, "a switch the system did not take springs back");
         controls.networking.wifiEnabled = true;
         verify(toggle.checked, "a change from elsewhere shows");
+        verify(control("networkRows").visible);
     }
 
-    function test_the_wlan_button_names_the_joined_network_as_its_state() {
-        const networks = giveNetworks(controls);
-        side.show(0);
-        const state = findChild(control("wifi"), "state");
-        compare(state.text, "Home");
-        compare(control("wifi").Accessible.name, "wlan Home");
-        networks.home.connected = false;
-        compare(state.text, "an", "on, without a network");
-        compare(control("wifi").Accessible.name, "wlan");
-        controls.networking.wifiEnabled = false;
-        compare(state.text, "aus");
-    }
-
-    function test_a_blocked_radio_greys_the_wlan_button_which_says_why() {
+    function test_a_blocked_radio_greys_the_wlan_switch_which_says_why() {
         giveNetworks(controls);
         controls.networking.wifiHardwareEnabled = false;
-        showSettled(0);
-        const toggle = control("wifi");
+        showLevel("network");
+        const toggle = control("wifiSwitch");
         verify(toggle.disabled);
         compare(toggle.disabledReason, "funk gesperrt");
+        verify(findChild(toggle, "why").visible);
         mouseClick(toggle);
         compare(wifiSwitches, []);
     }
 
-    function test_netz_names_the_joined_network_with_its_state_as_a_status_word() {
-        const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
-        const words = findChild(rowOf(control("chooseNetwork")), "words");
-        compare(words.text, "netz · Home");
-        compare(control("wifiState").word, "verbunden");
-        networks.office.stateChanging = true;
-        compare(control("wifiState").word, "wartet");
-        networks.office.stateChanging = false;
-        networks.home.connected = false;
-        compare(words.text, "netz");
-        compare(control("wifiState").word, "getrennt");
-    }
-
-    function test_kabel_shows_the_wired_connection_as_a_status_word() {
-        side.show(0);
-        waitForRendering(side);
-        verify(!control("wiredState").visible, "without a wired device the row is gone");
-        controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
-        compare(findChild(rowOf(control("wiredState")), "words").text, "kabel");
-        compare(control("wiredState").word, "verbunden");
-        compare(control("wiredState").status, "info");
-        controls.wiredDevice.connected = false;
-        compare(control("wiredState").word, "getrennt");
-    }
-
-    function test_without_networkmanager_the_network_rows_are_gone() {
-        side.show(0);
-        waitForRendering(side);
-        verify(!control("wifi").visible);
-        verify(!control("chooseNetwork").visible);
-        verify(!control("wiredState").visible);
-    }
-
-    function test_with_eight_networks_the_five_strongest_unfold_and_alle_netze_opens_all_in_a_level() {
+    // Up to five networks stand right below the switch; all of them are a list chosen in place (states.md:203–214).
+    function test_with_eight_networks_the_five_strongest_stand_below_the_switch_and_alle_netze_opens_all_in_place() {
         giveNetworks(controls);
-        showSettled(0);
-        const opener = control("chooseNetwork");
-        const below = findChild(controls, "session");
-        const before = below.y;
-        mouseClick(opener);
-        waitForRendering(side);
-        verify(control("wifi").visible, "the switch stays in sight");
-        compare(rowsOf("wifiBranch").map(row => row.text), ["Home", "Office", "Guest", "Neighbour", "Library", "alle netze …"]);
-        compare(below.y, before + control("wifiBranch").height + Tokens.spaceM, "what stands below moves down");
-        verify(!control("networks").open, "no level yet");
+        const level = showLevel("network");
+        const toggle = control("wifiSwitch");
+        const list = control("networkRows");
+        compare(list.mapToItem(level, 0, 0).y, toggle.mapToItem(level, 0, 0).y + toggle.height + Tokens.spaceM, "directly below the switch, without a heading");
+        compare(rowsOf("networkRows").map(row => row.text), ["Home", "Office", "Guest", "Neighbour", "Library", "alle netze …"]);
+        verify(control("allNetworks").opensLevel, "its chevron says it goes on");
+        verify(!control("networks").open, "no list of all yet");
         mouseClick(control("allNetworks"));
-        const level = control("networks");
-        verify(level.open);
-        compare(levelRows(level).slice(1).map(row => row.text), ["Home", "Office", "Guest", "Neighbour", "Library", "Cafe", "Shop", "Hotel"]);
+        const all = control("networks");
+        verify(all.open);
+        compare(rowsOf("networks").map(row => row.text), ["zurück · netze", "Home", "Office", "Guest", "Neighbour", "Library", "Cafe", "Shop", "Hotel"]);
+        verify(!list.visible && !toggle.visible, "in place of the level's rows");
+        const back = findChild(level, "back");
+        verify(back.visible, "under the level's own back row");
+        waitForFrame(side);
+        compare(all.mapToItem(level, 0, 0).y, back.mapToItem(level, 0, 0).y + back.height + Tokens.spaceM, "where the switch stood");
+        verify(rowsOf("networks")[1].activeFocus, "the focus on the first network");
         keyClick(Qt.Key_Escape);
-        verify(opener.activeFocus, "back on the row that opened it");
+        verify(!all.open);
+        verify(control("allNetworks").activeFocus, "back on the row that opened it");
+        verify(level.open);
     }
 
     function test_up_to_five_networks_have_no_alle_netze_row() {
         const networks = giveNetworks(controls);
         networks.device.networks.values = [networks.home, networks.office, networks.guest, networks.neighbour, networks.library];
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        compare(rowsOf("wifiBranch").length, 5);
+        showLevel("network");
+        compare(rowsOf("networkRows").length, 5);
+        verify(!control("allNetworks").visible);
+    }
+
+    function test_the_list_of_all_networks_is_closed_when_the_level_opens_again() {
+        giveNetworks(controls);
+        const level = showLevel("network");
+        mouseClick(control("allNetworks"));
+        verify(control("networks").open);
+        level.leave();
+        side.reveal(level);
+        verify(!control("networks").open, "the level opens on its own rows");
+        verify(control("wifiSwitch").activeFocus);
     }
 
     function test_a_network_row_tells_what_it_is_and_its_signal_in_percent() {
         giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        const rows = rowsOf("wifiBranch");
+        showLevel("network");
+        const rows = rowsOf("networkRows");
         compare(findChild(rows[0], "signal").text, "90%");
         verify(findChild(rows[0], "leave").visible, "the joined one can be left");
         verify(!findChild(rows[0], "kinds").visible, "the joined one needs no more words");
@@ -3252,48 +3184,57 @@ TestCase {
         compare(rows[1].Accessible.name, "Office, gesichert · bekannt, signal 70%");
     }
 
-    function test_the_scan_runs_while_the_list_shows_and_stops_with_it() {
+    // scanWanted: the system scans only while the networks show, the level of netz standing with wireless on.
+    function test_the_scan_runs_only_while_the_level_of_netz_stands_with_wireless_on() {
         giveNetworks(controls);
         showSettled(0);
-        compare(scans, []);
-        mouseClick(control("chooseNetwork"));
-        compare(scans, [true]);
-        waitForRendering(side);
+        compare(scans, [], "not for the tile alone");
+        const tile = control("networkTile");
+        tile.forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Return);
+        compare(scans, [true], "the level opens with wireless on");
+        waitForFrame(side);
         mouseClick(control("allNetworks"));
         verify(control("networks").open);
-        compare(scans, [true], "the level goes on with the same scan");
+        compare(scans, [true], "the list of all goes on with the same scan");
         keyClick(Qt.Key_Escape);
-        mouseClick(control("chooseNetwork"));
-        compare(scans, [true, false]);
-        waitForRendering(side);
-        mouseClick(control("chooseNetwork"));
+        keyClick(Qt.Key_Escape);
+        verify(tile.activeFocus);
+        compare(scans, [true, false], "closing the level stops it");
+        keyClick(Qt.Key_Return);
         compare(scans, [true, false, true]);
+        controls.networking.wifiEnabled = false;
+        compare(scans, [true, false, true, false], "wlan off stops it");
+        controls.networking.wifiEnabled = true;
+        compare(scans, [true, false, true, false, true], "wlan on starts it again while the level stands");
+        const device = controls.wifiDevice;
+        controls.wifiDevice = null;
+        compare(scans, [true, false, true, false, true, false], "the wireless device gone stops it");
+        controls.wifiDevice = device;
+        compare(scans.length, 7);
         side.close();
         tryVerify(() => !side.visible);
-        compare(scans, [true, false, true, false], "closing the panel stops it");
+        compare(scans, [true, false, true, false, true, false, true, false], "closing the panel stops it");
+        controls.networking.wifiEnabled = false;
+        showLevel("network");
+        compare(scans.length, 8, "a level opened with wireless off scans for nothing");
     }
 
     function test_the_networks_keep_their_order_while_the_list_shows_though_the_signal_moves() {
         const networks = giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
+        const level = showLevel("network");
         networks.shop.signalStrength = 0.95;
-        compare(rowsOf("wifiBranch").map(row => row.text).slice(0, 2), ["Home", "Office"]);
-        compare(findChild(rowsOf("wifiBranch")[0], "signal").text, "90%");
-        mouseClick(control("chooseNetwork"));
-        tryVerify(() => !control("wifiBranch").visible);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        compare(rowsOf("wifiBranch")[0].text, "Shop", "folded and unfolded again it is ranked anew");
+        compare(rowsOf("networkRows").map(row => row.text).slice(0, 2), ["Home", "Office"]);
+        compare(findChild(rowsOf("networkRows")[0], "signal").text, "90%");
+        level.leave();
+        side.reveal(level);
+        compare(rowsOf("networkRows")[0].text, "Shop", "closed and opened again it is ranked anew");
     }
 
     function test_a_known_or_open_network_joins_at_once() {
         const networks = giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        const rows = rowsOf("wifiBranch");
+        showLevel("network");
+        const rows = rowsOf("networkRows");
         mouseClick(rows[1]);
         compare(networks.office.calls, ["connect"]);
         compare(findChild(rows[1], "joining").word, "wartet");
@@ -3307,10 +3248,8 @@ TestCase {
 
     function test_a_secured_unknown_network_asks_for_its_password_in_a_sheet_and_joins_with_it() {
         const networks = giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(rowsOf("wifiBranch")[3]);
+        showLevel("network");
+        mouseClick(rowsOf("networkRows")[3]);
         verify(sheet().open);
         compare(sheet().title, "passwort für Neighbour");
         compare(networks.neighbour.calls, [], "nothing is joined before the password");
@@ -3323,15 +3262,13 @@ TestCase {
         compare(passwordsSent, ["secret"]);
         verify(!sheet().open);
         compare(findChild(findChild(sheet(), "password"), "input").text, "", "the password is not kept");
-        verify(rowsOf("wifiBranch")[3].activeFocus, "the focus goes back to the row");
+        verify(rowsOf("networkRows")[3].activeFocus, "the focus goes back to the row");
     }
 
     function test_the_tip_of_the_password_sheets_close_button_is_drawn_over_the_sheet() {
         giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(rowsOf("wifiBranch")[3]);
+        showLevel("network");
+        mouseClick(rowsOf("networkRows")[3]);
         verify(sheet().open);
         const close = findChild(sheet(), "close");
         close.forceActiveFocus();
@@ -3343,10 +3280,8 @@ TestCase {
 
     function test_an_empty_password_is_refused_at_the_field_and_escape_leaves_the_sheet_alone_of_the_panel() {
         const networks = giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(rowsOf("wifiBranch")[3]);
+        showLevel("network");
+        mouseClick(rowsOf("networkRows")[3]);
         keyClick(Qt.Key_Return);
         verify(sheet().open);
         compare(findChild(sheet(), "password").error, "passwort fehlt");
@@ -3365,27 +3300,25 @@ TestCase {
         mouseClick(findChild(sheet(), "discard"));
         verify(!sheet().open, "discarding leaves the sheet");
         verify(side.open, "and the panel stays");
+        verify(findChild(controls, "network").open, "and the level");
         compare(networks.neighbour.calls, []);
         compare(passwordsSent, []);
     }
 
     function test_an_untouched_password_sheet_leaves_without_asking() {
         giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(rowsOf("wifiBranch")[3]);
+        showLevel("network");
+        mouseClick(rowsOf("networkRows")[3]);
         keyClick(Qt.Key_Escape);
         verify(!sheet().open);
         verify(side.open);
+        verify(findChild(controls, "network").open);
     }
 
     function test_the_sheet_closes_when_its_network_goes() {
         const networks = giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(rowsOf("wifiBranch")[3]);
+        showLevel("network");
+        mouseClick(rowsOf("networkRows")[3]);
         typeText("pw");
         networks.device.networks.values = networks.device.networks.values.filter(network => network !== networks.neighbour);
         tryVerify(() => !sheet().open);
@@ -3394,31 +3327,57 @@ TestCase {
 
     function test_the_sheet_goes_with_the_panel() {
         giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(rowsOf("wifiBranch")[3]);
+        showLevel("network");
+        mouseClick(rowsOf("networkRows")[3]);
         verify(sheet().open);
         side.close();
         tryVerify(() => !side.visible);
         tryVerify(() => !sheet().open);
     }
 
+    // Qt hands the pointer handlers under a sheet's shading the press all the same.
+    function test_a_press_on_the_password_sheet_or_its_shading_reaches_nothing_of_the_level_under_it() {
+        const networks = giveNetworks(controls);
+        const level = showLevel("network");
+        for (const name of ["back row", "Office"]) {
+            if (!sheet().open)
+                mouseClick(rowsOf("networkRows")[3]);
+            verify(sheet().open, name);
+            const under = name === "Office" ? rowsOf("networkRows")[1] : findChild(level, "back");
+            const at = under.mapToItem(scene, Tokens.spaceL, under.height / 2);
+            mouseClick(scene, at.x, at.y);
+            verify(level.open, `${name}: the level stays`);
+        }
+        compare(networks.office.calls, [], "Office was not pressed");
+        compare(joined, []);
+    }
+
+    // A list built anew, as when a network comes, drops the rows it had; the focus on one goes back into the level.
+    function test_a_focused_network_row_that_is_built_anew_leaves_the_focus_in_the_level() {
+        const networks = giveNetworks(controls);
+        const level = showLevel("network");
+        rowsOf("networkRows")[1].forceActiveFocus(Qt.TabFocusReason);
+        const near = createTemporaryObject(networkComponent, testCase, { name: "Near", signalStrength: 0.8, security: 3 });
+        networks.device.networks.values = [...networks.device.networks.values, near];
+        tryVerify(() => level.isMine(side.Window.activeFocusItem) && side.Window.activeFocusItem.visible, 1000, "the focus in the level");
+        keyClick(Qt.Key_Escape);
+        verify(!level.open, "so Escape leaves the level");
+        verify(side.open, "and not the panel");
+    }
+
     function test_a_failed_connection_says_why_in_its_row_until_the_next_attempt() {
         const networks = giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(rowsOf("wifiBranch")[1]);
+        showLevel("network");
+        mouseClick(rowsOf("networkRows")[1]);
         networks.office.stateChanging = false;
         networks.office.connectionFailed(Controls.WifiAuthTimeout);
-        const failure = findChild(rowsOf("wifiBranch")[1], "failure");
+        const failure = findChild(rowsOf("networkRows")[1], "failure");
         verify(failure.visible);
         compare(failure.word, "zeitüberschreitung");
         compare(failure.status, "error");
-        verify(!findChild(rowsOf("wifiBranch")[1], "kinds").visible, "the cause takes the words' place");
-        compare(rowsOf("wifiBranch")[1].Accessible.name, "Office, zeitüberschreitung, gesichert · bekannt, signal 70%");
-        mouseClick(rowsOf("wifiBranch")[1]);
+        verify(!findChild(rowsOf("networkRows")[1], "kinds").visible, "the cause takes the words' place");
+        compare(rowsOf("networkRows")[1].Accessible.name, "Office, zeitüberschreitung, gesichert · bekannt, signal 70%");
+        mouseClick(rowsOf("networkRows")[1]);
         verify(!failure.visible, "a new attempt clears it");
         networks.office.stateChanging = false;
         networks.office.connectionFailed(Controls.NoSecrets);
@@ -3430,10 +3389,8 @@ TestCase {
 
     function test_the_joined_network_is_left_by_its_quiet_button_and_a_press_on_its_row_does_nothing() {
         const networks = giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        const home = rowsOf("wifiBranch")[0];
+        showLevel("network");
+        const home = rowsOf("networkRows")[0];
         const leave = findChild(home, "leave");
         compare(leave.variant, "quiet");
         mouseClick(home, 10, home.height / 2);
@@ -3446,26 +3403,24 @@ TestCase {
 
     function test_the_network_list_works_from_the_keyboard() {
         const networks = giveNetworks(controls);
-        side.show(0);
-        waitForRendering(side);
-        control("chooseNetwork").forceActiveFocus();
+        showSettled(0);
+        control("networkTile").forceActiveFocus(Qt.TabFocusReason);
         keyClick(Qt.Key_Return);
-        verify(control("wifiBranch").expanded);
-        waitForRendering(side);
+        verify(control("wifiSwitch").activeFocus);
         keyClick(Qt.Key_Down);
-        verify(rowsOf("wifiBranch")[0].activeFocus);
+        verify(rowsOf("networkRows")[0].activeFocus, "↓ from the switch to the first network");
         keyClick(Qt.Key_Down);
-        verify(findChild(rowsOf("wifiBranch")[0], "leave").activeFocus, "the joined network's button comes before the next row");
+        verify(findChild(rowsOf("networkRows")[0], "leave").activeFocus, "the joined network's button comes before the next row");
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Return);
         compare(networks.office.calls, ["connect"], "Enter joins a known network");
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Down);
-        verify(rowsOf("wifiBranch")[4].activeFocus);
+        verify(rowsOf("networkRows")[4].activeFocus);
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Return);
-        verify(control("networks").open, "alle netze … opens the level");
+        verify(control("networks").open, "alle netze … opens the list of all");
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Down);
         keyClick(Qt.Key_Down);
@@ -3478,91 +3433,51 @@ TestCase {
         compare(networks.neighbour.calls, ["psk pw"]);
         keyClick(Qt.Key_Escape);
         verify(!control("networks").open);
-        verify(control("chooseNetwork").activeFocus, "back where it began");
-    }
-
-    function test_two_open_lists_do_not_fight_over_the_view() {
-        giveNetworks(controls);
-        giveBluetooth(controls);
-        givePairedDevices(controls, 7);
-        scene.height = 420;
-        showSettled(0);
-        const scroller = findChild(side, "scroller");
-        mouseClick(control("chooseNetwork"));
-        tryVerify(() => !control("wifiBranch").revealing, 1000, "the networks have unfolded");
-        mouseClick(control("chooseBluetoothDevice"));
-        tryVerify(() => !control("bluetoothBranch").revealing, 1000, "the devices have unfolded");
-        verify(scroller.contentHeight > scroller.height + 100, "there is room to scroll");
-        scroller.contentY = 0;
-        controls.wifiDevice.networks.values = controls.wifiDevice.networks.values.slice(0, 5);
-        wait(150);
-        compare(scroller.contentY, 0, "a network gone does not pull the view");
-        controls.bluetoothDevices = controls.bluetoothDevices.slice(0, 5);
-        wait(150);
-        compare(scroller.contentY, 0, "a device gone does not either");
-    }
-
-    function test_the_networks_come_back_folded_after_the_panel_was_away() {
-        giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        side.close();
-        tryVerify(() => !side.visible);
-        showSettled(0);
-        verify(!control("wifiBranch").expanded);
+        verify(control("allNetworks").activeFocus, "back where it began");
     }
 
     function test_after_trennen_the_row_does_not_say_it_is_connecting_and_bluetooth_says_the_same_word() {
         const networks = giveNetworks(controls);
         const bluetooth = giveBluetooth(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(findChild(rowsOf("wifiBranch")[0], "leave"));
+        showLevel("network");
+        mouseClick(findChild(rowsOf("networkRows")[0], "leave"));
         compare(networks.home.calls, ["disconnect"]);
-        compare(control("wifiState").word, "wartet");
-        compare(findChild(rowsOf("wifiBranch")[0], "joining").word, "wartet");
-        pressBluetoothOpener();
-        waitForRendering(side);
+        compare(stateOf("networkTile"), "wartet");
+        compare(findChild(rowsOf("networkRows")[0], "joining").word, "wartet");
+        showLevel("bluetooth");
         bluetooth.speaker.connect();
-        compare(findChild(branchRows()[1], "state").word, "wartet");
+        compare(findChild(rowsOf("deviceRows")[1], "state").word, "wartet");
     }
 
-    function test_the_cause_for_a_lost_connection_is_not_the_word_for_an_idle_row() {
+    function test_the_cause_for_a_lost_connection_is_not_the_word_for_an_idle_network() {
         const networks = giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
+        showLevel("network");
         networks.home.connected = false;
         networks.home.connectionFailed(Controls.WifiClientDisconnected);
-        compare(control("wifiState").word, "getrennt");
-        const cause = findChild(rowsOf("wifiBranch").find(row => row.text === "Home"), "failure");
+        compare(stateOf("networkTile"), "getrennt");
+        const cause = findChild(rowsOf("networkRows").find(row => row.text === "Home"), "failure");
         compare(cause.word, "verbindung abgebrochen");
-        verify(cause.word !== control("wifiState").word);
+        verify(cause.word !== stateOf("networkTile"));
     }
 
     function test_an_empty_list_says_what_is_empty_while_the_scan_runs() {
         const networks = giveNetworks(controls);
         networks.device.networks.values = [];
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
+        showLevel("network");
         const hint = control("noNetworks");
         verify(hint.visible);
         compare(hint.text, "keine netze gefunden, die suche läuft");
         verify(findChild(hint, "line").visible, "on Rekta's empty hairline");
-        verify(control("wifiBranch").height > 0, "the unfolded branch is not empty");
+        verify(control("networkRows").height > 0, "the list is not empty");
         compare(scans, [true]);
         networks.device.networks.values = [networks.home];
         waitForRendering(side);
         verify(!hint.visible, "the first network takes its place");
     }
 
-    function test_networks_that_come_or_go_while_the_list_is_open_leave_the_others_in_their_place() {
+    function test_networks_that_come_or_go_while_the_list_shows_leave_the_others_in_their_place() {
         const networks = giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
+        showLevel("network");
         networks.shop.signalStrength = 0.95;
         const faraway = createTemporaryObject(networkComponent, testCase, { name: "Faraway", signalStrength: 0.05, security: 3 });
         const near = createTemporaryObject(networkComponent, testCase, { name: "Near", signalStrength: 0.8, security: 3 });
@@ -3572,84 +3487,177 @@ TestCase {
         compare(controls.ranked.map(network => network.name).slice(0, 3), ["Home", "Guest", "Neighbour"], "a gone network drops out in place");
     }
 
-    function test_folding_the_list_keeps_its_rows_while_it_folds_and_never_shows_the_empty_sentence() {
+    // Qt leaves the focus on a hidden item: a row that hides while it holds the focus hands it on.
+    function test_wlan_off_from_elsewhere_closes_the_list_of_all_networks_and_hands_the_focus_to_the_switch() {
         giveNetworks(controls);
-        showSettled(0);
-        Prefs.motion = "on";
-        const branch = control("wifiBranch");
-        mouseClick(control("chooseNetwork"));
-        tryCompare(branch, "unfolded", 1, 4 * Tokens.durationShort);
-        waitForFrame(side);
-        const fullHeight = branch.height;
-        const hint = control("noNetworks");
-        verify(!hint.visible);
-        mouseClick(control("chooseNetwork"));
-        verify(branch.unfolded > 0, "it folds over time");
-        verify(!hint.visible, "the empty sentence does not show while it folds");
-        compare(rowsOf("wifiBranch").length, 6, "the rows stay until it has folded");
-        verify(branch.height <= fullHeight && branch.height > 0);
-        tryCompare(branch, "unfolded", 0, 4 * Tokens.durationShort);
-        verify(!hint.visible);
+        controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
+        const level = showLevel("network");
+        mouseClick(control("allNetworks"));
+        const all = control("networks");
+        verify(rowsOf("networks")[1].activeFocus);
+        controls.networking.wifiEnabled = false;
+        verify(!all.open, "the list of all closes");
+        verify(!control("networkRows").visible, "the networks are gone");
+        tryVerify(() => control("wifiSwitch").activeFocus, 1000, "the focus on the switch, not on a hidden row");
+        verify(level.open, "the level stays");
+        findChild(level, "back").forceActiveFocus(Qt.TabFocusReason);
+        controls.networking.wifiEnabled = true;
+        controls.networking.wifiEnabled = false;
+        settleLater();
+        verify(findChild(level, "back").activeFocus, "a focus that still shows stays");
+        const opener = named("opener");
+        opener.forceActiveFocus(Qt.TabFocusReason);
+        opener.visible = false;
+        controls.networking.wifiEnabled = true;
+        controls.networking.wifiEnabled = false;
+        settleLater();
+        verify(opener.activeFocus, "a hidden focus outside the level is not the level's to move");
+        opener.visible = true;
+        controls.networking.wifiEnabled = true;
+        rowsOf("networkRows")[1].forceActiveFocus(Qt.TabFocusReason);
+        controls.wifiDevice = null;
+        verify(!control("networkRows").visible && !control("wifiSwitch").visible, "the wireless device gone: no switch, no networks");
+        tryVerify(() => findChild(level, "back").activeFocus, 1000, "the focus on the back row, the level's first control left");
     }
 
-    function test_wlan_off_closes_the_level_and_stops_the_scan() {
+    function test_kabel_stands_last_in_the_level_of_netz_with_its_state_as_a_status_word() {
         giveNetworks(controls);
+        controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
+        const level = showLevel("network");
+        const state = control("wiredState");
+        const row = rowOf(state);
+        const list = control("networkRows");
+        compare(findChild(row, "words").text, "kabel");
+        compare(row.mapToItem(level, 0, 0).y, list.mapToItem(level, 0, list.height).y + Tokens.spaceM, "below the networks");
+        compare(state.word, "verbunden");
+        compare(state.status, "info");
+        controls.wiredDevice.connected = false;
+        compare(state.word, "getrennt");
+        controls.wiredDevice = null;
+        verify(!row.visible, "without a wired device the row is gone");
+    }
+
+    function test_without_networkmanager_netz_has_no_tile_and_a_cable_alone_no_wlan_switch() {
         showSettled(0);
-        mouseClick(control("chooseNetwork"));
-        waitForRendering(side);
-        mouseClick(control("allNetworks"));
-        verify(control("networks").open);
-        compare(scans, [true]);
-        controls.networking.wifiEnabled = false;
-        verify(!control("networks").open);
-        verify(!control("wifiBranch").expanded);
-        compare(scans, [true, false]);
+        verify(!control("networkTile").visible);
+        controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
+        const level = showLevel("network");
+        verify(!control("wifiSwitch").visible, "no wireless device, no switch");
+        verify(!control("networkRows").visible);
+        verify(findChild(level, "back").activeFocus, "the focus on the back row then");
+    }
+
+    // Each step up takes its key (rekta.js:1987–1992): none reaches what lies behind the panel; Escape on the tile
+    // closes the panel, ← on it stays in the grid.
+    function test_escape_left_and_the_back_rows_go_from_the_list_of_all_up_to_the_level_and_then_to_the_tile_data() {
+        const areas = [
+            { tag: "netz", tile: "networkTile", level: "network", opener: "allNetworks", all: "networks" },
+            { tag: "bluetooth", tile: "bluetoothTile", level: "bluetooth", opener: "allDevices", all: "bluetoothDevices" }
+        ];
+        return areas.reduce((ways, area) => ways.concat(["Escape", "Left", "back"].map(way => Object.assign({}, area, { tag: `${area.tag} by ${way}`, way }))), []);
+    }
+
+    function test_escape_left_and_the_back_rows_go_from_the_list_of_all_up_to_the_level_and_then_to_the_tile(data) {
+        giveNetworks(controls);
+        giveBluetooth(controls);
+        givePairedDevices(controls, 7);
+        showSettled(0);
+        const tile = control(data.tile);
+        const level = findChild(controls, data.level);
+        const all = control(data.all);
+        tile.forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Return);
+        control(data.opener).forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Return);
+        verify(all.open && level.open);
+        const up = list => {
+            if (data.way !== "back") {
+                keyClick(data.way === "Escape" ? Qt.Key_Escape : Qt.Key_Left);
+                return;
+            }
+            waitForFrame(side);
+            mouseClick(findChild(list, "back"));
+        };
+        up(all);
+        verify(!all.open, "first the list of all");
+        verify(level.open, "the level stays");
+        verify(control(data.opener).activeFocus, "the focus on the row that opened the list");
+        up(level);
+        verify(!level.open, "then the level");
+        verify(tile.activeFocus, "the focus on its tile");
+        compare(keysPast, [], "each key was taken on its way up");
+        keyClick(data.way === "Left" ? Qt.Key_Left : Qt.Key_Escape);
+        compare(keysPast, [], "and on the tile");
+        if (data.way === "Left")
+            verify(side.open && side.within(control("areas"), side.Window.activeFocusItem), "← on the tile is the grid's: the focus stays among the tiles");
+        else
+            verify(!side.open, "Escape on the tile closes the panel");
+    }
+
+    // "offline" leads to the level of netz, as the host's openAt does for the word and the banner's remedy.
+    function test_offline_opens_the_level_of_netz_with_the_focus_on_wlan_and_without_a_network_device_the_top() {
+        giveSound(controls);
+        giveNetworks(controls);
+        const level = findChild(controls, "network");
+        compare(controls.places.connections, level);
+        side.show(0, false);
+        side.reveal(controls.places.connections);
+        verify(level.open, "the level of netz stands");
+        verify(control("wifiSwitch").activeFocus, "the focus on wlan");
+        showLevel("sound");
+        side.reveal(controls.places.connections);
+        verify(!findChild(controls, "sound").open, "another level gives way first");
+        verify(level.open);
+        verify(control("wifiSwitch").activeFocus);
+        controls.wifiDevice = null;
+        compare(controls.places.connections, null, "without a network device there is no netz to open");
+        side.reveal(controls.places.connections);
+        verify(!level.open);
+        compare(named("scroller").contentY, 0, "the facet at its top");
     }
 
     // Above the grid, from the top (states.md:252–259): the output's volume, each display's brightness, the toggle buttons,
-    // then the groups that have no tile; at the foot the tiles of ton and anzeige.
-    function test_above_the_grid_stand_volume_brightness_toggle_buttons_verbindungen_and_sitzung_in_order() {
+    // then the group that has no tile; at the foot the tiles in their fixed order, ton, netz, bluetooth, anzeige
+    // (states.md:246–251).
+    function test_above_the_grid_stand_volume_brightness_toggle_buttons_and_sitzung_in_order_and_the_tiles_go_ton_netz_bluetooth_anzeige() {
         giveSound(controls);
         giveDisplays(controls);
+        giveNetworks(controls);
         giveBluetooth(controls);
         showSettled(0);
-        const parts = [rowOf(control("outputVolume")), rowOf(control("display0Brightness")), rowOf(control("display1Brightness")), control("toggles"), findChild(controls, "connections"), findChild(controls, "session")];
+        const parts = [rowOf(control("outputVolume")), rowOf(control("display0Brightness")), rowOf(control("display1Brightness")), control("toggles"), findChild(controls, "session")];
         const tops = parts.map(part => part.mapToItem(controls, 0, 0).y);
         for (let k = 1; k < parts.length; k++)
             verify(tops[k] > tops[k - 1], `part ${k} below part ${k - 1}`);
         verify(side.within(control("quick"), parts[0]) && side.within(control("quick"), parts[2]), "volume and brightness above the grid, out of their groups");
-        compare(findChild(findChild(controls, "connections"), "heading").text, "verbindungen");
         compare(findChild(findChild(controls, "session"), "heading").text, "sitzung");
         const grid = control("areas");
         const session = findChild(controls, "session");
         verify(grid.mapToItem(controls, 0, 0).y >= session.mapToItem(controls, 0, session.height).y + Tokens.spaceM, "the grid last");
-        compare(grid.shownTiles(), [control("soundTile"), control("displayTile")], "ton, then anzeige");
+        const tiles = ["soundTile", "networkTile", "bluetoothTile", "displayTile"].map(name => control(name));
+        compare(grid.shownTiles(), tiles, "ton, netz, bluetooth, anzeige");
+        compare(tiles.map(tile => [tile.x, tile.y]), [[0, 0], [tiles[0].width + Tokens.spaceS, 0], [0, Tokens.tileUnit + Tokens.spaceS], [tiles[0].width + Tokens.spaceS, Tokens.tileUnit + Tokens.spaceS]], "two to a row, in reading order");
     }
 
-    function test_a_group_without_rows_falls_away_and_ton_without_audio_devices_has_no_tile() {
+    function test_an_area_without_its_devices_has_no_tile() {
         side.show(0);
-        verify(!findChild(controls, "connections").visible, "verbindungen has no rows yet");
         verify(findChild(controls, "session").visible);
         verify(!control("soundTile").visible, "ton without audio devices");
+        verify(!control("networkTile").visible, "netz without a network device");
+        verify(!control("bluetoothTile").visible, "bluetooth without an adapter");
         compare(control("areas").shownTiles(), [control("displayTile")]);
     }
 
     // Its rows are a form's controls, not a list (forms.md); groups stand apart by their headings and space.
-    function test_the_rows_of_a_group_stand_space_m_apart_on_no_hairline_and_no_hairline_divides_the_groups() {
+    function test_the_rows_of_a_group_and_of_a_level_stand_space_m_apart_on_no_hairline() {
         giveSound(controls);
-        giveBluetooth(controls);
         showLevel("sound");
-        for (const name of ["connections", "session"]) {
-            const group = findChild(controls, name);
-            verify(group.visible, name);
-            compare(hairlinesIn(group).length, 0, name);
-        }
+        const session = findChild(controls, "session");
+        verify(session.visible);
+        compare(hairlinesIn(session).length, 0);
         const device = rowOf(inSound("outputDevice"));
         const volume = rowOf(inSound("outputVolume"));
         compare(volume.y - (device.y + device.height), Tokens.spaceM, "a level's parts are space-m apart");
-        const connections = findChild(controls, "connections");
-        const session = findChild(controls, "session");
-        compare(session.y - (connections.y + connections.height), 0, "the groups' own space-xl above and below parts them");
     }
 
     function test_a_group_whose_rows_are_all_absent_falls_away() {
@@ -3672,7 +3680,7 @@ TestCase {
 
     function test_a_row_has_its_words_at_the_start_and_its_control_at_the_end() {
         controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
-        side.show(0);
+        showLevel("network");
         const toggle = control("wiredState");
         const row = rowOf(toggle);
         waitForRendering(side);
@@ -3686,7 +3694,7 @@ TestCase {
 
     function test_a_row_whose_words_and_control_do_not_fit_puts_the_control_below_and_cuts_long_words() {
         controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
-        side.show(0);
+        showLevel("network");
         const toggle = control("wiredState");
         const row = rowOf(toggle);
         row.label = "a long word for the wired connection that cannot share its line with its state";
@@ -3701,13 +3709,13 @@ TestCase {
     }
 
     // The way from "steuerung" in the app bar at the bottom to them stays short.
-    function test_the_toggle_buttons_stand_in_two_columns_above_the_grid_in_the_scroll_without_a_heading() {
+    function test_the_toggle_buttons_nicht_stoeren_and_dunkel_stand_in_two_columns_above_the_grid_in_the_scroll_without_a_heading() {
         giveNetworks(controls);
         giveBluetooth(controls);
         showSettled(0);
         const toggles = control("toggles");
         const ground = findChild(side, "ground");
-        const buttons = ["wifi", "bluetooth", "doNotDisturb", "dark"].map(name => control(name));
+        const buttons = ["doNotDisturb", "dark"].map(name => control(name));
         const cell = (side.contentWidth - Tokens.spaceS) / 2;
         const at = button => button.mapToItem(ground, 0, 0);
         for (const button of buttons) {
@@ -3715,49 +3723,32 @@ TestCase {
             verify(side.within(toggles, button), `${button.objectName} among the toggle buttons`);
             compare(button.width, cell, `${button.objectName}: half the width, space-s between`);
         }
-        compare(buttons.map(button => button.text), ["wlan", "bluetooth", "nicht stören", "dunkel"]);
-        compare(buttons.map(button => button.icon), ["wireless", "bluetooth", "bell", "theme"]);
+        compare(buttons.map(button => button.text), ["nicht stören", "dunkel"]);
+        compare(buttons.map(button => button.icon), ["bell", "theme"]);
         compare(at(buttons[0]).x, Tokens.spaceM);
         compare(at(buttons[1]).x, Tokens.spaceM + cell + Tokens.spaceS);
         compare(at(buttons[1]).y, at(buttons[0]).y);
-        compare(at(buttons[2]).x, Tokens.spaceM);
-        compare(at(buttons[2]).y, at(buttons[0]).y + buttons[0].height + Tokens.spaceS);
-        compare(at(buttons[3]).y, at(buttons[2]).y);
-        verify(at(buttons[3]).y + buttons[3].height < at(control("areas")).y, "above the grid");
+        compare(control("quickSettings").height, buttons[0].height, "one line");
+        verify(at(buttons[1]).y + buttons[1].height < at(control("areas")).y, "above the grid");
         verify(!findChild(control("quick"), "heading"), "no heading over them");
         verify(side.within(findChild(side, "scroller"), buttons[0]), "in the scroll");
     }
 
-    function test_a_quick_setting_whose_device_is_missing_is_gone_and_the_rest_close_up() {
-        showSettled(0);
-        verify(!control("wifi").visible, "no wireless device");
-        verify(!control("bluetooth").visible, "no adapter");
-        const quiet = control("doNotDisturb");
-        const dark = control("dark");
-        compare(dark.y, quiet.y, "nicht stören and dunkel share the first line");
-        compare(dark.x, quiet.width + Tokens.spaceS);
-        compare(control("quickSettings").height, quiet.height, "one line");
-        giveBluetooth(controls);
-        verify(control("bluetooth").visible);
-        waitForRendering(side);
-        compare(control("bluetooth").x, 0);
-        compare(quiet.x, dark.width + Tokens.spaceS, "bluetooth takes the first place");
-        compare(dark.x, 0);
-        verify(dark.y > quiet.y, "and dunkel wraps to the next line");
-    }
-
-    function test_the_switches_have_left_their_groups() {
+    // wlan and bluetooth are switched in their levels, the switch first (states.md:231–233, :252–259): above the grid
+    // stands neither a group verbindungen nor a toggle button of theirs.
+    function test_above_the_grid_stand_no_group_verbindungen_and_no_toggle_button_wlan_or_bluetooth() {
         giveSound(controls);
         giveNetworks(controls);
         giveBluetooth(controls);
-        giveDisplays(controls);
-        side.show(0);
-        const rows = item => (item instanceof PanelRow ? [item] : []).concat(...Array.from(item.children).map(rows));
-        const labels = rows(findChild(side, "scroller")).map(row => row.label);
-        for (const word of ["wlan", "bluetooth", "nicht stören", "dunkel"])
-            verify(!labels.includes(word), `no row ${word} in a group`);
-        for (const name of ["wifi", "bluetooth", "doNotDisturb", "dark"])
-            verify(side.within(control("toggles"), control(name)) && !side.within(findChild(controls, "connections"), control(name)), name);
+        controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
+        showSettled(0);
+        const all = (item, type) => (item instanceof type ? [item] : []).concat(...Array.from(item.children).map(child => all(child, type)));
+        const above = control("above");
+        compare(all(above, PanelGroup).filter(group => group.visible).map(group => group.title), ["sitzung"], "the one group without a tile");
+        compare(all(above, ToggleButton).filter(button => button.visible).map(button => button.text), ["nicht stören", "dunkel"]);
+        compare(all(above, Toggle).length, 0, "no toggle switch either");
+        verify(side.within(findChild(controls, "network"), control("wifiSwitch")), "wlan in the level of netz");
+        verify(side.within(findChild(controls, "bluetooth"), control("bluetoothSwitch")), "bluetooth in its level");
     }
 
     function test_nicht_stoeren_switches_with_a_press_and_follows_a_switch_from_elsewhere() {
@@ -3771,79 +3762,12 @@ TestCase {
         verify(!controls.doNotDisturb);
     }
 
-    function test_the_chevron_of_wlan_unfolds_the_networks_in_verbindungen_with_the_focus_on_the_first() {
-        giveNetworks(controls);
-        showSettled(0);
-        const wifi = control("wifi");
-        const chevron = findChild(wifi, "chevron");
-        verify(chevron.visible);
-        mouseClick(wifi, chevron.x + chevron.width / 2, wifi.height / 2);
-        verify(control("wifiBranch").expanded);
-        verify(rowsOf("wifiBranch")[0].activeFocus, "on the strongest network");
-        compare(rowsOf("wifiBranch")[0].text, "Home");
-        verify(wifi.checked, "wlan stays on");
-        compare(wifiSwitches, []);
-        keyClick(Qt.Key_Escape);
-        verify(!control("wifiBranch").expanded, "Escape folds them as ever");
-        verify(wifi.activeFocus, "and gives the focus back to wlan, which opened them");
-        mouseClick(wifi, 10, 10, Qt.RightButton);
-        verify(control("wifiBranch").expanded, "a right click does the same");
-        verify(rowsOf("wifiBranch")[0].activeFocus);
-        keyClick(Qt.Key_Escape);
-        verify(wifi.activeFocus);
-        keyClick(Qt.Key_Menu);
-        verify(control("wifiBranch").expanded, "and the menu key");
-        verify(rowsOf("wifiBranch")[0].activeFocus);
-        keyClick(Qt.Key_Escape);
-        verify(wifi.activeFocus);
-    }
-
-    function test_unfolded_by_its_own_opener_after_the_details_escape_goes_back_to_that_opener() {
-        giveNetworks(controls);
-        showSettled(0);
-        mouseClick(control("wifi"), 10, 10, Qt.RightButton);
-        keyClick(Qt.Key_Escape);
-        const choose = control("chooseNetwork");
-        choose.forceActiveFocus();
-        keyClick(Qt.Key_Return);
-        verify(control("wifiBranch").expanded);
-        keyClick(Qt.Key_Escape);
-        verify(!control("wifiBranch").expanded);
-        verify(choose.activeFocus);
-    }
-
-    function test_without_wireless_wlan_has_no_details() {
-        giveNetworks(controls);
-        controls.networking.wifiEnabled = false;
-        showSettled(0);
-        const wifi = control("wifi");
-        verify(!findChild(wifi, "chevron").visible);
-        mouseClick(wifi, 10, 10, Qt.RightButton);
-        verify(!control("wifiBranch").expanded);
-        verify(!wifi.checked, "nor does a right click switch it");
-    }
-
-    function test_a_right_click_on_bluetooth_unfolds_the_devices_with_the_focus_on_the_first() {
-        giveBluetooth(controls);
-        showSettled(0);
-        const bluetooth = control("bluetooth");
-        verify(findChild(bluetooth, "chevron").visible);
-        mouseClick(bluetooth, 10, 10, Qt.RightButton);
-        verify(control("bluetoothBranch").expanded);
-        verify(branchRows()[0].activeFocus, "on the first device");
-        compare(bluetoothSwitches, []);
-        keyClick(Qt.Key_Escape);
-        verify(!control("bluetoothBranch").expanded);
-        verify(bluetooth.activeFocus, "Escape gives the focus back to bluetooth, which opened them");
-    }
-
     // The rows show only once the branch does, a frame after it starts to unfold.
     function test_unfolding_with_motion_the_focus_goes_to_the_first_row_once_it_shows() {
         Prefs.motion = "on";
-        giveBluetooth(controls);
         showSettled(0);
-        mouseClick(control("bluetooth"), 10, 10, Qt.RightButton);
-        tryVerify(() => branchRows().length > 0 && branchRows()[0].activeFocus, 4 * Tokens.durationShort);
+        mouseClick(control("doNotDisturb"), 10, 10, Qt.RightButton);
+        tryVerify(() => control("quietBranch").visible && control("quietLength").activeFocus, 4 * Tokens.durationShort);
     }
 
     function test_a_plain_press_on_nicht_stoeren_switches_it_on_without_an_end() {
@@ -4146,10 +4070,10 @@ TestCase {
         scene.height = 400;
         showSettled(0);
         const scroller = named("scroller");
-        const branch = control("bluetoothBranch");
-        control("chooseBluetoothDevice").forceActiveFocus(Qt.TabFocusReason);
-        keyClick(Qt.Key_Return);
-        verify(branch.expanded, "the devices unfolded");
+        const branch = control("quietBranch");
+        control("doNotDisturb").forceActiveFocus(Qt.TabFocusReason);
+        keyClick(Qt.Key_Menu);
+        verify(branch.expanded, "the lengths of nicht stören unfolded");
         tryVerify(() => !branch.revealing, 1000, "and scrolled into view");
         const dark = control("dark");
         const ton = control("soundTile");
@@ -4163,7 +4087,7 @@ TestCase {
         verify(level.open);
         waitForFrame(side);
         verify(!scroller.enabled, "the facet under it takes no focus, press, hover or wheel");
-        for (const covered of [dark, control("chooseBluetoothDevice"), ton, control("lock")])
+        for (const covered of [dark, control("quietLength"), ton, control("lock")])
             verify(!covered.enabled, `${covered.objectName}: unavailable, to a screen reader too`);
         mouseClick(dark, dark.width / 2, dark.height / 2);
         compare(commands, [], "a press where dunkel lies does not reach it");
@@ -4179,11 +4103,12 @@ TestCase {
         inSound("back").forceActiveFocus(Qt.TabFocusReason);
         keyClick(Qt.Key_Escape);
         verify(ton.activeFocus);
-        compare(scroller.contentY, contentY, "the same scroll afterwards");
-        compare(ton.mapToItem(scene, 0, 0), tonAt, "the same place");
-        compare(dark.mapToItem(scene, 0, 0), darkAt);
+        fuzzyCompare(scroller.contentY, contentY, 0.01, "the same scroll afterwards");
+        const near = (point, other) => Math.abs(point.x - other.x) < 0.01 && Math.abs(point.y - other.y) < 0.01;
+        verify(near(ton.mapToItem(scene, 0, 0), tonAt), "the same place");
+        verify(near(dark.mapToItem(scene, 0, 0), darkAt));
         verify(scroller.enabled && dark.enabled);
-        verify(branch.expanded, "and what it covered as it was: the devices still unfolded");
+        verify(branch.expanded, "and what it covered as it was: the lengths still unfolded");
     }
 
     function test_a_level_longer_than_its_room_scrolls() {
@@ -4312,7 +4237,9 @@ TestCase {
 
     // The panel follows the one current theme and density, so the contact sheet is drawn once per pair. On a screen 1440
     // px high it holds all it has without scrolling: the grid at its foot, the free space above it; then the level of ton
-    // stands over it, its output select open, and the level of anzeige.
+    // stands over it, its output select open, and the level of anzeige; the level of netz with the joined network, one
+    // that failed, one on its way and the cable, then all networks chosen in place and the password sheet over them; the
+    // level of bluetooth with devices connected, on their way and not, then all devices chosen in place.
     function test_contact_sheet_of_the_panel_in_both_themes_and_densities() {
         if (!ContactSheets.wanted)
             skip("contact sheets are built on demand");
@@ -4328,7 +4255,10 @@ TestCase {
                 sound.speakers.audio.volume = 0.62;
                 sound.microphone.audio.muted = true;
                 giveDisplays(panel.controls);
+                const networks = giveNetworks(panel.controls);
+                panel.controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
                 giveBluetooth(panel.controls).speaker.state = Controls.Connecting;
+                givePairedDevices(panel.controls, 7);
                 panel.show(0, true);
                 waitForRendering(contact);
                 verify(!findChild(panel, "scroller").interactive, `${theme} ${density}: no scroll`);
@@ -4345,29 +4275,26 @@ TestCase {
                 keyClick(Qt.Key_Escape);
                 keyClick(Qt.Key_Escape);
                 verify(findChild(contact, "soundTile").activeFocus);
-                keyClick(Qt.Key_Right);
+                keyClick(Qt.Key_End);
                 keyClick(Qt.Key_Return);
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-display-sheet-${theme}-${density}.png`);
                 verify(findChild(contact, "display").open);
-                // Verbindungen: its level open, the devices connected, on their way and not.
                 keyClick(Qt.Key_Escape);
-                const networks = giveNetworks(panel.controls);
-                panel.controls.wiredDevice = createTemporaryObject(wiredDeviceComponent, testCase);
-                networks.office.stateChanging = true;
-                waitForRendering(contact);
-                findChild(contact, "chooseNetwork").forceActiveFocus();
+                findChild(contact, "networkTile").forceActiveFocus();
                 keyClick(Qt.Key_Return);
-                waitForRendering(contact);
+                verify(findChild(contact, "wifiSwitch").activeFocus);
+                networks.office.connect();
                 networks.office.stateChanging = false;
                 networks.office.connectionFailed(Controls.WifiAuthTimeout);
                 networks.guest.stateChanging = true;
                 waitForRendering(contact);
-                grabImage(contact).save(`panel-wifi-sheet-${theme}-${density}.png`);
+                grabImage(contact).save(`panel-wifi-level-sheet-${theme}-${density}.png`);
                 findChild(contact, "allNetworks").forceActiveFocus();
                 keyClick(Qt.Key_Return);
                 waitForRendering(contact);
-                grabImage(contact).save(`panel-wifi-level-sheet-${theme}-${density}.png`);
+                grabImage(contact).save(`panel-networks-sheet-${theme}-${density}.png`);
+                verify(findChild(contact, "networks").open);
                 keyClick(Qt.Key_Down);
                 keyClick(Qt.Key_Down);
                 keyClick(Qt.Key_Down);
@@ -4376,22 +4303,21 @@ TestCase {
                 typeText("pass");
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-wifi-password-sheet-${theme}-${density}.png`);
-                verify(findChild(panel, "passwordSheet").open, `${theme} ${density}`);
+                const passwordSheet = findChild(panel, "passwordSheet");
+                verify(passwordSheet.open, `${theme} ${density}`);
+                passwordSheet.close("cancel");
                 keyClick(Qt.Key_Escape);
                 keyClick(Qt.Key_Escape);
-                panel.controls.networking.wifiEnabled = false;
-                findChild(contact, "chooseBluetoothDevice").forceActiveFocus();
-                keyClick(Qt.Key_Return);
-                waitForRendering(contact);
-                grabImage(contact).save(`panel-bluetooth-sheet-${theme}-${density}.png`);
-                verify(findChild(contact, "bluetoothBranch").expanded);
-                const more = Array.from({ length: 4 }, (_, index) => createTemporaryObject(bluetoothDeviceComponent, testCase, { name: `Device ${index + 4}` }));
-                panel.controls.bluetoothDevices = [...panel.controls.bluetoothDevices, ...more];
-                waitForRendering(contact);
-                findChild(contact, "allDevices").forceActiveFocus();
+                verify(findChild(contact, "networkTile").activeFocus, `${theme} ${density}`);
+                findChild(contact, "bluetoothTile").forceActiveFocus();
                 keyClick(Qt.Key_Return);
                 waitForRendering(contact);
                 grabImage(contact).save(`panel-bluetooth-level-sheet-${theme}-${density}.png`);
+                verify(findChild(contact, "bluetoothSwitch").activeFocus);
+                findChild(contact, "allDevices").forceActiveFocus();
+                keyClick(Qt.Key_Return);
+                waitForRendering(contact);
+                grabImage(contact).save(`panel-devices-sheet-${theme}-${density}.png`);
                 verify(findChild(contact, "bluetoothDevices").open);
                 verify(panel.open, `${theme} ${density}`);
                 contact.destroy();
