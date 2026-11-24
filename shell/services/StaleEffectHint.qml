@@ -33,5 +33,4 @@ QtObject {
     }
 
     onDueChanged: showWhenDue()
-    Component.onCompleted: showWhenDue()
 }

@@ -320,7 +320,8 @@ configuration does.
   inside a running rekta session, `systemctl --user restart rekta-shell` picks
   it up at once. KWin keeps the rekta effects it loaded until the next login;
   meanwhile the shell offers only what the running effects can do (the Start's
-  "fenster" says "nach neuer anmeldung") and names the older effect once in its
+  "fenster" says "nach neuer anmeldung"), says so once per start in a toast
+  whose "abmelden" opens the session bar, and names the older effect in its
   journal (`FadeBackEffect:`).
 - **Go back to an earlier version:** revert the `flake.lock` change and switch
   again, or `nixos-rebuild switch --rollback`, or boot an earlier generation.
