@@ -1,5 +1,5 @@
 Name:           rekta-shell
-Version:        0.1.5^20261123.1951git1b45490
+Version:        0.1.5^20261124.2041git23f7060
 # A snapshot's Version is base^date.timegithash (Fedora's post-release snapshot); the git tag spells it base+date.time.hash
 %global tag_version %(echo %{version} | tr '^' + | sed 's/git/./')
 # The build directory and tarball keep to characters QUrl leaves alone: it encodes the "^" of a snapshot, so a path holding one no longer names the file
@@ -180,6 +180,8 @@ QMLTESTRUNNER=%{_qt6_bindir}/qmltestrunner $src/tests/run-qml-tests.sh $src
 %{_datadir}/wallpapers/rekta-sky/
 
 %changelog
+* Tue Nov 24 2026 rekta-shell maintainers - 0.1.5^20261124.2041git23f7060-1
+- Release 0.1.5+20261124.2041.23f7060
 * Mon Nov 23 2026 rekta-shell maintainers - 0.1.5^20261123.1951git1b45490-1
 - Release 0.1.5+20261123.1951.1b45490
 * Sun Nov 22 2026 rekta-shell maintainers - 0.1.5^20261122.1913gitacb7e3b-1
