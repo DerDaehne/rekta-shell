@@ -2886,7 +2886,7 @@ TestCase {
         compare(battery.font.weight, Tokens.fontWeightMedium, "a number to read as data");
         verify(!findChild(rows[1], "battery").visible, "where the device tells none");
         const end = findChild(rows[0], "end");
-        compare(end.x + end.width, rows[0].width - Tokens.spaceM, "state and battery at the row's end");
+        compare(end.x + end.width, rows[0].width, "state and battery at the row's end");
         bluetooth.adapter.enabled = false;
         verify(!list.visible, "off, the devices are gone");
     }
@@ -2909,6 +2909,39 @@ TestCase {
         verify(!all.open);
         verify(control("allDevices").activeFocus, "back on the row that opened it");
         verify(level.open);
+    }
+
+    // `.rk-rows` and `.rk-in-back` have no room before or after (rekta.css:77–78, :1131–1135): the rows, the switch, the
+    // back rows and the list of all start at the content's edge, and the rows end at it.
+    function test_the_rows_of_netz_and_bluetooth_and_their_lists_of_all_stand_at_the_contents_edges_data() {
+        return [
+            { tag: "netz", level: "network", toggle: "wifiSwitch", list: "networkRows", opener: "allNetworks", all: "networks" },
+            { tag: "bluetooth", level: "bluetooth", toggle: "bluetoothSwitch", list: "deviceRows", opener: "allDevices", all: "bluetoothDevices" }
+        ];
+    }
+
+    function test_the_rows_of_netz_and_bluetooth_and_their_lists_of_all_stand_at_the_contents_edges(data) {
+        giveNetworks(controls);
+        giveBluetooth(controls);
+        givePairedDevices(controls, 7);
+        const level = showLevel(data.level);
+        const ground = findChild(side, "ground");
+        const left = item => item.mapToItem(ground, 0, 0).x;
+        const right = item => item.mapToItem(ground, item.width, 0).x;
+        const contentRight = Tokens.spaceM + side.contentWidth;
+        const back = findChild(level, "back");
+        compare(left(back), Tokens.spaceM);
+        compare(left(control(data.toggle)), Tokens.spaceM, "the switch");
+        for (const row of rowsOf(data.list)) {
+            compare(left(findChild(row, "label")), Tokens.spaceM, `${row.text}: its words at the edge`);
+            compare(right(row), contentRight, `${row.text}: to the edge`);
+        }
+        mouseClick(control(data.opener));
+        waitForFrame(side);
+        const [allBack, ...allRows] = rowsOf(data.all);
+        compare(left(allBack), Tokens.spaceM, "the back row of the list of all");
+        for (const row of allRows)
+            compare(left(findChild(row, "label")), Tokens.spaceM, `${row.text} in the list of all: its words at the edge`);
     }
 
     function test_up_to_five_devices_have_no_alle_geräte_row() {

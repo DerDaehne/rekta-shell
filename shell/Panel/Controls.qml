@@ -684,6 +684,7 @@ Item {
 
                 objectName: "allNetworks"
                 visible: controls.ranked.length > controls.inlineNetworkLimit
+                inset: 0
                 text: "alle netze …"
                 opensLevel: true
                 activeFocusOnTab: true
@@ -768,6 +769,7 @@ Item {
 
                 objectName: "allDevices"
                 visible: controls.bluetoothDevices.length > controls.inlineDeviceLimit
+                inset: 0
                 text: "alle geräte …"
                 opensLevel: true
                 activeFocusOnTab: true
@@ -1097,6 +1099,7 @@ Item {
         readonly property string kinds: [network.security !== Controls.Open ? "gesichert" : "", network.known ? "bekannt" : ""].filter(part => part !== "").join(" · ")
         readonly property string strength: `${Math.round(network.signalStrength * 100)}%`
 
+        inset: 0
         text: network.name
         activeFocusOnTab: true
         Accessible.name: [text, cause, waits ? "wartet" : "", network.connected ? "verbunden" : kinds, `signal ${strength}`].filter(part => part !== "").join(", ")
@@ -1151,8 +1154,9 @@ Item {
         }
     }
 
-    // The rows of a list in a level, one under another as a menu's rows: a press on one, or Enter or Space on it, says so
-    // in `activated`; a held key acts once.
+    // The rows of a list in a level, one under another as a menu's rows, on the panel's ground without room before or
+    // after them (`.rk-rows`, rekta.css:77–78): a press on one, or Enter or Space on it, says so in `activated`; a held
+    // key acts once.
     component ListRows: Column {
         id: listRows
 
@@ -1182,6 +1186,7 @@ Item {
     }
 
     component PairItem: MenuItem {
+        inset: 0
         text: "neues gerät koppeln"
         activeFocusOnTab: true
     }
@@ -1198,6 +1203,7 @@ Item {
         readonly property bool waits: controls.waiting(device)
         readonly property string battery: device.batteryAvailable ? `${Math.round(device.battery * 100)}%` : ""
 
+        inset: 0
         text: device.name
         activeFocusOnTab: true
         Accessible.name: [text, stateTag.word, battery !== "" ? `akku ${battery}` : ""].filter(part => part !== "").join(", ")

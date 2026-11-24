@@ -90,11 +90,13 @@ Column {
         event.accepted = true;
     }
 
+    // `.rk-in-back { padding: 0 }` (rekta.css:1131–1135): at the edge.
     MenuItem {
         id: back
 
         objectName: "back"
         isBack: true
+        inset: 0
         text: `zurück · ${level.name}`
         activeFocusOnTab: true
     }
