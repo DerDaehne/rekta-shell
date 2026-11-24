@@ -2939,7 +2939,7 @@ TestCase {
         mouseClick(control(data.opener));
         waitForFrame(side);
         const [allBack, ...allRows] = rowsOf(data.all);
-        compare(left(allBack), Tokens.spaceM, "the back row of the list of all");
+        compare(left(findChild(allBack, "chevron")), left(findChild(back, "chevron")), "the back row of the list of all, its chevron under the level's");
         for (const row of allRows)
             compare(left(findChild(row, "label")), Tokens.spaceM, `${row.text} in the list of all: its words at the edge`);
     }
