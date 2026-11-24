@@ -4,7 +4,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import RektaShell.DBus
 import KeyMap
 import Rekta
 import org.kde.plasma.workspace.dbus as DBus
@@ -20,6 +19,8 @@ PanelWindow {
 
     required property Launcher launcher
     required property ShellScreen primaryScreen
+    // KWin's fade-back, which fades the surface and its blur as the sheet tells it.
+    required property FadeBackEffect fadeBack
     readonly property alias hold: metaHold
 
     // `?` asked for the list.
@@ -60,11 +61,7 @@ PanelWindow {
         Keys.onPressed: event => KeyLayers.dispatch(event, Window.activeFocusItem)
         surfaceFades: true
         onAsked: surface.asked()
-        onSurfaceOpacityChanged: kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setSheetOpacity", [surface.WlrLayershell.namespace, map.surfaceOpacity], "sd")
-    }
-
-    DBusConnection {
-        id: kwin
+        onSurfaceOpacityChanged: surface.fadeBack.tell("setSheetOpacity", [surface.WlrLayershell.namespace, map.surfaceOpacity], "sd")
     }
 
     MetaHold {

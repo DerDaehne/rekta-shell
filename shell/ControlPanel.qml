@@ -38,6 +38,8 @@ PanelWindow {
     required property Media media
     // NetworkManager runs; Networking is read only then (SystemState has the one watcher).
     required property bool networkManagerRunning
+    // KWin's fade-back, which holds the right edge for a finger only while the panel is away.
+    required property FadeBackEffect fadeBack
     // The screen it opens on, null once that one has gone; the panel hides meanwhile.
     property ShellScreen shownOn: primaryScreen
     readonly property alias doNotDisturb: controls.doNotDisturb
@@ -95,7 +97,7 @@ PanelWindow {
 
     // KWin holds the right edge for a finger that draws the panel in only while the panel is away.
     function tellKWin() {
-        kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setPanelShown", [panel.open], "b");
+        fadeBack.tell("setPanelShown", [panel.open], "b");
     }
 
     function setDark(on: bool) {

@@ -4,7 +4,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import RektaShell.DBus
 import Rekta
 import Session
 import Settings
@@ -26,6 +25,8 @@ PanelWindow {
 
     required property Launcher launcher
     required property ShellScreen primaryScreen
+    // KWin's fade-back, which fades the surface and its blur as the sheet tells it.
+    required property FadeBackEffect fadeBack
     // Says why the user was not switched.
     required property Toaster toaster
     // As the session is left for another user, see SessionActions.
@@ -68,11 +69,7 @@ PanelWindow {
         focus: true
         actions: session.actions
         onClosed: surface.gone()
-        onSurfaceOpacityChanged: kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setSheetOpacity", [surface.WlrLayershell.namespace, banner.surfaceOpacity], "sd")
-    }
-
-    DBusConnection {
-        id: kwin
+        onSurfaceOpacityChanged: surface.fadeBack.tell("setSheetOpacity", [surface.WlrLayershell.namespace, banner.surfaceOpacity], "sd")
     }
 
     SessionActions {

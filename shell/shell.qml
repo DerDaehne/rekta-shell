@@ -90,6 +90,12 @@ ShellRoot {
         id: primary
     }
 
+    FadeBackEffect {
+        id: fadeBackEffect
+
+        buildVersion: Quickshell.env("REKTA_BUILD_VERSION") ?? ""
+    }
+
     Commands {
         id: shellCommands
 
@@ -162,6 +168,7 @@ ShellRoot {
         topInset: systemBanner.zone
         arrived: splash.arrived
         toaster: toasts.toaster
+        fadeBack: fadeBackEffect
     }
 
     ControlPanel {
@@ -176,6 +183,7 @@ ShellRoot {
         notices: notifications.board
         media: music
         networkManagerRunning: systemState.networkManagerRunning
+        fadeBack: fadeBackEffect
 
         // Under the session banner the Start waits: asked now, KWin would hand it the banner's keyboard.
         onPanelClosed: {
@@ -190,6 +198,7 @@ ShellRoot {
 
         launcher: appLauncher
         primaryScreen: primary.screen
+        fadeBack: fadeBackEffect
         toaster: toasts.toaster
 
         // While the session is left, the surface leaving holds the keyboard; the Start asks again once that one goes.
@@ -296,6 +305,7 @@ ShellRoot {
 
         launcher: appLauncher
         primaryScreen: primary.screen
+        fadeBack: fadeBackEffect
 
         onAsked: {
             sidePanel.close();

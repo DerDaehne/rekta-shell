@@ -91,6 +91,7 @@ TestCase {
             height: testCase.height
             windows: [testCase.fakeWindow("konsole: build", 10, "org.kde.konsole"), testCase.fakeWindow("a window", 20, "")]
             apps: testCase.installed
+            kwinWindowMenu: true
             pinFile: file
             pinned: Rules.pinnedTiles(file.list, id => testCase.installed.some(app => app.id === id)).map(tile => Object.assign({}, testCase.installed.find(app => app.id === tile.id), tile))
         }
@@ -503,6 +504,20 @@ TestCase {
         rightClick(runningTile("a window"), 30, 40);
         verify(windowRow().hasOnward, "the chevron pointing on");
         verify(!windowRow().disabled);
+    }
+
+    function test_fenster_stays_greyed_says_to_log_in_anew_and_asks_nothing_while_kwins_fade_back_lacks_the_window_menu() {
+        start.kwinWindowMenu = false;
+        openNow();
+        const spy = createTemporaryObject(spyComponent, testCase, { target: start, signalName: "windowMenuAsked" });
+        rightClick(runningTile("konsole: build"), 30, 40);
+        compare(rowsShown(), ["lösen", "fenster (nach neuer anmeldung)"]);
+        verify(windowRow().disabled);
+        choose("fenster");
+        windowRow().forceActiveFocus();
+        keyClick(Qt.Key_Return);
+        compare(spy.count, 0, "neither the pointer nor a key asks KWin");
+        verify(menu.open, "the menu stays, as for any disabled row");
     }
 
     function test_fenster_closes_the_menu_and_asks_for_kwins_menu_for_that_window_where_the_menu_stood() {

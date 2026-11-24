@@ -23,6 +23,8 @@ PanelWindow {
     // What plays: its line stands on its app's tile.
     required property Media media
     required property ShellScreen primaryScreen
+    // KWin's fade-back, which the Start tells where its windows stand and asks for KWin's window menu.
+    required property FadeBackEffect fadeBack
     // The room a banner keeps clear at the top: the Start begins below it, as the windows do.
     property real topInset: 0
     // The splash has gone after login (SplashEnd.arrived); until then the Start does not open on its own.
@@ -154,6 +156,7 @@ PanelWindow {
         lines: Rules.playingLines(surface.media.player, surface.media.appId)
         board: surface.notices
         playerChoice: surface.media.choice
+        kwinWindowMenu: surface.fadeBack.methods.includes("showWindowMenu")
         preview: Component {
             WindowPreview {
                 id: windowPreview
@@ -170,10 +173,10 @@ PanelWindow {
             if (!place.holdsKeyboard && place.shown)
                 surface.confirmingHandOver = true;
         }
-        onWindowsAt: (time, pace) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setStartAt", [time, pace], "di")
-        onWindowsOutAt: (time, pace) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "setStartOutAt", [time, pace], "di")
+        onWindowsAt: (time, pace) => surface.fadeBack.tell("setStartAt", [time, pace], "di")
+        onWindowsOutAt: (time, pace) => surface.fadeBack.tell("setStartOutAt", [time, pace], "di")
         // KWin places its menu on the screens as a whole; the Start covers its screen.
-        onWindowMenuAsked: (window, at) => kwin.call("org.kde.KWin", "/RektaFadeBack", "org.rekta.FadeBack", "showWindowMenu", [window.uuid, Math.round(surface.primaryScreen.x + at.x), Math.round(surface.primaryScreen.y + at.y)], "sii")
+        onWindowMenuAsked: (window, at) => surface.fadeBack.tell("showWindowMenu", [window.uuid, Math.round(surface.primaryScreen.x + at.x), Math.round(surface.primaryScreen.y + at.y)], "sii")
         onKeyboardTaken: surface.keyboardTaken()
     }
 

@@ -48,6 +48,8 @@ FocusScope {
     property var menuApp: null
     // The window of the menu's tile in "läuft", null on an app's tile.
     property var menuWindow: null
+    // KWin answers windowMenuAsked: the fade-back it runs has the window menu (one from before an update may not).
+    property bool kwinWindowMenu: false
     // Where the menu's tile stood as the menu opened; a scroll that moves it closes the menu.
     property point menuTileAt
     // The scrollers that hold the menu's tile, followed while the menu is open.
@@ -2576,13 +2578,15 @@ FocusScope {
             disabledReason: start.menuBlocked()
         }
 
-        // KWin's own menu for a running window, which stands in place of this one.
+        // KWin's own menu for a running window, which stands in place of this one. A fade-back KWin loaded before an
+        // update may lack it until the next login; the row then stays and says why (states.md:168–170).
         MenuItem {
             id: windowRow
 
             objectName: "window"
             text: "fenster"
             opensLevel: true
+            disabledReason: start.kwinWindowMenu ? "" : "nach neuer anmeldung"
             visible: start.menuWindow !== null
         }
 
