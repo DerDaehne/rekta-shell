@@ -254,6 +254,18 @@ ShellRoot {
         }
     }
 
+    // KWin still runs another fade-back after an update: "abmelden" opens the banner as KDE's prompt to log out does.
+    StaleEffectHint {
+        toaster: toasts.toaster
+        stale: fadeBackEffect.stale
+        quiet: notifications.quiet
+
+        onSessionAsked: focusOn => {
+            sidePanel.close();
+            sessionBanner.show(focusOn);
+        }
+    }
+
     NoticeCount {
         sessionDesktop: Quickshell.env("XDG_SESSION_DESKTOP") ?? ""
         count: notifications.board.unseen

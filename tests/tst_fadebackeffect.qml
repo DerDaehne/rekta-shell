@@ -119,6 +119,7 @@ TestCase {
         const running = effect();
         tryVerify(() => asked.includes("version"));
         roundTrip(running);
+        verify(!running.stale);
     }
 
     function test_an_older_effect_without_window_menu_or_version_is_named_once_and_offers_no_window_menu() {
@@ -128,6 +129,7 @@ TestCase {
         tryVerify(() => running.methods.length > 0);
         compare(running.methods, ["setStartAt"]);
         verify(!running.methods.includes("showWindowMenu"));
+        verify(running.stale);
     }
 
     function test_an_effect_of_another_version_is_named_once_with_both_versions() {
@@ -168,6 +170,19 @@ TestCase {
         standIn.emitSignal("/RektaFadeBack", "org.rekta.FadeBack", "loaded", [], "");
         tryVerify(() => asked.filter(member => member === "version").length === 2);
         roundTrip(running);
+    }
+
+    function test_an_effect_that_comes_anew_of_the_shells_own_version_is_no_longer_stale() {
+        effectVersion = "0.1.5+20261123.1951.1b45490";
+        const standIn = kwin(currentXml);
+        ignoreWarning(staleLine("rekta-fadeback 0.1.5+20261123.1951.1b45490"));
+        const running = effect();
+        tryVerify(() => running.stale);
+        effectVersion = build;
+        standIn.emitSignal("/RektaFadeBack", "org.rekta.FadeBack", "loaded", [], "");
+        tryVerify(() => asked.filter(member => member === "version").length === 2);
+        roundTrip(running);
+        verify(!running.stale);
     }
 
     function test_a_failing_call_is_named_once_per_method_until_the_effect_comes_anew() {

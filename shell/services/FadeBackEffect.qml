@@ -12,6 +12,8 @@ DBusConnection {
     required property string buildVersion
     // The methods of the effect KWin runs; none until it has answered, or without the effect.
     property list<string> methods: []
+    // KWin runs another fade-back than the one this build gave: none, an older one or one of another version.
+    property bool stale: false
     // The methods whose failure the journal has, until an effect comes anew.
     property var failed: ({})
 
@@ -26,6 +28,7 @@ DBusConnection {
 
     function learn() {
         failed = {};
+        stale = false;
         call("org.kde.KWin", "/RektaFadeBack", "org.freedesktop.DBus.Introspectable", "Introspect", [], "", (error, values) => {
             const found = effect.methodsIn(effect.textOf(values));
             effect.methods = found ?? [];
@@ -44,6 +47,7 @@ DBusConnection {
     }
 
     function warnStale(running: string) {
+        stale = true;
         console.warn(`FadeBackEffect: KWin runs ${running}, the shell is ${buildVersion || "a checkout"}: log out and back in to load the shell's`);
     }
 
