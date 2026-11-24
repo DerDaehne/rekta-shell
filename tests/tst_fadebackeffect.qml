@@ -49,17 +49,21 @@ TestCase {
         id: bus
     }
 
-    // KWin with its fade-back, as a stand-in on the private bus; setStartAt fails while failing is set.
+    // KWin with its fade-back, as a stand-in on the private bus; setStartAt fails while failing is set, and version while
+    // versionGone is, as when the effect goes between being introspected and asked.
     Component {
         id: kwinComponent
 
         DBusConnection {
             property bool failing: false
+            property bool versionGone: false
 
             handler: (path, interfaceName, member, args) => {
                 testCase.asked.push(member);
                 if (member === "setStartAt" && failing)
                     throw new Error("the windows stand still");
+                if (member === "version" && versionGone)
+                    throw new Error("the effect has gone");
                 return member === "version" ? testCase.effectVersion : undefined;
             }
         }
@@ -184,6 +188,27 @@ TestCase {
         tryVerify(() => asked.filter(member => member === "version").length === 3);
         ignoreWarning(line);
         running.tell("setStartAt", [360, 1], "di");
+        roundTrip(running);
+    }
+
+    function test_a_method_that_answered_before_is_named_once_it_fails() {
+        const standIn = kwin(currentXml);
+        const running = effect();
+        tryVerify(() => asked.includes("version"));
+        running.tell("setStartAt", [120, 1], "di");
+        roundTrip(running);
+        standIn.failing = true;
+        ignoreWarning("FadeBackEffect: setStartAt failed: org.freedesktop.DBus.Error.Failed: the windows stand still");
+        running.tell("setStartAt", [240, 1], "di");
+        roundTrip(running);
+    }
+
+    function test_an_effect_gone_before_it_names_its_version_is_named_of_an_unknown_version() {
+        const standIn = kwin(currentXml);
+        standIn.versionGone = true;
+        ignoreWarning(staleLine("a rekta-fadeback of an unknown version"));
+        const running = effect();
+        tryVerify(() => asked.includes("version"));
         roundTrip(running);
     }
 }

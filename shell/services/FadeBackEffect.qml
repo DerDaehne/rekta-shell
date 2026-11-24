@@ -40,7 +40,7 @@ DBusConnection {
     // version and passes unseen here; missing methods still show. Carry the commit into KWin's start if that matters.
     function compareVersion(version: string) {
         if (buildVersion !== "" && version !== buildVersion)
-            warnStale(`rekta-fadeback ${version}`);
+            warnStale(version !== "" ? `rekta-fadeback ${version}` : "a rekta-fadeback of an unknown version");
     }
 
     function warnStale(running: string) {
