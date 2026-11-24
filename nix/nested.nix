@@ -5,6 +5,10 @@
   symlinkJoin,
   coreutils,
   gnugrep,
+  jq,
+  util-linux,
+  systemd,
+  at-spi2-core,
   kdePackages,
   dbus,
   pipewire,
@@ -59,11 +63,21 @@ in
 # does anything it starts (portals, wallets, FUSE mounts) reach the desktop.
 writeShellApplication {
   name = "rekta-nested";
-  runtimeInputs = [ coreutils ];
+  runtimeInputs = [
+    coreutils
+    jq
+    util-linux
+    systemd
+  ];
   text = ''
     usage() {
       echo "usage: rekta-nested [--window] [--outputs N] [--size WIDTHxHEIGHT] [--background solid|rekta] [--touch-edges]" >&2
+      echo "                    [--state FILE [--wait-ready] [--timeout SECONDS]] [--a11y]" >&2
       echo "  --touch-edges  let KWin take touch screen edges (it then also runs global shortcuts, on the session's own bus)" >&2
+      echo "  --state FILE   keep the session's state as JSON in FILE for as long as the session runs" >&2
+      echo "  --wait-ready   run the session detached and return once its shell and effects stand (needs --state)" >&2
+      echo "  --timeout S    stop the session if it is not ready after S seconds (default 120)" >&2
+      echo "  --a11y         add an accessibility bus of the session's own, for AT-SPI probes" >&2
       exit 2
     }
 
@@ -73,6 +87,11 @@ writeShellApplication {
     background=solid
     # Without global shortcuts KWin also installs no screen edge filter, so a finger at an edge never reaches an effect.
     global_shortcuts=(--no-global-shortcuts)
+    state=""
+    wait_ready=false
+    timeout=120
+    a11y=false
+    original_args=("$@")
     while [ $# -gt 0 ]; do
       case "$1" in
         --window) window=true; shift ;;
@@ -80,12 +99,33 @@ writeShellApplication {
         --size) size="''${2:?}"; shift 2 ;;
         --background) background="''${2:?}"; shift 2 ;;
         --touch-edges) global_shortcuts=(); shift ;;
+        --state) state="$(realpath -m "''${2:?}")"; shift 2 ;;
+        --wait-ready) wait_ready=true; shift ;;
+        --timeout) timeout="''${2:?}"; shift 2 ;;
+        --a11y) a11y=true; shift ;;
         *) usage ;;
       esac
     done
     [[ "$outputs" =~ ^[1-9]$ ]] || usage
     [[ "$size" =~ ^[0-9]+x[0-9]+$ ]] || usage
     [[ "$background" =~ ^(rekta|solid)$ ]] || usage
+    [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || usage
+    [ "$wait_ready" = false ] || [ -n "$state" ] || usage
+
+    # The session's script runs on in the background, so its PID, and with it every process's, comes from the state file
+    # and not from a shell's `&` (the Nix launcher puts processes between).
+    detach_and_wait() {
+      rm -f "$state"
+      REKTA_NESTED_DETACHED=1 setsid "$0" "''${original_args[@]}" >"$state.log" 2>&1 </dev/null &
+      local session_pid=$!
+      until [ "$(jq -r .ready "$state" 2>/dev/null)" = true ]; do
+        kill -0 "$session_pid" 2>/dev/null || { tail -n 20 "$state.log" >&2; exit 1; }
+        sleep 0.2
+      done
+      cat "$state"
+      exit 0
+    }
+    [ "$wait_ready" = false ] || [ -n "''${REKTA_NESTED_DETACHED:-}" ] || detach_and_wait
 
     # The working tree's shell and KWin effects when run from the repository (Quickshell reloads the shell on every
     # change), else the packages'. The compiled effects always come from the package.
@@ -116,10 +156,14 @@ writeShellApplication {
     }
     cleanup() {
       stop "''${kwin:-}"
+      for shell_pid in $(quickshell_pids || true); do stop "$shell_pid"; done
+      stop "''${a11y_launcher_pid:-}"
+      stop "''${a11y_registry_pid:-}"
       stop "''${wireplumber_pid:-}"
       stop "''${pipewire_pid:-}"
       stop "''${system_bus_pid:-}"
       stop "''${bus_pid:-}"
+      [ -z "$state" ] || rm -f "$state" "$state.tmp"
       rm -rf "$home"
     }
     trap cleanup EXIT
@@ -172,6 +216,76 @@ writeShellApplication {
     system_bus_pid="''${system_bus[1]}"
     session+=(DBUS_SESSION_BUS_ADDRESS="''${bus[0]}" DBUS_SYSTEM_BUS_ADDRESS="''${system_bus[0]}")
 
+    # What the state file reports; the shell and the effects are ready once all of these stand.
+    rekta_effects='["rekta-fadeback","rekta-metahold","rekta-turnstile"]'
+    session_bus() { busctl --address="''${bus[0]}" --json=short "$@" 2>/dev/null; }
+
+    # Quickshell leaves KWin's process tree, but registers by PID in the session's own runtime directory.
+    quickshell_pids() {
+      local entry
+      for entry in "$home"/runtime/quickshell/by-pid/*; do
+        [ -e "$entry" ] && basename "$entry"
+      done
+      return 0
+    }
+
+    ipc_functions() {
+      env -i "''${session[@]}" ${rekta-shell.quickshell}/bin/quickshell ipc --pid "$1" show 2>/dev/null |
+        jq -Rnc 'reduce inputs as $line ({target: null, ipc: {}};
+          if ($line | startswith("target ")) then .target = ($line | ltrimstr("target ")) | .ipc[.target] = []
+          elif ($line | test("^\\s+function ")) then .ipc[.target] += [$line | sub("^\\s+function "; "")]
+          else . end) | .ipc'
+    }
+
+    probe_session() {
+      shell_pid=""
+      effects='[]'
+      ipc='{}'
+      actions='[]'
+      shell_pid="$(quickshell_pids | head -n 1)"
+      [ -n "$shell_pid" ] || return 0
+      effects="$(session_bus get-property org.kde.KWin /Effects org.kde.kwin.Effects loadedEffects |
+        jq -c '[.data[] | select(startswith("rekta-"))]')" || effects='[]'
+      ipc="$(ipc_functions "$shell_pid")" || ipc='{}'
+      actions="$(session_bus call rekta.Actions /rekta/Actions rekta.Actions1 ListActions |
+        jq -c '[.data[0][] | .[0]]')" || actions='[]'
+      ready="$(jq -n --argjson want "$rekta_effects" --argjson e "$effects" --argjson i "$ipc" --argjson a "$actions" \
+        '($want - $e | length == 0) and ($i | length > 0) and ($a | length > 0)')"
+    }
+
+    write_state() {
+      jq -n --argjson ready "$ready" --arg home "$home" --arg socket "$socket" --arg a11y "$a11y_address" \
+        --argjson nested "$$" --argjson kwin "''${kwin:-null}" --argjson quickshell "''${shell_pid:-null}" \
+        --argjson pipewire "''${pipewire_pid:-null}" --argjson wireplumber "''${wireplumber_pid:-null}" \
+        --argjson session_bus "$bus_pid" --argjson system_bus "$system_bus_pid" \
+        --argjson a11y_launcher "''${a11y_launcher_pid:-null}" --argjson a11y_registry "''${a11y_registry_pid:-null}" \
+        --arg session_address "''${bus[0]}" --arg system_address "''${system_bus[0]}" \
+        --argjson effects "$effects" --argjson ipc "$ipc" --argjson actions "$actions" '{
+          ready: $ready,
+          home: $home,
+          session_env: "\($home)/session.env",
+          sockets: {wayland: "\($home)/runtime/\($socket)", pipewire: "\($home)/runtime/pipewire-0"},
+          pids: {nested: $nested, kwin: $kwin, quickshell: $quickshell, pipewire: $pipewire, wireplumber: $wireplumber,
+                 session_bus: $session_bus, system_bus: $system_bus, a11y_launcher: $a11y_launcher, a11y_registry: $a11y_registry},
+          buses: {session: $session_address, system: $system_address, a11y: (if $a11y == "" then null else $a11y end)},
+          effects: $effects, ipc: $ipc, actions: $actions}' >"$state.tmp"
+      mv "$state.tmp" "$state"
+    }
+
+    # Writes the state until the shell and the effects stand; fails when KWin dies or the time is up.
+    publish_state() {
+      local deadline=$((SECONDS + timeout))
+      while :; do
+        ready=false
+        probe_session
+        write_state
+        [ "$ready" = false ] || return 0
+        kill -0 "$kwin" 2>/dev/null || return 1
+        [ "$SECONDS" -lt "$deadline" ] || { echo "rekta-nested: not ready after ''${timeout}s" >&2; return 1; }
+        sleep 0.5
+      done
+    }
+
     # The shell connects to PipeWire once, as it starts, so the socket has to be there before KWin starts the shell.
     env -i "''${session[@]}" pipewire &
     pipewire_pid=$!
@@ -182,6 +296,26 @@ writeShellApplication {
     # WirePlumber quits if PipeWire's socket is not there yet.
     env -i "''${session[@]}" wireplumber --profile nested &
     wireplumber_pid=$!
+
+    # A bus for AT-SPI of the session's own, in its runtime directory; the launcher tells clients its address on the
+    # session bus.
+    start_a11y() {
+      env -i "''${session[@]}" ${at-spi2-core}/libexec/at-spi-bus-launcher --launch-immediately &
+      a11y_launcher_pid=$!
+      for _ in {1..50}; do
+        a11y_address="$(session_bus call org.a11y.Bus /org/a11y/bus org.a11y.Bus GetAddress | jq -r '.data[0] // empty')"
+        [ -z "$a11y_address" ] || break
+        sleep 0.1
+      done
+      [ -n "$a11y_address" ] || return 1
+      env -i "''${session[@]}" ${at-spi2-core}/libexec/at-spi2-registryd &
+      a11y_registry_pid=$!
+    }
+    a11y_address=""
+    if [ "$a11y" = true ]; then
+      start_a11y || { echo "rekta-nested: no accessibility bus" >&2; exit 1; }
+      session+=(QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1)
+    fi
 
     # The Nix defaults, as the module's package carries them; the user's own settings live in the session's HOME.
     printf '{"background":"%s"}\n' "$background" >"$home/defaults.json"
@@ -202,6 +336,7 @@ writeShellApplication {
       --no-lockscreen "''${global_shortcuts[@]}" --no-kactivities \
       -- "$launcher" &
     kwin=$!
+    [ -z "$state" ] || publish_state || exit 1
     wait "$kwin"
   '';
 }
