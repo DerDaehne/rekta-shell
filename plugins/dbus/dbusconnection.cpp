@@ -128,12 +128,14 @@ public:
         }
         if (message.interface().isEmpty() || message.interface().startsWith(u"org.freedesktop.DBus."))
             return false;
-        connection.send(reply(message));
+        if (const std::optional<QDBusMessage> answer = reply(message, connection))
+            connection.send(*answer);
         return true;
     }
 
 private:
-    QDBusMessage reply(const QDBusMessage &message) const
+    // Nothing when the handler answers later: it then sends the answer itself.
+    std::optional<QDBusMessage> reply(const QDBusMessage &message, const QDBusConnection &connection) const
     {
         const auto interface = m_interfaces.constFind(message.interface());
         if (interface == m_interfaces.cend())
@@ -146,8 +148,14 @@ private:
         if (message.signature() != method->in)
             return message.createErrorReply(QDBusError::InvalidArgs,
                                             u"%1 takes (%2), not (%3)"_s.arg(message.member(), method->in, message.signature()));
-        const Marshalling::Encoded encoded =
-            m_owner->ask(message.path(), message.interface(), message.member(), Marshalling::decode(message.arguments()), method->out);
+        const auto later = [message, connection](const Marshalling::Encoded &encoded) {
+            connection.send(encoded.error.isEmpty() ? message.createReply(encoded.arguments)
+                                                    : message.createErrorReply(QDBusError::Failed, encoded.error));
+        };
+        const Marshalling::Encoded encoded = m_owner->ask(message.path(), message.interface(), message.member(),
+                                                          Marshalling::decode(message.arguments()), method->out, later);
+        if (encoded.deferred)
+            return std::nullopt;
         if (!encoded.error.isEmpty())
             return message.createErrorReply(QDBusError::Failed, encoded.error);
         return message.createReply(encoded.arguments);
@@ -274,7 +282,8 @@ void DBusConnection::call(const QString &service,
                           const QString &method,
                           const QJSValue &args,
                           const QString &signature,
-                          const QJSValue &callback)
+                          const QJSValue &callback,
+                          int timeoutMs)
 {
     const Marshalling::Encoded encoded = Marshalling::encode(args.toVariant(QJSValue::ConvertJSObjects).toList(), signature);
     if (!encoded.error.isEmpty()) {
@@ -288,7 +297,7 @@ void DBusConnection::call(const QString &service,
     }
     QDBusMessage message = QDBusMessage::createMethodCall(service, path, interfaceName, method);
     message.setArguments(encoded.arguments);
-    auto *watcher = new QDBusPendingCallWatcher(bus.asyncCall(message), this);
+    auto *watcher = new QDBusPendingCallWatcher(bus.asyncCall(message, timeoutMs), this);
     connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, callback](QDBusPendingCallWatcher *finished) {
         finished->deleteLater();
         const QDBusMessage reply = finished->reply();
@@ -348,12 +357,18 @@ Marshalling::Encoded DBusConnection::ask(const QString &path,
                                          const QString &interfaceName,
                                          const QString &member,
                                          const QVariantList &args,
-                                         const QString &signature)
+                                         const QString &signature,
+                                         const Responder::Answer &later)
 {
     QJSEngine *engine = qjsEngine(this);
     if (!engine || !m_handler.isCallable())
         return {{}, u"no handler answers %1"_s.arg(member)};
-    const QJSValue result = m_handler.call({path, interfaceName, member, engine->toScriptValue(args)});
+    auto *responder = later ? new Responder(later, signature, this) : nullptr;
+    QJSValue handle = responder ? engine->newQObject(responder) : QJSValue();
+    const QJSValue result = m_handler.call({path, interfaceName, member, engine->toScriptValue(args), handle});
+    if (responder && !result.isError() && result.toQObject() == responder)
+        return {{}, {}, true};
+    delete responder;
     if (result.isError()) {
         // An empty text would read as success to every caller, so an Error thrown without a message still needs one.
         const QString message = result.property(u"message"_s).toString();
@@ -376,4 +391,24 @@ bool DBusConnection::emitSignal(const QString &path,
     QDBusMessage message = QDBusMessage::createSignal(path, interfaceName, member);
     message.setArguments(encoded.arguments);
     return connection().send(message);
+}
+
+Responder::Responder(Answer answer, QString signature, QObject *parent)
+    : QObject(parent)
+    , m_answer(std::move(answer))
+    , m_signature(std::move(signature))
+{
+}
+
+void Responder::send(const QJSValue &error, const QJSValue &value)
+{
+    if (!m_answer)
+        return;
+    const Answer answer = std::exchange(m_answer, nullptr);
+    const QString text = error.isNull() || error.isUndefined() ? QString() : error.toString();
+    if (!text.isEmpty())
+        answer({{}, text});
+    else
+        answer(Marshalling::encode(replyValues(value, m_signature), m_signature));
+    deleteLater();
 }

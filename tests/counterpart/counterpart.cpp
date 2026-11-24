@@ -296,10 +296,12 @@ public:
             m_held.append(message);
         else if (message.member() == u"ListActions"_s)
             connection.send(message.createReply(QVariant::fromValue(m_rows)));
+        else if (m_holdInvokes)
+            m_heldInvokes.append(message);
         else if (m_failInvokes)
-            connection.send(message.createErrorReply(u"org.rekta.Counterpart.Failed"_s, u"the provider failed"_s));
+            connection.send(message.createErrorReply(u"org.rekta.Counterpart.Failed"_s, m_failMessage));
         else
-            connection.send(message.createReply(QVariant(QVariantMap())));
+            connection.send(message.createReply(QVariant(m_invokeAnswer)));
         return true;
     }
 
@@ -315,6 +317,27 @@ public:
     void setFailInvokes(bool fail)
     {
         m_failInvokes = fail;
+    }
+
+    void setFailMessage(const QString &message)
+    {
+        m_failMessage = message;
+    }
+
+    void setInvokeAnswer(const QVariantMap &answer)
+    {
+        m_invokeAnswer = answer;
+    }
+
+    void setHoldInvokes(bool hold)
+    {
+        m_holdInvokes = hold;
+    }
+
+    void answerHeldInvokes(const QDBusConnection &connection)
+    {
+        for (const QDBusMessage &message : std::exchange(m_heldInvokes, {}))
+            connection.send(message.createReply(QVariant(m_invokeAnswer)));
     }
 
     // Answers the ListActions calls held back, with the actions as they are now.
@@ -333,8 +356,12 @@ private:
     Counterpart *m_counterpart;
     QList<ActionRow> m_rows;
     bool m_failInvokes = false;
+    QString m_failMessage = u"the provider failed"_s;
     bool m_hold = false;
     QList<QDBusMessage> m_held;
+    QVariantMap m_invokeAnswer;
+    bool m_holdInvokes = false;
+    QList<QDBusMessage> m_heldInvokes;
 };
 
 void Counterpart::releaseName(const QString &name)
@@ -362,6 +389,30 @@ void Counterpart::failInvokes(bool fail)
 {
     if (m_provider)
         m_provider->setFailInvokes(fail);
+}
+
+void Counterpart::failInvokesWithMessage(const QString &message)
+{
+    if (m_provider)
+        m_provider->setFailMessage(message);
+}
+
+void Counterpart::answerInvokesWith(const QVariantMap &answer)
+{
+    if (m_provider)
+        m_provider->setInvokeAnswer(answer);
+}
+
+void Counterpart::holdInvokes(bool hold)
+{
+    if (m_provider)
+        m_provider->setHoldInvokes(hold);
+}
+
+void Counterpart::answerHeldInvokes()
+{
+    if (m_provider)
+        m_provider->answerHeldInvokes(m_connection);
 }
 
 void Counterpart::forgetCalls()

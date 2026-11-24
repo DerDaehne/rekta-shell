@@ -54,6 +54,8 @@ TestCase {
 
         Commands {
             launcher: QtObject {
+                property bool starts: true
+
                 function lock() {
                     testCase.calls = [...testCase.calls, "lock"];
                 }
@@ -146,7 +148,9 @@ TestCase {
 
     // Starts what a desktop action asks for as the shell's launcher does, at a fixed time, and notes what it would run;
     // an action of an app that runs over D-Bus goes to the shell's launcher.
-    readonly property QtObject launcher: QtObject {
+    readonly property var launcher: QtObject {
+        property bool starts: true
+
         function launchAction(entry: var, action: var) {
             testCase.calls = [...testCase.calls, Rules.launchContext(entry, action.command, 1234)];
         }
@@ -286,33 +290,94 @@ TestCase {
         return listActions().find(entry => entry[0] === id)?.[1];
     }
 
+    // What ListActions says of an action that changes something and can be undone, or of another kind as `more` has it.
+    function described(title: string, keywords: var, description: string, more: var): var {
+        return Object.assign({
+            title,
+            keywords,
+            readOnly: false,
+            destructive: false,
+            description,
+            consequence: "undoable",
+            available: true
+        }, more);
+    }
+
     function test_list_actions_names_each_command_with_what_it_does_now() {
         exportFor("rekta");
-        const plain = (title, keywords) => ({
-                title,
-                keywords,
-                readOnly: false,
-                destructive: false
-            });
-        compare(listActions(), [["lock", plain("sperren", ["lock"])], ["switch-user", plain("benutzer wechseln", ["switch", "user"])], ["logout", Object.assign(plain("abmelden", ["logout"]), {
-                    destructive: true
-                })], ["reboot", Object.assign(plain("neu starten", ["reboot", "restart"]), {
-                    destructive: true
-                })], ["shutdown", Object.assign(plain("ausschalten", ["shutdown", "power", "off"]), {
-                    destructive: true
-                })], ["dark", plain("dunkel an", ["dark", "theme"])], ["do-not-disturb", plain("nicht stören an", ["quiet", "dnd"])], ["key-map", {
-                    title: "tastenkürzel",
-                    keywords: ["shortcuts", "keys", "tasten", "hilfe"],
+        compare(listActions(), [["lock", described("sperren", ["lock"], "Locks the session; the user unlocks it with their password.", {})], ["switch-user", described("benutzer wechseln", ["switch", "user"], "Opens the session bar with the focus on switching user; nothing happens until the user chooses it there.", {})], ["logout", described("abmelden", ["logout"], "Opens the session bar with the focus on logging out; the session ends only when the user chooses it there.", {
+                    destructive: true,
+                    consequence: "irreversible"
+                })], ["reboot", described("neu starten", ["reboot", "restart"], "Opens the session bar with the focus on restarting; the computer restarts only when the user chooses it there.", {
+                    destructive: true,
+                    consequence: "irreversible"
+                })], ["shutdown", described("ausschalten", ["shutdown", "power", "off"], "Opens the session bar with the focus on shutting down; the computer shuts down only when the user chooses it there.", {
+                    destructive: true,
+                    consequence: "irreversible"
+                })], ["dark", described("dunkel an", ["dark", "theme"], "Switches the desktop between its light and its dark look. The state is true while it is dark.", {
+                    state: false
+                })], ["do-not-disturb", described("nicht stören an", ["quiet", "dnd"], "Silences notifications, or lets them through again. The state is true while they are silenced.", {
+                    state: false
+                })], ["key-map", described("tastenkürzel", ["shortcuts", "keys", "tasten", "hilfe"], "Shows the map of the keyboard shortcuts.", {
                     key: "?",
                     readOnly: true,
-                    destructive: false
-                }], ["mute", plain("stumm an", ["mute", "ton"])], ["volume", {
+                    consequence: "none"
+                })], ["mute", described("stumm an", ["mute", "ton"], "Mutes the default audio output, or unmutes it. The state is true while it is muted.", {
+                    state: false
+                })], ["volume", {
                     title: "ton",
                     parameters: JSON.stringify(amountSchema),
                     readOnly: false,
-                    destructive: false
+                    destructive: false,
+                    description: "Sets the volume of the default audio output to a percent. The state is the volume in percent.",
+                    consequence: "undoable",
+                    available: true,
+                    state: 50
                 }]]);
     }
+
+    function test_the_state_of_a_command_is_its_state_now_and_apart_from_its_title() {
+        exportFor("rekta");
+        commands.panel.dark = true;
+        commands.panel.doNotDisturb = true;
+        commands.sink.audio.muted = true;
+        commands.sink.audio.volume = 0.3;
+        compare(action("dark").state, true);
+        compare(action("do-not-disturb").state, true);
+        compare(action("mute").state, true);
+        compare(action("volume").state, 30);
+        compare(action("lock").state, undefined, "a command without a state has none");
+    }
+
+    function test_without_an_audio_output_the_sound_commands_stay_listed_as_not_available_with_the_reason() {
+        commands.sink = null;
+        exportFor("rekta");
+        for (const id of ["mute", "volume"]) {
+            compare(action(id).available, false, id);
+            compare(action(id).reason, "there is no audio output", id);
+            compare(action(id).state, undefined, id);
+        }
+        compare(action("lock").available, true);
+        compare(action("lock").reason, undefined, "an action that can run gives no reason");
+    }
+
+    function test_invoking_a_command_that_is_not_available_answers_not_done_with_the_reason_and_runs_nothing() {
+        commands.sink = null;
+        exportFor("rekta");
+        for (const [id, parameters] of [["mute", {}], ["volume", {
+                    percent: 30
+                }]]) {
+            compare(invoke(id, parameters), {
+                signature: "a{sv}",
+                values: [{
+                        done: false,
+                        reason: "there is no audio output"
+                    }],
+                error: ""
+            }, id);
+        }
+    }
+
 
     function test_the_search_and_the_bus_offer_the_same_commands() {
         exportFor("rekta");
@@ -324,7 +389,10 @@ TestCase {
         exportFor("rekta");
         compare(invoke("dark", {}), {
             signature: "a{sv}",
-            values: [{}],
+            values: [{
+                    done: true,
+                    state: true
+                }],
             error: ""
         });
         compare(calls, ["dark true"]);
@@ -356,7 +424,10 @@ TestCase {
         compare(JSON.parse(action("volume").parameters), amountSchema);
         compare(invoke("volume", {
             percent: 30
-        }).error, "");
+        }).values, [{
+                done: true,
+                state: 30
+            }]);
         compare(commands.sink.audio.volume, 0.3);
         compare(invoke("volume", {
             percent: 100
@@ -451,12 +522,8 @@ TestCase {
         apps = listedApps(desktopEntries());
         const all = listActions();
         compare(all.slice(0, own.length), own);
-        const plain = (title, keywords, app) => ({
-                title,
-                keywords,
-                app,
-                readOnly: false,
-                destructive: false
+        const plain = (title, keywords, app) => described(title, keywords, `Runs the "${title}" action of ${keywords[0]}.`, {
+                app
             });
         compare(all.slice(own.length), [["desktop/org.kde.dolphin/home", Object.assign(plain("Persönlicher Ordner", ["Dolphin"], "org.kde.dolphin"), {
                             icon: "user-home"
@@ -472,7 +539,9 @@ TestCase {
         exportFor("rekta");
         compare(invoke("desktop/org.kde.dolphin/home", {}), {
             signature: "a{sv}",
-            values: [{}],
+            values: [{
+                    done: true
+                }],
             error: ""
         });
         compare(invoke("desktop/firefox/new-private-window", {}).error, "");
@@ -531,6 +600,9 @@ TestCase {
             icon: "font-x-generic",
             readOnly: false,
             destructive: false
+            ,description: `Runs the "Install Font" action of Fonts.`,
+            consequence: "undoable",
+            available: true
         });
     }
 
@@ -548,7 +620,9 @@ TestCase {
         for (const [id, path, actionId] of invoked) {
             compare(invoke(id, {}), {
                 signature: "a{sv}",
-                values: [{}],
+                values: [{
+                        done: true
+                    }],
                 error: ""
             }, id);
             tryVerify(() => counterpart.lastCall.path === path, 5000, id);
@@ -572,7 +646,9 @@ TestCase {
         ignoreWarning(/^Launcher: session bus org\.gnome\.TextEditor \/org\/gnome\/TextEditor org\.freedesktop\.Application\.ActivateAction \["new-window",\[\],\{\}\]: org\.freedesktop\.DBus\.Error\.ServiceUnknown: .+$/);
         compare(invoke("desktop/org.gnome.TextEditor/new-window", {}), {
             signature: "a{sv}",
-            values: [{}],
+            values: [{
+                    done: true
+                }],
             error: ""
         });
         // A round trip on the launcher's own connection: the bus has answered the call before it by now.
@@ -605,6 +681,7 @@ TestCase {
                             type: "string"
                         }
                     },
+                    additionalProperties: true,
                     required: ["path"]
                 }),
                 readOnly: true,
@@ -652,6 +729,7 @@ TestCase {
     function stopProvider() {
         counterpart.releaseName(probeName);
         counterpart.failInvokes(false);
+        counterpart.failInvokesWithMessage("the provider failed");
     }
 
     function providedIds(): var {
@@ -672,7 +750,10 @@ TestCase {
             readOnly: true,
             destructive: false,
             app: probeName,
-            icon: "document-open"
+            icon: "document-open",
+            description: `Runs the "Open file" action of Prober.`,
+            consequence: "none",
+            available: true
         });
         compare(action(`${probeId}plain`).icon, "prober");
         verify(action(`${probeId}wipe`) === undefined, "a foreign destructive action is not listed");
@@ -1018,7 +1099,9 @@ TestCase {
             count: 3
         }), {
             signature: "a{sv}",
-            values: [{}],
+            values: [{
+                    done: true
+                }],
             error: ""
         });
         tryVerify(() => counterpart.callsTo("Invoke") === 1);
@@ -1047,6 +1130,395 @@ TestCase {
         compare(invoke(`${probeId}plain`, {}).error, "");
         tryVerify(() => counterpart.callsTo("Invoke") === 1);
         settle();
+        stopProvider();
+    }
+
+    // Sends Invoke from the counterpart without waiting; the `answer` of the returned object is the reply, null while the call
+    // is open. The reply of another call (a{sv} is Invoke's alone here) never lands in it.
+    function invokeWithoutWaiting(id: string, parameters: var): var {
+        const holder = {
+            answer: null
+        };
+        counterpart.replied.connect((signature, values, error) => {
+            if (signature === "a{sv}")
+                holder.answer = {
+                    signature,
+                    values,
+                    error
+                };
+        });
+        counterpart.call(service, path, iface, "Invoke", [id, parameters]);
+        return holder;
+    }
+
+    function test_a_provider_that_fails_an_invoke_hands_its_error_to_the_caller_as_the_reason() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        counterpart.failInvokes(true);
+        ignoreWarning(/^ActionProviders: org\.example\.Prober: plain: org\.rekta\.Counterpart\.Failed: the provider failed$/);
+        compare(invoke(`${probeId}plain`, {}), {
+            signature: "a{sv}",
+            values: [{
+                    done: false,
+                    reason: "org.rekta.Counterpart.Failed: the provider failed"
+                }],
+            error: ""
+        });
+        stopProvider();
+    }
+
+    function test_a_provider_s_invoke_is_answered_only_when_the_provider_has_answered() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        counterpart.answerInvokesWith({
+            done: true,
+            state: 7
+        });
+        counterpart.holdInvokes(true);
+        const call = invokeWithoutWaiting(`${probeId}plain`, {});
+        tryVerify(() => counterpart.callsTo("Invoke") === 1);
+        settle();
+        compare(call.answer, null, "the provider has not answered, so neither has the shell");
+        compare(listActions().length > 0, true, "the shell answers other calls meanwhile");
+        counterpart.answerHeldInvokes();
+        tryVerify(() => call.answer !== null);
+        compare(call.answer.values, [{
+                    done: true,
+                    state: 7
+                }]);
+        counterpart.holdInvokes(false);
+        stopProvider();
+    }
+
+    function test_what_a_provider_answers_to_invoke_is_passed_on_only_as_done_state_and_reason_of_the_right_type() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        const answers = [[{}, {
+                    done: true
+                }], [{
+                    done: false
+                }, {
+                    done: false,
+                    reason: "the app did not do it"
+                }], [{
+                    done: false,
+                    reason: "no printer",
+                    state: "idle",
+                    other: 1
+                }, {
+                    done: false,
+                    reason: "no printer",
+                    state: "idle"
+                }], [{
+                    done: "no",
+                    state: [1, 2],
+                    reason: 5
+                }, {
+                    done: true
+                }]];
+        for (const [given, passed] of answers) {
+            counterpart.answerInvokesWith(given);
+            compare(invoke(`${probeId}plain`, {}).values, [passed], JSON.stringify(given));
+        }
+        stopProvider();
+    }
+
+    function test_a_provider_whose_owner_is_gone_when_invoked_answers_not_done_and_is_not_called() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        // The list drops an entry whose owner went, so this is the moment between the owner going and the list following.
+        providers.owners = {
+            [probeName]: ""
+        };
+        ignoreWarning(/^ActionProviders: org\.example\.Prober: plain: no owner$/);
+        compare(providers.invoke(probeName, "plain", {}, null), {
+            done: false,
+            reason: "the app is not running"
+        });
+        compare(counterpart.callsTo("Invoke"), 0);
+        stopProvider();
+    }
+
+    function test_a_provider_lists_what_it_says_of_its_actions_and_what_it_leaves_out_is_filled_in() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        serve([
+            row("full", {
+                title: "Full",
+                description: "Prints the page.",
+                consequence: "none",
+                available: false,
+                reason: "no printer",
+                state: 3
+            }),
+            row("bare", {
+                title: "Bare"
+            }),
+            row("wrong", {
+                title: "Wrong",
+                description: 7,
+                consequence: "unheard-of",
+                available: "yes",
+                reason: false,
+                state: [1]
+            })
+        ]);
+        tryVerify(() => providedIds().length === 3);
+        compare(action(`${probeId}full`), {
+            title: "Full",
+            readOnly: false,
+            destructive: false,
+            app: probeName,
+            icon: "prober",
+            description: "Prints the page.",
+            consequence: "none",
+            available: false,
+            reason: "no printer",
+            state: 3
+        });
+        const bare = action(`${probeId}bare`);
+        compare(bare.description, `Runs the "Bare" action of Prober.`);
+        compare([bare.consequence, bare.available, bare.reason, bare.state], ["undoable", true, undefined, undefined]);
+        const wrong = action(`${probeId}wrong`);
+        compare(wrong.description, `Runs the "Wrong" action of Prober.`);
+        compare([wrong.consequence, wrong.available, wrong.reason, wrong.state], ["undoable", true, undefined, undefined]);
+        stopProvider();
+    }
+
+    function test_a_provider_action_that_says_it_is_irreversible_is_not_listed() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        serve([
+            row("final", {
+                title: "Final",
+                consequence: "irreversible"
+            }),
+            row("fine", {
+                title: "Fine",
+                consequence: "undoable"
+            })
+        ]);
+        tryVerify(() => providedIds().length === 1);
+        compare(providedIds(), [`${probeId}fine`]);
+        compare(invoke(`${probeId}final`, {}).error, "org.freedesktop.DBus.Error.Failed");
+        compare(counterpart.callsTo("Invoke"), 0);
+        stopProvider();
+    }
+
+    function test_invoking_a_provider_action_that_says_it_is_not_available_answers_not_done_without_calling_the_provider() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        serve([
+            row("print", {
+                title: "Print",
+                available: false,
+                reason: "no printer"
+            })
+        ]);
+        tryVerify(() => providedIds().length === 1);
+        compare(invoke(`${probeId}print`, {}).values, [{
+                    done: false,
+                    reason: "no printer"
+                }]);
+        compare(counterpart.callsTo("Invoke"), 0);
+        stopProvider();
+    }
+
+    function test_a_parameter_the_action_does_not_name_is_an_error_for_a_command_a_desktop_action_and_a_provider_action() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        const refusals = [
+            ["dark", {
+                    loud: true
+                }, "dark takes no parameters, not loud"],
+            ["volume", {
+                    percent: 30,
+                    fade: 2
+                }, "volume takes only percent, not fade"],
+            ["desktop/firefox/new-window", {
+                    url: "x"
+                }, "desktop/firefox/new-window takes no parameters, not url"],
+            [`${probeId}plain`, {
+                    x: 1
+                }, `${probeId}plain takes no parameters, not x`]
+        ];
+        for (const [id, parameters, text] of refusals) {
+            const refused = invoke(id, parameters);
+            compare(refused.error, "org.freedesktop.DBus.Error.Failed", id);
+            compare(refused.values, [text], id);
+        }
+        compare(calls, []);
+        compare(commands.sink.audio.volume, 0.5);
+        compare(counterpart.callsTo("Invoke"), 0);
+        stopProvider();
+    }
+
+    function test_a_parameter_of_the_wrong_type_is_an_error_for_a_provider_action_and_for_a_command_that_cannot_run_now() {
+        commands.sink = null;
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        const refused = invoke(`${probeId}open`, {
+            path: 7
+        });
+        compare(refused.error, "org.freedesktop.DBus.Error.Failed", "a number where the schema of the provider says string");
+        compare(counterpart.callsTo("Invoke"), 0, "the provider is not called");
+        compare(invoke("volume", {
+            percent: "dreißig"
+        }).error, "org.freedesktop.DBus.Error.Failed", "a percent that is no number is an error even without an output");
+        stopProvider();
+    }
+
+    function test_a_key_the_action_does_not_name_is_an_error_even_when_the_action_cannot_run_now() {
+        commands.sink = null;
+        exportFor("rekta");
+        const refused = invoke("mute", {
+            loud: true
+        });
+        compare(refused.error, "org.freedesktop.DBus.Error.Failed");
+        compare(refused.values, ["mute takes no parameters, not loud"]);
+    }
+
+    function test_what_a_provider_says_of_itself_is_passed_on_at_most_a_thousand_characters_long() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        counterpart.provide(path, [{
+                id: "long",
+                properties: {
+                    title: "Long",
+                    description: "d".repeat(5000),
+                    state: "s".repeat(5000)
+                }
+            }]);
+        counterpart.takeName(probeName);
+        tryVerify(() => providedIds().length === 1);
+        const long = action(`${probeId}long`);
+        compare(long.description.length, 1000);
+        compare(long.state.length, 1000, "a state given as text is capped like the description");
+        stopProvider();
+    }
+
+    function test_a_provider_action_may_take_any_parameter_when_its_schema_says_so() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        compare(invoke(`${probeId}open`, {
+            path: "/a",
+            anything: 1
+        }).error, "");
+        stopProvider();
+    }
+
+    function test_where_the_shell_only_logs_what_it_would_do_an_invoke_still_runs_it_and_answers_not_done_with_why() {
+        apps = listedApps(desktopEntries());
+        exportFor("rekta");
+        commands.launcher.starts = false;
+        const why = "the shell runs without REKTA_SHELL_LAUNCH=systemd and only logs what it would do";
+        compare(invoke("lock", {}).values, [{
+                    done: false,
+                    reason: why
+                }]);
+        compare(invoke("dark", {}).values, [{
+                    done: false,
+                    reason: why
+                }]);
+        testCase.launcher.starts = false;
+        compare(invoke("desktop/firefox/new-window", {}).values, [{
+                    done: false,
+                    reason: why
+                }], "an app's desktop action is no different");
+        testCase.launcher.starts = true;
+        compare(calls.slice(0, 2), ["lock", "dark true"], "it is run, as the log shows what would happen");
+        compare(calls.length, 3, "the desktop action was run too");
+        compare(invoke("do-not-disturb", {}).values, [{
+                    done: true,
+                    state: true
+                }], "a command that needs no launcher is not affected");
+    }
+
+    function test_the_state_a_toggle_answers_is_the_one_it_sets_even_when_the_system_changes_later() {
+        exportFor("rekta");
+        compare(invoke("do-not-disturb", {}).values, [{
+                    done: true,
+                    state: true
+                }]);
+        compare(invoke("do-not-disturb", {}).values, [{
+                    done: true,
+                    state: false
+                }]);
+        compare(invoke("mute", {}).values, [{
+                    done: true,
+                    state: true
+                }]);
+        compare(invoke("dark", {}).values, [{
+                    done: true,
+                    state: true
+                }]);
+        compare(invoke("key-map", {}).values, [{
+                    done: true
+                }], "an action without a state answers without one");
+    }
+
+    function test_a_caller_that_ignores_the_answer_of_invoke_still_gets_the_action_run() {
+        exportFor("rekta");
+        counterpart.call(service, path, iface, "Invoke", ["do-not-disturb", {}]);
+        tryVerify(() => calls.length === 1);
+        compare(calls, ["quiet true"]);
+    }
+
+    function test_a_provider_that_does_not_answer_in_time_gets_a_not_done_answer_from_the_shell_before_the_callers_own_timeout() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        compare(providers.invokeTimeout, 20000, "less than the 25 s of a caller that uses the defaults");
+        providers.invokeTimeout = 300;
+        counterpart.holdInvokes(true);
+        ignoreWarning(/^ActionProviders: org\.example\.Prober: plain: org\.freedesktop\.DBus\.Error\.NoReply: .+$/);
+        const answer = invoke(`${probeId}plain`, {});
+        compare(answer.error, "");
+        compare(answer.values[0].done, false);
+        verify(answer.values[0].reason.startsWith("org.freedesktop.DBus.Error.NoReply"), answer.values[0].reason);
+        counterpart.holdInvokes(false);
+        stopProvider();
+    }
+
+    function test_the_error_text_of_a_provider_is_passed_on_as_the_reason_at_most_a_thousand_characters_long() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        counterpart.failInvokes(true);
+        counterpart.failInvokesWithMessage("e".repeat(5000));
+        ignoreWarning(/^ActionProviders: org\.example\.Prober: plain: org\.rekta\.Counterpart\.Failed: e+$/);
+        const reason = invoke(`${probeId}plain`, {}).values[0].reason;
+        compare(reason.length, 1000);
+        verify(reason.startsWith("org.rekta.Counterpart.Failed: eee"), reason.slice(0, 40));
         stopProvider();
     }
 

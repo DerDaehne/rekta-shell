@@ -82,6 +82,8 @@ function desktopActions(entry, appBusName, launcher) {
         app: entry.id,
         appName: entry.name,
         icon: action.icon || entry.icon,
+        description: `Runs the "${action.name}" action of ${entry.name}.`,
+        acts: () => launcher.starts,
         run: appBusName !== "" ? () => launcher.activateAction(appBusName, action.id) : () => launcher.launchAction(entry, action)
     }));
 }
@@ -91,6 +93,7 @@ function desktopActions(entry, appBusName, launcher) {
 // ponytail: fixed limits; per-provider settings if a real app needs more.
 const maxProvidedActions = 256;
 const maxActionKeywords = 32;
+const maxProvidedText = 1000;
 
 // At most `most` elements of a list that came over D-Bus; anything else, an object that only claims a length too, is none.
 function boundedList(value, most) {
@@ -112,22 +115,52 @@ function isSchema(text) {
     }
 }
 
-// A row the registry may list: an id, a title, parameters that are no schema at all or one, and no claim to be destructive
-// (anything but a missing or false one counts as a claim).
+// A row the registry may list: an id, a title, parameters that are no schema at all or one, and no claim to be
+// destructive or irreversible (anything but a missing or false one counts as a claim).
 function usableRow(row) {
     if (!(row instanceof Array) || typeof row[0] !== "string" || row[0] === "")
         return false;
     const properties = row[1];
-    if (typeof properties?.title !== "string" || properties.destructive)
+    if (typeof properties?.title !== "string" || properties.destructive || properties.consequence === "irreversible")
         return false;
     const parameters = properties.parameters ?? "";
     return typeof parameters === "string" && (parameters === "" || isSchema(parameters));
 }
 
+// A non-empty text capped at maxProvidedText characters, else nothing: a provider's words go on to every client.
+function nonEmptyText(value) {
+    return typeof value === "string" && value !== "" ? value.slice(0, maxProvidedText) : undefined;
+}
+
+// A state a client can read: true or false, a finite number or a text.
+function isScalar(value) {
+    return typeof value === "boolean" || typeof value === "string" || (typeof value === "number" && Number.isFinite(value));
+}
+
+// The state as a client gets it: a text is capped like every other text a provider gives; nothing for a non-state.
+function scalarState(value) {
+    if (!isScalar(value))
+        return undefined;
+    return typeof value === "string" ? value.slice(0, maxProvidedText) : value;
+}
+
+// What a provider's Invoke answered, as the shell reports it: `done` (an older provider's `{}` says it was done), its `state`
+// and `reason`, each only with the type they must have; a failure always has a reason.
+function providedResult(answer) {
+    const result = { done: typeof answer?.done === "boolean" ? answer.done : true };
+    const state = scalarState(answer?.state);
+    if (state !== undefined)
+        result.state = state;
+    const reason = nonEmptyText(answer?.reason);
+    if (reason !== undefined || !result.done)
+        result.reason = reason ?? "the app did not do it";
+    return result;
+}
+
 // The actions a running provider of rekta.Actions1 lists (`listed`: the rows of its ListActions) as the action registry
 // has them, named for its app. Every value is checked, as the registry exports them under the signatures it promises:
 // a row that fails is left out (usableRow), a wrong icon or keyword is dropped. A destructive row is left out because,
-// until the shell can ask first, an app's own may not run from outside. `invoke(id, parameters)` calls the provider's Invoke.
+// until the shell can ask first, an app's own may not run from outside. `invoke(id, parameters, reply)` calls the provider's Invoke.
 function providedActions(app, listed, invoke) {
     return listed.filter(usableRow).map(([id, properties]) => ({
         id: `provider/${app.id}/${id}`,
@@ -138,7 +171,12 @@ function providedActions(app, listed, invoke) {
         app: app.id,
         appName: app.name,
         icon: typeof properties.icon === "string" && properties.icon !== "" ? properties.icon : app.iconName,
-        invokeWith: parameters => invoke(id, parameters)
+        description: nonEmptyText(properties.description) ?? `Runs the "${properties.title}" action of ${app.name}.`,
+        consequence: ["none", "undoable"].includes(properties.consequence) ? properties.consequence : undefined,
+        available: properties.available !== false,
+        reason: nonEmptyText(properties.reason) ?? "the app gave no reason",
+        state: scalarState(properties.state) === undefined ? undefined : () => scalarState(properties.state),
+        invokeWith: (parameters, reply) => invoke(id, parameters, reply)
     }));
 }
 
@@ -444,8 +482,10 @@ function isSettingsPage(id) {
 
 // The shell's commands that match what was typed, as the palette filters them (navigation.md, "Go to"): every word
 // must start a word of the command's text or its keywords. {text, keywords, run}, or {word, at(n)} for one that takes
-// an amount: "ton 30" says the one whose word starts with "ton" at 30 (up to 100), and comes first.
-function commandHits(commands, text) {
+// an amount: "ton 30" says the one whose word starts with "ton" at 30 (up to 100), and comes first. One that cannot run now
+// (`available` false) is no hit.
+function commandHits(listed, text) {
+    const commands = listed.filter(command => command.available !== false);
     const typed = text.trim();
     const amount = /^(\S+)\s+(\d{1,3})\s*%?$/.exec(typed);
     const said = commands.filter(command => command.at !== undefined && amount !== null && command.word.startsWith(amount[1].toLowerCase())).map(command => command.at(Math.min(100, Number(amount[2]))));

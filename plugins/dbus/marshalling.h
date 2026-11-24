@@ -17,6 +17,8 @@ std::optional<QStringList> completeTypes(const QString &signature);
 struct Encoded {
     QVariantList arguments;
     QString error;
+    // The handler said it answers later (DBusConnection::handler); nothing is to be sent yet.
+    bool deferred = false;
 };
 
 Encoded encode(const QVariantList &values, const QString &signature);

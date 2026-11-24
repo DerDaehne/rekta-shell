@@ -41,29 +41,44 @@ QtObject {
 
     readonly property var audio: sink?.audio ?? null
     readonly property bool muted: audio?.muted ?? false
-    readonly property var soundCommands: audio === null ? [] : [
+    readonly property bool hasOutput: audio !== null
+    readonly property string noOutput: "there is no audio output"
+    readonly property var soundCommands: [
         {
             id: "mute",
             text: muted ? "stumm aus" : "stumm an",
             keywords: ["mute", "ton"],
+            description: "Mutes the default audio output, or unmutes it. The state is true while it is muted.",
+            state: () => commands.hasOutput ? commands.muted : undefined,
+            becomes: () => !commands.muted,
+            available: commands.hasOutput,
+            reason: commands.noOutput,
             run: () => commands.audio.muted = !commands.muted
         },
         {
             id: "volume",
             word: "ton",
+            description: "Sets the volume of the default audio output to a percent. The state is the volume in percent.",
+            state: () => commands.hasOutput ? Math.round(commands.audio.volume * 100) : undefined,
+            available: commands.hasOutput,
+            reason: commands.noOutput,
             at: percent => ({
                     text: `ton auf ${percent} %`,
                     run: () => commands.audio.volume = percent / 100
                 })
         }
     ]
-    // {id, text, keywords, run}, or {id, word, at(n)} for one that takes an amount: "ton 30" (Rules.commandHits). `readOnly`
-    // marks one that changes nothing, `destructive` one that ends the session.
+    // {id, text, keywords, description, run}, or {id, word, at(n)} for one that takes an amount: "ton 30" (Rules.commandHits).
+    // `readOnly` marks one that changes nothing, `destructive` one that ends the session. `state()` reads what it sets now,
+    // `becomes()` what a run will set (a look changes only after Plasma has applied it), `acts()` whether a run really
+    // happens, and `available` with a `reason` whether it can run at all; the search shows only those that can.
     readonly property var list: [
         {
             id: "lock",
             text: "sperren",
             keywords: ["lock"],
+            description: "Locks the session; the user unlocks it with their password.",
+            acts: () => commands.launcher.starts,
             key: shortcuts.lock ?? "",
             run: () => commands.launcher.lock()
         },
@@ -71,12 +86,14 @@ QtObject {
             id: "switch-user",
             text: "benutzer wechseln",
             keywords: ["switch", "user"],
+            description: "Opens the session bar with the focus on switching user; nothing happens until the user chooses it there.",
             run: () => commands.session.show("switchUser")
         },
         {
             id: "logout",
             text: "abmelden",
             keywords: ["logout"],
+            description: "Opens the session bar with the focus on logging out; the session ends only when the user chooses it there.",
             destructive: true,
             key: shortcuts.logout ?? "",
             run: () => commands.session.show("logout")
@@ -85,6 +102,7 @@ QtObject {
             id: "reboot",
             text: "neu starten",
             keywords: ["reboot", "restart"],
+            description: "Opens the session bar with the focus on restarting; the computer restarts only when the user chooses it there.",
             destructive: true,
             key: shortcuts.reboot ?? "",
             run: () => commands.session.show("reboot")
@@ -93,6 +111,7 @@ QtObject {
             id: "shutdown",
             text: "ausschalten",
             keywords: ["shutdown", "power", "off"],
+            description: "Opens the session bar with the focus on shutting down; the computer shuts down only when the user chooses it there.",
             destructive: true,
             key: shortcuts.shutdown ?? "",
             run: () => commands.session.show("shutdown")
@@ -101,18 +120,26 @@ QtObject {
             id: "dark",
             text: panel.dark ? "dunkel aus" : "dunkel an",
             keywords: ["dark", "theme"],
+            description: "Switches the desktop between its light and its dark look. The state is true while it is dark.",
+            state: () => commands.panel.dark,
+            becomes: () => !commands.panel.dark,
+            acts: () => commands.launcher.starts,
             run: () => commands.panel.setDark(!commands.panel.dark)
         },
         {
             id: "do-not-disturb",
             text: panel.doNotDisturb ? "nicht stören aus" : "nicht stören an",
             keywords: ["quiet", "dnd"],
+            description: "Silences notifications, or lets them through again. The state is true while they are silenced.",
+            state: () => commands.panel.doNotDisturb,
+            becomes: () => !commands.panel.doNotDisturb,
             run: () => commands.panel.setDoNotDisturb(!commands.panel.doNotDisturb)
         },
         {
             id: "key-map",
             text: "tastenkürzel",
             keywords: ["shortcuts", "keys", "tasten", "hilfe"],
+            description: "Shows the map of the keyboard shortcuts.",
             readOnly: true,
             key: "?",
             run: () => commands.keyMap.show()

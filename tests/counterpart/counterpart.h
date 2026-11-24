@@ -60,6 +60,13 @@ public:
     // replaces the actions. Every call is recorded.
     Q_INVOKABLE void provide(const QString &path, const QVariantList &actions);
     Q_INVOKABLE void failInvokes(bool fail);
+    // The text of the error a failing Invoke answers with (default: "the provider failed").
+    Q_INVOKABLE void failInvokesWithMessage(const QString &message);
+    // Invoke answers `answer` (a{sv}) instead of an empty map; with holdInvokes(true) its calls stay unanswered until
+    // answerHeldInvokes().
+    Q_INVOKABLE void answerInvokesWith(const QVariantMap &answer);
+    Q_INVOKABLE void holdInvokes(bool hold);
+    Q_INVOKABLE void answerHeldInvokes();
     // Holds the ListActions calls unanswered while true; answerHeldListings() answers them, with the actions then.
     Q_INVOKABLE void holdListings(bool hold);
     Q_INVOKABLE void answerHeldListings();

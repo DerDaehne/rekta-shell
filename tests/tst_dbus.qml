@@ -519,6 +519,163 @@ TestCase {
         });
     }
 
+    // A handler that holds on to the responder it is given (the fifth argument) and answers when the test says.
+    function ownLater(name) {
+        const held = [];
+        const bus = connection({
+            handler: (path, iface, member, args, reply) => {
+                if (member === "describe")
+                    held.push({
+                        reply,
+                        args
+                    });
+                return member === "describe" ? reply : answerJobs(path, member, args);
+            }
+        });
+        verify(bus.own(name, "/jobs", jobsXml));
+        return {
+            bus,
+            held
+        };
+    }
+
+    // Calls without waiting for the answer; the `answer` of the result is the reply of the signature given, null until it comes.
+    function callWithoutWaiting(service, member, args, answerSignature) {
+        const holder = {
+            answer: null
+        };
+        counterpart.replied.connect((signature, values, error) => {
+            if (signature === answerSignature)
+                holder.answer = {
+                    signature,
+                    values,
+                    error
+                };
+        });
+        counterpart.call(service, "/jobs", "org.rekta.Jobs", member, args);
+        return holder;
+    }
+
+    function test_a_handler_that_returns_its_responder_answers_later_with_what_it_sends() {
+        const name = "org.rekta.Test.Later";
+        const owner = ownLater(name);
+        const call = callWithoutWaiting(name, "describe", [], "si");
+        tryVerify(() => owner.held.length === 1);
+        settle(owner.bus);
+        compare(call.answer, null, "no answer while the handler holds the responder");
+        compare(callFromCounterpart(name, "/jobs", "org.rekta.Jobs", "count", []).values, [2], "other calls are answered meanwhile");
+        owner.held[0].reply.send(null, ["copy", 40]);
+        tryVerify(() => call.answer !== null);
+        compare(call.answer, {
+            signature: "si",
+            values: ["copy", 40],
+            error: ""
+        });
+    }
+
+    function test_a_responder_that_sends_an_error_answers_with_a_dbus_error() {
+        const name = "org.rekta.Test.LaterError";
+        const owner = ownLater(name);
+        const call = callWithoutWaiting(name, "describe", [], "s");
+        tryVerify(() => owner.held.length === 1);
+        owner.held[0].reply.send("it went wrong", null);
+        tryVerify(() => call.answer !== null);
+        compare(call.answer.error, "org.freedesktop.DBus.Error.Failed");
+        compare(call.answer.values, ["it went wrong"]);
+    }
+
+    function test_a_responder_answers_once_and_a_value_that_does_not_fit_is_an_error() {
+        const name = "org.rekta.Test.LaterOnce";
+        const owner = ownLater(name);
+        const call = callWithoutWaiting(name, "describe", [], "si");
+        tryVerify(() => owner.held.length === 1);
+        owner.held[0].reply.send(null, ["copy", 40]);
+        owner.held[0].reply.send("too late", null);
+        tryVerify(() => call.answer !== null);
+        settle(owner.bus);
+        compare(call.answer.values, ["copy", 40], "a second send does nothing");
+
+        const wrong = callWithoutWaiting(name, "describe", [], "s");
+        tryVerify(() => owner.held.length === 2);
+        owner.held[1].reply.send(null, "not a pair");
+        tryVerify(() => wrong.answer !== null);
+        compare(wrong.answer.error, "org.freedesktop.DBus.Error.Failed", "a value of the wrong shape is an error reply");
+    }
+
+    // A held call whose connection goes away (a reload of the shell) is answered by the bus at once, not after the
+    // caller's timeout, and the name passes on.
+    function test_a_call_still_held_when_its_connection_goes_away_is_answered_at_once_with_an_error_and_frees_the_name() {
+        const name = "org.rekta.Test.HeldGone";
+        const held = [];
+        goingAway = connectionComponent.createObject(testCase, {
+            handler: (path, iface, member, args, reply) => {
+                held.push(reply);
+                return reply;
+            }
+        });
+        verify(goingAway.own(name, "/jobs", jobsXml));
+        let answer = null;
+        const store = (signature, values, error) => answer = {
+            values,
+            error
+        };
+        counterpart.replied.connect(store);
+        counterpart.call(name, "/jobs", "org.rekta.Jobs", "describe", []);
+        tryVerify(() => held.length === 1);
+        goingAway.destroy();
+        tryVerify(() => goingAway === null);
+        tryVerify(() => answer !== null, 3000, "answered well before the caller's own timeout");
+        counterpart.replied.disconnect(store);
+        compare(answer.error, "org.freedesktop.DBus.Error.NoReply");
+        tryVerify(() => counterpart.nameOwner(name) === "");
+    }
+
+    function test_a_responder_is_freed_once_it_has_sent_and_at_once_when_the_handler_does_not_return_it() {
+        const name = "org.rekta.Test.Freed";
+        const owner = ownLater(name);
+        const call = callWithoutWaiting(name, "describe", [], "si");
+        tryVerify(() => owner.held.length === 1);
+        const sent = owner.held[0].reply;
+        compare(sent.objectName, "", "alive while it holds the call");
+        sent.send(null, ["copy", 40]);
+        tryVerify(() => call.answer !== null);
+        tryVerify(() => sent.objectName === undefined, 2000, "the responder that answered is freed");
+
+        let kept = null;
+        const now = connection({
+            handler: (path, iface, member, args, reply) => {
+                kept = reply;
+                return 2;
+            }
+        });
+        verify(now.own("org.rekta.Test.FreedAtOnce", "/jobs", jobsXml));
+        compare(callFromCounterpart("org.rekta.Test.FreedAtOnce", "/jobs", "org.rekta.Jobs", "count", []).values, [2]);
+        verify(kept !== null);
+        compare(kept.objectName, undefined, "a responder the handler does not return is freed before the answer goes out");
+    }
+
+    function test_a_method_call_is_given_a_responder_and_a_property_read_is_not_and_a_handler_that_does_not_return_it_answers_at_once() {
+        const given = {};
+        const jobs = connection({
+            handler: (path, iface, member, args, reply) => {
+                given[member] = reply !== undefined && reply !== null;
+                return 2;
+            }
+        });
+        verify(jobs.own("org.rekta.Test.GivenMethod", "/jobs", jobsXml));
+        compare(callFromCounterpart("org.rekta.Test.GivenMethod", "/jobs", "org.rekta.Jobs", "count", []).values, [2]);
+        compare(given.count, true);
+        const gauge = connection({
+            handler: (path, iface, member, args, reply) => {
+                given[member] = reply !== undefined && reply !== null;
+                return 7;
+            }
+        });
+        verify(gauge.own("org.rekta.Test.GivenProperty", "/gauge", gaugeXml));
+        compare(callFromCounterpart("org.rekta.Test.GivenProperty", "/gauge", properties, "Get", ["org.rekta.Gauge", "Level"]).values, [7]);
+        compare(given.Level, false);
+    }
+
     function test_unknown_methods_interfaces_and_argument_types_are_answered_with_dbus_errors() {
         const name = "org.rekta.Test.Unknown";
         ownJobs(name);

@@ -18,11 +18,13 @@ QtObject {
     // The rows its owner's last ListActions gave, by desktop file ID.
     property var rows: ({})
     property bool listening: false
+    // How long a provider may take to answer Invoke: less than the 25 s a caller waits by default, so it gets this answer.
+    property int invokeTimeout: 20000
 
     readonly property string path: "/rekta/Actions"
     readonly property string interfaceName: "rekta.Actions1"
     readonly property var providing: sessionDesktop === "rekta" ? (apps ?? []).filter(app => app.implements.includes(interfaceName)) : []
-    readonly property var list: [].concat(...providing.filter(app => owners[app.id]).map(app => Rules.providedActions(app, rows[app.id] ?? [], (action, parameters) => invoke(app.id, action, parameters))))
+    readonly property var list: [].concat(...providing.filter(app => owners[app.id]).map(app => Rules.providedActions(app, rows[app.id] ?? [], (action, parameters, reply) => invoke(app.id, action, parameters, reply))))
 
     readonly property DBusConnection bus: DBusConnection {
         onReceived: (sender, path, iface, member, args) => providers.heard(sender, member, args)
@@ -30,17 +32,26 @@ QtObject {
 
     // Calls go to the owner's unique name: a call to the well-known name would start the app from its service file if the
     // owner has quit since the shell last heard.
-    function invoke(id: string, action: string, parameters: var): var {
+    // The answer waits for the provider's: what it says, or its error as the reason it was not done. `reply` is the call's
+    // answer to give later (DBusConnection.handler).
+    function invoke(id: string, action: string, parameters: var, reply: var): var {
         const owner = owners[id] ?? "";
         if (owner === "") {
             console.warn(`ActionProviders: ${id}: ${action}: no owner`);
-            return {};
+            return {
+                done: false,
+                reason: "the app is not running"
+            };
         }
-        bus.call(owner, path, interfaceName, "Invoke", [action, parameters], "sa{sv}", error => {
+        bus.call(owner, path, interfaceName, "Invoke", [action, parameters], "sa{sv}", (error, values) => {
             if (error)
                 console.warn(`ActionProviders: ${id}: ${action}: ${error}`);
-        });
-        return {};
+            reply.send(null, error ? {
+                done: false,
+                reason: Rules.nonEmptyText(error)
+            } : Rules.providedResult(values[0]));
+        }, invokeTimeout);
+        return reply;
     }
 
     function heard(sender: string, member: string, args: var) {
