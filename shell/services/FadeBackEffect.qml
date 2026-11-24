@@ -36,6 +36,8 @@ DBusConnection {
         });
     }
 
+    // ponytail: the flake builds the effect without the commit, so between two session releases an update keeps the
+    // version and passes unseen here; missing methods still show. Carry the commit into KWin's start if that matters.
     function compareVersion(version: string) {
         if (buildVersion !== "" && version !== buildVersion)
             warnStale(`rekta-fadeback ${version}`);
