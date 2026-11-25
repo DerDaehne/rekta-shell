@@ -43,6 +43,8 @@ TestCase {
     property var registry
     property var providers
 
+    property int openCalls: 0
+
     Counterpart {
         id: counterpart
 
@@ -236,6 +238,10 @@ TestCase {
         counterpart.nameOwner("org.freedesktop.DBus");
     }
 
+    function cleanup() {
+        tryVerify(() => openCalls === 0, 30000, "every call of the test has been answered before the next test starts");
+    }
+
     function init() {
         failOnWarning(/TypeError|ReferenceError|Binding loop/);
         calls = [];
@@ -261,18 +267,32 @@ TestCase {
         return exporter;
     }
 
-    function callShell(iface: string, member: string, args: var): var {
-        let answer = null;
-        const store = (signature, values, error) => answer = {
-            signature,
-            values,
-            error
+    // The `answer` of the result is the reply to this call and no other, null until it comes.
+    function callWithoutWaiting(service: string, path: string, iface: string, member: string, args: var): var {
+        const holder = {
+            answer: null
         };
-        counterpart.replied.connect(store);
-        counterpart.call(service, path, iface, member, args);
-        tryVerify(() => answer !== null);
-        counterpart.replied.disconnect(store);
-        return answer;
+        const callId = counterpart.call(service, path, iface, member, args);
+        testCase.openCalls++;
+        const take = (signature, values, error, repliedId) => {
+            if (repliedId !== callId)
+                return;
+            holder.answer = {
+                signature,
+                values,
+                error
+            };
+            counterpart.replied.disconnect(take);
+            testCase.openCalls--;
+        };
+        counterpart.replied.connect(take);
+        return holder;
+    }
+
+    function callShell(iface: string, member: string, args: var): var {
+        const call = callWithoutWaiting(service, path, iface, member, args);
+        tryVerify(() => call.answer !== null);
+        return call.answer;
     }
 
     function listActions(): var {
@@ -677,21 +697,12 @@ TestCase {
         compare(shellLauncher.activationTimeout, 20000, "less than the 25 s of a caller that uses the defaults");
         shellLauncher.activationTimeout = 2000;
         ignoreWarning(/^Launcher: session bus org\.gnome\.TextEditor .+: org\.freedesktop\.DBus\.Error\.NoReply: .+$/);
-        let held = null;
-        const store = (signature, values, error) => {
-            if (signature === "a{sv}")
-                held = {
-                    values,
-                    error
-                };
-        };
-        counterpart.replied.connect(store);
-        counterpart.call(service, path, iface, "Invoke", ["desktop/org.gnome.TextEditor/new-window", {}]);
+        const call = callWithoutWaiting(service, path, iface, "Invoke", ["desktop/org.gnome.TextEditor/new-window", {}]);
         tryVerify(() => counterpart.lastCall.member === "ActivateAction");
         verify(listActions().length > 0, "the shell answers while the app holds the call");
-        compare(held, null, "the call is still open");
-        tryVerify(() => held !== null);
-        counterpart.replied.disconnect(store);
+        compare(call.answer, null, "the call is still open");
+        tryVerify(() => call.answer !== null);
+        const held = call.answer;
         compare(held.error, "");
         compare(held.values[0].done, false);
         verify(held.values[0].reason.startsWith("org.freedesktop.DBus.Error.NoReply"), held.values[0].reason);
@@ -851,11 +862,12 @@ TestCase {
 
     function test_the_test_bus_starts_the_probe_program_for_a_call_to_its_name() {
         counterpart.claimEchoName();
-        counterpart.call(probeName, "/probe", "org.example.Probe", "Ping", []);
+        const ping = callWithoutWaiting(probeName, "/probe", "org.example.Probe", "Ping", []);
         tryVerify(() => counterpart.callsTo("Activated") === 1, 20000);
         // The pending start ends once something owns the name.
         verify(counterpart.takeName(probeName));
         counterpart.releaseName(probeName);
+        tryVerify(() => ping.answer !== null, 30000, "the reply to Ping is taken before the test ends");
     }
 
     function test_a_provider_that_announces_a_change_and_quits_is_not_started_again_by_the_shell() {
@@ -1187,25 +1199,8 @@ TestCase {
         stopProvider();
     }
 
-    // Sends Invoke from the counterpart without waiting; the `answer` of the returned object is the reply, null while the call
-    // is open. The reply of another call (a{sv} is Invoke's alone here) never lands in it.
     function invokeWithoutWaiting(id: string, parameters: var): var {
-        const holder = {
-            answer: null
-        };
-        const take = (signature, values, error) => {
-            if (signature !== "a{sv}")
-                return;
-            holder.answer = {
-                signature,
-                values,
-                error
-            };
-            counterpart.replied.disconnect(take);
-        };
-        counterpart.replied.connect(take);
-        counterpart.call(service, path, iface, "Invoke", [id, parameters]);
-        return holder;
+        return callWithoutWaiting(service, path, iface, "Invoke", [id, parameters]);
     }
 
     function test_a_provider_that_fails_an_invoke_hands_its_error_to_the_caller_as_the_reason() {
@@ -1541,9 +1536,10 @@ TestCase {
 
     function test_a_caller_that_ignores_the_answer_of_invoke_still_gets_the_action_run() {
         exportFor("rekta");
-        counterpart.call(service, path, iface, "Invoke", ["do-not-disturb", {}]);
+        const call = invokeWithoutWaiting("do-not-disturb", {});
         tryVerify(() => calls.length === 1);
         compare(calls, ["quiet true"]);
+        tryVerify(() => call.answer !== null, 5000, "the answer is taken before the test ends");
     }
 
     function test_a_provider_that_does_not_answer_in_time_gets_a_not_done_answer_from_the_shell_before_the_callers_own_timeout() {

@@ -7,6 +7,7 @@
 #include <QDBusObjectPath>
 #include <QDBusPendingCallWatcher>
 #include <QDBusReply>
+#include <QTimer>
 #include <QUuid>
 
 #include <optional>
@@ -189,17 +190,26 @@ void Counterpart::emitSignal(const QString &path, const QString &interfaceName, 
     m_connection.send(message);
 }
 
-void Counterpart::call(const QString &service, const QString &path, const QString &interfaceName, const QString &member, const QVariantList &args)
+int Counterpart::call(const QString &service, const QString &path, const QString &interfaceName, const QString &member, const QVariantList &args)
 {
     QDBusMessage message = QDBusMessage::createMethodCall(service, path, interfaceName, member);
     message.setArguments(args);
+    const int callId = ++m_lastCallId;
     auto *watcher = new QDBusPendingCallWatcher(m_connection.asyncCall(message), this);
-    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher *finished) {
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, callId](QDBusPendingCallWatcher *finished) {
         finished->deleteLater();
         const QDBusMessage reply = finished->reply();
-        m_replyVariantTypes = variantTypesOf(reply.arguments());
-        Q_EMIT replied(reply.signature(), plainValues(reply.arguments()), reply.errorName());
+        QTimer::singleShot(m_replyDelay, this, [this, reply, callId] {
+            m_replyVariantTypes = variantTypesOf(reply.arguments());
+            Q_EMIT replied(reply.signature(), plainValues(reply.arguments()), reply.errorName(), callId);
+        });
     });
+    return callId;
+}
+
+void Counterpart::delayReplies(int milliseconds)
+{
+    m_replyDelay = milliseconds;
 }
 
 QString Counterpart::nameOwner(const QString &name)

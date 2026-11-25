@@ -33,6 +33,8 @@ TestCase {
     // The signals the counterpart heard since the test began, as { path, member, signature, values }.
     property var heardByCounterpart: []
 
+    property int openCalls: 0
+
     Counterpart {
         id: counterpart
 
@@ -48,6 +50,10 @@ TestCase {
         verify(counterpart.listen("org.rekta.Events", "Counted"));
         // A round trip on the counterpart's own connection: its subscription has reached the bus.
         counterpart.nameOwner("org.freedesktop.DBus");
+    }
+
+    function cleanup() {
+        tryVerify(() => openCalls === 0, 30000, "every call of the test has been answered before the next test starts");
     }
 
     function init() {
@@ -75,17 +81,9 @@ TestCase {
     }
 
     function callFromCounterpart(service, path, iface, member, args) {
-        let answer = null;
-        const store = (signature, values, error) => answer = {
-            signature,
-            values,
-            error
-        };
-        counterpart.replied.connect(store);
-        counterpart.call(service, path, iface, member, args);
-        tryVerify(() => answer !== null);
-        counterpart.replied.disconnect(store);
-        return answer;
+        const call = callWithoutWaiting(service, path, iface, member, args);
+        tryVerify(() => call.answer !== null);
+        return call.answer;
     }
 
     function echo(args, signature, bus) {
@@ -539,13 +537,15 @@ TestCase {
         };
     }
 
-    // Calls without waiting for the answer; the `answer` of the result is the reply of the signature given, null until it comes.
-    function callWithoutWaiting(service, member, args, answerSignature) {
+    // Calls without waiting for the answer; the `answer` of the result is the reply to this call and no other, null until it comes.
+    function callWithoutWaiting(service, path, iface, member, args) {
         const holder = {
             answer: null
         };
-        const take = (signature, values, error) => {
-            if (signature !== answerSignature)
+        const callId = counterpart.call(service, path, iface, member, args);
+        testCase.openCalls++;
+        const take = (signature, values, error, repliedId) => {
+            if (repliedId !== callId)
                 return;
             holder.answer = {
                 signature,
@@ -553,16 +553,20 @@ TestCase {
                 error
             };
             counterpart.replied.disconnect(take);
+            testCase.openCalls--;
         };
         counterpart.replied.connect(take);
-        counterpart.call(service, "/jobs", "org.rekta.Jobs", member, args);
         return holder;
+    }
+
+    function callJobsWithoutWaiting(service, member, args) {
+        return callWithoutWaiting(service, "/jobs", "org.rekta.Jobs", member, args);
     }
 
     function test_a_handler_that_returns_its_responder_answers_later_with_what_it_sends() {
         const name = "org.rekta.Test.Later";
         const owner = ownLater(name);
-        const call = callWithoutWaiting(name, "describe", [], "si");
+        const call = callJobsWithoutWaiting(name, "describe", []);
         tryVerify(() => owner.held.length === 1);
         settle(owner.bus);
         compare(call.answer, null, "no answer while the handler holds the responder");
@@ -579,7 +583,7 @@ TestCase {
     function test_a_responder_that_sends_an_error_answers_with_a_dbus_error() {
         const name = "org.rekta.Test.LaterError";
         const owner = ownLater(name);
-        const call = callWithoutWaiting(name, "describe", [], "s");
+        const call = callJobsWithoutWaiting(name, "describe", []);
         tryVerify(() => owner.held.length === 1);
         owner.held[0].reply.send("it went wrong", null);
         tryVerify(() => call.answer !== null);
@@ -590,7 +594,7 @@ TestCase {
     function test_a_responder_answers_once_and_a_value_that_does_not_fit_is_an_error() {
         const name = "org.rekta.Test.LaterOnce";
         const owner = ownLater(name);
-        const call = callWithoutWaiting(name, "describe", [], "si");
+        const call = callJobsWithoutWaiting(name, "describe", []);
         tryVerify(() => owner.held.length === 1);
         owner.held[0].reply.send(null, ["copy", 40]);
         owner.held[0].reply.send("too late", null);
@@ -598,7 +602,7 @@ TestCase {
         settle(owner.bus);
         compare(call.answer.values, ["copy", 40], "a second send does nothing");
 
-        const wrong = callWithoutWaiting(name, "describe", [], "s");
+        const wrong = callJobsWithoutWaiting(name, "describe", []);
         tryVerify(() => owner.held.length === 2);
         owner.held[1].reply.send(null, "not a pair");
         tryVerify(() => wrong.answer !== null);
@@ -617,26 +621,19 @@ TestCase {
             }
         });
         verify(goingAway.own(name, "/jobs", jobsXml));
-        let answer = null;
-        const store = (signature, values, error) => answer = {
-            values,
-            error
-        };
-        counterpart.replied.connect(store);
-        counterpart.call(name, "/jobs", "org.rekta.Jobs", "describe", []);
+        const call = callJobsWithoutWaiting(name, "describe", []);
         tryVerify(() => held.length === 1);
         goingAway.destroy();
         tryVerify(() => goingAway === null);
-        tryVerify(() => answer !== null, 3000, "answered well before the caller's own timeout");
-        counterpart.replied.disconnect(store);
-        compare(answer.error, "org.freedesktop.DBus.Error.NoReply");
+        tryVerify(() => call.answer !== null, 3000, "answered well before the caller's own timeout");
+        compare(call.answer.error, "org.freedesktop.DBus.Error.NoReply");
         tryVerify(() => counterpart.nameOwner(name) === "");
     }
 
     function test_a_responder_is_freed_once_it_has_sent_and_at_once_when_the_handler_does_not_return_it() {
         const name = "org.rekta.Test.Freed";
         const owner = ownLater(name);
-        const call = callWithoutWaiting(name, "describe", [], "si");
+        const call = callJobsWithoutWaiting(name, "describe", []);
         tryVerify(() => owner.held.length === 1);
         const sent = owner.held[0].reply;
         compare(sent.objectName, "", "alive while it holds the call");

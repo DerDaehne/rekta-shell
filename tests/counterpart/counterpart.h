@@ -33,12 +33,14 @@ public:
 
     Q_INVOKABLE void emitSignal(const QString &path, const QString &interfaceName, const QString &member, const QVariantList &args);
     // Replies with replied(), containers as lists and maps and variants unpacked; an error reply carries its message as
-    // the only value.
-    Q_INVOKABLE void call(const QString &service,
+    // the only value. Returns the id that replied() names for this call's reply.
+    Q_INVOKABLE int call(const QString &service,
                           const QString &path,
                           const QString &interfaceName,
                           const QString &member,
                           const QVariantList &args);
+    // Holds every reply of call() back by this many milliseconds, so a test can stand in for a slow machine.
+    Q_INVOKABLE void delayReplies(int milliseconds);
     // The unique name owning name, or "" when nobody does.
     Q_INVOKABLE QString nameOwner(const QString &name);
     // Reports each signal of that interface and member, from any sender, with heard(), its values read as a reply's.
@@ -102,7 +104,7 @@ public:
 
 Q_SIGNALS:
     void echoed();
-    void replied(const QString &signature, const QVariantList &values, const QString &error);
+    void replied(const QString &signature, const QVariantList &values, const QString &error, int callId);
     void heard(const QString &sender, const QString &path, const QString &member, const QString &signature, const QVariantList &values);
 
 private Q_SLOTS:
@@ -115,6 +117,8 @@ private:
     QString m_lastSignature;
     QVariantMap m_variantTypes;
     QVariantMap m_replyVariantTypes;
+    int m_replyDelay = 0;
+    int m_lastCallId = 0;
     QHash<QString, int> m_callCounts;
     Provider *m_provider = nullptr;
 };
