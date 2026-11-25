@@ -1708,6 +1708,13 @@ TestCase {
         compare(inLevel("battery", "batteryState").text, "voll");
     }
 
+    function test_the_level_has_no_state_row_while_upower_reports_no_state() {
+        giveBattery(controls, { state: 0 });
+        showLevel("battery");
+        verify(!rowOf(inLevel("battery", "batteryState")).visible);
+        compare(inLevel("battery", "batteryStand").text, "64 %");
+    }
+
     function test_the_level_follows_a_battery_that_changes_while_it_stands() {
         giveBattery(controls, { percentage: 64 });
         showLevel("battery");
