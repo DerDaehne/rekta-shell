@@ -72,12 +72,12 @@ Scope {
         id: stand
 
         present: upower.properties.IsPresent ?? false
-        kind: upower.properties.Type ?? 0
+        kind: Number(upower.properties.Type ?? 0)
         percentage: upower.properties.Percentage ?? 0
-        state: upower.properties.State ?? 0
-        timeToEmpty: upower.properties.TimeToEmpty ?? 0
-        timeToFull: upower.properties.TimeToFull ?? 0
-        warningLevel: upower.properties.WarningLevel ?? 0
+        state: Number(upower.properties.State ?? 0)
+        timeToEmpty: Number(upower.properties.TimeToEmpty ?? 0)
+        timeToFull: Number(upower.properties.TimeToFull ?? 0)
+        warningLevel: Number(upower.properties.WarningLevel ?? 0)
     }
 
     DBus.DBusServiceWatcher {
