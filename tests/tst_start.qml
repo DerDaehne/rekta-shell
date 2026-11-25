@@ -327,6 +327,9 @@ TestCase {
         const spinner = createTemporaryObject(liveWindow, testCase);
         const place = surface.place;
         const shownTitle = () => findChild(findChild(findChild(place, "running"), "grid").children.find(item => (item as Tile) !== null), "title").text;
+        // Each new window takes the activation once the event loop turns, the witness last, and the Start's surface draws
+        // as it gains and loses it: that settles before any frame is counted.
+        tryVerify(() => witness.active && !surface.active, 5000, "the witness, mapped last, ends up active");
         place.windows = [spinner];
         place.open();
         tryCompare(place, "phase", "open");
@@ -341,6 +344,30 @@ TestCase {
         waitForRest(surface, witness);
         compare(framesAfter(surface, witness, () => spinner.title = "⠹ building"), 1, "the open Start draws the new title");
         compare(shownTitle(), "⠹ building");
+    }
+
+    function test_a_title_that_changed_while_the_start_was_closed_shows_from_the_first_frame_of_an_opening() {
+        const surface = createTemporaryObject(startSurface, testCase);
+        const spinner = createTemporaryObject(liveWindow, testCase);
+        const later = createTemporaryObject(liveWindow, testCase, {
+            uuid: "later",
+            title: "⠋ testing"
+        });
+        const place = surface.place;
+        const shownTitles = () => findChild(findChild(place, "running"), "grid").children.filter(item => (item as Tile) !== null).map(tile => findChild(tile, "title").text).sort();
+        Prefs.motion = "system";
+        place.windows = [spinner];
+        spinner.title = "⠙ building";
+        place.windows = [spinner, later];
+        place.open();
+        compare(place.phase, "opening");
+        compare(shownTitles(), ["⠋ testing", "⠙ building"], "an opening shows the titles as they are now");
+        place.close(null);
+        tryCompare(place, "shown", false);
+        spinner.title = "⠹ building";
+        place.followSwipe(0.3);
+        compare(place.phase, "following");
+        compare(shownTitles(), ["⠋ testing", "⠹ building"], "a finger's opening shows the titles as they are now");
     }
 
     function test_without_windows_the_running_section_is_gone() {
