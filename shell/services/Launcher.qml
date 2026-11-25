@@ -11,8 +11,7 @@ import Start
 Scope {
     id: launcher
 
-    // How long an app may take to answer ActivateAction: less than the 25 s a caller of Invoke waits by default.
-    property int activationTimeout: 20000
+    property int activationTimeout: Rules.appAnswerWait
     readonly property bool starts: Quickshell.env("REKTA_SHELL_LAUNCH") === "systemd"
     readonly property DBusConnection sessionBus: DBusConnection {}
     readonly property DBusConnection systemBus: DBusConnection {

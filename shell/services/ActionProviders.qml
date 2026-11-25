@@ -18,8 +18,7 @@ QtObject {
     // The rows its owner's last ListActions gave, by desktop file ID.
     property var rows: ({})
     property bool listening: false
-    // How long a provider may take to answer Invoke: less than the 25 s a caller waits by default, so it gets this answer.
-    property int invokeTimeout: 20000
+    property int invokeTimeout: Rules.appAnswerWait
 
     readonly property string path: "/rekta/Actions"
     readonly property string interfaceName: "rekta.Actions1"

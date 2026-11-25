@@ -76,6 +76,7 @@ function applicationPath(name) {
 // One without a name is left out too: the spec requires it.
 function desktopActions(entry, appBusName, launcher) {
     const runnable = action => action.name !== "" && (appBusName !== "" || action.command.length > 0);
+    const answered = appBusName !== "" ? "; done is false with the app's D-Bus error as the reason if it cannot be reached or fails" : "";
     return Array.from(entry.actions).filter(runnable).map(action => ({
         id: `desktop/${entry.id}/${action.id}`,
         text: action.name,
@@ -83,7 +84,7 @@ function desktopActions(entry, appBusName, launcher) {
         app: entry.id,
         appName: entry.name,
         icon: action.icon || entry.icon,
-        description: `Runs the "${action.name}" action of ${entry.name}${appBusName !== "" ? `; done is false with the app's D-Bus error as the reason if it cannot be reached or fails` : ""}.`,
+        description: `Runs the "${action.name}" action of ${entry.name}${answered}.`,
         acts: () => launcher.starts,
         invokeWith: appBusName !== "" ? (parameters, reply) => {
             launcher.activateAction(appBusName, action.id, error => reply.send(null, activatedResult(error)));
@@ -104,6 +105,9 @@ function activatedResult(error) {
 const maxProvidedActions = 256;
 const maxActionKeywords = 32;
 const maxProvidedText = 1000;
+// How long the shell waits for an app to answer an action it hands on (a provider's Invoke, an ActivateAction): less
+// than the 25 s a caller of Invoke waits by default, so the caller gets the shell's answer.
+const appAnswerWait = 20000;
 
 // At most `most` elements of a list that came over D-Bus; anything else, an object that only claims a length too, is none.
 function boundedList(value, most) {
