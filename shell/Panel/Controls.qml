@@ -15,7 +15,8 @@ import State
 // another program plays has a row with a button and a slider of its own; in anzeige each display that can be dimmed has
 // a slider. netz and bluetooth start with their toggle switch (states.md:231–233); while it is on, the strongest
 // wireless networks or the paired Bluetooth devices follow as rows, up to five, and a list chosen in place holds them
-// all. A secured network the system does not know asks for its password in a sheet.
+// all. A secured network the system does not know asks for its password in a sheet. akku (only with a battery) shows
+// the stand, its state and the time left or until full, then the energy profile, which stands in sitzung without one.
 Item {
     id: controls
 

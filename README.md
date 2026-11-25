@@ -134,7 +134,8 @@ what you see on screen.
 - Sound output and input with volume and mute, and a row for each app that plays.
 - Wi-Fi networks and Bluetooth devices in place, with a sheet for a network's password.
 - What is playing, with its controls; quick switches for dark mode, do not disturb, Wi-Fi
-  and Bluetooth; density and the power profile.
+  and Bluetooth; density; the battery with its state and the time left or until full, and
+  the power profile.
 
 ### Lock screen and session
 
