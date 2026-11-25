@@ -329,6 +329,7 @@ TestCase {
 
     function test_the_start_hands_a_running_tile_no_count_as_the_count_stands_on_its_apps_launch_tile() {
         const start = createTemporaryObject(startComponent, testCase, { unseen: { "org.example.chat": 2 } });
+        start.open();
         const running = tilesIn(start, "running")[0];
         compare(part(running, "count"), null);
         compare(running.Accessible.name, "Chat: lunch");

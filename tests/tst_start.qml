@@ -116,6 +116,63 @@ TestCase {
         }
     }
 
+    // A window whose title changes on its own, as a terminal's spinner or a player's time changes it.
+    Component {
+        id: liveWindow
+
+        QtObject {
+            property string uuid: "spinner"
+            property string title: "⠋ building"
+            property string icon: testCase.blueIcon
+            property real lastActivated: 40
+            property int stackingOrder: 0
+            property bool active: false
+
+            function activate() {
+            }
+        }
+    }
+
+    // A window beside the Start's that draws only when asked: a frame asked of it after a change comes after any frame
+    // that change asked of the Start's, as both wait the same time for their turn.
+    Component {
+        id: witnessWindow
+
+        Window {
+            property int frames: 0
+
+            transientParent: null
+            width: 20
+            height: 20
+            visible: true
+            onFrameSwapped: frames++
+        }
+    }
+
+    // The Start on a surface of its own, mapped while it is closed as the shell's is, so only its own frames count.
+    Component {
+        id: startSurface
+
+        Window {
+            readonly property alias place: place
+            property int frames: 0
+
+            transientParent: null
+            width: testCase.width
+            height: testCase.height
+            visible: true
+            onFrameSwapped: frames++
+
+            StartPlace {
+                id: place
+
+                anchors.fill: parent
+                showRecent: false
+                pinned: [testCase.fakeApp("dolphin", 2)]
+            }
+        }
+    }
+
     SignalSpy {
         id: closedSpy
 
@@ -245,6 +302,45 @@ TestCase {
         compare(findChild(tiles[0], "title").lineCount, 1);
         compare(findChild(tiles[0], "title").color, Tokens.color.textPrimary);
         compare(findChild(tiles[0], "icon").width, Geometry.iconSize);
+    }
+
+    // The frames `surface` draws once `change` has run, counted until `witness` has drawn after it.
+    function framesAfter(surface: var, witness: var, change: var): int {
+        const before = surface.frames;
+        const asked = witness.frames;
+        change();
+        witness.update();
+        tryVerify(() => witness.frames > asked, 5000, "the witness draws when asked");
+        return surface.frames - before;
+    }
+
+    function waitForRest(surface: var, witness: var) {
+        let resting = false;
+        for (let tries = 0; tries < 20 && !resting; tries++)
+            resting = framesAfter(surface, witness, () => {}) === 0;
+        verify(resting, "the Start's surface comes to rest");
+    }
+
+    function test_a_title_that_changes_while_the_start_is_closed_draws_no_frame_and_shows_once_it_opens() {
+        const surface = createTemporaryObject(startSurface, testCase);
+        const witness = createTemporaryObject(witnessWindow, testCase);
+        const spinner = createTemporaryObject(liveWindow, testCase);
+        const place = surface.place;
+        const shownTitle = () => findChild(findChild(findChild(place, "running"), "grid").children.find(item => (item as Tile) !== null), "title").text;
+        place.windows = [spinner];
+        place.open();
+        tryCompare(place, "phase", "open");
+        compare(shownTitle(), "⠋ building");
+        place.close(null);
+        tryCompare(place, "shown", false);
+        waitForRest(surface, witness);
+        compare(framesAfter(surface, witness, () => spinner.title = "⠙ building"), 0, "no frame for a title the closed Start does not show");
+        place.open();
+        tryCompare(place, "phase", "open");
+        compare(shownTitle(), "⠙ building");
+        waitForRest(surface, witness);
+        compare(framesAfter(surface, witness, () => spinner.title = "⠹ building"), 1, "the open Start draws the new title");
+        compare(shownTitle(), "⠹ building");
     }
 
     function test_without_windows_the_running_section_is_gone() {

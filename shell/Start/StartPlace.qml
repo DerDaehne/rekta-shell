@@ -2013,7 +2013,6 @@ FocusScope {
                                 required property string uuid
                                 readonly property var shownWindow: start.shownRunning.find(window => window.uuid === uuid) ?? null
 
-                                title: shownWindow?.title ?? ""
                                 icon: shownWindow?.icon ?? ""
                                 // Its preview streams only while the Start shows, from its opening until it has gone.
                                 window: start.shown ? shownWindow : null
@@ -2021,6 +2020,14 @@ FocusScope {
                                 hasMenu: start.pinFile !== null
                                 onActivated: start.press(runningTile, () => runningTile.shownWindow?.activate())
                                 onMenuAsked: at => start.openMenu(runningTile, at, runningTile.shownWindow?.appId ?? "", false)
+
+                                // Taken only while the Start shows: closed, its surface stays mapped, and every title a
+                                // window turns over (a terminal's spinner, a player's time) would draw it anew, unseen.
+                                Binding on title {
+                                    when: start.shown
+                                    value: runningTile.shownWindow?.title ?? ""
+                                    restoreMode: Binding.RestoreNone
+                                }
                             }
                         }
                     }
