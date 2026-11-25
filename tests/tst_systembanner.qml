@@ -126,7 +126,7 @@ TestCase {
         compare(banner.word, "akku");
         compare(banner.sentence, "Noch 4 %. Schließ das Netzteil an.");
         compare(banner.status, "error");
-        compare(banner.actionLabel, "energieprofil");
+        compare(banner.actionLabel, "akku");
         turn({ batteryCritical: false, offline: true });
         compare([banner.word, banner.sentence, banner.status, banner.actionLabel], ["offline", "Keine Verbindung zum Netz.", "error", "netz"]);
         turn({ offline: false, storageFull: true, storageRemedy: true });
@@ -252,7 +252,7 @@ TestCase {
     }
 
     function test_the_places_the_remedies_open_are_in_the_controls_panel() {
-        compare(model.places, { battery: "power", offline: "connections" });
+        compare(model.places, { battery: "battery", offline: "connections" });
     }
 
     // The remedy names the place it opens, as the status word of the same state does.
@@ -262,6 +262,13 @@ TestCase {
         compare(banner.actionLabel, "netz");
         compare(words.deviations[0].opens, model.places.offline, "both open the same place");
         compare(words.deviations[0].name, `offline, öffnet ${banner.actionLabel}`);
+    }
+
+    function test_the_battery_remedy_is_named_akku_for_the_place_it_opens_as_the_status_word_names_it() {
+        const words = createTemporaryObject(statusWordsComponent, testCase, { batteryLow: true, batteryPercent: 4 });
+        turn({ batteryCritical: true });
+        compare(words.deviations[0].opens, model.places.battery, "both open the same place");
+        compare(words.deviations[0].name, `akku 4 %, öffnet ${banner.actionLabel}`);
     }
 
     function test_over_a_full_screen_window_only_the_battery_shows() {

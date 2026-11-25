@@ -63,7 +63,7 @@ TestCase {
 
     function test_a_word_opens_the_place_where_it_can_be_changed() {
         const model = make({ microphoneInUse: true, offline: true, muted: true, doNotDisturb: true, batteryLow: true });
-        compare(model.deviations.map(word => word.opens), ["sound", "power", "connections", "sound", "doNotDisturb"]);
+        compare(model.deviations.map(word => word.opens), ["sound", "battery", "connections", "sound", "doNotDisturb"]);
     }
 
     function test_every_word_names_what_it_opens() {
@@ -72,9 +72,22 @@ TestCase {
         compare(make({ doNotDisturb: true }).deviations[0].name, "nicht stören, öffnet steuerung");
     }
 
-    function test_the_battery_word_names_the_energy_profile_or_else_the_group_it_would_stand_in() {
-        compare(make({ batteryLow: true, batteryPercent: 5, powerProfiles: true }).deviations[0].name, "akku 5 %, öffnet energieprofil");
-        compare(make({ batteryLow: true, batteryPercent: 5, powerProfiles: false }).deviations[0].name, "akku 5 %, öffnet sitzung");
+    function test_the_battery_words_open_the_battery_s_level_by_the_name_the_tile_has() {
+        compare(make({ batteryLow: true, batteryPercent: 5 }).deviations[0].name, "akku 5 %, öffnet akku");
+        const note = make({ batteryNote: "akku 64 % · lädt" }).deviations[0];
+        compare(note.name, "akku 64 % · lädt, öffnet akku");
+        compare(note.opens, "battery");
+    }
+
+    function test_the_neutral_battery_word_has_no_status_and_stands_after_the_errors_and_before_the_choices() {
+        const model = make({ muted: true, doNotDisturb: true, offline: true, microphoneInUse: true, batteryNote: "akku 64 %" });
+        compare(texts(model), ["mikrofon an", "offline", "akku 64 %", "stumm", "nicht stören"]);
+        compare(model.deviations.map(word => word.status), ["error", "error", "", "", ""]);
+    }
+
+    function test_the_keys_put_the_neutral_battery_word_where_the_deviations_do() {
+        const model = make({ muted: true, offline: true, batteryNote: "akku 64 %" });
+        compare(model.deviations.map(word => word.key), model.keys.filter(key => ["offline", "batteryNote", "muted"].includes(key)));
     }
 
     function test_the_count_of_the_rest_opens_the_controls_at_the_top() {
@@ -93,7 +106,7 @@ TestCase {
     }
 
     function test_the_keys_cover_every_word_that_can_stand() {
-        const model = make({ microphoneInUse: true, screenShared: true, batteryLow: true, offline: true, muted: true, doNotDisturb: true });
+        const model = make({ microphoneInUse: true, screenShared: true, batteryLow: true, batteryNote: "akku 64 %", offline: true, muted: true, doNotDisturb: true });
         for (const word of model.deviations.concat([model.more(model.deviations)]))
             verify(model.keys.includes(word.key), word.key);
     }

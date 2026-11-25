@@ -79,7 +79,6 @@ ShellRoot {
 
         sink: keys.sink
         doNotDisturb: sidePanel.doNotDisturb
-        powerProfiles: sidePanel.hasPowerProfiles
         previewNodes: start.previewNodes
         storageFull: notifications.board.storageFull
         storageText: notifications.board.storageText
@@ -184,6 +183,7 @@ ShellRoot {
         media: music
         networkManagerRunning: systemState.networkManagerRunning
         fadeBack: fadeBackEffect
+        battery: systemState.battery
 
         // Under the session banner the Start waits: asked now, KWin would hand it the banner's keyboard.
         onPanelClosed: {

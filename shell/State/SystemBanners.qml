@@ -16,12 +16,12 @@ QtObject {
 
     readonly property var order: ["battery", "offline", "storage"]
     readonly property var states: ({
-            battery: { word: "akku", status: "error", text: "", action: "energieprofil", on: "Akku kritisch", off: "Akku nicht mehr kritisch." },
+            battery: { word: "akku", status: "error", text: "", action: "akku", on: "Akku kritisch", off: "Akku nicht mehr kritisch." },
             offline: { word: "offline", status: "error", text: "Keine Verbindung zum Netz.", action: "netz", on: "Verbindung verloren", off: "Wieder verbunden." },
             storage: { word: "speicher", status: "warning", text: "", action: "belegung ansehen", reason: storageRemedy ? "" : "Die Meldung dazu ist geschlossen.", on: "Speicher fast voll", off: "Wieder genug Speicher frei." }
         })
     // Where the remedy goes in the controls panel; a state without a place has its own remedy.
-    readonly property var places: ({ battery: "power", offline: "connections" })
+    readonly property var places: ({ battery: "battery", offline: "connections" })
     // The state that stays over a full-screen window.
     readonly property string urgent: "battery"
     readonly property var active: ({ battery: batteryCritical, offline: offline, storage: storageFull })

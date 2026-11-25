@@ -16,10 +16,10 @@ TestCase {
     width: 1800
     height: 300
 
-    readonly property var keys: ["microphone", "screen", "battery", "offline", "muted", "doNotDisturb", "more"]
+    readonly property var keys: ["microphone", "screen", "battery", "offline", "batteryNote", "muted", "doNotDisturb", "more"]
     readonly property var microphone: ({ key: "microphone", word: "mikrofon an", status: "error", opens: "sound", name: "mikrofon an, öffnet ton" })
     readonly property var screen: ({ key: "screen", word: "bildschirm geteilt", status: "error", opens: "background", name: "bildschirm geteilt, öffnet im hintergrund" })
-    readonly property var battery: ({ key: "battery", word: "akku 12 %", status: "error", opens: "power", name: "akku 12 %, öffnet energieprofil" })
+    readonly property var battery: ({ key: "battery", word: "akku 12 %", status: "error", opens: "battery", name: "akku 12 %, öffnet akku" })
     readonly property var offline: ({ key: "offline", word: "offline", status: "error", opens: "connections", name: "offline, öffnet netz" })
     readonly property var muted: ({ key: "muted", word: "stumm", status: "", opens: "sound", name: "stumm, öffnet ton" })
     readonly property var quiet: ({ key: "doNotDisturb", word: "nicht stören", status: "", opens: "doNotDisturb", name: "nicht stören, öffnet steuerung" })

@@ -10,6 +10,7 @@ import Quickshell.Services.UPower
 import Quickshell.Wayland
 import org.kde.plasma.workspace.dbus as DBus
 import Notices
+import State
 import Settings
 import Panel
 import Start
@@ -40,13 +41,14 @@ PanelWindow {
     required property bool networkManagerRunning
     // KWin's fade-back, which holds the right edge for a finger only while the panel is away.
     required property FadeBackEffect fadeBack
+    // The display battery, for the tile "akku".
+    required property Battery battery
     // The screen it opens on, null once that one has gone; the panel hides meanwhile.
     property ShellScreen shownOn: primaryScreen
     readonly property alias doNotDisturb: controls.doNotDisturb
     // "nicht stören" and how long it lasts.
     readonly property alias quiet: controls.quiet
     readonly property alias dark: controls.dark
-    readonly property alias hasPowerProfiles: controls.hasPowerProfiles
     // Untyped, as qmllint sees Pipewire's own opaque copy of the model type, which lacks `values`.
     readonly property var nodes: Pipewire.nodes
     // The sound cards and other audio devices, not the programs playing or recording.
@@ -145,6 +147,7 @@ PanelWindow {
             id: controls
 
             // PowerProfiles is asked only once the daemon runs: asked before, it would have the system bus start it.
+            battery: surface.battery
             hasPowerProfiles: powerProfiles.registered
             powerProfile: hasPowerProfiles ? PowerProfiles.profile : PowerProfile.Balanced
             hasPerformanceProfile: hasPowerProfiles && PowerProfiles.hasPerformanceProfile

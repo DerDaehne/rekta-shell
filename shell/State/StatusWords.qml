@@ -14,18 +14,19 @@ QtObject {
     property bool batteryLow: false
     property int batteryPercent: 0
     property bool offline: false
-    // Whether the panel offers the energy profile, the place the battery word opens; else its group.
-    property bool powerProfiles: false
+    // The neutral word for a battery that is not low ("akku 64 %", Battery.note), or "".
+    property string batteryNote: ""
 
     // Every word there can be, in the order they stand.
-    readonly property var keys: ["microphone", "screen", "battery", "offline", "muted", "doNotDisturb", "more"]
-    // The deviations in order of weight: errors, then choices; each names the place it opens, a part of the controls panel
-    // or the bar's menu of the background apps.
+    readonly property var keys: ["microphone", "screen", "battery", "offline", "batteryNote", "muted", "doNotDisturb", "more"]
+    // The deviations in order of weight: errors, then what the system tells, then choices; each names the place it opens,
+    // a part of the controls panel or the bar's menu of the background apps.
     readonly property var deviations: [
         microphoneInUse ? word("microphone", "mikrofon an", "error", "sound", "ton") : null,
         screenShared ? word("screen", "bildschirm geteilt", "error", "background", "im hintergrund") : null,
-        batteryLow ? word("battery", `akku ${batteryPercent} %`, "error", "power", powerProfiles ? "energieprofil" : "sitzung") : null,
+        batteryLow ? word("battery", `akku ${batteryPercent} %`, "error", "battery", "akku") : null,
         offline ? word("offline", "offline", "error", "connections", "netz") : null,
+        batteryNote !== "" ? word("batteryNote", batteryNote, "", "battery", "akku") : null,
         muted ? word("muted", "stumm", "", "sound", "ton") : null,
         doNotDisturb ? word("doNotDisturb", "nicht stören", "", "doNotDisturb", "steuerung") : null
     ].filter(deviation => deviation !== null)

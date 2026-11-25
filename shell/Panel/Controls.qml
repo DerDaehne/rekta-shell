@@ -5,7 +5,7 @@ import Rekta
 import State
 
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons. Its areas
-// are opener tiles in one grid at its foot, in a fixed order, ton, netz, bluetooth, anzeige: a tile says how its area
+// are opener tiles in one grid at its foot, in a fixed order, ton, netz, bluetooth, akku, anzeige: a tile says how its area
 // stands and opens the area's level, which covers the panel below its head (states.md:224–275); a tile never changes
 // data. What is used most stands above the grid, from the top: what a media player plays while it plays, the output's
 // mute button and volume, each display's brightness, "nicht stören" and "dunkel" as toggle buttons, then the group that
@@ -111,6 +111,8 @@ Item {
     readonly property int inlineDeviceLimit: 5
     readonly property var devicesInline: connectedFirst(bluetoothDevices).slice(0, inlineDeviceLimit)
 
+    // The display battery: its tile says how it stands and its level the rest.
+    property Battery battery: Battery {}
     // The shell's choice among the media players, which the bar's middle shares.
     property PlayerChoice choice: PlayerChoice {}
     // "nicht stören" and how long it lasts, which the bar's middle shows.
@@ -343,12 +345,12 @@ Item {
 
     readonly property list<string> densities: ["auto", "comfortable", "compact"]
     // Where a status word of the app bar leads, by name: "offline" to the level of netz while there is a network device;
-    // the energy profile, where it is offered, else its group.
+    // the battery's level while there is a battery, else the group of the session.
     readonly property var places: ({
             sound: soundLevel,
             connections: hasNetwork ? networkLevel : null,
             doNotDisturb: quietButton,
-            power: powerRow.present ? powerRow : sessionGroup
+            battery: battery.exists ? batteryLevel : sessionGroup
         })
 
     width: parent ? parent.width : 0
@@ -482,20 +484,10 @@ Item {
             objectName: "session"
             title: "sitzung"
 
-            PanelRow {
-                id: powerRow
-
-                label: "energieprofil"
-                present: controls.hasPowerProfiles
-
-                Segments {
-                    id: profiles
-
-                    objectName: "powerProfile"
-                    options: controls.hasPerformanceProfile ? ["sparen", "ausgewogen", "leistung"] : ["sparen", "ausgewogen"]
-                    currentIndex: controls.powerProfile
-                    onActivated: index => controls.powerProfileChosen(index)
-                }
+            // Without a battery there is no level to hold it.
+            ProfileRow {
+                segmentsName: "powerProfile"
+                present: controls.hasPowerProfiles && !controls.battery.exists
             }
 
             PanelRow {
@@ -558,6 +550,19 @@ Item {
             name: "bluetooth"
             stateWord: controls.bluetoothWord()
             onActivated: bluetoothLevel.show()
+        }
+
+        OpenerTile {
+            id: batteryTile
+
+            objectName: "batteryTile"
+            visible: controls.battery.exists
+            glyph: "battery"
+            name: "akku"
+            status: controls.battery.low ? "error" : ""
+            stateWord: controls.battery.tileWord
+            Accessible.name: controls.battery.tileName === "" ? name : `${name}, ${controls.battery.tileName}`
+            onActivated: batteryLevel.show()
         }
 
         // ponytail: `window` stands in for the display until Rekta has an icon for it; take Rekta's once it does.
@@ -782,6 +787,49 @@ Item {
     }
 
     AreaLevel {
+        id: batteryLevel
+
+        objectName: "battery"
+        parent: controls.levels
+        name: "akku"
+        tile: batteryTile
+
+        PanelRow {
+            label: "stand"
+
+            Body {
+                objectName: "batteryStand"
+                text: `${controls.battery.percent} %`
+            }
+        }
+
+        PanelRow {
+            label: "zustand"
+            present: controls.battery.stateWord !== ""
+
+            Body {
+                objectName: "batteryState"
+                text: controls.battery.stateWord
+            }
+        }
+
+        PanelRow {
+            label: "restzeit"
+            present: controls.battery.estimate !== ""
+
+            Body {
+                objectName: "batteryEstimate"
+                text: controls.battery.estimate
+            }
+        }
+
+        ProfileRow {
+            segmentsName: "batteryProfile"
+            present: controls.hasPowerProfiles
+        }
+    }
+
+    AreaLevel {
         id: displayLevel
 
         objectName: "display"
@@ -819,10 +867,6 @@ Item {
 
         function onDarkChanged() {
             darkButton.checked = controls.dark;
-        }
-
-        function onPowerProfileChanged() {
-            profiles.currentIndex = controls.powerProfile;
         }
 
         // Out of sight the lengths of "nicht stören" come back folded, and the password sheet goes.
@@ -880,6 +924,27 @@ Item {
         onSubmitted: (network, password) => controls.passwordChosen(network, password)
     }
 
+
+    // The energy profile as a choice between the profiles the system offers; it stands in the battery's level, or in the
+    // session's group where there is no battery.
+    component ProfileRow: PanelRow {
+        id: profileRow
+
+        required property string segmentsName
+
+        label: "energieprofil"
+
+        Segments {
+            objectName: profileRow.segmentsName
+            options: controls.hasPerformanceProfile ? ["sparen", "ausgewogen", "leistung"] : ["sparen", "ausgewogen"]
+            currentIndex: controls.powerProfile
+            // The choice ends the binding; it comes back, so the profile the system has shows.
+            onActivated: index => {
+                controls.powerProfileChosen(index);
+                currentIndex = Qt.binding(() => controls.powerProfile);
+            }
+        }
+    }
 
     // The default device of one kind in a select of the devices of that kind; choosing one asks for it as the default.
     // The select always shows the default PipeWire has, so a change from elsewhere shows at once. Its label stands above

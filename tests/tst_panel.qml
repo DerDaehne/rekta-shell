@@ -1619,6 +1619,153 @@ TestCase {
         verify(findChild(controls, "session").visible, "sperren still stands in sitzung");
     }
 
+    // A laptop battery as UPower reports it, with the values `values` over them.
+    function giveBattery(target: var, values: var) {
+        const battery = target.battery;
+        const stand = Object.assign({ present: true, kind: 2, percentage: 64, state: 2, timeToEmpty: 12000, timeToFull: 0, warningLevel: 1 }, values ?? {});
+        for (const key of Object.keys(stand))
+            battery[key] = stand[key];
+    }
+
+    function test_without_a_battery_there_is_no_akku_tile_and_the_energy_profile_stays_in_sitzung() {
+        showSettled(0);
+        verify(!control("batteryTile").visible, "a desktop has no akku");
+        verify(rowOf(control("powerProfile")).visible, "the profile stays in the group");
+        verify(!rowOf(findChild(controls, "batteryProfile")).visible);
+        compare(controls.places.battery, findChild(side, "session"));
+    }
+
+    function test_with_a_battery_the_akku_tile_stands_before_anzeige_and_the_energy_profile_moves_into_its_level() {
+        giveBattery(controls);
+        showSettled(0);
+        const tile = control("batteryTile");
+        verify(tile.visible);
+        compare(tile.glyph, "battery");
+        compare(tile.name, "akku");
+        compare(control("areas").shownTiles(), [tile, control("displayTile")]);
+        verify(!rowOf(control("powerProfile")).visible, "no longer in sitzung");
+        verify(findChild(controls, "session").visible, "sperren still stands there");
+        compare(controls.places.battery, findChild(controls, "battery"));
+        const level = showLevel("battery");
+        verify(side.within(level, rowOf(findChild(controls, "batteryProfile"))));
+        verify(rowOf(findChild(controls, "batteryProfile")).visible);
+    }
+
+    function test_the_akku_tile_says_the_stand_whether_it_charges_or_is_full() {
+        giveBattery(controls, { percentage: 64, state: 2 });
+        showSettled(0);
+        compare(stateOf("batteryTile"), "64 %");
+        giveBattery(controls, { state: 1 });
+        compare(stateOf("batteryTile"), "64 % · lädt");
+        giveBattery(controls, { percentage: 100, state: 4 });
+        compare(stateOf("batteryTile"), "voll");
+        giveBattery(controls, { percentage: 80, state: 5 });
+        compare(stateOf("batteryTile"), "80 %", "held at a charge limit");
+    }
+
+    function test_the_akku_tile_takes_the_error_status_from_low_on_and_not_before() {
+        giveBattery(controls, { percentage: 20, warningLevel: 2 });
+        showSettled(0);
+        compare(control("batteryTile").status, "");
+        giveBattery(controls, { percentage: 9, warningLevel: 3 });
+        compare(control("batteryTile").status, "error");
+        giveBattery(controls, { percentage: 4, warningLevel: 4 });
+        compare(control("batteryTile").status, "error");
+    }
+
+    function test_the_akku_tile_reads_akku_the_stand_and_that_it_charges() {
+        giveBattery(controls, { state: 1 });
+        showSettled(0);
+        compare(control("batteryTile").Accessible.name, "akku, 64 %, lädt");
+        giveBattery(controls, { state: 2 });
+        compare(control("batteryTile").Accessible.name, "akku, 64 %");
+        giveBattery(controls, { percentage: 100, state: 4 });
+        compare(control("batteryTile").Accessible.name, "akku, voll");
+    }
+
+    function test_the_level_shows_stand_state_time_and_then_the_energy_profile_in_that_order() {
+        giveBattery(controls, { percentage: 64, state: 2, timeToEmpty: 12000 });
+        showLevel("battery");
+        const rows = ["batteryStand", "batteryState", "batteryEstimate", "batteryProfile"].map(name => rowOf(inLevel("battery", name)));
+        compare(rows.map(row => row.label), ["stand", "zustand", "restzeit", "energieprofil"]);
+        compare(inLevel("battery", "batteryStand").text, "64 %");
+        compare(inLevel("battery", "batteryState").text, "entlädt");
+        compare(inLevel("battery", "batteryEstimate").text, "noch 3 h 20 min");
+        verify(rows.every(row => row.visible));
+        for (let k = 1; k < rows.length; k++)
+            verify(rows[k].mapToItem(controls, 0, 0).y > rows[k - 1].mapToItem(controls, 0, 0).y, `row ${k} below row ${k - 1}`);
+    }
+
+    function test_the_level_says_how_long_until_full_while_charging_and_has_no_time_row_without_an_estimate() {
+        giveBattery(controls, { state: 1, timeToFull: 4200 });
+        showLevel("battery");
+        compare(inLevel("battery", "batteryState").text, "lädt");
+        compare(inLevel("battery", "batteryEstimate").text, "bis voll 1 h 10 min");
+        giveBattery(controls, { state: 1, timeToFull: 0 });
+        verify(!rowOf(inLevel("battery", "batteryEstimate")).visible, "no estimate, no row");
+        giveBattery(controls, { state: 4, percentage: 100, timeToFull: 4200 });
+        verify(!rowOf(inLevel("battery", "batteryEstimate")).visible, "none once full");
+        compare(inLevel("battery", "batteryState").text, "voll");
+    }
+
+    function test_the_level_follows_a_battery_that_changes_while_it_stands() {
+        giveBattery(controls, { percentage: 64 });
+        showLevel("battery");
+        giveBattery(controls, { percentage: 63, timeToEmpty: 11400 });
+        compare(inLevel("battery", "batteryStand").text, "63 %");
+        compare(inLevel("battery", "batteryEstimate").text, "noch 3 h 10 min");
+    }
+
+    function test_the_energy_profile_in_the_level_sets_the_profile_and_follows_the_system() {
+        giveBattery(controls);
+        showLevel("battery");
+        const segments = inLevel("battery", "batteryProfile");
+        compare(segments.currentIndex, 1);
+        segments.forceActiveFocus();
+        keyClick(Qt.Key_Left);
+        compare(chosenProfiles, [0]);
+        compare(segments.currentIndex, 1, "it shows the profile the system has until the system changes it");
+        controls.powerProfile = 0;
+        compare(segments.currentIndex, 0);
+        controls.hasPowerProfiles = false;
+        verify(!rowOf(segments).visible, "without the daemon the row is gone");
+    }
+
+    function test_a_battery_that_goes_brings_the_energy_profile_back_to_sitzung_and_takes_the_tile() {
+        giveBattery(controls);
+        showSettled(0);
+        controls.battery.present = false;
+        verify(!control("batteryTile").visible);
+        verify(rowOf(control("powerProfile")).visible);
+        compare(controls.places.battery, findChild(side, "session"));
+    }
+
+    // The level of akku in both themes: charging with an estimate, and low.
+    function test_contact_sheet_of_akku_in_both_themes() {
+        if (!ContactSheets.wanted)
+            skip("contact sheets are built on demand");
+        for (const theme of ["light", "dark"]) {
+            Prefs.theme = theme;
+            for (const look of [["charging", { state: 1, percentage: 64, timeToFull: 4200 }], ["low", { state: 2, percentage: 9, warningLevel: 3, timeToEmpty: 1500 }]]) {
+                const contact = createTemporaryObject(contactComponent, testCase);
+                contact.height = 800;
+                const panel = findChild(contact, "panel");
+                giveSound(panel.controls);
+                giveDisplays(panel.controls);
+                giveBattery(panel.controls, look[1]);
+                panel.show(0, true);
+                waitForRendering(contact);
+                grabImage(contact).save(`panel-battery-tile-sheet-${look[0]}-${theme}.png`);
+                findChild(contact, "batteryTile").forceActiveFocus();
+                keyClick(Qt.Key_Return);
+                waitForRendering(contact);
+                verify(findChild(contact, "battery").open, `${look[0]} ${theme}`);
+                grabImage(contact).save(`panel-battery-sheet-${look[0]}-${theme}.png`);
+                contact.destroy();
+            }
+        }
+    }
+
     function test_sperren_locks_the_session() {
         showSettled(0);
         mouseClick(control("lock"));
@@ -2382,7 +2529,7 @@ TestCase {
     function test_revealing_a_place_from_a_closed_panel_scrolls_to_it_once_the_facet_has_laid_out() {
         giveSound(controls);
         scene.height = 360;
-        const row = controls.places.power;
+        const row = controls.places.battery;
         side.show(0);
         side.reveal(row);
         const scroller = findChild(side, "scroller");
@@ -2398,11 +2545,11 @@ TestCase {
         side.show(0);
         waitForRendering(side);
         const scroller = findChild(side, "scroller");
-        side.reveal(controls.places.power);
+        side.reveal(controls.places.battery);
         tryVerify(() => scroller.contentY > 0);
         side.reveal(null);
         compare(scroller.contentY, 0);
-        side.reveal(controls.places.power);
+        side.reveal(controls.places.battery);
         mouseWheel(scroller, 10, 10, 0, 120);
         verify(side.revealed === null, "the wheel takes the view");
     }
@@ -2412,9 +2559,9 @@ TestCase {
         compare(controls.places.sound, findChild(side, "sound"));
         compare(controls.places.connections, findChild(side, "network"), "offline to the level of netz");
         compare(controls.places.doNotDisturb, control("doNotDisturb"), "nicht stören is its button");
-        compare(controls.places.power.label, "energieprofil");
-        controls.hasPowerProfiles = false;
-        compare(controls.places.power, findChild(side, "session"), "without profiles the group it would stand in");
+        compare(controls.places.battery, findChild(side, "session"), "without a battery the group of the session");
+        giveBattery(controls);
+        compare(controls.places.battery, findChild(side, "battery"), "with one its level");
     }
 
     function test_revealing_a_place_after_a_pointer_open_shows_no_ring_on_its_control_until_a_key() {
@@ -2474,7 +2621,7 @@ TestCase {
         giveSound(controls);
         scene.height = 360;
         side.show(0);
-        side.reveal(controls.places.power);
+        side.reveal(controls.places.battery);
         verify(side.revealed !== null);
         tryVerify(() => side.revealed === null);
     }
@@ -2483,7 +2630,7 @@ TestCase {
         giveSound(controls);
         scene.height = 360;
         side.show(0);
-        side.reveal(controls.places.power);
+        side.reveal(controls.places.battery);
         tryVerify(() => side.revealed === null);
         const scroller = findChild(side, "scroller");
         verify(scroller.contentY > 0, "the jump scrolled the view past the toggle buttons");
@@ -2498,7 +2645,7 @@ TestCase {
         giveSound(controls);
         scene.height = 360;
         side.show(0);
-        side.reveal(controls.places.power);
+        side.reveal(controls.places.battery);
         tryVerify(() => side.revealed === null);
         const scroller = findChild(side, "scroller");
         scroller.contentY = 0;

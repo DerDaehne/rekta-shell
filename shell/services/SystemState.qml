@@ -17,13 +17,12 @@ Scope {
     required property bool doNotDisturb
     // KWin's nodes of the shell's own window previews, which never count as a shared screen.
     required property list<int> previewNodes
-    // Whether the energy profile can be chosen in the panel, so the battery word names the place it opens.
-    required property bool powerProfiles
     // freespacenotifier's notice is open, and what it says (NoticeBoard).
     required property bool storageFull
     required property string storageText
     required property bool storageRemedy
     readonly property StatusWords words: model
+    readonly property Battery battery: stand
     readonly property SystemBanners banners: bannerModel
     readonly property bool offline: networkManagerRunning && Sources.offline(Networking.connectivity, NetworkConnectivity.None)
     // NetworkManager is asked only once it runs: Quickshell picks its network backend when the singleton is first read.
@@ -61,12 +60,24 @@ Scope {
     }
 
     DBus.Properties {
-        id: battery
+        id: upower
 
         busType: DBus.BusType.System
         service: "org.freedesktop.UPower"
         path: "/org/freedesktop/UPower/devices/DisplayDevice"
         iface: "org.freedesktop.UPower.Device"
+    }
+
+    Battery {
+        id: stand
+
+        present: upower.properties.IsPresent ?? false
+        kind: upower.properties.Type ?? 0
+        percentage: upower.properties.Percentage ?? 0
+        state: upower.properties.State ?? 0
+        timeToEmpty: upower.properties.TimeToEmpty ?? 0
+        timeToFull: upower.properties.TimeToFull ?? 0
+        warningLevel: upower.properties.WarningLevel ?? 0
     }
 
     DBus.DBusServiceWatcher {
@@ -83,17 +94,17 @@ Scope {
         doNotDisturb: system.doNotDisturb
         microphoneInUse: Sources.microphoneInUse(system.streams, Quickshell.processId)
         screenShared: Sources.screenShared(system.linkGroups.values, system.ownScreencasts)
-        batteryLow: Sources.batteryLow(battery.properties.WarningLevel)
-        batteryPercent: Math.round(battery.properties.Percentage ?? 0)
+        batteryLow: stand.low
+        batteryPercent: stand.percent
+        batteryNote: stand.note
         offline: system.offline
-        powerProfiles: system.powerProfiles
     }
 
     SystemBanners {
         id: bannerModel
 
-        batteryCritical: Sources.batteryCritical(battery.properties.WarningLevel)
-        batteryPercent: Math.round(battery.properties.Percentage ?? 0)
+        batteryCritical: Sources.batteryCritical(upower.properties.WarningLevel)
+        batteryPercent: stand.percent
         offline: system.offline
         storageFull: system.storageFull
         storageText: system.storageText
