@@ -59,6 +59,12 @@ TestCase {
     }
 
     Component {
+        id: statusWordsComponent
+
+        StatusWords {}
+    }
+
+    Component {
         id: unmappedComponent
 
         Item {
@@ -122,7 +128,7 @@ TestCase {
         compare(banner.status, "error");
         compare(banner.actionLabel, "energieprofil");
         turn({ batteryCritical: false, offline: true });
-        compare([banner.word, banner.sentence, banner.status, banner.actionLabel], ["offline", "Keine Verbindung zum Netz.", "error", "verbindungen"]);
+        compare([banner.word, banner.sentence, banner.status, banner.actionLabel], ["offline", "Keine Verbindung zum Netz.", "error", "netz"]);
         turn({ offline: false, storageFull: true, storageRemedy: true });
         compare([banner.word, banner.sentence, banner.status, banner.actionLabel], ["speicher", "Root is running out of space (180 MiB free).", "warning", "belegung ansehen"]);
     }
@@ -247,6 +253,15 @@ TestCase {
 
     function test_the_places_the_remedies_open_are_in_the_controls_panel() {
         compare(model.places, { battery: "power", offline: "connections" });
+    }
+
+    // The remedy names the place it opens, as the status word of the same state does.
+    function test_the_offline_remedy_is_named_netz_for_the_place_it_opens_as_the_status_word_names_it() {
+        const words = createTemporaryObject(statusWordsComponent, testCase, { offline: true });
+        turn({ offline: true });
+        compare(banner.actionLabel, "netz");
+        compare(words.deviations[0].opens, model.places.offline, "both open the same place");
+        compare(words.deviations[0].name, `offline, öffnet ${banner.actionLabel}`);
     }
 
     function test_over_a_full_screen_window_only_the_battery_shows() {
