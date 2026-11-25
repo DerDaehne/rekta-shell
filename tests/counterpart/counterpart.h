@@ -53,6 +53,8 @@ public:
     Q_INVOKABLE void claimEchoName();
     // Every call to path is recorded and answered with these values, typed as QtDBus types them.
     Q_INVOKABLE void answerAt(const QString &path, const QVariantList &values);
+    // Every call to path is recorded and answered with the D-Bus error name and message.
+    Q_INVOKABLE void failAt(const QString &path, const QString &name, const QString &message);
     // Every call to path is recorded and stays without an answer.
     Q_INVOKABLE void ignoreAt(const QString &path);
     // Puts up a provider of rekta.Actions1 at path: ListActions answers `actions`, a list of {id, properties} (a list of

@@ -11,6 +11,8 @@ import Start
 Scope {
     id: launcher
 
+    // How long an app may take to answer ActivateAction: less than the 25 s a caller of Invoke waits by default.
+    property int activationTimeout: 20000
     readonly property bool starts: Quickshell.env("REKTA_SHELL_LAUNCH") === "systemd"
     readonly property DBusConnection sessionBus: DBusConnection {}
     readonly property DBusConnection systemBus: DBusConnection {
@@ -65,15 +67,21 @@ Scope {
     }
 
     // A desktop action of an app that runs over D-Bus, as the desktop-entry spec has a launcher run it: ActivateAction on
-    // the app's bus name and its path, without a parameter or platform data. An error the app replies is only logged.
-    function activateAction(busName: string, actionId: string) {
-        call(false, busName, Rules.applicationPath(busName), "org.freedesktop.Application", "ActivateAction", [actionId, [], {}], "sava{sv}", null);
+    // the app's bus name and its path, without a parameter or platform data. An error the app replies is logged; done(error),
+    // if given, follows the reply, or NoReply after activationTimeout.
+    function activateAction(busName: string, actionId: string, done: var) {
+        callWithin(activationTimeout, false, busName, Rules.applicationPath(busName), "org.freedesktop.Application", "ActivateAction", [actionId, [], {}], "sava{sv}", done);
     }
 
     // A method on the session's or the system's bus, its arguments typed by a full D-Bus signature ("" for none);
     // done(error, values), if given, follows its reply, with error null on success and values the reply's. Where the
     // shell does not act, it follows at once as if the call had succeeded without values.
     function call(onSystemBus: bool, service: string, path: string, iface: string, method: string, args: var, signature: string, done: var) {
+        callWithin(-1, onSystemBus, service, path, iface, method, args, signature, done);
+    }
+
+    // call() with its own wait in milliseconds (-1: the bus library's 25 s).
+    function callWithin(timeoutMs: int, onSystemBus: bool, service: string, path: string, iface: string, method: string, args: var, signature: string, done: var) {
         const what = `${onSystemBus ? "system" : "session"} bus ${service} ${path} ${iface}.${method}${args.length > 0 ? ` ${JSON.stringify(args)}` : ""}`;
         if (!starts) {
             console.info(`Launcher: would call ${what}`);
@@ -84,6 +92,6 @@ Scope {
             if (error)
                 console.warn(`Launcher: ${what}: ${error}`);
             done?.(error, values);
-        });
+        }, timeoutMs);
     }
 }

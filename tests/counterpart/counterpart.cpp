@@ -49,10 +49,11 @@ private:
 class Answer : public QDBusVirtualObject
 {
 public:
-    Answer(Counterpart *counterpart, std::optional<QVariantList> values)
+    Answer(Counterpart *counterpart, std::optional<QVariantList> values, std::optional<QPair<QString, QString>> error = std::nullopt)
         : QDBusVirtualObject(counterpart)
         , m_counterpart(counterpart)
         , m_values(std::move(values))
+        , m_error(std::move(error))
     {
     }
 
@@ -64,7 +65,9 @@ public:
     bool handleMessage(const QDBusMessage &message, const QDBusConnection &connection) override
     {
         m_counterpart->record(message);
-        if (m_values)
+        if (m_error)
+            connection.send(message.createErrorReply(m_error->first, m_error->second));
+        else if (m_values)
             connection.send(message.createReply(*m_values));
         return true;
     }
@@ -72,6 +75,7 @@ public:
 private:
     Counterpart *m_counterpart;
     std::optional<QVariantList> m_values;
+    std::optional<QPair<QString, QString>> m_error;
 };
 
 QVariant plainValue(const QVariant &value);
@@ -223,6 +227,12 @@ bool Counterpart::takeName(const QString &name)
 void Counterpart::answerAt(const QString &path, const QVariantList &values)
 {
     m_connection.registerVirtualObject(path, new Answer(this, values));
+    m_paths.append(path);
+}
+
+void Counterpart::failAt(const QString &path, const QString &name, const QString &message)
+{
+    m_connection.registerVirtualObject(path, new Answer(this, std::nullopt, QPair(name, message)));
     m_paths.append(path);
 }
 

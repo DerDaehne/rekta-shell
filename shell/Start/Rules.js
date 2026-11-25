@@ -71,8 +71,9 @@ function applicationPath(name) {
 
 // The desktop actions of an entry ([Desktop Action] groups) as the action registry lists them, in the words the app
 // gives them and found by the app's name too. An app that runs over D-Bus under `appBusName` runs each of them there,
-// Exec or not, as the spec has a launcher do; any other app ("") starts one as it starts itself, so one without an
-// Exec is left out. One without a name is left out too: the spec requires it.
+// Exec or not, as the spec has a launcher do, and Invoke answers with the app's own answer (activatedResult); any other
+// app ("") starts one as it starts itself, so one without an Exec is left out and Invoke answers once it is started.
+// One without a name is left out too: the spec requires it.
 function desktopActions(entry, appBusName, launcher) {
     const runnable = action => action.name !== "" && (appBusName !== "" || action.command.length > 0);
     return Array.from(entry.actions).filter(runnable).map(action => ({
@@ -82,10 +83,19 @@ function desktopActions(entry, appBusName, launcher) {
         app: entry.id,
         appName: entry.name,
         icon: action.icon || entry.icon,
-        description: `Runs the "${action.name}" action of ${entry.name}.`,
+        description: `Runs the "${action.name}" action of ${entry.name}${appBusName !== "" ? `; done is false with the app's D-Bus error as the reason if it cannot be reached or fails` : ""}.`,
         acts: () => launcher.starts,
+        invokeWith: appBusName !== "" ? (parameters, reply) => {
+            launcher.activateAction(appBusName, action.id, error => reply.send(null, activatedResult(error)));
+            return reply;
+        } : undefined,
         run: appBusName !== "" ? () => launcher.activateAction(appBusName, action.id) : () => launcher.launchAction(entry, action)
     }));
+}
+
+// What Invoke answers for an ActivateAction that ended with `error` (null: the app did it).
+function activatedResult(error) {
+    return error ? { done: false, reason: nonEmptyText(error) } : { done: true };
 }
 
 // What one provider may list: no program can make the shell work through more than this. A launcher's actions are a

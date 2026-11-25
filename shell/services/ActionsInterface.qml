@@ -155,7 +155,7 @@ QtObject {
                 done: false,
                 reason: command.reason ?? "not available now"
             };
-        if (command.invokeWith !== undefined)
+        if (command.invokeWith !== undefined && command.acts?.() !== false)
             return command.invokeWith(parameters, reply);
         if (command.at === undefined)
             return ran(command, command.run, command.becomes?.());

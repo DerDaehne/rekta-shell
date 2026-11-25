@@ -155,8 +155,8 @@ TestCase {
             testCase.calls = [...testCase.calls, Rules.launchContext(entry, action.command, 1234)];
         }
 
-        function activateAction(busName: string, actionId: string) {
-            shellLauncher.activateAction(busName, actionId);
+        function activateAction(busName: string, actionId: string, done: var) {
+            shellLauncher.activateAction(busName, actionId, done);
         }
     }
 
@@ -600,7 +600,7 @@ TestCase {
             icon: "font-x-generic",
             readOnly: false,
             destructive: false
-            ,description: `Runs the "Install Font" action of Fonts.`,
+            ,description: `Runs the "Install Font" action of Fonts; done is false with the app's D-Bus error as the reason if it cannot be reached or fails.`,
             consequence: "undoable",
             available: true
         });
@@ -639,23 +639,64 @@ TestCase {
         counterpart.releaseName("org.gnome.TextEditor");
     }
 
-    function test_an_action_whose_app_cannot_be_reached_is_logged_as_a_warning_and_invoke_still_answers_at_once() {
+    function test_an_action_whose_app_cannot_be_reached_is_logged_as_a_warning_and_invoke_answers_not_done_with_the_bus_error() {
         apps = listedApps(dbusEntries());
         exportFor("rekta");
         compare(counterpart.nameOwner("org.gnome.TextEditor"), "");
         ignoreWarning(/^Launcher: session bus org\.gnome\.TextEditor \/org\/gnome\/TextEditor org\.freedesktop\.Application\.ActivateAction \["new-window",\[\],\{\}\]: org\.freedesktop\.DBus\.Error\.ServiceUnknown: .+$/);
-        compare(invoke("desktop/org.gnome.TextEditor/new-window", {}), {
-            signature: "a{sv}",
-            values: [{
-                    done: true
-                }],
-            error: ""
-        });
+        const answer = invoke("desktop/org.gnome.TextEditor/new-window", {});
+        compare(answer.error, "");
+        compare(answer.values[0].done, false);
+        verify(answer.values[0].reason.startsWith("org.freedesktop.DBus.Error.ServiceUnknown: "), answer.values[0].reason);
         // A round trip on the launcher's own connection: the bus has answered the call before it by now.
         let answered = false;
         shellLauncher.sessionBus.call("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetId", [], "", () => answered = true);
         tryVerify(() => answered);
         compare(calls, []);
+    }
+
+    function test_the_error_an_app_answers_activate_action_with_is_the_reason_at_most_a_thousand_characters_long() {
+        apps = listedApps(dbusEntries());
+        exportFor("rekta");
+        verify(counterpart.takeName("org.gnome.TextEditor"));
+        counterpart.failAt("/org/gnome/TextEditor", "org.gnome.Failed", "e".repeat(5000));
+        ignoreWarning(/^Launcher: session bus org\.gnome\.TextEditor .+: org\.gnome\.Failed: e+$/);
+        const answer = invoke("desktop/org.gnome.TextEditor/new-window", {});
+        compare(answer.error, "");
+        compare(answer.values[0].done, false);
+        compare(answer.values[0].reason.length, 1000);
+        verify(answer.values[0].reason.startsWith("org.gnome.Failed: eee"), answer.values[0].reason.slice(0, 40));
+        counterpart.releaseName("org.gnome.TextEditor");
+    }
+
+    function test_an_app_that_holds_activate_action_back_leaves_the_shell_answering_and_ends_the_call_with_no_reply_after_the_wait() {
+        apps = listedApps(dbusEntries());
+        exportFor("rekta");
+        verify(counterpart.takeName("org.gnome.TextEditor"));
+        counterpart.ignoreAt("/org/gnome/TextEditor");
+        compare(shellLauncher.activationTimeout, 20000, "less than the 25 s of a caller that uses the defaults");
+        shellLauncher.activationTimeout = 2000;
+        ignoreWarning(/^Launcher: session bus org\.gnome\.TextEditor .+: org\.freedesktop\.DBus\.Error\.NoReply: .+$/);
+        let held = null;
+        const store = (signature, values, error) => {
+            if (signature === "a{sv}")
+                held = {
+                    values,
+                    error
+                };
+        };
+        counterpart.replied.connect(store);
+        counterpart.call(service, path, iface, "Invoke", ["desktop/org.gnome.TextEditor/new-window", {}]);
+        tryVerify(() => counterpart.lastCall.member === "ActivateAction");
+        verify(listActions().length > 0, "the shell answers while the app holds the call");
+        compare(held, null, "the call is still open");
+        tryVerify(() => held !== null);
+        counterpart.replied.disconnect(store);
+        compare(held.error, "");
+        compare(held.values[0].done, false);
+        verify(held.values[0].reason.startsWith("org.freedesktop.DBus.Error.NoReply"), held.values[0].reason);
+        shellLauncher.activationTimeout = 20000;
+        counterpart.releaseName("org.gnome.TextEditor");
     }
 
     function test_a_session_call_without_arguments_that_fails_is_logged_without_any() {
