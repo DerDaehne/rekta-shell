@@ -699,6 +699,19 @@ TestCase {
         counterpart.releaseName("org.gnome.TextEditor");
     }
 
+    function test_where_the_shell_only_logs_what_it_would_do_an_action_of_an_app_over_dbus_answers_not_done_whatever_the_app_says() {
+        apps = listedApps(dbusEntries());
+        exportFor("rekta");
+        verify(counterpart.takeName("org.gnome.TextEditor"));
+        counterpart.answerAt("/org/gnome/TextEditor", []);
+        launcher.starts = false;
+        const answer = invoke("desktop/org.gnome.TextEditor/new-window", {});
+        launcher.starts = true;
+        compare(answer.values[0].done, false);
+        verify(answer.values[0].reason.includes("only logs what it would do"), answer.values[0].reason);
+        counterpart.releaseName("org.gnome.TextEditor");
+    }
+
     function test_a_session_call_without_arguments_that_fails_is_logged_without_any() {
         ignoreWarning(/^Launcher: session bus org\.freedesktop\.ScreenSaver \/ScreenSaver org\.freedesktop\.ScreenSaver\.GetActive: org\.freedesktop\.DBus\.Error\.ServiceUnknown: .+$/);
         let answer = null;
