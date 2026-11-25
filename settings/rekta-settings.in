@@ -5,4 +5,4 @@ export REKTA_VERSION="${REKTA_VERSION:-@REKTA_VERSION@}"@REKTA_DEFAULTS_EXPORT@
 # Only the rekta session's programs switch Plasma's colour scheme; the settings app does so wherever it was opened from.
 export REKTA_SHELL_LAUNCH="${REKTA_SHELL_LAUNCH:-systemd}"
 @QUICKSHELL@ --path "@REKTA_SETTINGS_DIR@" ipc call settings raise >/dev/null 2>&1 && exit 0
-exec @QUICKSHELL@ --path "@REKTA_SETTINGS_DIR@" --no-duplicate
+exec @QUICKSHELL@ --path "@REKTA_SETTINGS_DIR@" --no-duplicate --no-detailed-logs

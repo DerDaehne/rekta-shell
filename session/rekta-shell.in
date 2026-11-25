@@ -8,4 +8,5 @@ export REKTA_VERSION
 # The version this build gave its KWin effects too, which no wrapper changes: the shell compares the running effect's.
 export REKTA_BUILD_VERSION="@REKTA_VERSION@"
 export REKTA_SHELL_LAUNCH="${REKTA_SHELL_LAUNCH:-systemd}"@REKTA_DEFAULTS_EXPORT@
-exec @QUICKSHELL@ --path "@REKTA_SHELL_DIR@" "$@"
+# Without --no-detailed-logs Quickshell keeps every debug line of its own in a log in the runtime directory, in memory.
+exec @QUICKSHELL@ --path "@REKTA_SHELL_DIR@" --no-detailed-logs "$@"

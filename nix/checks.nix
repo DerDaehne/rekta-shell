@@ -154,6 +154,23 @@ in
         touch $out
       '';
 
+  # Quickshell keeps every debug line of its own in a log in the runtime directory, in memory and without bound, unless
+  # it is told not to: every starter that runs a configuration tells it (an `ipc` call runs none).
+  starters-skip-detailed-logs =
+    let
+      nested = pkgs.callPackage ./nested.nix { inherit rekta-shell; };
+    in
+    pkgs.runCommand "rekta-shell-starters-skip-detailed-logs" { } ''
+      for starter in ${rekta-shell}/bin/.rekta-shell-wrapped ${rekta-shell}/bin/.rekta-settings-wrapped ${lib.getExe nested}; do
+        grep -e '--path' "$starter" | grep -v ' ipc ' >runs || { echo "$starter starts no configuration" >&2; exit 1; }
+        if grep -v -e '--no-detailed-logs' runs; then
+          echo "$starter starts Quickshell with its detailed log" >&2
+          exit 1
+        fi
+      done
+      touch $out
+    '';
+
   # The rekta drop-in replaces KWin's command in both sessions, so a Plasma update that changes the command must fail here.
   kwin-drop-in-follows-plasma = pkgs.runCommand "rekta-shell-kwin-drop-in-follows-plasma" { } ''
     plasma=$(sed -n 's/^ExecStart=//p' ${qt.kwin}/share/systemd/user/plasma-kwin_wayland.service)
