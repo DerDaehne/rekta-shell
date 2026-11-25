@@ -239,6 +239,7 @@ TestCase {
     }
 
     function cleanup() {
+        counterpart.delayReplies(0);
         tryVerify(() => openCalls === 0, 30000, "every call of the test has been answered before the next test starts");
     }
 
@@ -1532,6 +1533,16 @@ TestCase {
         compare(invoke("key-map", {}).values, [{
                     done: true
                 }], "an action without a state answers without one");
+    }
+
+    function test_the_reply_of_a_call_never_lands_in_the_wait_for_another_call_that_is_still_open() {
+        exportFor("rekta");
+        counterpart.delayReplies(200);
+        const first = callWithoutWaiting(service, path, iface, "ListActions", []);
+        const second = invoke("key-map", {});
+        compare(second.signature, "a{sv}", "the answer of Invoke, not the earlier ListActions");
+        tryVerify(() => first.answer !== null);
+        compare(first.answer.signature, "a(sa{sv})");
     }
 
     function test_a_caller_that_ignores_the_answer_of_invoke_still_gets_the_action_run() {
