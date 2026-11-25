@@ -259,6 +259,7 @@ ShellRoot {
         toaster: toasts.toaster
         stale: fadeBackEffect.stale
         quiet: notifications.quiet
+        arrived: splash.arrived
 
         onSessionAsked: focusOn => {
             sidePanel.close();

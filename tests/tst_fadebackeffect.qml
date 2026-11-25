@@ -157,6 +157,7 @@ TestCase {
         const running = effect();
         roundTrip(running);
         compare(running.methods, []);
+        verify(running.stale, "KWin without the effect runs another one than the shell's too");
     }
 
     function test_the_effect_coming_anew_makes_the_shell_ask_again() {

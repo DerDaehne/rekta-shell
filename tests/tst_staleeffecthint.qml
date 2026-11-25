@@ -52,6 +52,7 @@ TestCase {
             toaster: testCase.toaster
             stale: false
             quiet: false
+            arrived: true
         }
     }
 
@@ -89,6 +90,7 @@ TestCase {
         verify(hintShows());
         compare(toaster.open.actionLabel, "abmelden");
         compare(toaster.open.status, "", "plain, in ink");
+        verify(!toaster.open.undoAction, "a plain action as Rekta's update toast has, no running-out window");
         verify(!toaster.open.stays, "it runs out as any toast");
         verify(!toaster.open.notification, "the shell's own, rising from the bar");
     }
@@ -143,6 +145,13 @@ TestCase {
         const hint = start({ stale: true, quiet: true });
         compare(toaster.open, null, "not over a full-screen window or while nicht stören");
         hint.quiet = false;
+        verify(hintShows());
+    }
+
+    function test_it_waits_until_the_shell_has_arrived_and_comes_once_it_has() {
+        const hint = start({ stale: true, arrived: false });
+        compare(toaster.open, null, "not over the splash or ahead of the bar");
+        hint.arrived = true;
         verify(hintShows());
     }
 }
