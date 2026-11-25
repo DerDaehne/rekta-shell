@@ -544,14 +544,17 @@ TestCase {
         const holder = {
             answer: null
         };
-        counterpart.replied.connect((signature, values, error) => {
-            if (signature === answerSignature)
-                holder.answer = {
-                    signature,
-                    values,
-                    error
-                };
-        });
+        const take = (signature, values, error) => {
+            if (signature !== answerSignature)
+                return;
+            holder.answer = {
+                signature,
+                values,
+                error
+            };
+            counterpart.replied.disconnect(take);
+        };
+        counterpart.replied.connect(take);
         counterpart.call(service, "/jobs", "org.rekta.Jobs", member, args);
         return holder;
     }

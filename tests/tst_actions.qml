@@ -1119,7 +1119,7 @@ TestCase {
         stopProvider();
     }
 
-    function test_a_provider_that_fails_an_invoke_is_logged_and_the_shell_still_answers_at_once() {
+    function test_a_provider_that_fails_an_invoke_is_logged_as_a_warning() {
         apps = appsWithProvider();
         exportFor("rekta");
         settle();
@@ -1139,14 +1139,17 @@ TestCase {
         const holder = {
             answer: null
         };
-        counterpart.replied.connect((signature, values, error) => {
-            if (signature === "a{sv}")
-                holder.answer = {
-                    signature,
-                    values,
-                    error
-                };
-        });
+        const take = (signature, values, error) => {
+            if (signature !== "a{sv}")
+                return;
+            holder.answer = {
+                signature,
+                values,
+                error
+            };
+            counterpart.replied.disconnect(take);
+        };
+        counterpart.replied.connect(take);
         counterpart.call(service, path, iface, "Invoke", [id, parameters]);
         return holder;
     }
@@ -1520,6 +1523,88 @@ TestCase {
         compare(reason.length, 1000);
         verify(reason.startsWith("org.rekta.Counterpart.Failed: eee"), reason.slice(0, 40));
         stopProvider();
+    }
+
+    function test_each_type_a_provider_schema_names_takes_what_dbus_delivers_for_it_and_refuses_any_other() {
+        const client = createTemporaryObject(clientComponent, testCase);
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        counterpart.provide(path, [{
+                id: "typed",
+                properties: {
+                    title: "Typed",
+                    parameters: JSON.stringify({
+                        type: "object",
+                        properties: {
+                            files: {
+                                type: "array"
+                            },
+                            none: {
+                                type: "array"
+                            },
+                            options: {
+                                type: "object"
+                            },
+                            count: {
+                                type: "integer"
+                            },
+                            ratio: {
+                                type: "number"
+                            },
+                            on: {
+                                type: "boolean"
+                            },
+                            name: {
+                                type: "string"
+                            }
+                        }
+                    })
+                }
+            }]);
+        verify(counterpart.takeName(probeName));
+        tryVerify(() => providedIds().length === 1);
+        const invokeTyped = parameters => {
+            let answer = null;
+            client.call(service, path, iface, "Invoke", [`${probeId}typed`, parameters], "sa{sv}", error => answer = {
+                    error
+                });
+            tryVerify(() => answer !== null);
+            return answer.error;
+        };
+        const fitting = {
+            files: ["a", "b"],
+            none: [],
+            options: {
+                k: "v"
+            },
+            count: 3,
+            ratio: 2.5,
+            on: true,
+            name: "x"
+        };
+        const wrong = [[{
+                    files: "a"
+                }, "files", "array"], [{
+                    options: ["a"]
+                }, "options", "object"], [{
+                    count: 2.5
+                }, "count", "integer"], [{
+                    ratio: "1"
+                }, "ratio", "number"], [{
+                    on: 1
+                }, "on", "boolean"], [{
+                    name: 7
+                }, "name", "string"]];
+        const fittingError = invokeTyped(fitting);
+        const fittingArgs = counterpart.lastCall?.args;
+        const refusals = wrong.map(([parameters]) => invokeTyped(parameters));
+        const reached = counterpart.callsTo("Invoke");
+        stopProvider();
+        compare(fittingError, null, "a list, an empty list, a map, a whole number, a number, a truth value and a text as D-Bus delivers them");
+        compare(fittingArgs, ["typed", fitting]);
+        compare(refusals, wrong.map(([, key, type]) => `org.freedesktop.DBus.Error.Failed: ${probeId}typed takes ${key} as ${type}`));
+        compare(reached, 1, "no call of a wrong type reaches the provider");
     }
 
     function test_outside_the_rekta_session_no_provider_is_looked_up() {
