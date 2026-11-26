@@ -86,13 +86,18 @@ function desktopActions(entry, appBusName, launcher) {
         icon: action.icon || entry.icon,
         description: `Runs the "${action.name}" action of ${entry.name}${answered}.`,
         acts: () => launcher.starts,
-        invokeWith: appBusName !== "" ? (parameters, reply) => {
+        invokeWith: appBusName !== "" ? (parameters, reply, dry) => {
+            if (dry)
+                return { done: true, reason: unaskedReason };
             launcher.activateAction(appBusName, action.id, error => reply.send(null, activatedResult(error)));
             return reply;
         } : undefined,
         run: appBusName !== "" ? () => launcher.activateAction(appBusName, action.id) : () => launcher.launchAction(entry, action)
     }));
 }
+
+// Why a dry run says no more of an app's answer than that the app would be asked.
+const unaskedReason = "the app is not asked in a dry run, so what it answers is not known";
 
 // What Invoke answers for an ActivateAction that ended with `error` (null: the app did it).
 function activatedResult(error) {
@@ -174,7 +179,7 @@ function providedResult(answer) {
 // The actions a running provider of rekta.Actions1 lists (`listed`: the rows of its ListActions) as the action registry
 // has them, named for its app. Every value is checked, as the registry exports them under the signatures it promises:
 // a row that fails is left out (usableRow), a wrong icon or keyword is dropped. A destructive row is left out because,
-// until the shell can ask first, an app's own may not run from outside. `invoke(id, parameters, reply)` calls the provider's Invoke.
+// until the shell can ask first, an app's own may not run from outside. `invoke(id, parameters, reply, dry)` calls the provider's Invoke.
 function providedActions(app, listed, invoke) {
     return listed.filter(usableRow).map(([id, properties]) => ({
         id: `provider/${app.id}/${id}`,
@@ -190,7 +195,7 @@ function providedActions(app, listed, invoke) {
         available: properties.available !== false,
         reason: nonEmptyText(properties.reason) ?? "the app gave no reason",
         state: scalarState(properties.state) === undefined ? undefined : () => scalarState(properties.state),
-        invokeWith: (parameters, reply) => invoke(id, parameters, reply)
+        invokeWith: (parameters, reply, dry) => invoke(id, parameters, reply, dry)
     }));
 }
 

@@ -1700,16 +1700,329 @@ TestCase {
         compare(all.signature, "a{sv}");
         compare(all.values, [{
                 Version: 1,
-                ShellVersion: "0.1.5+20261122.1830.abc1234"
+                ShellVersion: "0.1.5+20261122.1830.abc1234",
+                DryRunKey: "dry-run"
             }]);
         compare(counterpart.replyVariantTypes, {
             Version: "uint",
-            ShellVersion: "QString"
+            ShellVersion: "QString",
+            DryRunKey: "QString"
         });
         const xml = callShell("org.freedesktop.DBus.Introspectable", "Introspect", []).values[0];
         verify(/<property name="Version" type="u" access="read">\s*<annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="const"\/>/.test(xml), xml);
         compare(callShell("org.freedesktop.DBus.Properties", "Get", [iface, "Size"]).error, "org.freedesktop.DBus.Error.UnknownProperty");
         compare(callShell("org.freedesktop.DBus.Properties", "Set", [iface, "Version", 2]).error, "org.freedesktop.DBus.Error.PropertyReadOnly");
+    }
+
+    // What the shell has done so far that a dry run must not add to: its commands and launches, its calls to an app over
+    // D-Bus and to a provider. The counterpart is asked last, so that a call the shell sent has reached it.
+    function effects(): var {
+        let sent = false;
+        shellLauncher.sessionBus.call("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetId", [], "", () => sent = true);
+        tryVerify(() => sent);
+        counterpart.nameOwner("org.freedesktop.DBus");
+        return [calls.length, counterpart.callsTo("Invoke"), counterpart.callsTo("ActivateAction")];
+    }
+
+    // The same call twice, first asking for a dry run and then really: the answers of both, after proving that the dry
+    // one has done nothing.
+    function bothWays(id: string, parameters: var): var {
+        const before = effects();
+        const dry = invoke(id, Object.assign({
+            "dry-run": true
+        }, parameters));
+        compare(effects(), before, `a dry run of ${id} has no effect`);
+        return {
+            dry,
+            real: invoke(id, parameters)
+        };
+    }
+
+    // The dry run says what the real one answered: nothing done, `would` its `done`, its state and its reason, or
+    // `reason` where the dry run cannot know it (an app that is not asked).
+    function compareDecision(id: string, ways: var, reason: var) {
+        compare(ways.real.error, "", id);
+        compare(ways.dry.error, "", id);
+        compare(ways.dry.signature, "a{sv}", id);
+        const real = ways.real.values[0];
+        const expected = {
+            done: false,
+            would: real.done
+        };
+        if (real.state !== undefined)
+            expected.state = real.state;
+        if ((reason ?? real.reason) !== undefined)
+            expected.reason = reason ?? real.reason;
+        compare(ways.dry.values[0], expected, id);
+    }
+
+    function test_a_dry_run_of_each_command_does_nothing_and_says_what_the_real_run_answers() {
+        exportFor("rekta");
+        const parameters = {
+            volume: {
+                percent: 30
+            }
+        };
+        for (const id of ["lock", "switch-user", "logout", "reboot", "shutdown", "dark", "do-not-disturb", "key-map", "mute", "volume"]) {
+            const ways = bothWays(id, parameters[id] ?? {});
+            compareDecision(id, ways);
+            compare(ways.real.values[0].done, true, id);
+        }
+        compare(bothWays("dark", {}).dry.values[0].state, false, "dark was switched on by the real run before, so the next run would switch it off");
+        compare(calls.filter(call => call === "lock").length, 1, "only the real run locked");
+    }
+
+    function test_a_dry_run_says_what_a_state_would_be_and_what_a_volume_would_be() {
+        exportFor("rekta");
+        compare(invoke("dark", {
+            "dry-run": true
+        }).values, [{
+                done: false,
+                would: true,
+                state: true
+            }]);
+        compare(invoke("volume", {
+            "dry-run": true,
+            percent: 30
+        }).values, [{
+                done: false,
+                would: true,
+                state: 30
+            }]);
+        compare(commands.sink.audio.volume, 0.5);
+        compare(calls, []);
+    }
+
+    function test_where_the_shell_only_logs_what_it_would_do_a_dry_run_says_it_would_not_with_the_same_reason() {
+        apps = listedApps(desktopEntries());
+        exportFor("rekta");
+        commands.launcher.starts = false;
+        testCase.launcher.starts = false;
+        for (const id of ["lock", "dark", "desktop/firefox/new-window"]) {
+            const ways = bothWays(id, {});
+            compareDecision(id, ways);
+            compare(ways.real.values[0].done, false, id);
+            verify(ways.dry.values[0].reason.includes("only logs what it would do"), id);
+        }
+        testCase.launcher.starts = true;
+    }
+
+    function test_a_dry_run_of_a_command_that_is_not_available_says_it_would_not_with_the_reason() {
+        commands.sink = null;
+        exportFor("rekta");
+        for (const [id, parameters] of [["mute", {}], ["volume", {
+                    percent: 30
+                }]]) {
+            const ways = bothWays(id, parameters);
+            compareDecision(id, ways);
+            compare(ways.dry.values[0], {
+                done: false,
+                would: false,
+                reason: "there is no audio output"
+            }, id);
+        }
+    }
+
+    function test_a_dry_run_of_a_desktop_action_starts_nothing_and_says_the_real_run_would() {
+        apps = listedApps(desktopEntries());
+        exportFor("rekta");
+        const ways = bothWays("desktop/firefox/new-window", {});
+        compareDecision("desktop/firefox/new-window", ways);
+        compare(ways.dry.values[0].would, true);
+        compare(calls.length, 1, "the real run started the app once");
+    }
+
+    function test_a_dry_run_of_an_action_of_an_app_over_dbus_never_calls_the_app_and_says_it_was_not_asked() {
+        apps = listedApps(dbusEntries());
+        exportFor("rekta");
+        verify(counterpart.takeName("org.gnome.TextEditor"));
+        counterpart.answerAt("/org/gnome/TextEditor", []);
+        const id = "desktop/org.gnome.TextEditor/new-window";
+        const ways = bothWays(id, {});
+        compareDecision(id, ways, Rules.unaskedReason);
+        compare(ways.dry.values[0].would, true);
+        tryVerify(() => counterpart.callsTo("ActivateAction") === 1, 5000, "only the real run called the app");
+        counterpart.releaseName("org.gnome.TextEditor");
+    }
+
+    function test_a_dry_run_of_a_provider_action_never_calls_the_provider_and_says_it_was_not_asked() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        const ways = bothWays(`${probeId}open`, {
+            path: "/tmp/a.txt"
+        });
+        compareDecision(`${probeId}open`, ways, Rules.unaskedReason);
+        tryVerify(() => counterpart.callsTo("Invoke") === 1, 5000, "only the real run called the provider");
+        stopProvider();
+    }
+
+    function test_a_dry_run_of_a_provider_action_that_is_not_available_says_it_would_not_with_the_providers_reason() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        counterpart.provide(path, [{
+                id: "busy",
+                properties: {
+                    title: "Busy",
+                    available: false,
+                    reason: "the app is busy"
+                }
+            }]);
+        verify(counterpart.takeName(probeName));
+        tryVerify(() => action(`${probeId}busy`) !== undefined);
+        const ways = bothWays(`${probeId}busy`, {});
+        compareDecision(`${probeId}busy`, ways);
+        compare(ways.dry.values[0], {
+            done: false,
+            would: false,
+            reason: "the app is busy"
+        });
+        compare(counterpart.callsTo("Invoke"), 0);
+        stopProvider();
+    }
+
+    function test_a_dry_run_of_a_provider_whose_owner_is_gone_says_it_would_not_as_the_real_run_does() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        providers.owners = {
+            [probeName]: ""
+        };
+        const gone = {
+            done: false,
+            reason: "the app is not running"
+        };
+        ignoreWarning(/^ActionProviders: org\.example\.Prober: plain: no owner$/);
+        compare(providers.invoke(probeName, "plain", {}, null, false), gone);
+        ignoreWarning(/^ActionProviders: org\.example\.Prober: plain: no owner$/);
+        compare(providers.invoke(probeName, "plain", {}, null, true), gone);
+        compare(counterpart.callsTo("Invoke"), 0);
+        stopProvider();
+    }
+
+    function test_a_call_that_cannot_be_understood_is_refused_the_same_way_with_and_without_a_dry_run() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        const refusals = [
+            ["nope", {}],
+            ["dark", {
+                    loud: true
+                }],
+            ["volume", {
+                    percent: 101
+                }],
+            ["volume", {}],
+            ["volume", {
+                    percent: "30"
+                }],
+            ["desktop/firefox/new-window", {
+                    url: "x"
+                }],
+            [`${probeId}open`, {
+                    path: 7
+                }],
+            [`${probeId}plain`, {
+                    x: 1
+                }]
+        ];
+        for (const [id, parameters] of refusals) {
+            for (const unavailable of [false, true]) {
+                commands.sink = unavailable ? null : commands.sink;
+                const ways = bothWays(id, parameters);
+                compare(ways.real.error, "org.freedesktop.DBus.Error.Failed", id);
+                compare(ways.dry.error, ways.real.error, id);
+                compare(ways.dry.values, ways.real.values, id);
+            }
+        }
+        stopProvider();
+    }
+
+    function test_a_dry_run_key_that_is_no_boolean_is_an_error_for_every_kind_of_action() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        for (const id of ["dark", "desktop/firefox/new-window", `${probeId}plain`]) {
+            for (const asked of ["true", 1]) {
+                const refused = invoke(id, {
+                    "dry-run": asked
+                });
+                compare(refused.error, "org.freedesktop.DBus.Error.Failed", id);
+                compare(refused.values, [`${id} takes dry-run as boolean`], id);
+            }
+        }
+        compare(effects(), [0, 0, 0]);
+        stopProvider();
+    }
+
+    function test_a_call_that_says_dry_run_is_false_runs_for_real_and_the_key_never_reaches_a_provider() {
+        apps = appsWithProvider();
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        compare(invoke("dark", {
+            "dry-run": false
+        }).values, [{
+                done: true,
+                state: true
+            }]);
+        compare(invoke(`${probeId}open`, {
+            "dry-run": false,
+            path: "/tmp/a.txt"
+        }).values, [{
+                done: true
+            }]);
+        tryVerify(() => counterpart.callsTo("Invoke") === 1);
+        compare(counterpart.lastCall.args, ["open", {
+                path: "/tmp/a.txt"
+            }]);
+        stopProvider();
+    }
+
+    function test_every_listed_action_of_every_kind_answers_a_dry_run_and_does_nothing() {
+        apps = [...listedApps(dbusEntries()), ...appsWithProvider()];
+        exportFor("rekta");
+        settle();
+        startProvider();
+        tryVerify(() => providedIds().length === 2);
+        const before = effects();
+        const ids = listActions().map(entry => entry[0]);
+        for (const prefix of ["lock", "desktop/gnome-org.gnome.font-viewer/", "provider/"])
+            verify(ids.some(id => id.startsWith(prefix)), `${prefix} is listed`);
+        for (const id of ids) {
+            const schema = JSON.parse(action(id).parameters ?? "{}");
+            const parameters = {
+                "dry-run": true
+            };
+            for (const key of schema.required ?? [])
+                parameters[key] = schema.properties[key].type === "integer" ? 30 : "x";
+            const answer = invoke(id, parameters);
+            compare(answer.error, "", id);
+            compare(answer.values[0].done, false, id);
+            compare(typeof answer.values[0].would, "boolean", id);
+        }
+        compare(effects(), before, "no action did anything");
+        stopProvider();
+    }
+
+    function test_the_interface_names_the_key_that_asks_for_a_dry_run_and_it_can_only_be_read() {
+        exportFor("rekta");
+        compare(callShell("org.freedesktop.DBus.Properties", "Get", [iface, "DryRunKey"]), {
+            signature: "v",
+            values: ["dry-run"],
+            error: ""
+        });
+        compare(callShell("org.freedesktop.DBus.Properties", "Set", [iface, "DryRunKey", "x"]).error, "org.freedesktop.DBus.Error.PropertyReadOnly");
     }
 
     function test_outside_the_rekta_session_nothing_is_owned() {

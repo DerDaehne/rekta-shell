@@ -7,6 +7,8 @@ import RektaShell.DBus
 // lists changes. The shell's own are the Start's commands, run as the search runs them, so one that ends the session
 // only opens the banner; an app's desktop action starts as the app does. The names are working names. In any other
 // session it owns nothing.
+// A call with "dry-run": true among its parameters (the property DryRunKey names it) does nothing and answers what the
+// real one would: {done: false, would: whether it would be done, state?, reason?}.
 // ponytail: any program on the bus may invoke; a portal with permissions per client is to guard it.
 QtObject {
     id: actions
@@ -24,6 +26,8 @@ QtObject {
     readonly property int version: 1
     readonly property string path: "/rekta/Actions"
     readonly property string interfaceName: "rekta.Actions1"
+    // The key of Invoke's parameters that asks for a dry run; it is no parameter of any action.
+    readonly property string dryRunKey: "dry-run"
     // The amount of a command that takes one is a percent, as the search reads "ton 30" (Rules.commandHits).
     readonly property string amountSchema: JSON.stringify({
         type: "object",
@@ -125,9 +129,10 @@ QtObject {
     }
 
     // `state` is what the command sets, when it has one. Where the shell only logs what it would do (Launcher), the
-    // command still runs and the answer says nothing was done.
-    function ran(command: var, run: var, state: var): var {
-        run();
+    // command still runs and the answer says nothing was done. A dry run runs nothing.
+    function ran(command: var, run: var, state: var, dry: bool): var {
+        if (!dry)
+            run();
         if (command.acts?.() === false)
             return {
                 done: false,
@@ -141,13 +146,32 @@ QtObject {
         };
     }
 
-    // The answer of Invoke: {done, state?, reason?}. A call that cannot be understood (an unknown action, an unknown or
-    // wrongly typed parameter) is an error; an action that exists but does not go is done: false with its reason. An action
-    // that answers later (a provider's) returns `reply` and sends its answer through it.
-    function invoke(id: string, parameters: var, reply: var): var {
-        const command = entries.find(candidate => candidate.id === id);
-        if (command === undefined)
-            throw new Error(`there is no action ${id}`);
+    function dryRunAsked(command: var, parameters: var): bool {
+        const asked = parameters[dryRunKey];
+        if (asked !== undefined && typeof asked !== "boolean")
+            throw new Error(`${command.id} takes ${dryRunKey} as boolean`);
+        return asked === true;
+    }
+
+    function withoutDryRun(parameters: var): var {
+        const rest = {};
+        Object.keys(parameters).filter(key => key !== dryRunKey).forEach(key => rest[key] = parameters[key]);
+        return rest;
+    }
+
+    // What the real run would have answered, as a dry run says it: nothing was done, `would` tells whether it would be.
+    function wouldBe(command: var, outcome: var): var {
+        const answer = Object.assign({}, outcome, {
+            done: false,
+            would: outcome.done
+        });
+        console.info(`ActionsInterface: would invoke ${command.id} (dry run): ${JSON.stringify(answer)}`);
+        return answer;
+    }
+
+    // What a run of the action ends in. An action that answers later (a provider's) returns `reply` and sends its answer
+    // through it, unless the run is dry.
+    function outcomeOf(command: var, parameters: var, reply: var, dry: bool): var {
         refuseBadParameters(command, parameters);
         const percent = command.at === undefined ? undefined : checkedPercent(command, parameters);
         if (command.available === false)
@@ -156,10 +180,22 @@ QtObject {
                 reason: command.reason ?? "not available now"
             };
         if (command.invokeWith !== undefined && command.acts?.() !== false)
-            return command.invokeWith(parameters, reply);
+            return command.invokeWith(parameters, reply, dry);
         if (command.at === undefined)
-            return ran(command, command.run, command.becomes?.());
-        return ran(command, command.at(percent).run, percent);
+            return ran(command, command.run, command.becomes?.(), dry);
+        return ran(command, command.at(percent).run, percent, dry);
+    }
+
+    // The answer of Invoke: {done, state?, reason?}. A call that cannot be understood (an unknown action, an unknown or
+    // wrongly typed parameter) is an error; an action that exists but does not go is done: false with its reason. With
+    // "dry-run": true the checks are the same and the answer is wouldBe's.
+    function invoke(id: string, parameters: var, reply: var): var {
+        const command = entries.find(candidate => candidate.id === id);
+        if (command === undefined)
+            throw new Error(`there is no action ${id}`);
+        const dry = dryRunAsked(command, parameters);
+        const outcome = outcomeOf(command, withoutDryRun(parameters), reply, dry);
+        return dry ? wouldBe(command, outcome) : outcome;
     }
 
     function answer(member: string, args: var, reply: var): var {
@@ -172,6 +208,8 @@ QtObject {
             return version;
         case "ShellVersion":
             return shellVersion;
+        case "DryRunKey":
+            return dryRunKey;
         }
         throw new Error(`${member} is not part of ${interfaceName}`);
     }
@@ -205,6 +243,9 @@ QtObject {
                 <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="const"/>
               </property>
               <property name="ShellVersion" type="s" access="read">
+                <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="const"/>
+              </property>
+              <property name="DryRunKey" type="s" access="read">
                 <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="const"/>
               </property>
             </interface>`);
