@@ -79,7 +79,9 @@ TestCase {
         verify(!make({ percentage: 9, state: discharging, warningLevel: 2 }).low, "a level under low is no warning yet");
     }
 
-    function test_low_is_spoken_with_its_word() {
+    function test_only_critical_is_critical_and_low_is_spoken_with_its_word() {
+        verify(!make({ percentage: 9, state: discharging, warningLevel: lowWarning }).critical);
+        verify(make({ percentage: 4, state: discharging, warningLevel: criticalWarning }).critical);
         compare(make({ percentage: 9, state: discharging, warningLevel: lowWarning }).tileName, "9 %, knapp");
         compare(make({ percentage: 9, state: discharging, warningLevel: lowWarning }).tileWord, "9 %");
     }
@@ -92,6 +94,7 @@ TestCase {
             compare(battery.tileWord, "");
             compare(battery.estimate, "");
             verify(!battery.low, "no low without a battery");
+            verify(!battery.critical, "no critical without a battery");
         }
     }
 

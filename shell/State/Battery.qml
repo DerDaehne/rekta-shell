@@ -29,6 +29,7 @@ QtObject {
     readonly property bool exists: present && kind === 2
     readonly property int percent: Math.round(percentage)
     readonly property bool low: exists && Sources.batteryLow(warningLevel)
+    readonly property bool critical: exists && Sources.batteryCritical(warningLevel)
     readonly property bool onBattery: exists && (state === discharging || state === empty)
     readonly property bool onCharge: exists && state === charging
     readonly property string stateWord: ({ [charging]: "lädt", [discharging]: "entlädt", [empty]: "entlädt", [fullyCharged]: "voll", [pendingCharge]: "lädt nicht" })[state] ?? ""

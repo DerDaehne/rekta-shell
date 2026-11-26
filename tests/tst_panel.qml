@@ -1689,6 +1689,15 @@ TestCase {
         tryCompare(tile, "status", "error");
     }
 
+    // UPower makes its DisplayDevice the UPS whenever one is present, on a laptop too: that is no battery of this machine.
+    function test_a_ups_as_the_display_device_has_no_akku_tile_and_keeps_the_energy_profile_in_sitzung() {
+        giveBattery(controls, { kind: 3 });
+        showSettled(0);
+        verify(!control("batteryTile").visible, "a UPS is no akku");
+        verify(rowOf(control("powerProfile")).visible, "the profile stays reachable in sitzung");
+        compare(controls.places.battery, findChild(side, "session"));
+    }
+
     function test_the_akku_tile_reads_akku_the_stand_and_that_it_charges() {
         giveBattery(controls, { state: 1 });
         showSettled(0);

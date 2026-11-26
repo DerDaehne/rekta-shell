@@ -103,7 +103,7 @@ Scope {
     SystemBanners {
         id: bannerModel
 
-        batteryCritical: Sources.batteryCritical(upower.properties.WarningLevel)
+        batteryCritical: stand.critical
         batteryPercent: stand.percent
         offline: system.offline
         storageFull: system.storageFull
