@@ -561,17 +561,19 @@ Item {
             glyph: "battery"
             name: "akku"
             // "knapp" is the product's own word for the state, on the error colour (colour.md:349–351); a new one turns the tile over.
-            property bool knapp: false
-            status: knapp ? "error" : ""
-            word: knapp ? "knapp" : ""
+            property bool lowShown: false
+            status: lowShown ? "error" : ""
+            word: lowShown ? "knapp" : ""
+            // The name carries the word; the description would say it twice.
+            Accessible.description: ""
             stateWord: controls.battery.tileWord
             Accessible.name: controls.battery.tileName === "" ? name : `${name}, ${controls.battery.tileName}`
             onActivated: batteryLevel.show()
-            Component.onCompleted: knapp = controls.battery.low
+            Component.onCompleted: lowShown = controls.battery.low
 
             Connections {
                 function onLowChanged() {
-                    batteryTile.news("flip", () => batteryTile.knapp = controls.battery.low);
+                    batteryTile.news("flip", () => batteryTile.lowShown = controls.battery.low);
                 }
 
                 target: controls.battery

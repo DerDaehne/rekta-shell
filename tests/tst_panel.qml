@@ -1673,6 +1673,7 @@ TestCase {
         tryCompare(tile, "status", "error");
         compare(tile.word, "knapp", "the product's word, not Rekta's failed");
         compare(tile.Accessible.name, "akku, 9 %, knapp");
+        compare(tile.Accessible.description, "", "the name has the word, so no second reading");
         giveBattery(controls, { percentage: 4, warningLevel: 4 });
         compare(tile.status, "error");
         compare(tile.word, "knapp");
@@ -1687,6 +1688,19 @@ TestCase {
         compare(tile.status, "", "news waits for a held tile");
         tile.held = false;
         tryCompare(tile, "status", "error");
+    }
+
+    function test_a_new_knapp_turns_the_akku_tile_over_and_changes_it_at_the_half_of_the_turn() {
+        Prefs.motion = "on";
+        giveBattery(controls, { percentage: 20, warningLevel: 2 });
+        showSettled(0);
+        const tile = control("batteryTile");
+        giveBattery(controls, { percentage: 9, warningLevel: 3 });
+        compare(tile.status, "", "a new status is no continuous reading: it comes at the half of the flip");
+        tryCompare(tile, "status", "error");
+        giveBattery(controls, { percentage: 30, warningLevel: 1 });
+        compare(tile.status, "error", "a status that goes turns the tile over too");
+        tryCompare(tile, "status", "");
     }
 
     // UPower makes its DisplayDevice the UPS whenever one is present, on a laptop too: that is no battery of this machine.
