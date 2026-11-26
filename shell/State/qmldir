@@ -6,3 +6,5 @@ PlayerChoice 1.0 PlayerChoice.qml
 DoNotDisturb 1.0 DoNotDisturb.qml
 Front 1.0 Front.js
 Battery 1.0 Battery.qml
+Throttled 1.0 Throttled.qml
+MiddleLine 1.0 MiddleLine.qml

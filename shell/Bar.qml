@@ -45,10 +45,15 @@ PanelWindow {
     readonly property var front: windows?.active?.isOn(modelData) ? windows.active : null
     // The open Start does not move the bar: its surface lies over it, and the bar is reached by closing the Start.
     readonly property bool away: !arrived || (windows?.fullScreenOn(modelData) ?? false)
-    readonly property var middleLine: Middle.barLine(
-        controlPanel.quiet.middleParts,
-        Middle.musicParts(media?.title ?? "", media?.artist ?? "", media?.position ?? 0, media?.length ?? 0),
-        front ? Middle.windowParts(front.app, front.title) : [])
+    readonly property var middleLine: lineOfMiddle.line
+    readonly property MiddleLine lineOfMiddle: MiddleLine {
+        quietParts: panel.controlPanel.quiet.middleParts
+        musicTitle: panel.media?.title ?? ""
+        musicArtist: panel.media?.artist ?? ""
+        musicPosition: panel.media?.position ?? 0
+        musicLength: panel.media?.length ?? 0
+        front: panel.front
+    }
     readonly property bool floatOpen: bar.menu.open || background.menu.open || clock.calendar.open || tip.open
     readonly property bool panelOpenHere: controlPanel.visible && controlPanel.screen === modelData
 
