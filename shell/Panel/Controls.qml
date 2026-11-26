@@ -560,10 +560,22 @@ Item {
             visible: controls.battery.exists
             glyph: "battery"
             name: "akku"
-            status: controls.battery.low ? "error" : ""
+            // "knapp" is the product's own word for the state, on the error colour (colour.md:349–351); a new one turns the tile over.
+            property bool knapp: false
+            status: knapp ? "error" : ""
+            word: knapp ? "knapp" : ""
             stateWord: controls.battery.tileWord
             Accessible.name: controls.battery.tileName === "" ? name : `${name}, ${controls.battery.tileName}`
             onActivated: batteryLevel.show()
+            Component.onCompleted: knapp = controls.battery.low
+
+            Connections {
+                function onLowChanged() {
+                    batteryTile.news("flip", () => batteryTile.knapp = controls.battery.low);
+                }
+
+                target: controls.battery
+            }
         }
 
         // ponytail: `window` stands in for the display until Rekta has an icon for it; take Rekta's once it does.

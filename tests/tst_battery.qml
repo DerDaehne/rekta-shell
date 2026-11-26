@@ -79,6 +79,11 @@ TestCase {
         verify(!make({ percentage: 9, state: discharging, warningLevel: 2 }).low, "a level under low is no warning yet");
     }
 
+    function test_low_is_spoken_with_its_word() {
+        compare(make({ percentage: 9, state: discharging, warningLevel: lowWarning }).tileName, "9 %, knapp");
+        compare(make({ percentage: 9, state: discharging, warningLevel: lowWarning }).tileWord, "9 %");
+    }
+
     function test_without_a_battery_there_is_nothing() {
         for (const values of [{ present: false }, { kind: 0 }, { kind: 3 }]) {
             const battery = make(Object.assign({ percentage: 50, state: discharging, warningLevel: lowWarning, timeToEmpty: 600 }, values));

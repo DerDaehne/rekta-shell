@@ -1663,14 +1663,30 @@ TestCase {
         compare(stateOf("batteryTile"), "80 %", "held at a charge limit");
     }
 
-    function test_the_akku_tile_takes_the_error_status_from_low_on_and_not_before() {
+    function test_the_akku_tile_says_knapp_on_the_error_colour_from_low_on_and_not_before() {
         giveBattery(controls, { percentage: 20, warningLevel: 2 });
         showSettled(0);
-        compare(control("batteryTile").status, "");
+        const tile = control("batteryTile");
+        compare(tile.status, "");
+        compare(tile.word, "");
         giveBattery(controls, { percentage: 9, warningLevel: 3 });
-        compare(control("batteryTile").status, "error");
+        tryCompare(tile, "status", "error");
+        compare(tile.word, "knapp", "the product's word, not Rekta's failed");
+        compare(tile.Accessible.name, "akku, 9 %, knapp");
         giveBattery(controls, { percentage: 4, warningLevel: 4 });
-        compare(control("batteryTile").status, "error");
+        compare(tile.status, "error");
+        compare(tile.word, "knapp");
+    }
+
+    function test_a_new_knapp_comes_to_the_akku_tile_as_news_that_waits_while_the_tile_is_held() {
+        giveBattery(controls, { percentage: 20, warningLevel: 2 });
+        showSettled(0);
+        const tile = control("batteryTile");
+        tile.held = true;
+        giveBattery(controls, { percentage: 9, warningLevel: 3 });
+        compare(tile.status, "", "news waits for a held tile");
+        tile.held = false;
+        tryCompare(tile, "status", "error");
     }
 
     function test_the_akku_tile_reads_akku_the_stand_and_that_it_charges() {

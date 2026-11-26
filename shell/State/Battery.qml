@@ -34,7 +34,7 @@ QtObject {
     readonly property string stateWord: ({ [charging]: "lädt", [discharging]: "entlädt", [empty]: "entlädt", [fullyCharged]: "voll", [pendingCharge]: "lädt nicht" })[state] ?? ""
     readonly property string tileWord: !exists ? "" : state === fullyCharged ? "voll" : onCharge ? `${percent} % · lädt` : `${percent} %`
     // The tile's name spoken: the dot between the words is no speech.
-    readonly property string tileName: tileWord.split(" · ").join(", ")
+    readonly property string tileName: tileWord.split(" · ").concat(low ? ["knapp"] : []).join(", ")
     // The bar's neutral word: on battery, and while a charge runs below nearlyFull; nothing when full, held at a charge
     // limit or plugged in and idle. Low has the error word of the status words instead.
     readonly property string note: low ? "" : onBattery ? `akku ${percent} %` : onCharge && percent < nearlyFull ? `akku ${percent} % · lädt` : ""
