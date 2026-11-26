@@ -603,7 +603,7 @@ TestCase {
         compare(findChild(dolphin, "name").color, Tokens.color.textPrimary);
     }
 
-    // The launch tile (tiles.md:141–156; rekta.css:180–191).
+    // The launch tile (tiles.md:141–156; rekta.css:193–204).
 
     function test_an_app_tile_has_its_icon_at_tile_icon_in_its_padding_and_its_name_at_the_foot_in_xs_semibold() {
         start.pinned = [Object.assign(fakeApp("dolphin", 1), { icon: largeIcon })];
@@ -728,7 +728,7 @@ TestCase {
         compare(best.Accessible.description, "bester treffer");
     }
 
-    // The preview tile (tiles.md:123–132; rekta.css:136–140).
+    // The preview tile (tiles.md:123–132; rekta.css:149–153).
 
     function test_a_running_tiles_foot_holds_the_apps_icon_at_20_and_the_title_in_s_on_the_tile_surface_without_a_count() {
         start.windows = [Object.assign(fakeWindow("Rekta Design — docs, a title longer than the tile", 30), { icon: largeIcon })];
@@ -764,7 +764,7 @@ TestCase {
         verify(ring.z > findChild(tile, "upper").z);
     }
 
-    // object-fit: cover (rekta.css:138)
+    // object-fit: cover (rekta.css:151)
     function test_a_preview_in_other_proportions_than_its_place_fills_it_whole_from_its_middle_and_the_rest_is_cut_off() {
         start.preview = previewComponent;
         start.windows = [Object.assign(fakeWindow("wide", 30), {
@@ -2559,7 +2559,7 @@ TestCase {
     }
 
     // Whatever the windows show lies under the glass, its blur averaging it, so white and black are the limits; Rekta
-    // asks 4.5:1 there, 7:1 under more contrast, large type too (colour.md:74–84). Measured at each title's own colour.
+    // asks 4.5:1 there, 7:1 under more contrast, large type too (colour.md:74–87). Measured at each title's own colour.
     function test_every_title_on_the_glass_keeps_4_5_to_1_over_white_and_black_and_7_to_1_under_more_contrast() {
         const luminance = colour => {
             const channel = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);

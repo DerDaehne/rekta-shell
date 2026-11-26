@@ -1,8 +1,8 @@
 import QtQuick
 
-// What a short display shows, in one line as Rekta's own indicator in the bar (site.js:925–937, site.css:175): its
-// icon, the meter a tile unit wide (rekta.css:865–867) and the value, medium in tabular figures, at least 4ch wide and
-// end-aligned (rekta.css:1267), space-s apart within the padding of the control it stands in for. Without a level the
+// What a short display shows, in one line as Rekta's own indicator in the bar (site.js:943–955, site.css:178): its
+// icon, the meter a tile unit wide (rekta.css:878–880) and the value, medium in tabular figures, at least 4ch wide and
+// end-aligned (rekta.css:1284), space-s apart within the padding of the control it stands in for. Without a level the
 // icon and the value alone. The word is only heard. Laid out by hand: a Row would size itself only at polish.
 Item {
     id: face

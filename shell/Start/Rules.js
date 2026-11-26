@@ -336,7 +336,7 @@ function wordLineOf(app) {
 
 // The installed apps that match what was typed, the most often started first, then the best match, A–Z among equals:
 // by name, or by a word of their generic name, keywords or program. `starts` counts the starts by app id. Space around
-// the text does not count (rekta.js:2633).
+// the text does not count (rekta.js:2678).
 function hits(apps, text, starts) {
     const typed = text.trim();
     const ranked = Rekta.Match.ranked(apps, app => Rekta.Match.scoreLine(app.name, wordLineOf(app), typed));
@@ -611,7 +611,7 @@ function providerQuery(grepped, files, locale) {
 
 // Rekta writes a combination one way: the modifiers in the order Ctrl, Alt, Shift, Meta, then the key, joined by "+".
 // Meta is "Super" off Apple and Windows, Escape "Esc", the arrows glyphs, a letter a capital and any other key its web
-// name (navigation.md:525–539; rekta.js:3029–3047).
+// name (navigation.md:525–539; rekta.js:3074–3094).
 const keyModifiers = [[0x04000000, "Ctrl"], [0x08000000, "Alt"], [0x02000000, "Shift"], [0x10000000, "Super"]];
 // A modifier that is the whole shortcut, as Meta is the Start's, by its flag.
 const modifierKeys = {

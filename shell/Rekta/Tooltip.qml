@@ -1,6 +1,6 @@
 import QtQuick
 
-// The tooltip (navigation.md, "Tooltips"; rekta.css:581–588): a small ink strip, like a toast, xs semibold in the
+// The tooltip (navigation.md, "Tooltips"; rekta.css:594–601): a small ink strip, like a toast, xs semibold in the
 // ground colour, above its control or below it where there is no room. It draws the tip Tips holds and comes in like a
 // floating surface, again for each control; it leaves at once and never takes the pointer. The host floats one above
 // each window and places it with Placement.tip, which also gives its side; each draws only a tip whose control is in
@@ -61,7 +61,7 @@ Rectangle {
         y: Geometry.tipPaddingY
         width: tooltip.width - 2 * Tokens.spaceS
         text: tooltip.text
-        // Its words as they are written, as rekta.js puts them in as text (:3074): a cut text's words never turn into
+        // Its words as they are written, as rekta.js puts them in as text (:3121): a cut text's words never turn into
         // markup in its tip.
         textFormat: Text.PlainText
         wrapMode: Text.Wrap

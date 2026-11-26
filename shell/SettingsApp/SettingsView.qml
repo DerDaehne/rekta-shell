@@ -5,7 +5,7 @@ import Rekta
 import Settings
 import "../Panel/LookAndFeel.js" as LookAndFeel
 
-// The settings app's window content: the places as a strip along the top (navigation.md, "Pivot"; rekta.css:240–288),
+// The settings app's window content: the places as a strip along the top (navigation.md, "Pivot"; rekta.css:253–301),
 // each place a page of groups in two columns, one on a narrow window. A place change turns like Rekta's, and back goes
 // one place back through the places visited (navigation.md, "Places, history and back").
 FocusScope {
@@ -44,7 +44,7 @@ FocusScope {
     readonly property string windowTitle: `${places[place].title} · rekta einstellungen`
     // The same rule as the pivot's: sideways when wide and tall enough, else compact.
     readonly property int columns: Prefs.sizeClass(width, height) === "sideways" ? 2 : 1
-    // The pivot and the pages stand space-xl in sideways and space-m in compact (rekta.css:1154; Panorama.inset).
+    // The pivot and the pages stand space-xl in sideways and space-m in compact (rekta.css:1167; Panorama.inset).
     readonly property real inset: columns === 2 ? Tokens.spaceXl : Tokens.spaceM
     // Two columns of two tile units, with the gap between and the pivot's inset on both sides.
     readonly property real minimumWidth: 4 * Tokens.tileUnit + Tokens.spaceXl + 2 * Tokens.spaceXl
@@ -407,7 +407,7 @@ FocusScope {
         onSelected: index => view.showPlace(index)
     }
 
-    // Compact, the strip has a hairline below it across the whole place; sideways it has none (rekta.css:1169–1172, :1533).
+    // Compact, the strip has a hairline below it across the whole place; sideways it has none (rekta.css:1186–1189, :1554).
     Hairline {
         objectName: "underPivot"
         visible: view.columns === 1
@@ -442,7 +442,7 @@ FocusScope {
                 id: grid
 
                 columns: view.columns
-                // Each group carries its own space-xl above and below (rekta.css:1157); sideways they stand space-xl apart (layout.md:92).
+                // Each group carries its own space-xl above and below (rekta.css:1170); sideways they stand space-xl apart (layout.md:92).
                 columnSpacing: Tokens.spaceXl
                 rowSpacing: 0
 
@@ -457,7 +457,7 @@ FocusScope {
 
                         objectName: `group-${modelData}`
                         width: page.columnWidth
-                        // A section: space-xl above and below, its title space-l above what follows (layout.md:76–96; rekta.css:1157, :1160).
+                        // A section: space-xl above and below, its title space-l above what follows (layout.md:76–96; rekta.css:1170, :1173).
                         topPadding: Tokens.spaceXl
                         bottomPadding: Tokens.spaceXl
                         spacing: Tokens.spaceL
@@ -472,7 +472,7 @@ FocusScope {
                             sourceComponent: view.contents[group.modelData] ?? comingSoon
                         }
 
-                        // Compact, a hairline parts a stacked section from the one above (layout.md:92; rekta.css:1158, :1527); it stands outside the column's flow.
+                        // Compact, a hairline parts a stacked section from the one above (layout.md:92; rekta.css:1171, :1548); it stands outside the column's flow.
                         Hairline {
                             objectName: `hairline-${group.modelData}`
                             parent: grid.parent
@@ -487,7 +487,7 @@ FocusScope {
         }
     }
 
-    // The app has no app bar: its toasts hang from the top centre, as Rekta's do sideways (rekta.css:1189–1203, :1451).
+    // The app has no app bar: its toasts hang from the top centre, as Rekta's do sideways (rekta.css:1206–1220, :1468).
     Toaster {
         id: toaster
 

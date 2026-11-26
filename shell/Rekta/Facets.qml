@@ -4,7 +4,7 @@ import QtQuick
 // from the trailing edge going forward, from the leading edge going back, by slide-distance with a fade, over
 // 0.75 × duration-moderate; the one left goes at once.
 //
-// With a `facetStrip` and from pivot-wide up (navigation.md:57–69; rekta.css:290–305; rekta.js pivot(), :1219–1261)
+// With a `facetStrip` and from pivot-wide up (navigation.md:57–69; rekta.css:303–318; rekta.js pivot(), :1226–1268)
 // every facet shows at once, side by side as a panorama row, sized in tile units. The strip stays, follows the scroll
 // (the facet scrolled into view is the one chosen) and jumps to a facet; Tab on the strip enters the facet chosen. A
 // facet taller than the row brings its own scroller. A pivot that picks the place never goes wide.
@@ -131,7 +131,7 @@ Item {
         Item {
             required property Item facet
 
-            // A facet is no tab stop of its own (rekta.js:1321 gives its panel tabindex -1); once the strip has led Tab
+            // A facet is no tab stop of its own (rekta.js:1328 gives its panel tabindex -1); once the strip has led Tab
             // into it, Tab goes on through what it holds.
             activeFocusOnTab: activeFocus
 

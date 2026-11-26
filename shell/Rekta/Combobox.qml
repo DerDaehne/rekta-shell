@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// One of many from a long list, or one to search (forms.md:28; rekta.js combobox(), :4287–4292): a field with the
+// One of many from a long list, or one to search (forms.md:28; rekta.js combobox(), :4400–4405): a field with the
 // combobox's chevron at its end, and a list that floats below it like a menu (states.md, "Floating surfaces"). Typing
 // filters the list as the Start's search does, the focus staying in the field. ↓ or Alt+↓ opens, ↑ ↓ move around the
 // list, Enter chooses, Escape closes and then clears, and never goes further while there is something to close or
@@ -35,7 +35,7 @@ FocusScope {
     // language (states.md:12).
     property var noMatch: typed => `Nothing matches “${typed}”.`
     property string nothingYet: "Nothing to choose yet."
-    // The option last said to the screen reader while the list is open; as with aria-activedescendant (rekta.js:4349),
+    // The option last said to the screen reader while the list is open; as with aria-activedescendant (rekta.js:4462),
     // the same option set again is not said again.
     property var said: null
 
@@ -114,7 +114,7 @@ FocusScope {
         return list.rows[0]?.parent ?? null;
     }
 
-    // Without a choice of its own in the field, leaving it keeps only a choice from the list (rekta.js:4371–4377).
+    // Without a choice of its own in the field, leaving it keeps only a choice from the list (rekta.js:4484–4490).
     function settle() {
         if (query === "") {
             if (chosen)
@@ -193,7 +193,7 @@ FocusScope {
         radius: Tokens.radiusS
         color: Tokens.color.bg
         border.width: Geometry.inputBorder
-        // Hover only with a pointer that hovers (rekta.css:1369).
+        // Hover only with a pointer that hovers (rekta.css:1386).
         border.color: {
             if (combo.disabled)
                 return Tokens.color.disabled;
@@ -268,7 +268,7 @@ FocusScope {
         }
 
         // `.rk-combo-btn`: out of the focus order and unheard, a press on it opens or closes the list and puts the focus
-        // in the field (rekta.js:4303, :4389, :4396).
+        // in the field (rekta.js:4416, :4502, :4509).
         Rectangle {
             objectName: "button"
             x: box.width - Geometry.inputBorder - width
@@ -334,7 +334,7 @@ FocusScope {
         onPressedOutside: combo.close()
     }
 
-    // Above everything in its window, as wide as the field at least (rekta.js:4353).
+    // Above everything in its window, as wide as the field at least (rekta.js:4466).
     FloatSurface {
         id: list
 
@@ -351,7 +351,7 @@ FocusScope {
             x: Tokens.spaceM
             width: parent.width - 2 * Tokens.spaceM
             visible: combo.shown.length === 0
-            // `.rk-float` sets the compact line height (rekta.css:1022).
+            // `.rk-float` sets the compact line height (rekta.css:1035).
             lineHeightFactor: Tokens.lineHeightCompact
             text: combo.filtering ? combo.noMatch(combo.query) : combo.nothingYet
         }

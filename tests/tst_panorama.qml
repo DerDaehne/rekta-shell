@@ -447,7 +447,7 @@ TestCase {
         compare(panorama.scroller.contentWidth, reach + panorama.gap + spacer + Tokens.spaceXl);
     }
 
-    // Never flush at the edge (layout.md:65–74; rekta.js spread(), :1052–1076). Five sections of 622 px, the inset 48.
+    // Never flush at the edge (layout.md:65–74; rekta.js spread(), :1059–1083). Five sections of 622 px, the inset 48.
 
     // The window's edge with the first section at the start lies at least space-xl inside one section.
     function edgeInsideASection(panorama: var): bool {
@@ -646,7 +646,7 @@ TestCase {
         compare(panorama.scroller.contentX, 1340);
     }
 
-    // The wheel latch, rules 1 to 6 (layout.md:98–126; rekta.js:1011–1035).
+    // The wheel latch, rules 1 to 6 (layout.md:98–126; rekta.js:1018–1042).
 
     function test_events_closer_than_the_latch_are_one_gesture_however_long_it_lasts() {
         const down = {

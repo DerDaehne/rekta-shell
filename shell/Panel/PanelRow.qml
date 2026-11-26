@@ -3,7 +3,7 @@ import Rekta
 
 // A row of a group, a form's field rather than a list's item, so it stands on no hairline: its words at the start, its
 // control at the end; where the two do not fit on one line, the control goes below them (flex-wrap, rekta.css:78),
-// space-xs apart as a field's label and control are (rekta.css:396).
+// space-xs apart as a field's label and control are (rekta.css:409).
 // Words too long for the row are cut. A row without words has its control at the start.
 Item {
     id: row
@@ -12,7 +12,7 @@ Item {
     // Another program's icon before the words, a picture 20px in rows (shell.md:42–47), space-s before them.
     property url icon
     // Keeps the icon's room in a row without one, so the words of rows with and without start at one edge
-    // (states.md:139–143).
+    // (states.md:177–181).
     property bool iconSlot: false
     // False while the row has nothing to offer, such as when its service is missing: it is gone from its group.
     property bool present: true

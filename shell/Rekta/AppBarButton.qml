@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A control of the app bar (navigation.md, "App bar"; rekta.css:813–826, :1370): a glyph and a word, never a glyph
+// A control of the app bar (navigation.md, "App bar"; rekta.css:826–839, :1387): a glyph and a word, never a glyph
 // alone, at least 48px square in every density, no frame; hover and press lay `hover` under it, and so does a surface
-// of its own while it is open (navigation.md:372–384; rekta.css:821). A click gives no focus, so the ring shows only
+// of its own while it is open (navigation.md:372–384; rekta.css:834). A click gives no focus, so the ring shows only
 // for the keyboard. A control that cannot act stays focusable and is read with its reason; the reason shows as its
 // tooltip (on touch when it is tapped) and moves into "more" with it, as Rekta has it in the bar (forms.md:327–337). A
 // count follows the word ("meldungen 3"); a new count peeks in as a live tile's news does (motion.md, "Live tile news";
@@ -38,7 +38,7 @@ Item {
     property bool held: false
     // Gives way to what rises from it, such as a toast it counts: the face (glyph, word and count) leaves upwards as the
     // old count of a peek does and comes back with the second half of a flip, as a live tile's news (motion.md:26;
-    // rekta.js:4240, :4226). The width stays and the control takes no press while away; a count that changes meanwhile
+    // rekta.js:4353, :4339). The width stays and the control takes no press while away; a count that changes meanwhile
     // comes back with the face, without a peek of its own.
     property bool away: false
     // The floating surface the control opens, if any. A press that finds it open only closes it.
@@ -108,7 +108,7 @@ Item {
             fadeRun.complete();
     }
 
-    // The last fade, in or out (rekta.js enter(), :4107–4117, and leave(), :4118–4129): phase runs 0 to 1, linear, over
+    // The last fade, in or out (rekta.js enter(), :4220–4230, and leave(), :4231–4242): phase runs 0 to 1, linear, over
     // the fade's time, and each way eases its own curve from its far end, as Rekta's keyframes do.
     QtObject {
         id: fade

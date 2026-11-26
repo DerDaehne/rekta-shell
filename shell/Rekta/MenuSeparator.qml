@@ -1,6 +1,6 @@
 import QtQuick
 
-// The hairline between groups of a menu, with space-xs above and below (rekta.css:1059).
+// The hairline between groups of a menu, with space-xs above and below (rekta.css:1072).
 Item {
     width: parent ? parent.width : 0
     implicitHeight: Geometry.hairline + 2 * Tokens.spaceXs

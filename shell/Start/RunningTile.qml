@@ -1,7 +1,7 @@
 import QtQuick
 import Rekta
 
-// A running window in the Start as Rekta's preview tile (tiles.md:123–132; rekta.css:136–140), two units wide: the
+// A running window in the Start as Rekta's preview tile (tiles.md:123–132; rekta.css:149–153), two units wide: the
 // window's live preview fills the top, and the foot holds its app's icon and its title on the tile's surface, so no text
 // ever stands on the window's colours. Until a preview shows, or without one, the top is the tile's surface too. A press
 // brings the window to the front.
@@ -21,7 +21,7 @@ Tile {
     opens: true
     Accessible.name: title
 
-    // The whole width down to the foot, without padding (rekta.css:136–137).
+    // The whole width down to the foot, without padding (rekta.css:149–150).
     // ponytail: the preview's top corners stay square under the tile's 2px radius; mask them if that shows.
     Item {
         id: upper
@@ -32,7 +32,7 @@ Tile {
         height: Math.max(0, tile.height - foot.height)
         clip: true
 
-        // Cropped to fill (tiles.md:126; rekta.css:138, `object-fit: cover`): in its picture's proportions, as large as
+        // Cropped to fill (tiles.md:126; rekta.css:151, `object-fit: cover`): in its picture's proportions, as large as
         // covers the top, in its middle; what stands out is cut off. Before its first picture it covers the top.
         Loader {
             id: previewLoader
@@ -61,7 +61,7 @@ Tile {
         when: previewLoader.item !== null
     }
 
-    // On the tile's surface: the app's icon and the title, one line cut at its end (rekta.css:139–140).
+    // On the tile's surface: the app's icon and the title, one line cut at its end (rekta.css:152–153).
     Row {
         id: foot
 

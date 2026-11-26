@@ -1,7 +1,7 @@
 import QtQuick
 import "Status.js" as Status
 
-// A tile (tiles.md; rekta.css:93–112, :204–214): its whole area is one fill, and the fill is its status. It opens
+// A tile (tiles.md; rekta.css:106–125, :217–227): its whole area is one fill, and the fill is its status. It opens
 // something or it only informs; it never changes data. A tile that opens nudges back where it is pressed, by up to
 // tile-tilt, and shrinks to tile-press-scale (motion.md, "Press"; rekta.js press()). Its content sits at the bottom.
 // It builds in when its place arrives (motion.md, "Tiles building in"), and news() shows what is new (TileNews).
@@ -23,14 +23,14 @@ Item {
     property int buildIndex: 0
     // True while its live region holds still: news waits (live.md, "Holding still").
     property bool held: false
-    // The part that peeks with news, as a page marks one `data-rk-peek` (rekta.js:4229; behaviour.md:232): a count.
+    // The part that peeks with news, as a page marks one `data-rk-peek` (rekta.js:4342; behaviour.md:237): a count.
     // Without one, the first visible stat peeks.
     property TextRole peekPart: null
     // On a status fill only the primary text colour clears AA; Status.secondaryInk() reads this (rekta.css:72–74).
     readonly property bool statusFill: status !== ""
     // A place turn keeps the tile that opened the next place pressed until it turns away (rekta.js turn.leave()).
     property bool kept: false
-    // Whether the pointer was over the tile when its press was kept: it keeps the tint while the place leaves (rekta.js:590).
+    // Whether the pointer was over the tile when its press was kept: it keeps the tint while the place leaves (rekta.js:595).
     property bool hoverKept: false
     // It has a context menu (collections.md, "Context menus"): a right click, a long press on touch and Shift+F10 or the
     // context-menu key ask for it through menuAsked, and none of them presses the tile.
@@ -49,7 +49,7 @@ Item {
     // How far it has sunk, 0 to 1, eased like a CSS transition: in over duration-press, back over duration-short.
     // Not bound to `pressed`, or sink moves before the Behavior's duration does and lets go in duration-press.
     property real sink: (press.held || kept) ? 1 : 0
-    // The tilt the sink has reached, in degrees; none under reduced motion, where a press only shrinks (rekta.css:1564).
+    // The tilt the sink has reached, in degrees; none under reduced motion, where a press only shrinks (rekta.css:1585).
     readonly property real tiltX: Tokens.reducedMotion ? 0 : -pressY * sink * Tokens.tileTilt
     readonly property real tiltY: Tokens.reducedMotion ? 0 : pressX * sink * Tokens.tileTilt
     readonly property real pressScale: 1 - sink * (1 - Tokens.tilePressScale)
@@ -97,7 +97,7 @@ Item {
     }
 
     // Only an arriving place builds in: never after a turn, never for new live data. Each tile rises duration-greet after
-    // the one before it, from the fourth on all together (rekta.css:101–109).
+    // the one before it, from the fourth on all together (rekta.css:114–122).
     function followArrival() {
         if (arrival !== "arriving") {
             buildInRun.complete();
@@ -134,7 +134,7 @@ Item {
     }
 
     // translateY(build-in rise) perspective(turnstile-perspective) rotateX(-py · tilt + flip) rotateY(px · tilt)
-    // scale(press-scale) around the centre (rekta.css:198, :204–205), flattened to the item's plane as Qt's own
+    // scale(press-scale) around the centre (rekta.css:211, :217–218), flattened to the item's plane as Qt's own
     // Rotation does.
     transform: Matrix4x4 {
         matrix: {
@@ -185,7 +185,7 @@ Item {
             }
         }
 
-        // Hover tints a tile that opens (rekta.css:1360); it is an image in the stylesheet, so it changes at once.
+        // Hover tints a tile that opens (rekta.css:1377); it is an image in the stylesheet, so it changes at once.
         Rectangle {
             objectName: "tint"
             anchors.fill: parent
@@ -243,7 +243,7 @@ Item {
         color: Tokens.color.textPrimary
     }
 
-    // On a fill the ring sits inside in the text colour (rekta.css:111).
+    // On a fill the ring sits inside in the text colour (rekta.css:124).
     FocusRing {
         onFill: true
         ink: Tokens.color.textPrimary
@@ -295,7 +295,7 @@ Item {
             press.release(false);
     }
 
-    // The press, after rekta.js press() (:286–361): a mouse presses at once, a finger after tap-delay; moving past the
+    // The press, after rekta.js press() (:291–366): a mouse presses at once, a finger after tap-delay; moving past the
     // slop gives up; a quick tap still shows the whole sink, since the press lets go no sooner than duration-press.
     QtObject {
         id: press
@@ -329,7 +329,7 @@ Item {
         }
     }
 
-    // Building in (rekta.css:106–108, :198–199): the tile rises arrive-distance over duration-long and fades up over
+    // Building in (rekta.css:119–121, :211–212): the tile rises arrive-distance over duration-long and fades up over
     // duration-short, both on ease-landing, quick at first and settling long. Before its turn comes it waits unseen, as
     // the CSS animations fill backwards.
     QtObject {
@@ -396,7 +396,7 @@ Item {
     }
 
     // While pressed, the hit area reaches space-m past the tile, so a release on an edge that sank away still lands
-    // (rekta.css:208–212). A press there before the tile is pressed belongs to whatever lies beneath. A scroller around
+    // (rekta.css:221–225). A press there before the tile is pressed belongs to whatever lies beneath. A scroller around
     // the tile may take a drag over, as a page scrolls under a finger; the press then gives up.
     MouseArea {
         id: area
@@ -404,7 +404,7 @@ Item {
         objectName: "area"
         property point start
         // Where it began in the window: the way a pointer has gone is counted on the screen, as rekta.js counts it in
-        // client coordinates (:332, :3204), never on the tile that shrinks and tilts under it as it sinks.
+        // client coordinates (:337, :3251), never on the tile that shrinks and tilts under it as it sinks.
         property point startInWindow
         property bool touch: false
         property bool moved: false

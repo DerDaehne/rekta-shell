@@ -2,13 +2,13 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import "Status.js" as Status
 
-// The status banner (behaviour.md `banner()`; rekta.css:1272–1300): one lasting system state at a time, the most severe
+// The status banner (behaviour.md `banner()`; rekta.css:1289–1317): one lasting system state at a time, the most severe
 // that is on, across the top on its status fill; the neutral state stands on surface with a hairline below. The state's
 // word stands large and light in a column one tile-unit wide, the time it started under it, so the sentence starts on
 // tile column 2; a remedy may follow. Word, sentence and remedy share a first baseline. A new state fades in 8px once,
 // the place below moving with it, then holds still; a new sentence is written in place. A state that ends is an event:
 // the toaster says so once the banner has gone. The host puts it in flow at the top of its place, full bleed.
-// ponytail: the sideways layout only (desktop screens); the compact one from rekta.css:1432–1437 comes with a phone-
+// ponytail: the sideways layout only (desktop screens); the compact one from rekta.css:1449–1454 comes with a phone-
 // sized host.
 Item {
     id: banner
@@ -229,7 +229,7 @@ Item {
     implicitHeight: heightFrom + (contentHeight - heightFrom) * entry
     visible: shown !== "" || leaving
     clip: true
-    // The whole banner fades and moves, its fill too (rekta.css:1280, :1295); the place below follows only its height.
+    // The whole banner fades and moves, its fill too (rekta.css:1297, :1312); the place below follows only its height.
     opacity: entry
     transform: Translate {
         y: -(1 - banner.entry) * Geometry.bannerShift

@@ -1,6 +1,6 @@
 .pragma library
 
-// How well a name matches what was typed (navigation.md, "Go to"; rekta.js matchScore(), :2605–2613): every typed word
+// How well a name matches what was typed (navigation.md, "Go to"; rekta.js matchScore(), :2650–2658): every typed word
 // starts a word of the name or its keywords, `nameStart` when the name also starts with the text and `wordStart`
 // otherwise; failing that, `inside` when the name contains the text; 0 is no match. Case never counts, and an empty text
 // matches everything as `inside`. The better match has the higher level.
@@ -50,7 +50,7 @@ function scoreLine(name, line, text) {
     return name.toLowerCase().startsWith(typed) ? nameStart : wordStart;
 }
 
-// The items that match, the best first; equals keep the order they came in (rekta.js:2637–2638).
+// The items that match, the best first; equals keep the order they came in (rekta.js:2682–2683).
 function ranked(items, scoreOf) {
     return items.map((item, index) => ({
                 item: item,

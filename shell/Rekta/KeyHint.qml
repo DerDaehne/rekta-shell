@@ -1,6 +1,6 @@
 import QtQuick
 
-// A key as on the keyboard, in hints and shortcut lists (rekta.css:1070): a hairline box in the medium contrast colour,
+// A key as on the keyboard, in hints and shortcut lists (rekta.css:1083): a hairline box in the medium contrast colour,
 // the key's name in the primary text colour.
 Rectangle {
     id: key

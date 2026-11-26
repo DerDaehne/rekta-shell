@@ -199,7 +199,7 @@ Rectangle {
                     icon: "music"
                     // ponytail: Rekta does not say how a long title is held as a figure's value; it ends on one
                     // line in an ellipsis, at the room beside the sign-in, as far from it as the showcase's status
-                    // from its account (space-l, site/site.css:177). Follow Rekta's answer once it has one.
+                    // from its account (space-l, site/site.css:180). Follow Rekta's answer once it has one.
                     maximumWidth: face.width - 2 * Tokens.spaceXl - signIn.width - Tokens.spaceL
                         - (face.unseen > 0 ? notices.width + Tokens.spaceM : 0)
                 }

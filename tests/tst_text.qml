@@ -162,7 +162,7 @@ TestCase {
         compare(r.meta.font.features["tnum"], 1);
     }
 
-    // Every text role with the line-height token rekta.css gives it (:37, :57, :59, :98, :113, :127, :253, :801).
+    // Every text role with the line-height token rekta.css gives it (:37, :57, :59, :111, :126, :140, :266, :814).
     function linesOf(r) {
         return [
             ["kicker", r.kicker, Tokens.lineHeightBody],

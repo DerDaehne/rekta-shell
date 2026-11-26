@@ -5,7 +5,7 @@ import Rekta
 import Start
 
 // The shell's keyboard shortcuts, listed in the shell itself as Rekta lists an app's (navigation.md:522–523): a sheet
-// with a row per shortcut, its words and its key, and "schließen" (Rekta's showcase, site/index.html:924–947). The
+// with a row per shortcut, its words and its key, and "schließen" (Rekta's showcase, site/index.html:945–968). The
 // keys of the session's shortcuts are read from kglobalaccel as it opens, so what the user bound shows; a shortcut with
 // no key bound has no row. `?` outside a text field asks for it (navigation.md:517).
 Sheet {
@@ -115,7 +115,7 @@ Sheet {
     // Held, the keys go to the window underneath: no control may wear the ring that says they come to it.
     initialFocus: held ? rowList : null
 
-    // Below the open toast's undo, as Rekta's showcase puts it (site.js:413–416).
+    // Below the open toast's undo, as Rekta's showcase puts it (site.js:419–422).
     property var removeLayer
 
     Component.onCompleted: removeLayer = KeyLayers.on(5, event => keyMap.asksForList(event))

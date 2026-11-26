@@ -10,7 +10,7 @@ Row {
     // Tabular figures, for a word whose digits change.
     property bool figures: false
     // In the plain, ink toast the word takes the toast's text colour and the square an edge in it, since a status colour
-    // may sink into the ink; the neutral square takes that colour itself (rekta.css:1211–1213).
+    // may sink into the ink; the neutral square takes that colour itself (rekta.css:1228–1230).
     property bool inInkToast: false
     readonly property color ink: inInkToast ? Tokens.color.bg : Tokens.color.textPrimary
     readonly property color mark: Status.mark(status, Tokens.color, Tokens.color.textContrastMedium)

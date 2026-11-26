@@ -6,14 +6,14 @@ import State
 
 // The facet "steuerung": the session's settings that act at once, as rows of toggles, segments and buttons. Its areas
 // are opener tiles in one grid at its foot, in a fixed order, ton, netz, bluetooth, akku, anzeige: a tile says how its area
-// stands and opens the area's level, which covers the panel below its head (states.md:224–275); a tile never changes
+// stands and opens the area's level, which covers the panel below its head (states.md:262–313); a tile never changes
 // data. What is used most stands above the grid, from the top: what a media player plays while it plays, the output's
 // mute button and volume, each display's brightness, "nicht stören" and "dunkel" as toggle buttons, then the group that
 // has no tile, sitzung. The free space lies between the two, and a panel taller than its room scrolls as one, the grid
 // last. The host runs what the rows ask for and feeds back the state they show. In ton each kind has two rows, a select
 // of its devices, then a button that mutes before the volume slider; between the output and the input each stream
 // another program plays has a row with a button and a slider of its own; in anzeige each display that can be dimmed has
-// a slider. netz and bluetooth start with their toggle switch (states.md:231–233); while it is on, the strongest
+// a slider. netz and bluetooth start with their toggle switch (states.md:269–271); while it is on, the strongest
 // wireless networks or the paired Bluetooth devices follow as rows, up to five, and a list chosen in place holds them
 // all. A secured network the system does not know asks for its password in a sheet. akku (only with a battery) shows
 // the stand, its state and the time left or until full, then the energy profile, which stands in sitzung without one.
@@ -121,7 +121,7 @@ Item {
     // The density as the shell has it: auto, comfortable or compact.
     property string density: "auto"
     readonly property list<string> densityWords: ["automatisch", "bequem", "kompakt"]
-    // What each area's tile says of it (states.md:237–242): ton the output's name, "stumm" while it is muted, the input's
+    // What each area's tile says of it (states.md:275–280): ton the output's name, "stumm" while it is muted, the input's
     // without an output; netz and bluetooth as networkWord() and bluetoothWord() say; anzeige the density.
     readonly property string soundWord: output ? (output.audio?.muted ? "stumm" : deviceName(output)) : deviceName(input)
     readonly property string displayWord: `dichte ${densityWords[Math.max(0, densities.indexOf(density))]}`
@@ -216,7 +216,7 @@ Item {
     }
 
     // What a stream's row shows: the program's icon and "program · what it plays", both as the program writes them
-    // (states.md:148–150), and the stream's volume.
+    // (states.md:186–188), and the stream's volume.
     function streamLook(node: var): var {
         const program = node.properties["application.name"] || node.name;
         return {
@@ -355,8 +355,8 @@ Item {
         })
 
     width: parent ? parent.width : 0
-    // The room below the panel's head less the sheet's padding at its foot (rekta.css:1121): what stands above the grid,
-    // at least space-m free, then the grid (rekta.css:1143–1144).
+    // The room below the panel's head less the sheet's padding at its foot (rekta.css:1134): what stands above the grid,
+    // at least space-m free, then the grid (rekta.css:1156–1157).
     implicitHeight: Math.max((levels?.height ?? 0) - Tokens.spaceL, above.height + Tokens.spaceM + areaGrid.height)
     onPlayingChanged: followStreams()
     Component.onCompleted: followStreams()
@@ -371,7 +371,7 @@ Item {
         objectName: "streamPresence"
     }
 
-    // What stands above the grid, from the top (states.md:252–259).
+    // What stands above the grid, from the top (states.md:290–297).
     Column {
         id: above
 
@@ -406,8 +406,8 @@ Item {
             }
 
             // Each a toggle button (forms.md:54–69: do not disturb, dark appearance), in two columns space-s apart as a
-            // row of buttons is (rekta.css:363). The details of "nicht stören" are how long it lasts, unfolded below the
-            // buttons. Escape folds them and gives the focus back to the button (behaviour.md:836).
+            // row of buttons is (rekta.css:376). The details of "nicht stören" are how long it lasts, unfolded below the
+            // buttons. Escape folds them and gives the focus back to the button (behaviour.md:867).
             Column {
                 objectName: "toggles"
                 width: parent.width
@@ -509,7 +509,7 @@ Item {
         }
     }
 
-    // One tab stop at the foot, inside the sheet's padding (states.md:246–251), two columns of half the content's width.
+    // One tab stop at the foot, inside the sheet's padding (states.md:284–289), two columns of half the content's width.
     TileGrid {
         id: areaGrid
 
@@ -560,7 +560,7 @@ Item {
             visible: controls.battery.exists
             glyph: "battery"
             name: "akku"
-            // "knapp" is the product's own word for the state, on the error colour (colour.md:349–351); a new one turns the tile over.
+            // "knapp" is the product's own word for the state, on the error colour (colour.md:352–354); a new one turns the tile over.
             property bool lowShown: false
             status: lowShown ? "error" : ""
             word: lowShown ? "knapp" : ""
@@ -975,7 +975,7 @@ Item {
 
         present: node !== null
 
-        // A field's label above its control, space-xs apart (forms.md:5; rekta.css:396–397).
+        // A field's label above its control, space-xs apart (forms.md:5; rekta.css:409–410).
         Column {
             spacing: Tokens.spaceXs
 
@@ -988,7 +988,7 @@ Item {
                 id: picker
 
                 objectName: `${deviceRow.kind}Device`
-                // As wide as the row (rekta.css:398, an input is 100% wide).
+                // As wide as the row (rekta.css:411, an input is 100% wide).
                 implicitWidth: deviceRow.width
                 label: deviceRow.name
                 options: deviceRow.devices.map(node => ({ text: controls.deviceName(node), value: node }))
@@ -1100,7 +1100,7 @@ Item {
             }
         }
 
-        // The rest of the line, space-m after the button as the value is after the track (rekta.css:537).
+        // The rest of the line, space-m after the button as the value is after the track (rekta.css:550).
         Slider {
             id: volumeSlider
 

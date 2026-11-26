@@ -1,6 +1,6 @@
 import QtQuick
 
-// The label above a field's control: xs semibold in text-contrast-high (rekta.css:397).
+// The label above a field's control: xs semibold in text-contrast-high (rekta.css:410).
 Text {
     textFormat: Text.PlainText
     font.family: Tokens.fontSans

@@ -1,6 +1,6 @@
 import QtQuick
 
-// Holds a floating surface to the field that opened it, as a combobox's list is (rekta.js:4353): placed with
+// Holds a floating surface to the field that opened it, as a combobox's list is (rekta.js:4466): placed with
 // Placement.float in the window's coordinates as it opens or changes size, moved with a scroller that moves the field,
 // and told when a press lands outside both. It lies just under the surface, over everything else, and sees a press
 // anywhere without taking it. The surface floats on `stage`: the one a host of the field keeps for floating surfaces

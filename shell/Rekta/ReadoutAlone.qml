@@ -3,9 +3,9 @@ import QtQuick
 // A short display with no bar to stand in, in a glass of its own along the bottom edge: the same line of icon, meter and
 // value as in the bar (ReadoutFace), the bar's padding around it; the word is only said. It comes only while `away`
 // holds, the bar being out of sight. It rises from below the glass edge with a fade, as a compact toast does
-// (rekta.css:1200–1205, :1269–1270, :1441; motion.md:37) and the bar's mode change (rekta.css:995–996; motion.md:28),
+// (rekta.css:1217–1222, :1286–1287, :1458; motion.md:37) and the bar's mode change (rekta.css:1008–1009; motion.md:28),
 // and after the last key and its hold runs the same curve backwards, as the stylesheet's reversed keyframes do
-// (rekta.css:1205). `press()` is a key: the first brings the display, every later one only keeps it, and one during the
+// (rekta.css:1222). `press()` is a key: the first brings the display, every later one only keeps it, and one during the
 // way back waits until it has gone. `say()` announces news politely while it shows or a key waits for it, as a live
 // region does (navigation.md, "A short indicator in place of a control").
 // ponytail: a new layer surface takes some 60ms to its first frame, so the way in starts with that frame; should no frame

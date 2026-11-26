@@ -8,7 +8,7 @@ import State
 // a part of the facet as a group is. It shows the shell's choice of player, which the bar's middle shares; the kicker
 // names the player, and with several a select picks one. The figures are the track's cover in the icon's field, its
 // title in semibold and "artist · album" below, as a toast holds a picture beside its title and text
-// (states.md:90–99); then its progress with the time played and its length. Below stand previous, play or pause, and
+// (states.md:128–137); then its progress with the time played and its length. Below stand previous, play or pause, and
 // next. It shows while a player plays or holds a track paused, and is gone without one.
 // The progress glides on from what the player last reported at its rate, and only while it is in sight.
 // Another track or another player comes in as the next item in the same place (motion.md, "Next item, same place"):

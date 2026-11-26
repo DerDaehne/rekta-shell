@@ -1,6 +1,6 @@
 import QtQuick
 
-// A tile that opens an area's level in a side panel (states.md:224–275; tiles.md:167–172, :184–196; rekta.css:194–197):
+// A tile that opens an area's level in a side panel (states.md:262–313; tiles.md:167–172, :184–196; rekta.css:207–210):
 // the area's icon at the top leading corner, its name in semibold at the foot and its state word right under it, each
 // one line cut with an ellipsis, the whole words in their tip. It opens and never switches: no pressed state and no
 // accent fill, so a tile that says "aus" looks like one that says "an"; a status fills it only for a real status. A
@@ -26,7 +26,7 @@ Tile {
         name: tile.glyph
     }
 
-    // Name and state word with no gap between them (`.rk-opener { gap: 0 }`), in the tile's type (rekta.css:98).
+    // Name and state word with no gap between them (`.rk-opener { gap: 0 }`), in the tile's type (rekta.css:111).
     Column {
         width: parent.width
 

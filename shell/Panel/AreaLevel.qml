@@ -3,12 +3,12 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Rekta
 
-// The level of an area of the panel, which the area's opener tile opens (states.md:260–275; rekta.css:1137–1145). It
+// The level of an area of the panel, which the area's opener tile opens (states.md:298–313; rekta.css:1150–1158). It
 // stands in the panel's `levels`, over the facet below the panel's head, and scrolls when it is longer than that room.
 // It starts with the back row "zurück · name", then the area's rows space-m apart, without the group's heading, as in
-// Rekta's own panel (site/index.html:1008–1011). The focus goes in as it opens, to its first control, and back to its
+// Rekta's own panel (site/index.html:1029–1032). The focus goes in as it opens, to its first control, and back to its
 // tile as it leaves: by the back row here, by Escape and ← through the panel. Choosing in place works inside it
-// (states.md:203–214, :264–265): a list it opens (a PanelLevel among its `levels`) stands in place of its rows below its
+// (states.md:241–252, :302–303): a list it opens (a PanelLevel among its `levels`) stands in place of its rows below its
 // back row and slides in as the next item of a place.
 Flickable {
     id: level
@@ -35,7 +35,7 @@ Flickable {
         tile?.forceActiveFocus(Qt.TabFocusReason);
     }
 
-    // Its first control after the back row, else the back row (rekta.js:1953).
+    // Its first control after the back row, else the back row (rekta.js:1998).
     function focusFirst() {
         const first = back.nextItemInFocusChain(true);
         (first && isMine(first) ? first : back).forceActiveFocus(Qt.TabFocusReason);
@@ -76,7 +76,7 @@ Flickable {
             leave();
     }
 
-    // At the panel's content edge, space-m below its head as a sheet's parts stand (rekta.css:1097, :1145).
+    // At the panel's content edge, space-m below its head as a sheet's parts stand (rekta.css:1110, :1158).
     Column {
         id: column
 
@@ -85,7 +85,7 @@ Flickable {
         width: level.width - 2 * Tokens.spaceM
         spacing: Tokens.spaceM
 
-        // `.rk-in-back { padding: 0 }` (rekta.css:1131–1135): at the rows' edge.
+        // `.rk-in-back { padding: 0 }` (rekta.css:1144–1148): at the rows' edge.
         MenuItem {
             id: back
 

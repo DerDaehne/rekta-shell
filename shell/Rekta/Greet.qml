@@ -1,7 +1,7 @@
 pragma Singleton
 import QtQuick
 
-// News on several tiles comes one after another (motion.md, "Live tile news"; rekta.js greet(), :4160–4180): the
+// News on several tiles comes one after another (motion.md, "Live tile news"; rekta.js greet(), :4273–4293): the
 // tiles, and the bar controls, with news within duration-moderate of the first show it in reading order on the screen,
 // duration-greet apart, four steps at most, the rest with the fourth. Each piece of news starts at once; those told
 // before the next frame are ordered then, and each one's motion waits for its step. Each window counts on its own, as

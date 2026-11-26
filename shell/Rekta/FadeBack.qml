@@ -3,7 +3,7 @@ import QtQuick
 
 // How far the windows have stepped back, 0 in front and 1 all the way back, and how a window looks that far back.
 // Behind the Start they step back with ease-in and come forward with ease-out (motion.md:131–141), at the Start's tempo;
-// as the session is left they step back with ease-out at Rekta's own (shell.md:174) and come forward with ease-in. A
+// as the session is left they step back with ease-out at Rekta's own (shell.md:234) and come forward with ease-in. A
 // change on the way turns them round from where they are, with the curve of the new way. After login the splash fades
 // onto the ground as they step back, at Rekta's tempo.
 QtObject {

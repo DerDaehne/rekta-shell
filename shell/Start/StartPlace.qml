@@ -91,7 +91,7 @@ FocusScope {
     readonly property bool shown: phase !== "closed"
     // From open() to close(): the Start is open or on its way.
     readonly property bool wanted: phase === "opening" || phase === "open"
-    // A place that is leaving takes no more input: presses reach the app bar or the window below (rekta.css:1205, :1318).
+    // A place that is leaving takes no more input: presses reach the app bar or the window below (rekta.css:1222, :1335).
     readonly property bool takesInput: shown && phase !== "closing" && phase !== "returning"
     // A finger has taken the closing along: the Start keeps the keyboard and its focus, but takes no keys or presses.
     readonly property bool fingerCloses: phase === "followingOut" || phase === "returningIn"
@@ -117,7 +117,7 @@ FocusScope {
     readonly property real unitStep: Tokens.tileUnit + Tokens.spaceS
     // The loading line of "alle apps" keeps to the leading edge, at most six units wide.
     readonly property real sixUnits: 6 * Tokens.tileUnit + 5 * Tokens.spaceS
-    // The strips stand as far in as the sections: space-xl sideways, space-m compact (rekta.css:1533, :1172).
+    // The strips stand as far in as the sections: space-xl sideways, space-m compact (rekta.css:1554, :1189).
     readonly property real stripInset: panorama.inset
     // The search keeps between the sections' edges. Sideways it is as many whole tile units as fit there, at most six,
     // in fixed cells (layout.md:167–168); compact it takes the whole width between them, its grid stretched as the
@@ -1100,7 +1100,7 @@ FocusScope {
         return Array.from(menu.rows).filter(row => row.objectName === "size");
     }
 
-    // A scroll that moves the menu's tile closes the menu; one that leaves the tile where it was does not (rekta.js:3219).
+    // A scroll that moves the menu's tile closes the menu; one that leaves the tile where it was does not (rekta.js:3266).
     function followMenuTile(tile: Tile) {
         menuTileAt = tile.mapToItem(start, 0, 0);
         const scrollers = [];
@@ -1169,7 +1169,7 @@ FocusScope {
     }
 
     // Unpinning the focused tile hands the focus to the next tile, at the end to the one before, and without any to the
-    // empty section's way on (collections.md:167–169).
+    // empty section's way on (collections.md:237–239).
     // ponytail: an undo counts by the index the entry had; a change made meanwhile elsewhere can shift it; look the place up by app id once pins can be reordered.
     function unpinApp(app: var, tile: Tile) {
         const focused = tile?.activeFocus ?? false;
@@ -1520,7 +1520,7 @@ FocusScope {
     }
 
     // In "alle apps" a key that prints, other than a space, jumps; elsewhere it would search.
-    // ponytail: jumping on any printing key is Rekta 0.5.0's; 0.6.0 takes letters and digits only (rekta.js:181).
+    // ponytail: jumping on any printing key is Rekta 0.5.0's; 0.6.0 takes letters and digits only (rekta.js:186).
     function jumpsInAllApps(event: KeyEvent): bool {
         return inAllApps() && event.text.length === 1 && /\S/.test(event.text) && (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) === 0;
     }
@@ -1535,7 +1535,7 @@ FocusScope {
     }
 
     // Typing shows the search at once: a turn still running, or the parts still waiting to turn in, ends in its end
-    // state first, as a navigation that comes while a turn runs finishes it (rekta.js:380–381, :670–671). What is typed
+    // state first, as a navigation that comes while a turn runs finishes it (rekta.js:385–386, :675–676). What is typed
     // goes in at the line's caret.
     function typeOn(text: string) {
         bringPlaceIn();
@@ -1863,7 +1863,7 @@ FocusScope {
         }
 
         // A finger drawing down over the open Start takes its closing back along; a mouse scrolls or selects. Only a
-        // gesture that sets out mostly down is the Start's (collections.md:170–177), and none over a scroller off its
+        // gesture that sets out mostly down is the Start's (collections.md:240–247), and none over a scroller off its
         // top: a gesture belongs to one scroller (layout.md:100–118), so a scroll that reaches the top on the way does
         // not close. Taking the finger over cancels a tile's press (platforms.md:200–201).
         DragHandler {
@@ -1902,7 +1902,7 @@ FocusScope {
         }
 
         // The place's strip along the top. Its titles are larger than Rekta's, the inactive one at the title size
-        // (rekta.css:57), also compact where Rekta takes the facet sizes (rekta.css:1174–1175): both titles stay above
+        // (rekta.css:57), also compact where Rekta takes the facet sizes (rekta.css:1191–1192): both titles stay above
         // the section headings.
         Pivot {
             id: pivot
@@ -1930,7 +1930,7 @@ FocusScope {
             anchors.fill: parent
 
             // Sideways at the end of the pivot's row, its text on the titles' baseline; stacked under the pivot at the
-            // leading edge, space-m above the strip as between the blocks of a section (rekta.css:1159). What is typed in
+            // leading edge, space-m above the strip as between the blocks of a section (rekta.css:1172). What is typed in
             // it goes on in the search's line, so it holds nothing itself.
             SearchField {
                 id: searchField
@@ -2149,7 +2149,7 @@ FocusScope {
                 }
             }
 
-            // Compact the strip stays above the stacked sections with a hairline under it (rekta.css:1167–1173).
+            // Compact the strip stays above the stacked sections with a hairline under it (rekta.css:1184–1190).
             Hairline {
                 objectName: "stripLine"
                 y: strip.y + strip.height
@@ -2212,7 +2212,7 @@ FocusScope {
             }
 
             // Loading, the line runs on the region's first hairline; without apps a sentence there says so (states.md,
-            // "Data states"; rekta.css:903). Both stand where the first section would.
+            // "Data states"; rekta.css:916). Both stand where the first section would.
             Item {
                 x: appsPanorama.inset
                 y: appsPanorama.y + Tokens.spaceXl
@@ -2305,7 +2305,7 @@ FocusScope {
         }
 
         // The search's title where the pivot stands, as a place's strip is its title (navigation.md, "Pivot"): what was
-        // typed, light, and "suche" beside it as an inactive title, on one baseline, space-l apart (rekta.css:244). A
+        // typed, light, and "suche" beside it as an inactive title, on one baseline, space-l apart (rekta.css:257). A
         // title never shrinks (typography.md); one too long for the search is cut at its edge, as the strip is.
         Item {
             id: searchTitle
@@ -2328,9 +2328,9 @@ FocusScope {
             }
 
             // What was typed is a line edited as a field is. Its caret is a field's, one pixel in the text's colour
-            // (`caret-color: currentColor` on `.rk-input`, rekta.css:405–408; rekta-core field.c:472, :503), as high and
+            // (`caret-color: currentColor` on `.rk-input`, rekta.css:418–421; rekta-core field.c:472, :503), as high and
             // blinking as the platform draws it, as on the web. Its selection takes the accent with on-accent text, as any
-            // selection does (rekta.css:409; field.c:497–498).
+            // selection does (rekta.css:422; field.c:497–498).
             // ponytail: past the search's edge the caret goes out of sight with the text; cap the width at it and
             // let the line scroll if queries get that long.
             TextInput {
@@ -2361,7 +2361,7 @@ FocusScope {
         }
 
         // The apps whose name matches, as one row of tiles in the search's grid, space-xl above and below as a section
-        // (rekta.css:1157).
+        // (rekta.css:1170).
         Flickable {
             id: results
 
@@ -2485,7 +2485,7 @@ FocusScope {
             }
 
             // Without a match, a sentence on the region's first hairline says so, and the ways on follow it as rows
-            // (states.md, "Empty"; rekta.css:903–904).
+            // (states.md, "Empty"; rekta.css:916–917).
             Empty {
                 id: noHits
 
@@ -2553,7 +2553,7 @@ FocusScope {
     }
 
     // An app tile's context menu (collections.md, "Context menus"): pin or unpin the app, and in "angeheftet" a group
-    // of the sizes its tile may take under a hairline, the current one chosen (states.md:132–138); on a running window's
+    // of the sizes its tile may take under a hairline, the current one chosen (states.md:170–176); on a running window's
     // tile, "fenster" opens KWin's own menu for the window in its place. It stands in the Start's surface, over
     // everything in it.
     Menu {
@@ -2586,7 +2586,7 @@ FocusScope {
         }
 
         // KWin's own menu for a running window, which stands in place of this one. A fade-back KWin loaded before an
-        // update may lack it until the next login; the row then stays and says why (states.md:168–170).
+        // update may lack it until the next login; the row then stays and says why (states.md:206–208).
         MenuItem {
             id: windowRow
 

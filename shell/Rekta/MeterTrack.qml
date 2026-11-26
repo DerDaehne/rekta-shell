@@ -1,6 +1,6 @@
 import QtQuick
 
-// Rekta's meter itself, without its head (`.rk-meter`, rekta.css:722–723): a 6px track that fills to the value, and
+// Rekta's meter itself, without its head (`.rk-meter`, rekta.css:735–736): a 6px track that fills to the value, and
 // glides to a new one.
 Rectangle {
     id: track

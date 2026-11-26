@@ -748,7 +748,7 @@ TestCase {
         compare(findChild(side, "scroller").y, under.y + Geometry.hairline);
     }
 
-    // Its ground is bg, not glass, so an inactive title keeps the pivot colour of Rekta (rekta.css:254).
+    // Its ground is bg, not glass, so an inactive title keeps the pivot colour of Rekta (rekta.css:267).
     function test_on_its_ground_the_pivots_inactive_title_keeps_text_contrast_medium() {
         side.show(0);
         compare(findChild(findChild(findChild(side, "pivot"), "title-1"), "word").color, Tokens.color.textContrastMedium);
@@ -2987,7 +2987,7 @@ TestCase {
         compare(Tips.target, null);
     }
 
-    // bluetooth (states.md:237–242): with an adapter, its tile says how Bluetooth stands.
+    // bluetooth (states.md:275–280): with an adapter, its tile says how Bluetooth stands.
     function test_the_bluetooth_tile_stands_with_an_adapter_and_says_funk_gesperrt_aus_the_device_n_verbunden_or_an() {
         showSettled(0);
         const tile = control("bluetoothTile");
@@ -3013,7 +3013,7 @@ TestCase {
         verify(!tile.visible, "the adapter gone");
     }
 
-    // The level of bluetooth (states.md:231–233, :260–271): the back row, then its switch, which takes the focus.
+    // The level of bluetooth (states.md:269–271, :298–309): the back row, then its switch, which takes the focus.
     function test_the_bluetooth_level_starts_with_its_switch_which_takes_the_focus_and_switches_the_adapter() {
         const bluetooth = giveBluetooth(controls);
         showSettled(0);
@@ -3104,7 +3104,7 @@ TestCase {
         verify(level.open);
     }
 
-    // `.rk-rows` and `.rk-in-back` have no room before or after (rekta.css:77–78, :1131–1135): the rows, the switch, the
+    // `.rk-rows` and `.rk-in-back` have no room before or after (rekta.css:77–78, :1144–1148): the rows, the switch, the
     // back rows and the list of all start at the content's edge, and the rows end at it.
     function test_the_rows_of_netz_and_bluetooth_and_their_lists_of_all_stand_at_the_contents_edges_data() {
         return [
@@ -3270,7 +3270,7 @@ TestCase {
         compare(label.x + label.width, findChild(row, "end").x - Tokens.spaceS);
     }
 
-    // netz (states.md:237–242): with a wireless or a wired device, its tile says how the network stands.
+    // netz (states.md:275–280): with a wireless or a wired device, its tile says how the network stands.
     function test_the_netz_tile_stands_with_a_wireless_or_a_wired_device_and_is_gone_without_both() {
         showSettled(0);
         const tile = control("networkTile");
@@ -3309,7 +3309,7 @@ TestCase {
         compare(stateOf("networkTile"), "getrennt", "aus speaks of the wireless switch: with a cable alone it is getrennt");
     }
 
-    // The level of netz (states.md:231–233, :260–271): the back row, then the wlan switch, which takes the focus.
+    // The level of netz (states.md:269–271, :298–309): the back row, then the wlan switch, which takes the focus.
     function test_the_netz_level_starts_with_the_wlan_switch_which_takes_the_focus_and_switches_wireless() {
         giveNetworks(controls);
         showSettled(0);
@@ -3351,7 +3351,7 @@ TestCase {
         compare(wifiSwitches, []);
     }
 
-    // Up to five networks stand right below the switch; all of them are a list chosen in place (states.md:203–214).
+    // Up to five networks stand right below the switch; all of them are a list chosen in place (states.md:241–252).
     function test_with_eight_networks_the_five_strongest_stand_below_the_switch_and_alle_netze_opens_all_in_place() {
         giveNetworks(controls);
         const level = showLevel("network");
@@ -3785,7 +3785,7 @@ TestCase {
         verify(findChild(level, "back").activeFocus, "the focus on the back row then");
     }
 
-    // Each step up takes its key (rekta.js:1987–1992): none reaches what lies behind the panel; Escape on the tile
+    // Each step up takes its key (rekta.js:2032–2037): none reaches what lies behind the panel; Escape on the tile
     // closes the panel, ← on it stays in the grid.
     function test_escape_left_and_the_back_rows_go_from_the_list_of_all_up_to_the_level_and_then_to_the_tile_data() {
         const areas = [
@@ -3854,9 +3854,9 @@ TestCase {
         compare(named("scroller").contentY, 0, "the facet at its top");
     }
 
-    // Above the grid, from the top (states.md:252–259): the output's volume, each display's brightness, the toggle buttons,
+    // Above the grid, from the top (states.md:290–297): the output's volume, each display's brightness, the toggle buttons,
     // then the group that has no tile; at the foot the tiles in their fixed order, ton, netz, bluetooth, anzeige
-    // (states.md:246–251).
+    // (states.md:284–289).
     function test_above_the_grid_stand_volume_brightness_toggle_buttons_and_sitzung_in_order_and_the_tiles_go_ton_netz_bluetooth_anzeige() {
         giveSound(controls);
         giveDisplays(controls);
@@ -3972,7 +3972,7 @@ TestCase {
         verify(side.within(findChild(side, "scroller"), buttons[0]), "in the scroll");
     }
 
-    // wlan and bluetooth are switched in their levels, the switch first (states.md:231–233, :252–259): above the grid
+    // wlan and bluetooth are switched in their levels, the switch first (states.md:269–271, :290–297): above the grid
     // stands neither a group verbindungen nor a toggle button of theirs.
     function test_above_the_grid_stand_no_group_verbindungen_and_no_toggle_button_wlan_or_bluetooth() {
         giveSound(controls);
@@ -4072,7 +4072,7 @@ TestCase {
         compare(commands, []);
     }
 
-    // The grid of opener tiles at the foot of steuerung and the levels its tiles open (states.md:224–275).
+    // The grid of opener tiles at the foot of steuerung and the levels its tiles open (states.md:262–313).
 
     function arrow(code: int): var {
         return { key: code, text: "", modifiers: Qt.NoModifier };
@@ -4438,7 +4438,7 @@ TestCase {
         verify(pivot.activeFocus, "a focus in the head stays while a level stood");
     }
 
-    // Rekta's levels take Escape only from inside them (rekta.js:1990–1991); in the head it is the panel's.
+    // Rekta's levels take Escape only from inside them (rekta.js:2035–2036); in the head it is the panel's.
     function test_escape_in_the_panels_head_while_a_level_stands_closes_the_panel() {
         giveSound(controls);
         for (const name of ["pivot", "close"]) {

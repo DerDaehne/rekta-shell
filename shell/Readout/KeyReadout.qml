@@ -75,7 +75,7 @@ QtObject {
         return false;
     }
 
-    // A volume at nothing, muted or not, shows its muted icon, as Rekta's own does (site.js:933).
+    // A volume at nothing, muted or not, shows its muted icon, as Rekta's own does (site.js:951).
     function withIcon(view: var, icon: string): var {
         return Object.assign(view, { icon: view.level > 0 ? icon : `${icon}-muted` });
     }

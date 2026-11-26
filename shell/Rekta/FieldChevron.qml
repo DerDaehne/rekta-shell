@@ -1,6 +1,6 @@
 import QtQuick
 
-// The chevron of a select and a combobox (forms.md:80–82; rekta.css:435–447): 8 × 4px, a 1.6px stroke in the text
+// The chevron of a select and a combobox (forms.md:80–82; rekta.css:448–460): 8 × 4px, a 1.6px stroke in the text
 // colour, pointing down, and up while its list is open (rekta-core controls.c:643–645). The host places it.
 Chevron {
     id: chevron

@@ -1,9 +1,9 @@
 import QtQuick
 
-// A toggle button (forms.md:54–69; rekta.css:345–356): one frequent state that a press switches at once, for a
+// A toggle button (forms.md:54–69; rekta.css:358–369): one frequent state that a press switches at once, for a
 // compact row of them. Its icon beside its word, the state word below in xs. Pressed, it takes an ink fill with
-// ground-coloured words whatever the accent, as a chosen segment does (colour.md:170–177); not pressed, it is a quiet
-// button. The fill eases in and out like every button's background (rekta.css:334). Focus and a disabled reason are
+// ground-coloured words whatever the accent, as a chosen segment does (colour.md:173–180); not pressed, it is a quiet
+// button. The fill eases in and out like every button's background (rekta.css:347). Focus and a disabled reason are
 // every button's: the ring shows only for the keyboard, and disabled it keeps its state (pressed, a disabled fill) and
 // says why below. Its place gives its width; words too long for it are cut.
 Item {
@@ -32,7 +32,7 @@ Item {
             return Tokens.color.bg;
         return hovered ? Tokens.color.textPrimary : Tokens.color.textContrastHigh;
     }
-    // From the outer edge to the content: the frame and the padding (rekta.css:332).
+    // From the outer edge to the content: the frame and the padding (rekta.css:345).
     readonly property real inner: Geometry.buttonBorder + Tokens.controlPadding
     // Where the chevron's part begins: a press from there on opens the details.
     readonly property real detailsStart: width - inner - Geometry.iconSize - Tokens.spaceS
@@ -85,7 +85,7 @@ Item {
 
         objectName: "box"
         width: toggleButton.width
-        // No padding above or below: the two lines may make it taller than the control height (rekta.css:332, :354).
+        // No padding above or below: the two lines may make it taller than the control height (rekta.css:345, :367).
         height: Math.max(Tokens.controlHeight, 2 * Geometry.buttonBorder + word.height + stateLine.height)
 
         Rectangle {
@@ -105,7 +105,7 @@ Item {
         }
 
         // Hover and press lay `hover` over it, never on a disabled one; pressed, it is an image over the ink and
-        // comes at once (rekta.css:350, :1366).
+        // comes at once (rekta.css:363, :1383).
         Rectangle {
             objectName: "press"
             anchors.fill: parent

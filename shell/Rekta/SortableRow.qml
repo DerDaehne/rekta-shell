@@ -1,7 +1,7 @@
 import QtQuick
 
 // One row of a SortableRows, its delegate: a Grip at the leading edge, then the row's own content. Dragged or picked up,
-// it lifts as a floating surface, bg and a 1px edge inside, no shadow, above the others (rekta.css:629).
+// it lifts as a floating surface, bg and a 1px edge inside, no shadow, above the others (rekta.css:642).
 Item {
     id: row
 
@@ -20,7 +20,7 @@ Item {
     property real offset: 0
 
     // FLIP's invert and play: from where the row showed before a move to where it rests now, over duration-moderate
-    // (motion.md, "Reordering (FLIP)"; rekta.js:3429, :3473).
+    // (motion.md, "Reordering (FLIP)"; rekta.js:3479, :3523).
     function settleFrom(shownY: real) {
         settle.stop();
         offset = shownY - restingY;
@@ -44,7 +44,7 @@ Item {
     onHeightChanged: rows?.layout()
     onIndexChanged: rows?.layout()
 
-    // The others make room in duration-short · ease-base while one is dragged (rekta.css:628).
+    // The others make room in duration-short · ease-base while one is dragged (rekta.css:641).
     Behavior on offset {
         enabled: row.rows?.draggedRow !== null && row.rows.draggedRow !== row
 

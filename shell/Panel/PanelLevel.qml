@@ -90,7 +90,7 @@ Column {
         event.accepted = true;
     }
 
-    // `.rk-in-back { padding: 0 }` (rekta.css:1131–1135): at the edge.
+    // `.rk-in-back { padding: 0 }` (rekta.css:1144–1148): at the edge.
     MenuItem {
         id: back
 

@@ -371,7 +371,7 @@ TestCase {
         panorama.userScroll();
         panorama.scroller.contentX = panorama.mostScroll();
         compare(strip.currentIndex, sections().length - 1, "at the end, the last");
-        // Rekta's rule (rekta.js:980–981): the last section whose left edge lies within a third of the width.
+        // Rekta's rule (rekta.js:987–988): the last section whose left edge lies within a third of the width.
         const at = flushLeft(titled("l–p"));
         panorama.scroller.contentX = at;
         compare(strip.currentIndex, sections().filter(section => section.x - at <= panorama.width / 3).length - 1);
@@ -715,7 +715,7 @@ TestCase {
         compare(named("appsStrip").currentIndex, 0);
     }
 
-    // Away and back (rekta.js:1079)
+    // Away and back (rekta.js:1086)
 
     function standOnFifthSection(): real {
         Prefs.motion = "off";

@@ -19,7 +19,7 @@ function intoView(item, height, padding = 0) {
 }
 
 // The same sideways: brings an item whole into the flickable, its left edge first, with `padding` clear of the edge
-// it comes from (a browser's `scroll-padding-inline`, rekta.css:1522), the position held within 0 to `most`.
+// it comes from (a browser's `scroll-padding-inline`, rekta.css:1539), the position held within 0 to `most`.
 function alongInto(view, item, padding, most) {
     const left = item.mapToItem(view.contentItem, 0, 0).x;
     const to = Math.min(left - padding, Math.max(view.contentX, left + item.width + padding - view.width));

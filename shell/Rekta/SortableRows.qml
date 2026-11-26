@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// A list ordered by hand (collections.md, "Ordering by hand"; behaviour.md, `sortable()`; rekta.js:3417–3499). Each row
+// A list ordered by hand (collections.md, "Ordering by hand"; behaviour.md, `sortable()`; rekta.js:3467–3549). Each row
 // is a SortableRow and moves only by its grip: dragged by a pointer it follows it up and down while the others make
 // room, and on release everything settles (FLIP); from the keyboard Space or Enter picks it up, ↑ ↓ move it, Space or
 // Enter puts it down, Escape puts it back, Alt+↑ ↓ moves it at once. Every step is announced.
@@ -67,7 +67,7 @@ Item {
     }
 
     // The place a dragged row takes: the furthest row down whose middle its middle has passed, or the first one up
-    // whose middle it has passed (rekta.js:3458–3462).
+    // whose middle it has passed (rekta.js:3508–3512).
     function dropIndex(from: int, dy: real): int {
         const middle = index => drag.tops[index] + drag.heights[index] / 2;
         const at = middle(from) + dy;

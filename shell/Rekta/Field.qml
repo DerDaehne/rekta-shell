@@ -34,7 +34,7 @@ Column {
 
     spacing: Tokens.spaceXs
 
-    // The label in xs semibold (rekta.css:397); "(optional)" after it in regular (:419).
+    // The label in xs semibold (rekta.css:410); "(optional)" after it in regular (:432).
     Row {
         FieldLabel {
             objectName: "label"
@@ -122,7 +122,7 @@ Column {
         visible: hintLine.text !== ""
         spacing: Geometry.tagGap
 
-        // An error starts with the error square, the tag's 8px mark 6px before the words (rekta.css:417).
+        // An error starts with the error square, the tag's 8px mark 6px before the words (rekta.css:430).
         Rectangle {
             objectName: "errorMark"
             // An inline-block sits on the baseline of the first line.

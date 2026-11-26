@@ -15,7 +15,7 @@ Column {
     // What stands above the bar at its end: the percentage beside a label, or a value of its own such as a track's time;
     // in a tile it has neither (tiles.md, "Progress").
     property string valueText: label !== "" ? percentText : ""
-    // The fill eases to a new value over duration-moderate (rekta.css:219). A value that moves on by itself every frame
+    // The fill eases to a new value over duration-moderate (rekta.css:232). A value that moves on by itself every frame
     // (a track that plays) moves it at once: an ease restarted every frame never gets past its slow start.
     property bool eased: true
 

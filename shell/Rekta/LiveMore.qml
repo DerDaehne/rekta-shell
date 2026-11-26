@@ -1,8 +1,8 @@
 import QtQuick
 
 // The quiet button of a held live region that says how many updates wait; pressing it shows them (live.md, "Holding
-// still"; rekta.js:3773–3799, `.rk-live-more` rekta.css:673). It is there only while updates wait, and arrives as
-// `rk-arrive` does over duration-short (rekta.css:1149).
+// still"; rekta.js:3886–3912, `.rk-live-more` rekta.css:686). It is there only while updates wait, and arrives as
+// `rk-arrive` does over duration-short (rekta.css:1162).
 Item {
     id: more
 

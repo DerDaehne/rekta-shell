@@ -9,7 +9,7 @@ QtObject {
 
     // Overrides; the override wins over the system.
     property string theme: "system" // system | light | dark
-    property string ground: "normal" // normal | black; the person's choice, no system source (colour.md:132–135)
+    property string ground: "normal" // normal | black; the person's choice, no system source (colour.md:135–138)
     property string density: "auto" // auto | comfortable | compact
     property string motion: "system" // system | on | off
     property string contrast: "system" // system | more | normal

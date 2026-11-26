@@ -1,10 +1,10 @@
 import QtQuick
 
-// A grid of tiles (layout.md:162–168; rekta.css:87–92, :1515), space-s apart. Each tile takes the first free cells its
+// A grid of tiles (layout.md:162–168; rekta.css:100–105, :1532), space-s apart. Each tile takes the first free cells its
 // size fits, row by row from the top (grid-auto-flow: dense), so a wide tile never leaves a hole that a narrower one
 // after it could fill. Sideways the cells are a tile unit square, `columns` of them across. Compact the grid fills its
 // width: as many tile-unit columns as fit, at least two, each stretched to fill the row, rows a tile unit high; a tile
-// three or four units wide takes a whole compact row (rekta.css:176).
+// three or four units wide takes a whole compact row (rekta.css:189).
 // ponytail: a compact row stays a tile unit high, where Rekta's grows with content taller than that (minmax(tile-unit,
 // auto)); no tile here has such content; add it once a tile's content outgrows a unit. The product keeps one tile-unit
 // for every width, ultrawide included.
@@ -19,7 +19,7 @@ Item {
     property real placeWidth: Window.width
     property real viewportHeight: Window.height
     readonly property bool stretched: Prefs.sizeClass(placeWidth, viewportHeight) === "compact"
-    // repeat(auto-fill, minmax(min(tile-unit, (100% - gap) / 2), 1fr)) (rekta.css:90)
+    // repeat(auto-fill, minmax(min(tile-unit, (100% - gap) / 2), 1fr)) (rekta.css:103)
     readonly property int across: stretched ? Math.max(2, Math.floor((width + Tokens.spaceS) / (Tokens.tileUnit + Tokens.spaceS))) : Math.max(1, columns)
     readonly property real cellWidth: stretched ? Math.max(0, (width - (across - 1) * Tokens.spaceS) / across) : Tokens.tileUnit
     // Where each visible tile sits, in cells: [{tile, column, row}], in the order of the children.
