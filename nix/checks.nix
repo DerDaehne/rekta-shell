@@ -375,6 +375,20 @@ in
     touch $out
   '';
 
+  # The bar's window no unit test can instantiate either: its middle shows MiddleLine's line for the window on its own
+  # screen, which holds that window's title to once a second (tst_middleline.qml holds the throttle).
+  middle-is-throttled = pkgs.runCommand "rekta-shell-middle-is-throttled" { } ''
+    bar=${../shell/Bar.qml}
+    if grep -nE '\bMiddle\.(barLine|windowParts)\(' $bar >&2 ||
+      ! grep -qF 'readonly property var middleLine: lineOfMiddle.line' $bar ||
+      ! grep -qF 'parts: panel.middleLine.parts' $bar ||
+      ! grep -qF 'front: panel.front' $bar; then
+      echo "Bar.qml: the middle must show MiddleLine's line for this screen's window, or its title follows unthrottled" >&2
+      exit 1
+    fi
+    touch $out
+  '';
+
   qmllint = pkgs.runCommand "rekta-shell-qmllint" { LANG = "C.UTF-8"; } ''
     find ${qml} -name '*.qml' -print0 | xargs -0 ${pkgs.lib.getExe rekta-qmllint} -I ${qml}/shell
     touch $out

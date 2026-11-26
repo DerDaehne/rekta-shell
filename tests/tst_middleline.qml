@@ -116,4 +116,17 @@ TestCase {
         compare(middle.line.kind, "window");
         compare(title(middle), "start");
     }
+
+    function test_a_change_right_after_the_trailing_title_waits_a_whole_interval() {
+        const window = windowTitled("start");
+        const middle = make(window);
+        middle.frontTitle.interval = 400;
+        window.title = "first";
+        window.title = "second";
+        tryCompare(middle.frontTitle, "value", "second");
+        verify(middle.frontTitle.hold.running, "the trailing title holds the next change for a whole interval");
+        window.title = "third";
+        compare(title(middle), "second");
+        tryCompare(middle.frontTitle, "value", "third");
+    }
 }
