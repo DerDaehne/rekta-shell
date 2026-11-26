@@ -33,13 +33,13 @@ TestCase {
 
     function test_microphone_battery_and_offline_are_errors_before_the_neutral_words() {
         const model = make({ muted: true, doNotDisturb: true, offline: true, batteryLow: true, batteryPercent: 12 });
-        compare(texts(model), ["akku 12 %", "offline", "stumm", "nicht stören"]);
+        compare(texts(model), ["akku 12 % · knapp", "offline", "stumm", "nicht stören"]);
         compare(model.deviations.map(word => word.status), ["error", "error", "", ""]);
     }
 
     function test_the_errors_keep_their_order() {
         const model = make({ microphoneInUse: true, batteryLow: true, batteryPercent: 9 });
-        compare(texts(model), ["mikrofon an", "akku 9 %"]);
+        compare(texts(model), ["mikrofon an", "akku 9 % · knapp"]);
     }
 
     function test_an_open_microphone_and_a_shared_screen_take_the_error_colour_ahead_of_the_neutral_choices() {
@@ -50,7 +50,7 @@ TestCase {
 
     function test_the_shared_screen_stands_second_in_the_error_colour_and_names_the_background_menu() {
         const model = make({ muted: true, batteryLow: true, batteryPercent: 9, microphoneInUse: true, screenShared: true });
-        compare(texts(model), ["mikrofon an", "bildschirm geteilt", "akku 9 %", "stumm"]);
+        compare(texts(model), ["mikrofon an", "bildschirm geteilt", "akku 9 % · knapp", "stumm"]);
         compare(model.deviations[1].status, "error");
         compare(model.deviations[1].opens, "background");
         compare(model.deviations[1].name, "bildschirm geteilt, öffnet im hintergrund");
@@ -73,7 +73,7 @@ TestCase {
     }
 
     function test_the_battery_words_open_the_battery_s_level_by_the_name_the_tile_has() {
-        compare(make({ batteryLow: true, batteryPercent: 5 }).deviations[0].name, "akku 5 %, öffnet akku");
+        compare(make({ batteryLow: true, batteryPercent: 5 }).deviations[0].name, "akku 5 % · knapp, öffnet akku");
         const note = make({ batteryNote: "akku 64 % · lädt" }).deviations[0];
         compare(note.name, "akku 64 % · lädt, öffnet akku");
         compare(note.opens, "battery");

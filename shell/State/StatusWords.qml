@@ -24,7 +24,7 @@ QtObject {
     readonly property var deviations: [
         microphoneInUse ? word("microphone", "mikrofon an", "error", "sound", "ton") : null,
         screenShared ? word("screen", "bildschirm geteilt", "error", "background", "im hintergrund") : null,
-        batteryLow ? word("battery", `akku ${batteryPercent} %`, "error", "battery", "akku") : null,
+        batteryLow ? word("battery", `akku ${batteryPercent} % · knapp`, "error", "battery", "akku") : null,
         offline ? word("offline", "offline", "error", "connections", "netz") : null,
         batteryNote !== "" ? word("batteryNote", batteryNote, "", "battery", "akku") : null,
         muted ? word("muted", "stumm", "", "sound", "ton") : null,

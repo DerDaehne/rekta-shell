@@ -268,7 +268,7 @@ TestCase {
         const words = createTemporaryObject(statusWordsComponent, testCase, { batteryLow: true, batteryPercent: 4 });
         turn({ batteryCritical: true });
         compare(words.deviations[0].opens, model.places.battery, "both open the same place");
-        compare(words.deviations[0].name, `akku 4 %, öffnet ${banner.actionLabel}`);
+        compare(words.deviations[0].name, `akku 4 % · knapp, öffnet ${banner.actionLabel}`);
     }
 
     function test_over_a_full_screen_window_only_the_battery_shows() {

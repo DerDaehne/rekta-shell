@@ -19,7 +19,7 @@ TestCase {
     readonly property var keys: ["microphone", "screen", "battery", "offline", "batteryNote", "muted", "doNotDisturb", "more"]
     readonly property var microphone: ({ key: "microphone", word: "mikrofon an", status: "error", opens: "sound", name: "mikrofon an, öffnet ton" })
     readonly property var screen: ({ key: "screen", word: "bildschirm geteilt", status: "error", opens: "background", name: "bildschirm geteilt, öffnet im hintergrund" })
-    readonly property var battery: ({ key: "battery", word: "akku 12 %", status: "error", opens: "battery", name: "akku 12 %, öffnet akku" })
+    readonly property var battery: ({ key: "battery", word: "akku 12 % · knapp", status: "error", opens: "battery", name: "akku 12 % · knapp, öffnet akku" })
     readonly property var offline: ({ key: "offline", word: "offline", status: "error", opens: "connections", name: "offline, öffnet netz" })
     readonly property var muted: ({ key: "muted", word: "stumm", status: "", opens: "sound", name: "stumm, öffnet ton" })
     readonly property var quiet: ({ key: "doNotDisturb", word: "nicht stören", status: "", opens: "doNotDisturb", name: "nicht stören, öffnet steuerung" })
@@ -248,7 +248,7 @@ TestCase {
     function test_more_than_two_deviations_show_two_words_and_a_count_of_the_rest() {
         makeScene({ shown: everything });
         tryCompare(scene.status, "limit", 2);
-        compare(scene.status.shown.map(word => word.word), ["mikrofon an", "akku 12 %", "+3"]);
+        compare(scene.status.shown.map(word => word.word), ["mikrofon an", "akku 12 % · knapp", "+3"]);
         tryVerify(() => standing().length === 3);
         compare(word("more").face.word, "+3");
     }
